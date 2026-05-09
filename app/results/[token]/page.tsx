@@ -1,9 +1,9 @@
 import { notFound } from 'next/navigation'
-import Image from 'next/image'
 import Link from 'next/link'
 import { db } from '@/lib/db'
 import OverallBadge from '@/components/OverallBadge'
 import ScoreCard from '@/components/ScoreCard'
+import TopNav from '@/components/TopNav'
 
 export default async function ResultsPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
@@ -34,11 +34,7 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
 
   return (
     <main className="min-h-screen bg-slate-900 flex flex-col">
-      <nav className="flex items-center px-4 border-b border-slate-800">
-        <Link href="/" aria-label="FormCoach home">
-          <Image src="/logo.png" alt="FormCoach" width={1024} height={1024} style={{ height: '160px', width: 'auto' }} />
-        </Link>
-      </nav>
+      <TopNav />
 
       <div className="max-w-2xl mx-auto w-full px-6 py-12 space-y-10">
         {/* Header */}
@@ -88,7 +84,7 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
         <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 text-center space-y-3">
           <p className="text-white font-semibold">Want to analyze another shot?</p>
           <Link
-            href="/"
+            href="/analyze"
             className="inline-block bg-orange-500 hover:bg-orange-400 text-white font-bold px-8 py-3 rounded-xl transition-colors"
           >
             Upload Another Video

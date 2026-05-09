@@ -1,19 +1,13 @@
-import Image from 'next/image'
 import Link from 'next/link'
-import VideoUploader from '@/components/VideoUploader'
+import TopNav from '@/components/TopNav'
 
 export default function HomePage() {
   return (
     <main className="flex flex-col min-h-screen bg-slate-900">
-      {/* Nav */}
-      <nav className="flex items-center px-4 border-b border-slate-800">
-        <Link href="/" aria-label="FormCoach home">
-          <Image src="/logo.png" alt="FormCoach" width={1024} height={1024} style={{ height: '160px', width: 'auto' }} priority />
-        </Link>
-      </nav>
+      <TopNav />
 
       {/* Hero */}
-      <section className="flex flex-col items-center justify-center text-center px-4 pt-10 pb-8">
+      <section className="flex flex-col items-center justify-center text-center px-4 pt-12 pb-8">
         <div className="inline-flex items-center gap-2 bg-orange-500/10 border border-orange-500/30 rounded-full px-4 py-1.5 mb-5">
           <span className="text-orange-400 text-xs font-semibold tracking-wider uppercase">AI Shot Analysis</span>
         </div>
@@ -24,10 +18,26 @@ export default function HomePage() {
         <p className="text-slate-400 text-base sm:text-lg mt-4 max-w-lg leading-relaxed px-2">
           Upload a video of your shot. Our AI studies 12 frames and scores 18 key form criteria — instantly.
         </p>
+
+        {/* CTA Buttons */}
+        <div className="flex flex-col sm:flex-row gap-3 mt-8 w-full max-w-md sm:w-auto px-2">
+          <Link
+            href="/analyze"
+            className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-8 py-3 rounded-xl text-base transition-colors text-center"
+          >
+            Analyze your shot →
+          </Link>
+          <Link
+            href="/shop"
+            className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold px-8 py-3 rounded-xl text-base transition-colors text-center"
+          >
+            Shop (coming soon)
+          </Link>
+        </div>
       </section>
 
       {/* Steps */}
-      <section className="grid grid-cols-1 sm:grid-cols-3 gap-4 px-4 pb-8 max-w-3xl mx-auto w-full">
+      <section className="grid grid-cols-1 sm:grid-cols-3 gap-4 px-4 py-8 max-w-3xl mx-auto w-full">
         {[
           { num: '1', title: 'Upload Your Video', desc: 'Any angle, any device. MP4 or MOV.' },
           { num: '2', title: 'AI Analyzes Your Form', desc: '12 frames studied across 18 coaching criteria.' },
@@ -43,13 +53,7 @@ export default function HomePage() {
         ))}
       </section>
 
-      {/* Upload Zone */}
-      <section className="flex-1 flex flex-col items-center px-4 pb-16">
-        <VideoUploader />
-        <p className="text-slate-500 text-xs mt-4 text-center max-w-sm px-4">
-          Your video is never stored long-term. Frames are analyzed and then used only to generate your report.
-        </p>
-      </section>
+      <div className="flex-1" />
 
       <footer className="py-5 border-t border-slate-800 text-center text-slate-600 text-xs">
         © {new Date().getFullYear()} FormCoach. All rights reserved.

@@ -36,7 +36,7 @@ export default function AdminLoginPage() {
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
           <Link href="/" aria-label="FormCoach home" className="inline-block mb-6">
-            <Image src="/logo.png" alt="FormCoach" width={1024} height={1024} style={{ height: '160px', width: 'auto' }} className="mx-auto" />
+            <Image src="/logo.png" alt="FormCoach" width={429} height={451} style={{ height: '128px', width: 'auto' }} className="mx-auto" />
           </Link>
           <h1 className="text-2xl font-bold text-white">Admin Access</h1>
         </div>

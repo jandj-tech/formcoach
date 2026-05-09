@@ -3,8 +3,12 @@ import { Resend } from 'resend'
 function getResend() {
   return new Resend(process.env.RESEND_API_KEY!)
 }
-const FROM = 'FormCoach <noreply@formcoach.app>'
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+const FROM = 'FormCoach <onboarding@resend.dev>'
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL && process.env.NEXT_PUBLIC_BASE_URL !== 'http://localhost:3000'
+  ? process.env.NEXT_PUBLIC_BASE_URL
+  : process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : 'http://localhost:3000'
 
 export async function sendResultsEmail(to: string, token: string) {
   const link = `${BASE_URL}/results/${token}`

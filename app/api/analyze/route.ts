@@ -28,6 +28,8 @@ export async function POST(req: NextRequest) {
     const frameMimeTypes: string[] = []
     const frameUrls: string[] = []
 
+    const hasBlobToken = !!process.env.BLOB_READ_WRITE_TOKEN
+
     for (let i = 0; i < files.length; i++) {
       const file = files[i]
       const buffer = Buffer.from(await file.arrayBuffer())
@@ -35,11 +37,13 @@ export async function POST(req: NextRequest) {
       frameBase64Array.push(base64)
       frameMimeTypes.push(file.type || 'image/jpeg')
 
-      const blob = await put(`frames/${submission.id}/frame-${i}.jpg`, buffer, {
-        access: 'public',
-        contentType: file.type || 'image/jpeg',
-      })
-      frameUrls.push(blob.url)
+      if (hasBlobToken) {
+        const blob = await put(`frames/${submission.id}/frame-${i}.jpg`, buffer, {
+          access: 'public',
+          contentType: file.type || 'image/jpeg',
+        })
+        frameUrls.push(blob.url)
+      }
     }
 
     // Run Claude Vision analysis
@@ -70,7 +74,7 @@ export async function POST(req: NextRequest) {
       analysisId: analysis.id,
     })
   } catch (err) {
-    console.error('Analysis error:', err)
-    return NextResponse.json({ error: 'Analysis failed' }, { status: 500 })
+    console.error('Analysis error:', err instanceof Error ? err.message : err)
+    return NextResponse.json({ error: 'Analysis failed', detail: err instanceof Error ? err.message : String(err) }, { status: 500 })
   }
 }

@@ -1,18 +1,32 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60" fill="none">
-  <!-- Basketball icon -->
-  <circle cx="30" cy="30" r="22" fill="#F97316"/>
-  <!-- Basketball seam lines -->
-  <path d="M30 8 Q38 20 38 30 Q38 40 30 52" stroke="#0F172A" stroke-width="2" fill="none" stroke-linecap="round"/>
-  <path d="M30 8 Q22 20 22 30 Q22 40 30 52" stroke="#0F172A" stroke-width="2" fill="none" stroke-linecap="round"/>
-  <path d="M8 30 Q20 22 30 22 Q40 22 52 30" stroke="#0F172A" stroke-width="2" fill="none" stroke-linecap="round"/>
-  <path d="M8 30 Q20 38 30 38 Q40 38 52 30" stroke="#0F172A" stroke-width="2" fill="none" stroke-linecap="round"/>
-  <!-- Arc trajectory line -->
-  <path d="M48 42 Q60 10 80 18" stroke="#F97316" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-dasharray="4 3"/>
-  <!-- Small basket rim indicator -->
-  <line x1="72" y1="18" x2="88" y2="18" stroke="#F97316" stroke-width="2.5" stroke-linecap="round"/>
-  <!-- Text: FormCoach -->
-  <text x="98" y="24" font-family="'Inter', 'Helvetica Neue', Arial, sans-serif" font-weight="800" font-size="18" fill="#0F172A" letter-spacing="-0.5">Form</text>
-  <text x="98" y="24" font-family="'Inter', 'Helvetica Neue', Arial, sans-serif" font-weight="800" font-size="18" fill="#F97316" letter-spacing="-0.5" dx="46">Coach</text>
-  <!-- Tagline -->
-  <text x="98" y="40" font-family="'Inter', 'Helvetica Neue', Arial, sans-serif" font-weight="400" font-size="9" fill="#64748B" letter-spacing="0.5">YOUR SHOT. PERFECTED BY AI.</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 60" fill="none">
+  <defs>
+    <radialGradient id="ballgrad" cx="35%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#FF9030"/>
+      <stop offset="100%" stop-color="#C94400"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Shooter silhouette (orange) -->
+  <!-- Head -->
+  <circle cx="22" cy="10" r="5" fill="#F97316"/>
+  <!-- Body -->
+  <line x1="22" y1="15" x2="21" y2="33" stroke="#F97316" stroke-width="3.5" stroke-linecap="round"/>
+  <!-- Shooting arm — extended up to ball -->
+  <path d="M 24 19 L 36 8 L 40 5" stroke="#F97316" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+  <!-- Guide arm -->
+  <path d="M 21 22 L 14 27" stroke="#F97316" stroke-width="3" stroke-linecap="round" fill="none"/>
+  <!-- Legs -->
+  <path d="M 21 33 L 25 50" stroke="#F97316" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+  <path d="M 21 33 L 14 48" stroke="#F97316" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+
+  <!-- Basketball at top of shooting hand -->
+  <circle cx="44" cy="5" r="7" fill="url(#ballgrad)"/>
+  <line x1="37" y1="5" x2="51" y2="5" stroke="#1A0500" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M 44 -2 Q 37 5 44 12" stroke="#1A0500" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+  <path d="M 44 -2 Q 51 5 44 12" stroke="#1A0500" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+
+  <!-- Text -->
+  <text x="63" y="27" font-family="'Inter','Helvetica Neue',Arial,sans-serif" font-weight="900" font-size="21" fill="white" letter-spacing="-1">Form</text>
+  <text x="111" y="27" font-family="'Inter','Helvetica Neue',Arial,sans-serif" font-weight="900" font-size="21" fill="#F97316" letter-spacing="-1">Coach</text>
+  <text x="63" y="43" font-family="'Inter','Helvetica Neue',Arial,sans-serif" font-weight="500" font-size="8.5" fill="#64748B" letter-spacing="1.2">AI-POWERED SHOT ANALYSIS</text>
 </svg>

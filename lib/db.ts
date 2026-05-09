@@ -5,7 +5,7 @@ const globalForDb = globalThis as unknown as { db: ReturnType<typeof postgres> |
 export const db =
   globalForDb.db ??
   postgres(process.env.DATABASE_URL!, {
-    ssl: process.env.NODE_ENV === 'production' ? 'require' : false,
+    ssl: 'require',
     max: 10,
   })
 

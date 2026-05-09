@@ -34,8 +34,8 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
 
   return (
     <main className="min-h-screen bg-slate-900 flex flex-col">
-      <nav className="flex items-center px-6 py-4 border-b border-slate-800">
-        <Image src="/logo.svg" alt="FormCoach" width={160} height={36} />
+      <nav className="flex items-center px-4 border-b border-slate-800">
+        <Image src="/logo.png" alt="FormCoach" width={1024} height={1024} style={{ height: '96px', width: 'auto' }} />
       </nav>
 
       <div className="max-w-2xl mx-auto w-full px-6 py-12 space-y-10">

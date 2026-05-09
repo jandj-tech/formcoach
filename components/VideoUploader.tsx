@@ -163,9 +163,9 @@ export default function VideoUploader() {
   }
 
   return (
-    <div className="w-full max-w-lg mx-auto space-y-4">
+    <div className="w-full max-w-lg mx-auto space-y-4 px-2">
       <div
-        className={`border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all duration-200
+        className={`border-2 border-dashed rounded-2xl p-8 sm:p-12 text-center cursor-pointer transition-all duration-200
           ${isDragging ? 'border-orange-500 bg-orange-500/10' : 'border-slate-600 hover:border-orange-400 hover:bg-slate-800/50'}`}
         onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
         onDragLeave={() => setIsDragging(false)}
@@ -173,9 +173,12 @@ export default function VideoUploader() {
         onClick={() => inputRef.current?.click()}
       >
         <div className="text-5xl mb-4">🎥</div>
-        <p className="text-white font-semibold text-lg mb-1">Drop your video here</p>
-        <p className="text-slate-400 text-sm">or click to browse</p>
+        <p className="text-white font-semibold text-lg mb-1">Tap to upload your video</p>
+        <p className="text-slate-400 text-sm hidden sm:block">or drag and drop</p>
         <p className="text-slate-500 text-xs mt-3">MP4, MOV, AVI · Max 200MB</p>
+        <button className="mt-5 bg-orange-500 hover:bg-orange-400 text-white font-bold px-8 py-3 rounded-xl text-sm transition-colors w-full sm:w-auto">
+          Choose Video
+        </button>
       </div>
 
       {errorMsg && (

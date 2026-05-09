@@ -4,7 +4,7 @@ import path from 'path'
 
 async function migrate() {
   const db = postgres(process.env.DATABASE_URL!, {
-    ssl: process.env.NODE_ENV === 'production' ? 'require' : false,
+    ssl: 'require',
   })
 
   const sql = fs.readFileSync(path.join(__dirname, 'migrate.sql'), 'utf-8')

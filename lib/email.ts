@@ -21,7 +21,7 @@ export async function sendResultsEmail(to: string, token: string) {
         <div style="padding:32px;">
           <h2 style="color:#0F172A;margin-top:0;">Your shot analysis is ready!</h2>
           <p style="color:#475569;line-height:1.6;">
-            We've analyzed your basketball shot across 10 key criteria and generated a detailed breakdown of your form.
+            We've analyzed your basketball shot across 18 key criteria and generated a detailed breakdown of your form.
           </p>
           <div style="text-align:center;margin:32px 0;">
             <a href="${link}" style="background:#F97316;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:16px;">

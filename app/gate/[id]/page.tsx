@@ -34,8 +34,8 @@ export default function GatePage({ params }: { params: Promise<{ id: string }> }
 
   return (
     <main className="min-h-screen bg-slate-900 flex flex-col">
-      <nav className="flex items-center px-6 py-4 border-b border-slate-800">
-        <Image src="/logo.svg" alt="FormCoach" width={160} height={36} />
+      <nav className="flex items-center px-4 border-b border-slate-800">
+        <Image src="/logo.png" alt="FormCoach" width={1024} height={1024} style={{ height: '96px', width: 'auto' }} />
       </nav>
 
       <div className="flex-1 flex items-center justify-center px-6 py-20">
@@ -68,7 +68,7 @@ export default function GatePage({ params }: { params: Promise<{ id: string }> }
                   <span className="text-green-400">✓</span> Overall shot score
                 </div>
                 <div className="flex items-center gap-3 text-sm text-slate-300">
-                  <span className="text-green-400">✓</span> Score for each of 17+ criteria
+                  <span className="text-green-400">✓</span> Score for each of 18 criteria
                 </div>
                 <div className="flex items-center gap-3 text-sm text-slate-300">
                   <span className="text-green-400">✓</span> AI coaching notes per criterion

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { use } from 'react'
 
 export default function GatePage({ params }: { params: Promise<{ id: string }> }) {
@@ -35,7 +36,9 @@ export default function GatePage({ params }: { params: Promise<{ id: string }> }
   return (
     <main className="min-h-screen bg-slate-900 flex flex-col">
       <nav className="flex items-center px-4 border-b border-slate-800">
-        <Image src="/logo.png" alt="FormCoach" width={1024} height={1024} style={{ height: '160px', width: 'auto' }} />
+        <Link href="/" aria-label="FormCoach home">
+          <Image src="/logo.png" alt="FormCoach" width={1024} height={1024} style={{ height: '160px', width: 'auto' }} />
+        </Link>
       </nav>
 
       <div className="flex-1 flex items-center justify-center px-6 py-20">

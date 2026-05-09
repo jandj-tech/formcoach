@@ -1,4 +1,5 @@
 import Image from 'next/image'
+import Link from 'next/link'
 import VideoUploader from '@/components/VideoUploader'
 
 export default function HomePage() {
@@ -6,7 +7,9 @@ export default function HomePage() {
     <main className="flex flex-col min-h-screen bg-slate-900">
       {/* Nav */}
       <nav className="flex items-center px-4 border-b border-slate-800">
-        <Image src="/logo.png" alt="FormCoach" width={1024} height={1024} style={{ height: '160px', width: 'auto' }} priority />
+        <Link href="/" aria-label="FormCoach home">
+          <Image src="/logo.png" alt="FormCoach" width={1024} height={1024} style={{ height: '160px', width: 'auto' }} priority />
+        </Link>
       </nav>
 
       {/* Hero */}

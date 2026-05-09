@@ -35,7 +35,7 @@ export default function GatePage({ params }: { params: Promise<{ id: string }> }
   return (
     <main className="min-h-screen bg-slate-900 flex flex-col">
       <nav className="flex items-center px-4 border-b border-slate-800">
-        <Image src="/logo.png" alt="FormCoach" width={1024} height={1024} style={{ height: '96px', width: 'auto' }} />
+        <Image src="/logo.png" alt="FormCoach" width={1024} height={1024} style={{ height: '160px', width: 'auto' }} />
       </nav>
 
       <div className="flex-1 flex items-center justify-center px-6 py-20">

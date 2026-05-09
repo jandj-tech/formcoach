@@ -6,7 +6,7 @@ export default function HomePage() {
     <main className="flex flex-col min-h-screen bg-slate-900">
       {/* Nav */}
       <nav className="flex items-center px-4 border-b border-slate-800">
-        <Image src="/logo.png" alt="FormCoach" width={1024} height={1024} style={{ height: '96px', width: 'auto' }} priority />
+        <Image src="/logo.png" alt="FormCoach" width={1024} height={1024} style={{ height: '160px', width: 'auto' }} priority />
       </nav>
 
       {/* Hero */}

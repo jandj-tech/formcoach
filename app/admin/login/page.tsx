@@ -34,7 +34,7 @@ export default function AdminLoginPage() {
     <main className="min-h-screen bg-slate-900 flex flex-col items-center justify-center px-6">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
-          <Image src="/logo.png" alt="FormCoach" width={1024} height={1024} style={{ height: '96px', width: 'auto' }} className="mx-auto mb-6" />
+          <Image src="/logo.png" alt="FormCoach" width={1024} height={1024} style={{ height: '160px', width: 'auto' }} className="mx-auto mb-6" />
           <h1 className="text-2xl font-bold text-white">Admin Access</h1>
         </div>
 

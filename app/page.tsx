@@ -3,19 +3,19 @@ import TopNav from '@/components/TopNav'
 
 export default function HomePage() {
   return (
-    <main className="flex flex-col min-h-screen bg-slate-900">
+    <main className="flex flex-col min-h-screen bg-white">
       <TopNav />
 
       {/* Hero */}
       <section className="flex flex-col items-center justify-center text-center px-4 pt-12 pb-8">
         <div className="inline-flex items-center gap-2 bg-orange-500/10 border border-orange-500/30 rounded-full px-4 py-1.5 mb-5">
-          <span className="text-orange-400 text-xs font-semibold tracking-wider uppercase">AI Shot Analysis</span>
+          <span className="text-orange-500 text-xs font-semibold tracking-wider uppercase">AI Shot Analysis</span>
         </div>
-        <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-white leading-tight max-w-2xl">
+        <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-gray-900 leading-tight max-w-2xl">
           Get your shot<br />
           <span className="text-orange-500">professionally analyzed</span>
         </h1>
-        <p className="text-slate-400 text-base sm:text-lg mt-4 max-w-lg leading-relaxed px-2">
+        <p className="text-gray-500 text-base sm:text-lg mt-4 max-w-lg leading-relaxed px-2">
           Upload a video of your shot. Our AI studies 12 frames and scores 18 key form criteria — instantly.
         </p>
 
@@ -29,7 +29,7 @@ export default function HomePage() {
           </Link>
           <Link
             href="/shop"
-            className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold px-8 py-3 rounded-xl text-base transition-colors text-center"
+            className="bg-gray-100 hover:bg-gray-200 border border-gray-200 text-gray-900 font-bold px-8 py-3 rounded-xl text-base transition-colors text-center"
           >
             Shop (coming soon)
           </Link>
@@ -43,19 +43,19 @@ export default function HomePage() {
           { num: '2', title: 'AI Analyzes Your Form', desc: '12 frames studied across 18 coaching criteria.' },
           { num: '3', title: 'Get Your Results', desc: 'We email you a private breakdown with scores & tips.' },
         ].map((step) => (
-          <div key={step.num} className="bg-slate-800 rounded-xl p-5 text-center border border-slate-700">
+          <div key={step.num} className="bg-gray-50 rounded-xl p-5 text-center border border-gray-200">
             <div className="w-8 h-8 rounded-full bg-orange-500 text-white font-bold text-sm flex items-center justify-center mx-auto mb-3">
               {step.num}
             </div>
-            <h3 className="text-white font-semibold text-sm mb-1">{step.title}</h3>
-            <p className="text-slate-400 text-xs leading-relaxed">{step.desc}</p>
+            <h3 className="text-gray-900 font-semibold text-sm mb-1">{step.title}</h3>
+            <p className="text-gray-500 text-xs leading-relaxed">{step.desc}</p>
           </div>
         ))}
       </section>
 
       <div className="flex-1" />
 
-      <footer className="py-5 border-t border-slate-800 text-center text-slate-600 text-xs">
+      <footer className="py-5 border-t border-gray-200 text-center text-gray-400 text-xs">
         © {new Date().getFullYear()} FormCoach. All rights reserved.
       </footer>
     </main>

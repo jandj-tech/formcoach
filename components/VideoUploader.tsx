@@ -130,22 +130,22 @@ export default function VideoUploader() {
       <div className="w-full max-w-lg mx-auto text-center space-y-6">
         <div className="text-5xl animate-bounce">🏀</div>
         <div>
-          <p className="text-white font-semibold text-lg mb-2">
+          <p className="text-gray-900 font-semibold text-lg mb-2">
             {status === 'extracting' ? 'Extracting frames from your video...' : 'Uploading & analyzing your shot...'}
           </p>
-          <p className="text-slate-400 text-sm">
+          <p className="text-gray-500 text-sm">
             {status === 'extracting'
-              ? 'We\'re pulling 12 key moments from your shot'
+              ? "We're pulling 12 key moments from your shot"
               : 'Our AI is studying your form in detail'}
           </p>
         </div>
-        <div className="w-full bg-slate-700 rounded-full h-2">
+        <div className="w-full bg-gray-200 rounded-full h-2">
           <div
             className="bg-orange-500 h-2 rounded-full transition-all duration-300"
             style={{ width: `${progress}%` }}
           />
         </div>
-        <p className="text-slate-400 text-xs">{progress}%</p>
+        <p className="text-gray-400 text-xs">{progress}%</p>
         {previews.length > 0 && (
           <div className="grid grid-cols-4 gap-2 mt-4">
             {previews.map((src, i) => (
@@ -153,7 +153,7 @@ export default function VideoUploader() {
                 key={i}
                 src={src}
                 alt={`Frame ${i + 1}`}
-                className="rounded w-full aspect-video object-cover border border-slate-600"
+                className="rounded w-full aspect-video object-cover border border-gray-200"
               />
             ))}
           </div>
@@ -166,23 +166,23 @@ export default function VideoUploader() {
     <div className="w-full max-w-lg mx-auto space-y-4 px-2">
       <div
         className={`border-2 border-dashed rounded-2xl p-8 sm:p-12 text-center cursor-pointer transition-all duration-200
-          ${isDragging ? 'border-orange-500 bg-orange-500/10' : 'border-slate-600 hover:border-orange-400 hover:bg-slate-800/50'}`}
+          ${isDragging ? 'border-orange-500 bg-orange-500/5' : 'border-gray-300 hover:border-orange-400 hover:bg-orange-50/50'}`}
         onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={onDrop}
         onClick={() => inputRef.current?.click()}
       >
         <div className="text-5xl mb-4">🎥</div>
-        <p className="text-white font-semibold text-lg mb-1">Tap to upload your video</p>
-        <p className="text-slate-400 text-sm hidden sm:block">or drag and drop</p>
-        <p className="text-slate-500 text-xs mt-3">MP4, MOV, AVI · Max 200MB</p>
+        <p className="text-gray-900 font-semibold text-lg mb-1">Tap to upload your video</p>
+        <p className="text-gray-400 text-sm hidden sm:block">or drag and drop</p>
+        <p className="text-gray-400 text-xs mt-3">MP4, MOV, AVI · Max 200MB</p>
         <button className="mt-5 bg-orange-500 hover:bg-orange-400 text-white font-bold px-8 py-3 rounded-xl text-sm transition-colors w-full sm:w-auto">
           Choose Video
         </button>
       </div>
 
       {errorMsg && (
-        <p className="text-red-400 text-sm text-center">{errorMsg}</p>
+        <p className="text-red-500 text-sm text-center">{errorMsg}</p>
       )}
 
       <input

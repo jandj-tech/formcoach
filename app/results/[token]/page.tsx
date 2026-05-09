@@ -33,14 +33,14 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
   `
 
   return (
-    <main className="min-h-screen bg-slate-900 flex flex-col">
+    <main className="min-h-screen bg-white flex flex-col">
       <TopNav />
 
       <div className="max-w-2xl mx-auto w-full px-6 py-12 space-y-10">
         {/* Header */}
         <div className="text-center space-y-2">
-          <h1 className="text-3xl font-black text-white">Your Shot Analysis</h1>
-          <p className="text-slate-400 text-sm">Here&apos;s how your form scored across all criteria</p>
+          <h1 className="text-3xl font-black text-gray-900">Your Shot Analysis</h1>
+          <p className="text-gray-500 text-sm">Here&apos;s how your form scored across all criteria</p>
         </div>
 
         {/* Overall Score */}
@@ -50,7 +50,7 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
 
         {/* Criteria Breakdown */}
         <div className="space-y-4">
-          <h2 className="text-white font-bold text-lg">Criteria Breakdown</h2>
+          <h2 className="text-gray-900 font-bold text-lg">Criteria Breakdown</h2>
           <div className="space-y-3">
             {scores.map((s) => (
               <ScoreCard
@@ -66,14 +66,14 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
         {/* Frame Thumbnails */}
         {analysis.frame_urls && analysis.frame_urls.length > 0 && (
           <div className="space-y-3">
-            <h2 className="text-white font-bold text-lg">Analyzed Frames</h2>
+            <h2 className="text-gray-900 font-bold text-lg">Analyzed Frames</h2>
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
               {(analysis.frame_urls as string[]).map((url, i) => (
                 <img
                   key={i}
                   src={url}
                   alt={`Frame ${i + 1}`}
-                  className="rounded-lg w-full aspect-video object-cover border border-slate-700"
+                  className="rounded-lg w-full aspect-video object-cover border border-gray-200"
                 />
               ))}
             </div>
@@ -81,8 +81,8 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
         )}
 
         {/* CTA */}
-        <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 text-center space-y-3">
-          <p className="text-white font-semibold">Want to analyze another shot?</p>
+        <div className="bg-gray-50 rounded-xl p-6 border border-gray-200 text-center space-y-3">
+          <p className="text-gray-900 font-semibold">Want to analyze another shot?</p>
           <Link
             href="/analyze"
             className="inline-block bg-orange-500 hover:bg-orange-400 text-white font-bold px-8 py-3 rounded-xl transition-colors"
@@ -92,7 +92,7 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
         </div>
       </div>
 
-      <footer className="py-6 border-t border-slate-800 text-center text-slate-600 text-xs">
+      <footer className="py-6 border-t border-gray-200 text-center text-gray-400 text-xs">
         © {new Date().getFullYear()} FormCoach. All rights reserved.
       </footer>
     </main>

@@ -14,7 +14,7 @@ export default function TopNav() {
   const pathname = usePathname()
 
   return (
-    <nav className="h-20 flex items-center justify-between px-4 sm:px-6 border-b border-slate-800 bg-slate-900">
+    <nav className="h-20 flex items-center justify-between px-4 sm:px-6 border-b border-gray-200 bg-white">
       <Link href="/" aria-label="FormCoach home" className="flex items-center shrink-0">
         <Image
           src="/logo.png"
@@ -35,7 +35,7 @@ export default function TopNav() {
               className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${
                 active
                   ? 'bg-orange-500 text-white'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
               }`}
             >
               {tab.label}

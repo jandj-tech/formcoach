@@ -33,7 +33,7 @@ export default function GatePage({ params }: { params: Promise<{ id: string }> }
   }
 
   return (
-    <main className="min-h-screen bg-slate-900 flex flex-col">
+    <main className="min-h-screen bg-white flex flex-col">
       <TopNav />
 
       <div className="flex-1 flex items-center justify-center px-6 py-20">
@@ -41,12 +41,12 @@ export default function GatePage({ params }: { params: Promise<{ id: string }> }
           {status === 'sent' ? (
             <div className="text-center space-y-4">
               <div className="text-6xl">📬</div>
-              <h2 className="text-2xl font-bold text-white">Check your inbox!</h2>
-              <p className="text-slate-400 leading-relaxed">
-                We sent your private results link to <span className="text-orange-400">{email}</span>.
+              <h2 className="text-2xl font-bold text-gray-900">Check your inbox!</h2>
+              <p className="text-gray-500 leading-relaxed">
+                We sent your private results link to <span className="text-orange-500">{email}</span>.
                 Click the link in the email to view your full shot breakdown.
               </p>
-              <p className="text-slate-500 text-sm">
+              <p className="text-gray-400 text-sm">
                 Don&apos;t see it? Check your spam folder.
               </p>
             </div>
@@ -54,25 +54,25 @@ export default function GatePage({ params }: { params: Promise<{ id: string }> }
             <div className="space-y-6">
               <div className="text-center space-y-3">
                 <div className="text-5xl">🏀</div>
-                <h1 className="text-3xl font-black text-white">Your analysis is ready!</h1>
-                <p className="text-slate-400 leading-relaxed">
+                <h1 className="text-3xl font-black text-gray-900">Your analysis is ready!</h1>
+                <p className="text-gray-500 leading-relaxed">
                   We&apos;ve scored your shot across all criteria. Enter your email and we&apos;ll
                   send you a private link to your full breakdown.
                 </p>
               </div>
 
-              <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 space-y-2">
-                <div className="flex items-center gap-3 text-sm text-slate-300">
-                  <span className="text-green-400">✓</span> Overall shot score
+              <div className="bg-gray-50 rounded-xl p-6 border border-gray-200 space-y-2">
+                <div className="flex items-center gap-3 text-sm text-gray-700">
+                  <span className="text-green-500">✓</span> Overall shot score
                 </div>
-                <div className="flex items-center gap-3 text-sm text-slate-300">
-                  <span className="text-green-400">✓</span> Score for each of 18 criteria
+                <div className="flex items-center gap-3 text-sm text-gray-700">
+                  <span className="text-green-500">✓</span> Score for each of 18 criteria
                 </div>
-                <div className="flex items-center gap-3 text-sm text-slate-300">
-                  <span className="text-green-400">✓</span> AI coaching notes per criterion
+                <div className="flex items-center gap-3 text-sm text-gray-700">
+                  <span className="text-green-500">✓</span> AI coaching notes per criterion
                 </div>
-                <div className="flex items-center gap-3 text-sm text-slate-300">
-                  <span className="text-green-400">✓</span> Frame-by-frame thumbnails
+                <div className="flex items-center gap-3 text-sm text-gray-700">
+                  <span className="text-green-500">✓</span> Frame-by-frame thumbnails
                 </div>
               </div>
 
@@ -83,19 +83,19 @@ export default function GatePage({ params }: { params: Promise<{ id: string }> }
                   placeholder="your@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-orange-500 transition-colors"
+                  className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
                 />
-                {error && <p className="text-red-400 text-sm">{error}</p>}
+                {error && <p className="text-red-500 text-sm">{error}</p>}
                 <button
                   type="submit"
                   disabled={status === 'loading'}
-                  className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-500/50 text-white font-bold py-3 rounded-xl transition-colors"
+                  className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold py-3 rounded-xl transition-colors"
                 >
                   {status === 'loading' ? 'Sending...' : 'Send Me My Results →'}
                 </button>
               </form>
 
-              <p className="text-slate-500 text-xs text-center">
+              <p className="text-gray-400 text-xs text-center">
                 No spam. We&apos;ll also send a few tips on improving your game.
                 Unsubscribe anytime.
               </p>

@@ -11,8 +11,8 @@ export async function POST(req: NextRequest) {
   }))
 
   const response = await new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! }).messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 100,
+    model: 'claude-sonnet-4-6',
+    max_tokens: 300,
     messages: [{
       role: 'user',
       content: [
@@ -21,16 +21,16 @@ export async function POST(req: NextRequest) {
           type: 'text',
           text: `These are ${n} evenly-spaced frames numbered 0 to ${n - 1} from a basketball video. There may be multiple shots in the video.
 
-Find the LAST frame (highest frame number) where you can see a player holding the basketball at shooting position — meaning:
-- Ball is in the player's hands at hip, waist, or chest level (shot pocket), OR
-- Player is catching or receiving a pass and about to shoot, OR
-- Player's knees are bent with ball in hand, ready to jump
+Find the frame showing the PEAK of the FIRST shot — the single moment where:
+- The shooter's arm is at its HIGHEST point, fully extended straight up overhead
+- The ball is at the very top of its release — either still on the fingertips or just leaving the hand
+- The wrist is snapping or has just snapped downward
 
-Do NOT pick frames showing only the follow-through (arm extended upward, ball already gone) or the ball in the air away from the player. We want the moment just BEFORE the shot goes up.
+This is the most visually distinctive moment: arms straight up, body fully extended or at the top of the jump. There is exactly one peak per shot.
 
-If you see a shooting setup in multiple places in the video, return the LAST one (highest frame number).
+If there are multiple shots, use the FIRST shot only (earliest frames).
 
-Return ONLY valid JSON: {"start": <frame number 0 to ${n - 1}>}`,
+Do not explain your reasoning. Output ONLY the JSON object, nothing else: {"peak": <frame number 0 to ${n - 1}>}`,
         },
       ],
     }],
@@ -38,10 +38,10 @@ Return ONLY valid JSON: {"start": <frame number 0 to ${n - 1}>}`,
 
   const text = response.content[0].type === 'text' ? response.content[0].text : ''
   const match = text.match(/\{[\s\S]*?\}/)
-  if (!match) return NextResponse.json({ start: 0 })
+  if (!match) return NextResponse.json({ peak: Math.floor(n / 4) })
 
   const parsed = JSON.parse(match[0])
   return NextResponse.json({
-    start: Math.max(0, Math.min(n - 1, Number(parsed.start))),
+    peak: Math.max(0, Math.min(n - 1, Number(parsed.peak ?? parsed.start ?? 0))),
   })
 }

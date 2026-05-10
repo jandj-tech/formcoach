@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-const FRAME_COUNT = 12
+const FRAME_COUNT = 20
 const PROBE_COUNT = 30  // low-res frames to detect shot window
 
 export default function VideoUploader() {
@@ -28,8 +28,8 @@ export default function VideoUploader() {
 
         // --- Phase 1: Extract low-res probe frames ---
         const probeCanvas = document.createElement('canvas')
-        probeCanvas.width = 160
-        probeCanvas.height = 90
+        probeCanvas.width = 320
+        probeCanvas.height = 180
         const probeCtx = probeCanvas.getContext('2d')!
 
         const probeTimestamps = Array.from({ length: PROBE_COUNT }, (_, i) =>
@@ -42,7 +42,7 @@ export default function VideoUploader() {
           await new Promise<void>((res) => {
             video.currentTime = t
             video.onseeked = () => {
-              probeCtx.drawImage(video, 0, 0, 160, 90)
+              probeCtx.drawImage(video, 0, 0, 320, 180)
               probeBase64.push(probeCanvas.toDataURL('image/jpeg', 0.7).split(',')[1])
               res()
             }
@@ -51,10 +51,10 @@ export default function VideoUploader() {
 
         setProgress(20)
 
-        // --- Phase 2: Ask Claude to find the last shot setup frame ---
-        let shotStart = probeTimestamps[0]
-        // Fixed 4-second window covers any complete shot from pocket to follow-through
-        let shotEnd = Math.min(duration, shotStart + 4.0)
+        // --- Phase 2: Ask Claude to find the peak of the first shot ---
+        // Window = peak-1.5s → peak+1.0s: captures full setup, motion, follow-through, ball in air
+        let shotStart = 0
+        let shotEnd = Math.min(duration, 2.5)
 
         try {
           const windowRes = await fetch('/api/detect-shot-window', {
@@ -63,12 +63,13 @@ export default function VideoUploader() {
             body: JSON.stringify({ frames: probeBase64 }),
           })
           if (windowRes.ok) {
-            const { start } = await windowRes.json()
-            shotStart = probeTimestamps[Math.max(0, start)]
-            shotEnd = Math.min(duration, shotStart + 4.0)
+            const { peak } = await windowRes.json()
+            const peakTime = probeTimestamps[peak]
+            shotStart = Math.max(0, peakTime - 1.5)
+            shotEnd = Math.min(duration, peakTime + 1.0)
           }
         } catch {
-          // Fallback: use beginning of video
+          // Fallback: first 2.5s
         }
 
         setProgress(40)
@@ -190,7 +191,7 @@ export default function VideoUploader() {
           <p className="text-black text-sm">
             {status === 'extracting'
               ? progress < 20 ? 'Reading frames from your video'
-              : progress < 40 ? 'AI is locating when you start and finish shooting'
+              : progress < 40 ? 'AI is locating your shot release'
               : 'Extracting frames of your shooting form'
               : 'Our AI is studying your form in detail'}
           </p>

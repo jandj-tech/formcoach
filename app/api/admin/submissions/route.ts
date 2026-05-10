@@ -12,7 +12,7 @@ export async function GET() {
 
   const submissions = await db`
     SELECT s.id, s.email, s.status, s.created_at,
-           a.id as analysis_id, a.overall_score
+           a.id as analysis_id, a.overall_score, a.frame_urls
     FROM submissions s
     LEFT JOIN analyses a ON a.submission_id = s.id
     ORDER BY s.created_at DESC

@@ -17,6 +17,7 @@ interface Submission {
   created_at: string
   overall_score: number
   analysis_id: number
+  frame_urls: string[] | null
   scores: Score[]
 }
 
@@ -58,6 +59,11 @@ export default function LearnModePage() {
     })
 
     setSaving(null)
+    setCorrections((prev) => {
+      const next = { ...prev }
+      delete next[scoreId]
+      return next
+    })
     await load()
   }
 
@@ -66,7 +72,7 @@ export default function LearnModePage() {
       <div>
         <h1 className="text-2xl font-black text-white">Learn Mode</h1>
         <p className="text-slate-400 text-sm mt-1">
-          Correct the AI&apos;s scores to improve future analyses. Corrections are used as examples in the AI prompt.
+          View the frames the AI analyzed, then correct its scores. Every correction improves future analyses.
         </p>
       </div>
 
@@ -99,62 +105,95 @@ export default function LearnModePage() {
               </div>
             </button>
 
-            {expanded === s.id && s.scores && (
-              <div className="border-t border-slate-700 divide-y divide-slate-700/50">
-                {s.scores.map((score) => (
-                  <div key={score.id} className="px-5 py-4 space-y-3">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <p className="text-white text-sm font-semibold">{score.criterion_name}</p>
-                        <p className="text-slate-400 text-xs mt-1 leading-relaxed">{score.ai_reasoning}</p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-slate-500 text-xs">AI Score</p>
-                        <p className="text-orange-400 font-bold">{score.ai_score}/10</p>
-                        {score.admin_score !== null && (
-                          <p className="text-green-400 text-xs">Corrected: {score.admin_score}/10</p>
-                        )}
-                      </div>
-                    </div>
+            {expanded === s.id && (
+              <div className="border-t border-slate-700">
 
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        min="1"
-                        max="10"
-                        step="0.5"
-                        placeholder="Correct score (1-10)"
-                        value={corrections[score.id]?.score ?? ''}
-                        onChange={(e) =>
-                          setCorrections((prev) => ({
-                            ...prev,
-                            [score.id]: { ...prev[score.id], score: e.target.value },
-                          }))
-                        }
-                        className="w-36 bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-orange-500"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Notes (optional)"
-                        value={corrections[score.id]?.notes ?? ''}
-                        onChange={(e) =>
-                          setCorrections((prev) => ({
-                            ...prev,
-                            [score.id]: { ...prev[score.id], notes: e.target.value },
-                          }))
-                        }
-                        className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-orange-500"
-                      />
-                      <button
-                        disabled={saving === score.id}
-                        onClick={() => saveCorrection(score.id)}
-                        className="bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
-                      >
-                        {saving === score.id ? '...' : 'Save'}
-                      </button>
+                {/* Frame thumbnails */}
+                {s.frame_urls && s.frame_urls.length > 0 && (
+                  <div className="px-5 py-4 space-y-2">
+                    <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider">
+                      Frames Analyzed ({s.frame_urls.length})
+                    </p>
+                    <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                      {s.frame_urls.map((url, i) => (
+                        <div key={i} className="relative">
+                          <img
+                            src={url}
+                            alt={`Frame ${i + 1}`}
+                            className="rounded-lg w-full aspect-video object-cover border border-slate-600"
+                          />
+                          <span className="absolute bottom-1 left-1 text-white text-xs bg-black/60 rounded px-1">
+                            {i + 1}
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                ))}
+                )}
+
+                {/* Scores */}
+                {s.scores ? (
+                  <div className="divide-y divide-slate-700/50">
+                    {s.scores.map((score) => (
+                      <div key={score.id} className="px-5 py-4 space-y-3">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <p className="text-white text-sm font-semibold">{score.criterion_name}</p>
+                            <p className="text-slate-400 text-xs mt-1 leading-relaxed">{score.ai_reasoning}</p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-slate-500 text-xs">AI Score</p>
+                            <p className="text-orange-400 font-bold">{score.ai_score}/10</p>
+                            {score.admin_score !== null && (
+                              <p className="text-green-400 text-xs mt-1">✓ Corrected: {score.admin_score}/10</p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            min="1"
+                            max="10"
+                            step="0.5"
+                            placeholder="Your score (1-10)"
+                            value={corrections[score.id]?.score ?? ''}
+                            onChange={(e) =>
+                              setCorrections((prev) => ({
+                                ...prev,
+                                [score.id]: { ...prev[score.id], score: e.target.value },
+                              }))
+                            }
+                            className="w-36 bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-orange-500"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Notes — what did you see? (optional)"
+                            value={corrections[score.id]?.notes ?? ''}
+                            onChange={(e) =>
+                              setCorrections((prev) => ({
+                                ...prev,
+                                [score.id]: { ...prev[score.id], notes: e.target.value },
+                              }))
+                            }
+                            className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-orange-500"
+                          />
+                          <button
+                            disabled={saving === score.id || !corrections[score.id]?.score}
+                            onClick={() => saveCorrection(score.id)}
+                            className="bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
+                          >
+                            {saving === score.id ? '...' : 'Save'}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="px-5 py-4">
+                    <p className="text-slate-500 text-sm">Loading scores...</p>
+                  </div>
+                )}
               </div>
             )}
           </div>

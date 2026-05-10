@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 const FRAME_COUNT = 12
+const PROBE_COUNT = 30  // low-res frames to detect shot window
 
 export default function VideoUploader() {
   const [isDragging, setIsDragging] = useState(false)
@@ -24,27 +25,80 @@ export default function VideoUploader() {
 
       video.onloadedmetadata = async () => {
         const duration = video.duration
-        const canvas = document.createElement('canvas')
-        const ctx = canvas.getContext('2d')!
+
+        // --- Phase 1: Motion detection with low-res probe frames ---
+        const probeCanvas = document.createElement('canvas')
+        probeCanvas.width = 160
+        probeCanvas.height = 90
+        const probeCtx = probeCanvas.getContext('2d')!
+
+        const probeTimestamps = Array.from({ length: PROBE_COUNT }, (_, i) =>
+          (duration / (PROBE_COUNT + 1)) * (i + 1)
+        )
+
+        const probePixels: Uint8ClampedArray[] = []
+
+        for (const t of probeTimestamps) {
+          await new Promise<void>((res) => {
+            video.currentTime = t
+            video.onseeked = () => {
+              probeCtx.drawImage(video, 0, 0, 160, 90)
+              probePixels.push(
+                new Uint8ClampedArray(probeCtx.getImageData(0, 0, 160, 90).data)
+              )
+              res()
+            }
+          })
+        }
+
+        // Compute pixel-diff motion score between consecutive probe frames
+        const motionScores: number[] = []
+        for (let i = 1; i < probePixels.length; i++) {
+          const a = probePixels[i - 1]
+          const b = probePixels[i]
+          let diff = 0
+          for (let j = 0; j < a.length; j += 4) {
+            diff += Math.abs(a[j] - b[j]) + Math.abs(a[j + 1] - b[j + 1]) + Math.abs(a[j + 2] - b[j + 2])
+          }
+          motionScores.push(diff / (160 * 90))
+        }
+
+        // Find the FRAME_COUNT-sized sliding window with highest total motion
+        const WIN = FRAME_COUNT
+        let bestStart = 0
+        let bestScore = -1
+        for (let i = 0; i <= motionScores.length - WIN; i++) {
+          let s = 0
+          for (let j = i; j < i + WIN; j++) s += motionScores[j]
+          if (s > bestScore) { bestScore = s; bestStart = i }
+        }
+
+        // Map window back to video timestamps
+        const shotStart = probeTimestamps[bestStart]
+        const shotEnd = probeTimestamps[Math.min(bestStart + WIN, PROBE_COUNT - 1)]
+
+        // --- Phase 2: Extract quality frames from the shot window ---
+        const mainCanvas = document.createElement('canvas')
+        const ctx = mainCanvas.getContext('2d')!
         const blobs: Blob[] = []
         const thumbs: string[] = []
 
         const timestamps = Array.from({ length: FRAME_COUNT }, (_, i) =>
-          (duration / (FRAME_COUNT + 1)) * (i + 1)
+          shotStart + ((shotEnd - shotStart) / (FRAME_COUNT + 1)) * (i + 1)
         )
 
         for (let i = 0; i < timestamps.length; i++) {
           await new Promise<void>((res) => {
             video.currentTime = timestamps[i]
             video.onseeked = () => {
-              canvas.width = video.videoWidth
-              canvas.height = video.videoHeight
+              mainCanvas.width = video.videoWidth
+              mainCanvas.height = video.videoHeight
               ctx.drawImage(video, 0, 0)
-              canvas.toBlob(
+              mainCanvas.toBlob(
                 (blob) => {
                   if (blob) {
                     blobs.push(blob)
-                    thumbs.push(canvas.toDataURL('image/jpeg', 0.4))
+                    thumbs.push(mainCanvas.toDataURL('image/jpeg', 0.4))
                   }
                   setProgress(Math.round(((i + 1) / timestamps.length) * 50))
                   res()
@@ -131,11 +185,11 @@ export default function VideoUploader() {
         <div className="text-5xl animate-bounce">🏀</div>
         <div>
           <p className="text-gray-900 font-semibold text-lg mb-2">
-            {status === 'extracting' ? 'Extracting frames from your video...' : 'Uploading & analyzing your shot...'}
+            {status === 'extracting' ? 'Finding your shot...' : 'Uploading & analyzing your shot...'}
           </p>
           <p className="text-gray-500 text-sm">
             {status === 'extracting'
-              ? "We're pulling 12 key moments from your shot"
+              ? 'Detecting motion to capture only your shooting form'
               : 'Our AI is studying your form in detail'}
           </p>
         </div>

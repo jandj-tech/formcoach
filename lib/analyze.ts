@@ -33,7 +33,7 @@ export async function analyzeShot(
     JOIN criteria c ON cs.criterion_id = c.id
     WHERE cs.admin_score IS NOT NULL
     ORDER BY cs.id DESC
-    LIMIT 20
+    LIMIT 40
   `
 
   const criteriaText = activeCriteria
@@ -45,17 +45,24 @@ export async function analyzeShot(
 
   const feedbackText =
     recentFeedback.length > 0
-      ? '\n\nLearn from these admin-corrected examples:\n' +
+      ? '\n\nCRITICAL — The following are human expert corrections to past AI scores. ' +
+        'You MUST apply these lessons to your scoring. If you see the same issues, score accordingly:\n' +
         recentFeedback
           .map(
             (f) =>
-              `- "${f.name}": AI gave ${f.ai_score}/10, correct score was ${f.admin_score}/10${f.admin_notes ? ` (note: ${f.admin_notes})` : ''}`
+              `- "${f.name}": AI scored ${f.ai_score}/10 but expert corrected to ${f.admin_score}/10` +
+              (f.admin_notes ? ` — Expert note: "${f.admin_notes}"` : '') +
+              (Number(f.admin_score) > Number(f.ai_score)
+                ? ' (AI was too harsh — be more generous on this criterion)'
+                : Number(f.admin_score) < Number(f.ai_score)
+                ? ' (AI was too lenient — be stricter on this criterion)'
+                : ' (score was correct but reasoning needed improvement)')
           )
           .join('\n')
       : ''
 
   const systemPrompt = `You are an expert basketball shooting coach analyzing a player's shooting form.
-You will receive ${frameBase64Array.length} sequential frames extracted from a basketball shooting video.
+You will receive ${frameBase64Array.length} sequential frames extracted from the active shooting motion of a basketball shot — these frames were selected by detecting peak motion, so they show the actual shot, not warmup or follow-up.
 Analyze the complete shooting motion across all frames.
 
 Score each criterion from 1 to 10:

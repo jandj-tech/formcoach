@@ -26,6 +26,7 @@ export default function LearnModePage() {
   const [expanded, setExpanded] = useState<string | null>(null)
   const [corrections, setCorrections] = useState<Record<number, { score: string; notes: string }>>({})
   const [saving, setSaving] = useState<number | null>(null)
+  const [lightbox, setLightbox] = useState<{ urls: string[]; index: number } | null>(null)
 
   async function load() {
     const res = await fetch('/api/admin/submissions')
@@ -69,6 +70,49 @@ export default function LearnModePage() {
 
   return (
     <div className="space-y-6">
+
+      {/* Lightbox */}
+      {lightbox && (
+        <div
+          className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+          onClick={() => setLightbox(null)}
+        >
+          <div className="relative max-w-4xl w-full" onClick={(e) => e.stopPropagation()}>
+            <img
+              src={lightbox.urls[lightbox.index]}
+              alt={`Frame ${lightbox.index + 1}`}
+              className="w-full rounded-xl border border-slate-600"
+            />
+            <div className="absolute top-3 right-3 flex gap-2">
+              <span className="bg-black/70 text-white text-sm px-3 py-1 rounded-full">
+                {lightbox.index + 1} / {lightbox.urls.length}
+              </span>
+              <button
+                onClick={() => setLightbox(null)}
+                className="bg-black/70 text-white text-sm px-3 py-1 rounded-full hover:bg-black"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="flex justify-center gap-3 mt-4">
+              <button
+                disabled={lightbox.index === 0}
+                onClick={() => setLightbox((l) => l && { ...l, index: l.index - 1 })}
+                className="bg-slate-700 hover:bg-slate-600 disabled:opacity-30 text-white px-5 py-2 rounded-lg text-sm font-bold"
+              >
+                ← Prev
+              </button>
+              <button
+                disabled={lightbox.index === lightbox.urls.length - 1}
+                onClick={() => setLightbox((l) => l && { ...l, index: l.index + 1 })}
+                className="bg-slate-700 hover:bg-slate-600 disabled:opacity-30 text-white px-5 py-2 rounded-lg text-sm font-bold"
+              >
+                Next →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div>
         <h1 className="text-2xl font-black text-white">Learn Mode</h1>
         <p className="text-slate-400 text-sm mt-1">
@@ -116,15 +160,22 @@ export default function LearnModePage() {
                     </p>
                     <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
                       {s.frame_urls.map((url, i) => (
-                        <div key={i} className="relative">
+                        <div
+                          key={i}
+                          className="relative cursor-pointer group"
+                          onClick={() => setLightbox({ urls: s.frame_urls!, index: i })}
+                        >
                           <img
                             src={url}
                             alt={`Frame ${i + 1}`}
-                            className="rounded-lg w-full aspect-video object-cover border border-slate-600"
+                            className="rounded-lg w-full aspect-video object-cover border border-slate-600 group-hover:border-orange-400 transition-colors"
                           />
                           <span className="absolute bottom-1 left-1 text-white text-xs bg-black/60 rounded px-1">
                             {i + 1}
                           </span>
+                          <div className="absolute inset-0 bg-white/0 group-hover:bg-white/10 rounded-lg transition-colors flex items-center justify-center">
+                            <span className="opacity-0 group-hover:opacity-100 text-white text-lg">🔍</span>
+                          </div>
                         </div>
                       ))}
                     </div>

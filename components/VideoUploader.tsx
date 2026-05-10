@@ -26,7 +26,7 @@ export default function VideoUploader() {
       video.onloadedmetadata = async () => {
         const duration = video.duration
 
-        // --- Phase 1: Motion detection with low-res probe frames ---
+        // --- Phase 1: Extract low-res probe frames ---
         const probeCanvas = document.createElement('canvas')
         probeCanvas.width = 160
         probeCanvas.height = 90
@@ -36,48 +36,43 @@ export default function VideoUploader() {
           (duration / (PROBE_COUNT + 1)) * (i + 1)
         )
 
-        const probePixels: Uint8ClampedArray[] = []
+        const probeBase64: string[] = []
 
         for (const t of probeTimestamps) {
           await new Promise<void>((res) => {
             video.currentTime = t
             video.onseeked = () => {
               probeCtx.drawImage(video, 0, 0, 160, 90)
-              probePixels.push(
-                new Uint8ClampedArray(probeCtx.getImageData(0, 0, 160, 90).data)
-              )
+              probeBase64.push(probeCanvas.toDataURL('image/jpeg', 0.7).split(',')[1])
               res()
             }
           })
         }
 
-        // Compute pixel-diff motion score between consecutive probe frames
-        const motionScores: number[] = []
-        for (let i = 1; i < probePixels.length; i++) {
-          const a = probePixels[i - 1]
-          const b = probePixels[i]
-          let diff = 0
-          for (let j = 0; j < a.length; j += 4) {
-            diff += Math.abs(a[j] - b[j]) + Math.abs(a[j + 1] - b[j + 1]) + Math.abs(a[j + 2] - b[j + 2])
+        setProgress(20)
+
+        // --- Phase 2: Ask Claude to locate the shot window ---
+        let shotStart = probeTimestamps[0]
+        let shotEnd = probeTimestamps[PROBE_COUNT - 1]
+
+        try {
+          const windowRes = await fetch('/api/detect-shot-window', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ frames: probeBase64 }),
+          })
+          if (windowRes.ok) {
+            const { start, end } = await windowRes.json()
+            shotStart = probeTimestamps[Math.max(0, start)]
+            shotEnd = probeTimestamps[Math.min(PROBE_COUNT - 1, end)]
           }
-          motionScores.push(diff / (160 * 90))
+        } catch {
+          // Fallback: use full video range
         }
 
-        // Find the single peak motion frame — the release/jump apex of the shot
-        // This is the highest-motion moment and anchors the window to one shot, not the gap between two
-        const peakIdx = motionScores.indexOf(Math.max(...motionScores))
+        setProgress(40)
 
-        // Take mostly frames BEFORE the peak (the shot buildup) with a short tail after (follow-through)
-        const BEFORE = Math.floor(FRAME_COUNT * 0.75)  // ~9 frames before release
-        const AFTER = FRAME_COUNT - BEFORE - 1          // ~2 frames after release
-        const winStart = Math.max(0, peakIdx - BEFORE)
-        const winEnd = Math.min(motionScores.length - 1, peakIdx + AFTER)
-
-        // Map window back to video timestamps
-        const shotStart = probeTimestamps[winStart]
-        const shotEnd = probeTimestamps[winEnd]
-
-        // --- Phase 2: Extract quality frames from the shot window ---
+        // --- Phase 3: Extract quality frames from the shot window ---
         const mainCanvas = document.createElement('canvas')
         const ctx = mainCanvas.getContext('2d')!
         const blobs: Blob[] = []
@@ -100,7 +95,7 @@ export default function VideoUploader() {
                     blobs.push(blob)
                     thumbs.push(mainCanvas.toDataURL('image/jpeg', 0.4))
                   }
-                  setProgress(Math.round(((i + 1) / timestamps.length) * 50))
+                  setProgress(Math.round(40 + ((i + 1) / timestamps.length) * 20))
                   res()
                 },
                 'image/jpeg',
@@ -185,11 +180,17 @@ export default function VideoUploader() {
         <div className="text-5xl animate-bounce">🏀</div>
         <div>
           <p className="text-black font-semibold text-lg mb-2">
-            {status === 'extracting' ? 'Finding your shot...' : 'Uploading & analyzing your shot...'}
+            {status === 'extracting'
+              ? progress < 20 ? 'Scanning your video...'
+              : progress < 40 ? 'Finding your shot...'
+              : 'Capturing your shot...'
+              : 'Uploading & analyzing your shot...'}
           </p>
           <p className="text-black text-sm">
             {status === 'extracting'
-              ? 'Detecting motion to capture only your shooting form'
+              ? progress < 20 ? 'Reading frames from your video'
+              : progress < 40 ? 'AI is locating when you start and finish shooting'
+              : 'Extracting frames of your shooting form'
               : 'Our AI is studying your form in detail'}
           </p>
         </div>

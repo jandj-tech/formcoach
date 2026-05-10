@@ -1,37 +1,118 @@
-const FUNDAMENTALS = [
-  { num: '01', title: 'Shooting Hand Grip', desc: 'Thumb spread wide. Ball rests on the finger pads, not the palm.' },
-  { num: '02', title: 'Elbow Under the Ball', desc: 'A clean 90° L-shape with the forearm directly under the ball.' },
-  { num: '03', title: 'Square to the Basket', desc: 'Hips, shoulders, and feet aligned toward the rim before you go up.' },
-  { num: '04', title: 'Power From the Legs', desc: 'Knees bent. Power drives up through the core into the release.' },
-  { num: '05', title: 'One-Hand Release', desc: 'Guide hand stays put. Ball rolls off the index and middle fingers.' },
-  { num: '06', title: 'Follow Through', desc: 'Wrist snaps down. Fingers point at the rim. Hold the goose-neck.' },
-]
+'use client'
 
-export default function CriteriaShowcase() {
+import useEmblaCarousel from 'embla-carousel-react'
+import { useCallback, useEffect, useState } from 'react'
+
+export type Criterion = {
+  id: number
+  name: string
+  description: string | null
+}
+
+const CHANNEL_URL = 'https://www.youtube.com/@LearnHoopsbasketball'
+
+function videoSearchUrl(criterionName: string) {
+  return `${CHANNEL_URL}/search?query=${encodeURIComponent(criterionName)}`
+}
+
+export default function CriteriaShowcase({ criteria }: { criteria: Criterion[] }) {
+  const [emblaRef, emblaApi] = useEmblaCarousel({
+    loop: false,
+    align: 'start',
+    containScroll: 'trimSnaps',
+    slidesToScroll: 1,
+  })
+  const [canPrev, setCanPrev] = useState(false)
+  const [canNext, setCanNext] = useState(false)
+
+  const onSelect = useCallback(() => {
+    if (!emblaApi) return
+    setCanPrev(emblaApi.canScrollPrev())
+    setCanNext(emblaApi.canScrollNext())
+  }, [emblaApi])
+
+  useEffect(() => {
+    if (!emblaApi) return
+    onSelect()
+    emblaApi.on('select', onSelect)
+    emblaApi.on('reInit', onSelect)
+  }, [emblaApi, onSelect])
+
+  if (criteria.length === 0) return null
+
   return (
-    <section className="px-4 py-12 sm:py-16 max-w-5xl mx-auto w-full">
-      <div className="flex flex-col items-center text-center mb-10">
+    <section className="px-0 py-12 sm:py-16 max-w-6xl mx-auto w-full">
+      <div className="flex flex-col items-center text-center mb-8 px-4">
         <div className="inline-flex items-center gap-2 bg-orange-500/10 border border-orange-500/30 rounded-full px-4 py-1.5 mb-5">
-          <span className="text-orange-500 text-xs font-semibold tracking-wider uppercase">17 Coaching Criteria</span>
+          <span className="text-orange-500 text-xs font-semibold tracking-wider uppercase">{criteria.length} Coaching Criteria</span>
         </div>
         <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-black leading-tight">
           The fundamentals of <span className="text-orange-500">a great shot</span>
         </h2>
         <p className="text-black text-base mt-4 max-w-xl leading-relaxed">
-          Every shot you upload is scored against 17 criteria coaches use. Here are six of them.
+          Every shot you upload is scored against these criteria. Tap any one to watch a video that breaks it down.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {FUNDAMENTALS.map((f) => (
-          <div key={f.num} className="bg-gray-50 rounded-xl p-5 text-center border border-gray-200">
-            <div className="w-8 h-8 rounded-full bg-orange-500 text-white font-bold text-sm flex items-center justify-center mx-auto mb-3">
-              {f.num}
-            </div>
-            <h3 className="text-black font-semibold text-sm mb-1">{f.title}</h3>
-            <p className="text-black text-xs leading-relaxed">{f.desc}</p>
+      <div className="relative">
+        <div className="overflow-hidden" ref={emblaRef}>
+          <div className="flex gap-4 px-4 sm:px-6">
+            {criteria.map((c, i) => (
+              <div
+                key={c.id}
+                className="shrink-0 basis-[85%] sm:basis-[48%] lg:basis-[32%]"
+              >
+                <div className="bg-gray-50 rounded-xl border border-gray-200 p-5 flex flex-col gap-3 h-full min-h-[220px]">
+                  <div className="w-8 h-8 rounded-full bg-orange-500 text-white font-bold text-sm flex items-center justify-center">
+                    {String(i + 1).padStart(2, '0')}
+                  </div>
+                  <h3 className="text-black font-bold text-base leading-tight">{c.name}</h3>
+                  {c.description && (
+                    <p className="text-black text-xs leading-relaxed line-clamp-3 flex-1">{c.description}</p>
+                  )}
+                  <a
+                    href={videoSearchUrl(c.name)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-orange-500 hover:text-red-600 text-xs font-bold transition-colors mt-auto inline-flex items-center gap-1"
+                  >
+                    Watch video →
+                  </a>
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
+        </div>
+
+        <button
+          type="button"
+          aria-label="Previous criterion"
+          onClick={() => emblaApi?.scrollPrev()}
+          disabled={!canPrev}
+          className="hidden md:flex absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-orange-500 hover:bg-red-600 disabled:opacity-30 text-white items-center justify-center transition-colors text-xl font-bold"
+        >
+          ‹
+        </button>
+        <button
+          type="button"
+          aria-label="Next criterion"
+          onClick={() => emblaApi?.scrollNext()}
+          disabled={!canNext}
+          className="hidden md:flex absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-orange-500 hover:bg-red-600 disabled:opacity-30 text-white items-center justify-center transition-colors text-xl font-bold"
+        >
+          ›
+        </button>
+      </div>
+
+      <div className="flex justify-center mt-10 px-4">
+        <a
+          href={CHANNEL_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="bg-orange-500 hover:bg-red-600 text-white font-bold px-8 py-3 rounded-xl text-base transition-colors"
+        >
+          Check out our channel →
+        </a>
       </div>
     </section>
   )

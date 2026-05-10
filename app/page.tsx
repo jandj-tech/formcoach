@@ -1,11 +1,15 @@
 import Link from 'next/link'
 import TopNav from '@/components/TopNav'
-import CriteriaShowcase from '@/components/CriteriaShowcase'
-import VideoCarousel from '@/components/VideoCarousel'
-import { getLatestVideos } from '@/lib/youtube'
+import CriteriaShowcase, { type Criterion } from '@/components/CriteriaShowcase'
+import { db } from '@/lib/db'
 
 export default async function HomePage() {
-  const videos = await getLatestVideos(12)
+  const criteria = (await db`
+    SELECT id, name, description
+    FROM criteria
+    WHERE active = true
+    ORDER BY order_index
+  `) as unknown as Criterion[]
 
   return (
     <main className="flex flex-col min-h-screen bg-white">
@@ -58,36 +62,7 @@ export default async function HomePage() {
         ))}
       </section>
 
-      <CriteriaShowcase />
-
-      {videos.length > 0 && (
-        <section className="px-0 py-12 sm:py-16 max-w-6xl mx-auto w-full">
-          <div className="flex flex-col items-center text-center mb-8 px-4">
-            <div className="inline-flex items-center gap-2 bg-orange-500/10 border border-orange-500/30 rounded-full px-4 py-1.5 mb-5">
-              <span className="text-orange-500 text-xs font-semibold tracking-wider uppercase">From the Channel</span>
-            </div>
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-black leading-tight">
-              Learn from the <span className="text-orange-500">LearnHoops channel</span>
-            </h2>
-            <p className="text-black text-base mt-4 max-w-xl leading-relaxed">
-              Free coaching videos. Drills, breakdowns, and form fixes — updated every week.
-            </p>
-          </div>
-
-          <VideoCarousel videos={videos} />
-
-          <div className="flex justify-center mt-8 px-4">
-            <a
-              href="https://www.youtube.com/@LearnHoopsbasketball"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-orange-500 hover:bg-red-600 text-white font-bold px-8 py-3 rounded-xl text-base transition-colors"
-            >
-              Subscribe on YouTube →
-            </a>
-          </div>
-        </section>
-      )}
+      <CriteriaShowcase criteria={criteria} />
 
       <div className="flex-1" />
 

@@ -93,7 +93,7 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
       </div>
 
       <footer className="py-6 border-t border-gray-200 text-center text-black text-xs">
-        © {new Date().getFullYear()} LearnHoops. All rights reserved.
+        © {new Date().getFullYear()} LearnHoops.com. All rights reserved.
       </footer>
     </main>
   )

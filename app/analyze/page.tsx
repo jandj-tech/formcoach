@@ -23,7 +23,7 @@ export default function AnalyzePage() {
       </section>
 
       <footer className="py-5 border-t border-gray-200 text-center text-black text-xs">
-        © {new Date().getFullYear()} LearnHoops. All rights reserved.
+        © {new Date().getFullYear()} LearnHoops.com. All rights reserved.
       </footer>
     </main>
   )

@@ -9,9 +9,9 @@ export default function UnsubscribedPage() {
         <div className="text-center space-y-4 max-w-sm">
           <div className="text-5xl">👋</div>
           <h1 className="text-2xl font-bold text-black">You&apos;ve been unsubscribed</h1>
-          <p className="text-black">You won&apos;t receive any more marketing emails from LearnHoops. Your results link will still work.</p>
+          <p className="text-black">You won&apos;t receive any more marketing emails from LearnHoops.com. Your results link will still work.</p>
           <Link href="/" className="inline-block text-orange-500 hover:text-red-600 text-sm">
-            ← Back to LearnHoops
+            ← Back to LearnHoops.com
           </Link>
         </div>
       </div>

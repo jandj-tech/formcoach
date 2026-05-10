@@ -15,10 +15,10 @@ export default function TopNav() {
 
   return (
     <nav className="h-20 flex items-center justify-between px-4 sm:px-6 border-b border-zinc-800 bg-black">
-      <Link href="/" aria-label="LearnHoops home" className="flex items-center shrink-0">
+      <Link href="/" aria-label="LearnHoops.com home" className="flex items-center shrink-0">
         <Image
           src="/learnhoops-logo.png"
-          alt="LearnHoops"
+          alt="LearnHoops.com"
           width={578}
           height={113}
           style={{ height: '48px', width: 'auto' }}

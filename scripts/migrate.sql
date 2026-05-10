@@ -1,4 +1,4 @@
--- LearnHoops database schema
+﻿-- LearnHoops.com database schema
 
 CREATE TABLE IF NOT EXISTS criteria (
   id SERIAL PRIMARY KEY,

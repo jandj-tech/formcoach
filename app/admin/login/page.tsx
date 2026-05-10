@@ -35,8 +35,8 @@ export default function AdminLoginPage() {
     <main className="min-h-screen bg-black flex flex-col items-center justify-center px-6">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
-          <Link href="/" aria-label="LearnHoops home" className="inline-block mb-6">
-            <Image src="/learnhoops-logo.png" alt="LearnHoops" width={578} height={113} style={{ height: '64px', width: 'auto' }} className="mx-auto" />
+          <Link href="/" aria-label="LearnHoops.com home" className="inline-block mb-6">
+            <Image src="/learnhoops-logo.png" alt="LearnHoops.com" width={578} height={113} style={{ height: '64px', width: 'auto' }} className="mx-auto" />
           </Link>
           <h1 className="text-2xl font-bold text-white">Admin Access</h1>
         </div>

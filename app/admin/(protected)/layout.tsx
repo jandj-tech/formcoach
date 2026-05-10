@@ -15,7 +15,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <nav className="bg-zinc-950 border-b border-zinc-800 px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-3">
-            <Image src="/learnhoops-logo.png" alt="LearnHoops" width={578} height={113} style={{ height: '32px', width: 'auto' }} priority />
+            <Image src="/learnhoops-logo.png" alt="LearnHoops.com" width={578} height={113} style={{ height: '32px', width: 'auto' }} priority />
             <span className="text-orange-500 font-black text-sm uppercase tracking-wider">Admin</span>
           </div>
           <div className="flex items-center gap-4 text-sm">

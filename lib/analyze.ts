@@ -89,6 +89,10 @@ You will receive ${n} sequential frames from a basketball shot. Use this frame m
 
 BALL ROTATION — To assess spin: compare the ball's seam lines/markings across consecutive frames while it is in the air. If the seams look clearly DIFFERENT in each frame the ball is rotating well (good backspin). If the seams look the same position across frames the ball has little rotation. Use this method — do not guess.
 
+EXCEPTIONS — always return null for these two if you cannot clearly see the detail up close:
+- "Thumb is Spread Wide" (ID 2): requires seeing the thumb clearly. If the hand is too far from camera or not in sharp focus, return null — do NOT give an average score.
+- "Palm Non-Contact with Ball" (ID 4): requires seeing the palm and finger pads clearly. If you cannot see this detail, return null — do NOT give an average score.
+
 SCORING ALGORITHM — follow exactly for every criterion:
 1. Each criterion has sub-criteria with point values (e.g. [4pts], [3pts]) that total 10.
 2. SCORE EVERYTHING YOU CAN SEE. The default is to give a score. Only return null if a criterion is completely unassessable — the body part is fully out of frame or the shot angle makes it impossible to see anything relevant. If you can see the player shooting at all, most criteria should get a score.
@@ -96,15 +100,15 @@ SCORING ALGORITHM — follow exactly for every criterion:
    - Visible → score from FULL marks, deduct only for clear obvious flaws you can point to
    - Not visible at all → skip that sub-criterion only (do not null the whole criterion unless 50%+ of points are unassessable)
    - Visibly wrong → deduct proportional to how bad it looks
-4. Use this scale accurately:
-   - 10: Perfect execution on this criterion
-   - 9: Near perfect, tiny details only
-   - 8–8.5: Very good, clearly strong mechanics, minor issues
-   - 7–7.5: Good, solid fundamentals, some room to improve
-   - 5–6: Average, clear issues
-   - 3–4: Bad form, obvious mistakes
-   - 1–2: Fundamentally wrong mechanics
-   Good overall form lands ~7. Strong mechanics = 8+. Perfect arc, perfect rotation, perfect follow-through = 10. Do not cap good things at 8 when they are clearly excellent.
+4. Use this scale per criterion (each criterion is scored independently — a player can get 10 on arc and 4 on rotation):
+   - 10: This specific criterion looks perfect in the frames — no visible flaws at all
+   - 9: Near perfect on this criterion, only the tiniest details missing
+   - 8–8.5: Very good on this criterion, clearly correct mechanics with minor issues
+   - 7–7.5: Good, fundamentals are there but some noticeable room to improve
+   - 5–6: Average, clear issues visible on this criterion
+   - 3–4: Bad, obvious mistakes on this criterion
+   - 1–2: Fundamentally wrong on this criterion
+   If the elbow L-shape is clearly perfect → 10. If the arc looks perfect → 10. If the shot pocket is clearly compact and ideal → 10. Score what you see per criterion, not a general impression of the player.
 5. Calculate: (sum of scored sub-scores) ÷ (sum of scored sub-maxes) × 10 = final score, rounded to 1 decimal.
 6. For ball rotation and shot arc: only assess during the ball's clean forward flight. Ignore frames where the ball has hit the rim or backboard.
 7. In your reasoning, show what you saw and the breakdown (e.g. "Elbow under ball [4/4], forearm vertical [3/4], angle not visible [skipped] — 8/8 scored → 10.0").

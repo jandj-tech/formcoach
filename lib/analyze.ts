@@ -11,8 +11,18 @@ interface CriterionResult {
   reasoning: string
 }
 
+type PlayerType = 'child' | 'recreational' | 'college_pro' | 'nba_bad_form' | 'nba_decent' | 'nba_elite'
+
 interface AnalysisResult {
   overall_score: number
+  player_assessment: {
+    player_type: PlayerType
+    player_name: string | null
+  }
+  critical_flags: {
+    elbow_severely_out: boolean
+    followthrough_flick_to_side: boolean
+  }
   criteria: CriterionResult[]
 }
 
@@ -27,7 +37,6 @@ export async function analyzeShot(
     ORDER BY order_index
   `
 
-  // Aggregate corrections per criterion: avg drift, latest notes, correction count
   const calibration = await db`
     SELECT
       c.name,
@@ -43,7 +52,6 @@ export async function analyzeShot(
     ORDER BY ABS(AVG(cs.admin_score - cs.ai_score)) DESC
   `
 
-  // Recent individual corrections with notes — captures grading style and reasoning
   const recentCorrections = await db`
     SELECT c.name, cs.ai_score, cs.admin_score, cs.admin_notes
     FROM criterion_scores cs
@@ -80,11 +88,21 @@ export async function analyzeShot(
   const earlyEnd = Math.round(n * 0.4)
   const midEnd = Math.round(n * 0.7)
 
-  const systemPrompt = `You are an expert basketball shooting coach analyzing a player's shooting form.
+  const systemPrompt = `You are an expert basketball shooting coach analyzing a player's shooting form. You have deep knowledge of proper shooting mechanics as taught by top coaches:
+
+KEY FORM PRINCIPLES (use these to evaluate):
+- Elbow: must be under the ball forming an L-shape, pointing toward basket — elbow flared out to the side is a major flaw that destroys shot accuracy
+- Guide hand: stays on the side of the ball only, comes off first, adds NO force — guide hand pushing, flicking outward, or collapsing inward during release is a significant flaw
+- Shooting hand follow-through: wrist snaps fully downward (goose-neck), fingers point toward rim, palm faces floor — hand flicking sideways rather than straight toward basket is a major flaw
+- Shot arc: approximately 45-60 degrees, high soft arc — flat shots lack forgiveness and are a clear mechanical flaw
+- Release: ball rolls off index and middle fingertips with backspin — palm contact reduces control
+- Power: flows from legs upward through core, not arm-muscled
+- One-hand release: shooting hand controls everything at release — two-hand push is a clear flaw
+
 You will receive ${n} sequential frames. Frame guide:
-- Frames 1–${earlyEnd}: SETUP — stance, knees, shot pocket, elbow L-shape, guide hand, thumb, palm
+- Frames 1–${earlyEnd}: SETUP — stance, knees, shot pocket, elbow, guide hand, thumb, palm
 - Frames ${earlyEnd + 1}–${midEnd}: RELEASE — power, one-hand release, two-finger release, guide hand separation
-- Frames ${midEnd + 1}–${n}: FOLLOW-THROUGH — wrist snap, guide hand finish, ball rotation, arc, forward motion
+- Frames ${midEnd + 1}–${n}: FOLLOW-THROUGH — wrist snap, guide hand finish, arc, forward motion
 
 Scoring criteria (read each carefully before scoring):
 ${criteriaText}
@@ -92,30 +110,49 @@ ${feedbackText}
 
 HOW TO SCORE:
 
-Use the sub-criteria breakdown in each criterion's grading guide. Score each sub-criterion individually, then calculate the final score using the formula shown (e.g. "Score = (scored pts ÷ 10) × 10"). Only deduct points for flaws you can clearly and confidently see. If you cannot clearly see whether something is a flaw, give full points for that sub-criterion.
+Use the sub-criteria breakdown in each criterion's grading guide. Score each sub-criterion individually, then calculate using the formula shown. Only deduct for flaws you can clearly and confidently see. If you cannot clearly see something, give full points for that sub-criterion.
 
-CATCH-AND-SHOOT: First check if the player catches a pass before shooting. Signs: another player or hand visible passing the ball, ball arriving from outside the frame, player still rotating to face the basket. All such frames and the adjustment period right after are CATCH FRAMES — ignore them completely. The elbow being out to the side during a catch is normal and must never be penalized. Only begin evaluating from the frame where the player has the ball fully in control and is facing the basket.
+VISIBILITY RULE: If a criterion cannot be assessed because the relevant body part or ball position is not clearly visible in any frame (too far away, wrong angle, obstructed), return null for that criterion. Do not guess. Null is better than an inaccurate score.
 
-EXCEPTIONS — return null (not scoreable) when:
-- ID 2 "Thumb": thumb is not clearly visible in close-up
-- ID 4 "Palm": palm and finger pads are not clearly visible in close-up
+CATCH-AND-SHOOT: If the player catches a pass before shooting, identify catch frames (another player/hand visible passing, ball arriving, player still rotating to face basket) and ignore them completely. The elbow being out during a catch is normal. Only evaluate from when the player has the ball fully in control and is facing the basket.
 
-SCALE (for reference):
+SCALE:
 - 10 = no visible flaws
 - 9 = one small clearly visible detail off
 - 8–8.5 = minor clearly visible issue
 - 7–7.5 = decent, clear room to improve
-- 5–6 = average, obvious problems
+- 5–6 = obvious problems
 - 3–4 = poor, obvious mistakes
 - 1–2 = fundamentally wrong
 
+PLAYER ASSESSMENT — identify one of these player_type values:
+- "child": player clearly looks under 15 (noticeably young, smaller frame)
+- "recreational": adult recreational player
+- "college_pro": looks like a college or professional player (tall/athletic build, pro-level court or gear, clearly elite body)
+- "nba_bad_form": you can identify this as a known NBA player with notoriously poor shooting mechanics (e.g. Shaquille O'Neal, Shawn Marion, Ben Simmons)
+- "nba_decent": you can identify this as an NBA player with acceptable shooting form
+- "nba_elite": you can identify this as an NBA player known for exceptional shooting (e.g. Stephen Curry, Devin Booker, Ray Allen, Klay Thompson, Kevin Durant, Damian Lillard)
+Include player_name if you can identify the specific person, otherwise null.
+
+CRITICAL FLAGS — set to true only if clearly and obviously present:
+- elbow_severely_out: the shooting elbow is dramatically far out to the side during the shot — not just slightly off but clearly well outside the ball line
+- followthrough_flick_to_side: the shooting hand OR guide hand clearly flicks/pushes sideways (to the left or right) during or after release — a clear lateral deviation, not straight toward the basket
+
 For overall_score: average only scored criteria (exclude nulls).
 
-Return ONLY valid JSON in this exact format, no other text:
+Return ONLY valid JSON, no other text:
 {
-  "overall_score": <average of scored criteria only, 1-10, one decimal>,
+  "overall_score": <average of scored criteria, 1-10, one decimal>,
+  "player_assessment": {
+    "player_type": "<child|recreational|college_pro|nba_bad_form|nba_decent|nba_elite>",
+    "player_name": <string or null>
+  },
+  "critical_flags": {
+    "elbow_severely_out": <true|false>,
+    "followthrough_flick_to_side": <true|false>
+  },
   "criteria": [
-    { "id": <criterion_id>, "score": <1-10 or null if not clearly visible>, "reasoning": "<1-2 sentences — if null, explain what prevented assessment>" },
+    { "id": <criterion_id>, "score": <1-10 or null>, "reasoning": "<1-2 sentences>" },
     ...
   ]
 }`
@@ -160,13 +197,46 @@ Return ONLY valid JSON in this exact format, no other text:
 
   const result = JSON.parse(jsonMatch[0]) as AnalysisResult
 
-  // Recalculate overall from adjusted scores
+  // Recalculate overall from criteria scores
   const scored = result.criteria.filter(c => c.score !== null)
   if (scored.length > 0) {
     result.overall_score = Math.round(
       (scored.reduce((sum, c) => sum + (c.score as number), 0) / scored.length) * 10
     ) / 10
   }
+
+  // Apply critical flag caps FIRST
+  const flagsTriggered = result.critical_flags.elbow_severely_out || result.critical_flags.followthrough_flick_to_side
+  if (result.critical_flags.elbow_severely_out) {
+    result.overall_score = Math.min(result.overall_score, 6.0)
+  }
+  if (result.critical_flags.followthrough_flick_to_side) {
+    result.overall_score = Math.min(result.overall_score, 7.0)
+  }
+
+  // Apply player type adjustments
+  const pt = result.player_assessment?.player_type ?? 'recreational'
+  let multiplier = 1.0
+  let minimumScore: number | null = null
+
+  if (pt === 'child') {
+    multiplier = 0.9
+  } else if (pt === 'college_pro') {
+    multiplier = 1.1
+  } else if (pt === 'nba_decent') {
+    multiplier = 1.1
+    if (!flagsTriggered) minimumScore = 8.5
+  } else if (pt === 'nba_elite') {
+    multiplier = 1.1
+    if (!flagsTriggered) minimumScore = 9.5
+  }
+  // nba_bad_form and recreational: no adjustment
+
+  result.overall_score = Math.round(result.overall_score * multiplier * 10) / 10
+  if (minimumScore !== null) {
+    result.overall_score = Math.max(result.overall_score, minimumScore)
+  }
+  result.overall_score = Math.min(10, result.overall_score)
 
   return result
 }

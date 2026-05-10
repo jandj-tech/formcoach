@@ -54,7 +54,7 @@ export default function CriteriaPage() {
         <h1 className="text-2xl font-black text-white">Scoring Criteria</h1>
         <button
           onClick={() => setEditing({ id: 0, name: '', description: '', weight: 1.0, order_index: 99, active: true })}
-          className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+          className="bg-orange-500 hover:bg-red-600 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
         >
           + Add Criterion
         </button>
@@ -156,7 +156,7 @@ export default function CriteriaPage() {
               <button
                 disabled={saving}
                 onClick={() => save(editing.id ? 'update' : 'create', editing)}
-                className="flex-1 bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-white font-bold py-2 rounded-xl text-sm transition-colors"
+                className="flex-1 bg-orange-500 hover:bg-red-600 disabled:opacity-50 text-white font-bold py-2 rounded-xl text-sm transition-colors"
               >
                 {saving ? 'Saving...' : 'Save'}
               </button>

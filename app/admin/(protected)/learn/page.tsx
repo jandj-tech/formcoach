@@ -243,7 +243,7 @@ export default function LearnModePage() {
                           <button
                             disabled={saving === score.id || (!corrections[score.id]?.score && !corrections[score.id]?.notes)}
                             onClick={() => saveCorrection(score.id)}
-                            className="bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
+                            className="bg-orange-500 hover:bg-red-600 disabled:opacity-50 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
                           >
                             {saving === score.id ? '...' : 'Save'}
                           </button>

@@ -11,6 +11,29 @@ export type Criterion = {
 
 const CHANNEL_URL = 'https://www.youtube.com/@LearnHoopsbasketball'
 
+// Short marketing-friendly descriptions for the home page. The DB descriptions
+// are coaching-rubric copy (LOOK FOR / AVOID) meant for the AI analyzer — too
+// long for cards. Falls back to DB description for any criterion not listed.
+const SHORT_DESCRIPTIONS: Record<string, string> = {
+  'Thumb is Spread Wide': 'Thumb spread wide for grip and control.',
+  'Guide Hand Placement': 'Guide hand sits on the side, never on top.',
+  'Palm Non-Contact with Ball': 'Ball on the fingertips, not the palm.',
+  'Elbow L-Shape — Under the Ball': 'Forearm forms a clean 90° under the ball.',
+  'Shot Pocket — Elbow': 'Ball loaded, elbow set, ready to rise.',
+  'Square to the Basket': 'Hips, shoulders, and feet aimed at the rim.',
+  'Knees Bent': 'Knees flexed to load the legs.',
+  'Dominant Foot Forward': 'Strong foot slightly ahead for balance.',
+  'Source of Shot Power': 'Power comes from the legs, not the arms.',
+  'Shooting Through Guide Hand / One Hand Release': 'One-hand release — guide hand drops away.',
+  'Two Finger Release': 'Ball rolls off the index and middle fingers.',
+  'Ball Rotation': 'Clean backspin from a clean release.',
+  'Forward Motion and Toes': 'Weight forward, toes pointing at the rim.',
+  'Shooting Hand Follow Through': 'Wrist snaps; goose-neck holds at the top.',
+  'Guide Hand Follow Through': 'Guide hand peels away — never pushes.',
+  'Shot Arc': 'Aim for a high 45–60° arc.',
+  'Connected Shot': 'Legs, core, and release in one motion.',
+}
+
 function videoSearchUrl(criterionName: string) {
   return `${CHANNEL_URL}/search?query=${encodeURIComponent(criterionName)}`
 }
@@ -92,9 +115,12 @@ export default function CriteriaShowcase({
                       {String(i + 1).padStart(2, '0')}
                     </div>
                     <h3 className="text-white font-bold text-base leading-tight">{c.name}</h3>
-                    {c.description && (
-                      <p className="text-white text-xs leading-relaxed line-clamp-3 flex-1">{c.description}</p>
-                    )}
+                    {(() => {
+                      const desc = SHORT_DESCRIPTIONS[c.name] ?? c.description
+                      return desc ? (
+                        <p className="text-white text-xs leading-relaxed line-clamp-2 flex-1">{desc}</p>
+                      ) : null
+                    })()}
 
                     {videoId ? (
                       <button

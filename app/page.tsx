@@ -23,13 +23,13 @@ export default function HomePage() {
         <div className="flex flex-col sm:flex-row gap-3 mt-8 w-full max-w-md sm:w-auto px-2">
           <Link
             href="/analyze"
-            className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-8 py-3 rounded-xl text-base transition-colors text-center"
+            className="bg-orange-500 hover:bg-red-600 text-white font-bold px-8 py-3 rounded-xl text-base transition-colors text-center"
           >
             Analyze your shot →
           </Link>
           <Link
             href="/shop"
-            className="bg-gray-100 hover:bg-gray-200 border border-gray-200 text-gray-900 font-bold px-8 py-3 rounded-xl text-base transition-colors text-center"
+            className="bg-black hover:bg-zinc-800 text-white font-bold px-8 py-3 rounded-xl text-base transition-colors text-center"
           >
             Shop (coming soon)
           </Link>
@@ -56,7 +56,7 @@ export default function HomePage() {
       <div className="flex-1" />
 
       <footer className="py-5 border-t border-gray-200 text-center text-gray-400 text-xs">
-        © {new Date().getFullYear()} FormCoach. All rights reserved.
+        © {new Date().getFullYear()} LearnHoops. All rights reserved.
       </footer>
     </main>
   )

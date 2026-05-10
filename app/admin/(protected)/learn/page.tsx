@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 
@@ -92,7 +92,7 @@ export default function LearnModePage() {
             <img
               src={lightbox.urls[lightbox.index]}
               alt={`Frame ${lightbox.index + 1}`}
-              className="w-full rounded-xl border border-slate-600"
+              className="w-full rounded-xl border border-zinc-700"
             />
             <div className="absolute top-3 right-3 flex gap-2">
               <span className="bg-black/70 text-white text-sm px-3 py-1 rounded-full">
@@ -109,14 +109,14 @@ export default function LearnModePage() {
               <button
                 disabled={lightbox.index === 0}
                 onClick={() => setLightbox((l) => l && { ...l, index: l.index - 1 })}
-                className="bg-slate-700 hover:bg-slate-600 disabled:opacity-30 text-white px-5 py-2 rounded-lg text-sm font-bold"
+                className="bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 text-white px-5 py-2 rounded-lg text-sm font-bold"
               >
                 ← Prev
               </button>
               <button
                 disabled={lightbox.index === lightbox.urls.length - 1}
                 onClick={() => setLightbox((l) => l && { ...l, index: l.index + 1 })}
-                className="bg-slate-700 hover:bg-slate-600 disabled:opacity-30 text-white px-5 py-2 rounded-lg text-sm font-bold"
+                className="bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 text-white px-5 py-2 rounded-lg text-sm font-bold"
               >
                 Next →
               </button>
@@ -126,17 +126,17 @@ export default function LearnModePage() {
       )}
       <div>
         <h1 className="text-2xl font-black text-white">Learn Mode</h1>
-        <p className="text-slate-400 text-sm mt-1">
+        <p className="text-zinc-400 text-sm mt-1">
           View the frames the AI analyzed, then correct its scores. Every correction improves future analyses.
         </p>
       </div>
 
       <div className="space-y-3">
         {submissions.length === 0 && (
-          <p className="text-slate-500 text-sm">No analyses yet.</p>
+          <p className="text-zinc-500 text-sm">No analyses yet.</p>
         )}
         {submissions.map((s) => (
-          <div key={s.id} className="bg-slate-800 rounded-xl border border-slate-700">
+          <div key={s.id} className="bg-zinc-900 rounded-xl border border-zinc-800">
             <button
               className="w-full flex items-center justify-between px-5 py-4 text-left"
               onClick={() => {
@@ -150,23 +150,23 @@ export default function LearnModePage() {
             >
               <div>
                 <p className="text-white text-sm font-medium">{s.email || 'No email'}</p>
-                <p className="text-slate-500 text-xs">{new Date(s.created_at).toLocaleString()}</p>
+                <p className="text-zinc-500 text-xs">{new Date(s.created_at).toLocaleString()}</p>
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-orange-400 font-bold text-sm">
                   {s.overall_score ? `${s.overall_score}/10` : '—'}
                 </span>
-                <span className="text-slate-400 text-lg">{expanded === s.id ? '▲' : '▼'}</span>
+                <span className="text-zinc-400 text-lg">{expanded === s.id ? '▲' : '▼'}</span>
               </div>
             </button>
 
             {expanded === s.id && (
-              <div className="border-t border-slate-700">
+              <div className="border-t border-zinc-800">
 
                 {/* Frame thumbnails */}
                 {s.frame_urls && s.frame_urls.length > 0 && (
                   <div className="px-5 py-4 space-y-2">
-                    <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider">
+                    <p className="text-zinc-400 text-xs font-semibold uppercase tracking-wider">
                       Frames Analyzed ({s.frame_urls.length})
                     </p>
                     <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
@@ -179,7 +179,7 @@ export default function LearnModePage() {
                           <img
                             src={url}
                             alt={`Frame ${i + 1}`}
-                            className="rounded-lg w-full aspect-video object-cover border border-slate-600 group-hover:border-orange-400 transition-colors"
+                            className="rounded-lg w-full aspect-video object-cover border border-zinc-700 group-hover:border-orange-400 transition-colors"
                           />
                           <span className="absolute bottom-1 left-1 text-white text-xs bg-black/60 rounded px-1">
                             {i + 1}
@@ -195,16 +195,16 @@ export default function LearnModePage() {
 
                 {/* Scores */}
                 {s.scores ? (
-                  <div className="divide-y divide-slate-700/50">
+                  <div className="divide-y divide-zinc-800/50">
                     {s.scores.map((score) => (
                       <div key={score.id} className="px-5 py-4 space-y-3">
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1">
                             <p className="text-white text-sm font-semibold">{score.criterion_name}</p>
-                            <p className="text-slate-400 text-xs mt-1 leading-relaxed">{score.ai_reasoning}</p>
+                            <p className="text-zinc-400 text-xs mt-1 leading-relaxed">{score.ai_reasoning}</p>
                           </div>
                           <div className="text-right shrink-0">
-                            <p className="text-slate-500 text-xs">AI Score</p>
+                            <p className="text-zinc-500 text-xs">AI Score</p>
                             <p className="text-orange-400 font-bold">{score.ai_score}/10</p>
                             {score.admin_score !== null && (
                               <p className="text-green-400 text-xs mt-1">✓ Corrected: {score.admin_score}/10</p>
@@ -226,7 +226,7 @@ export default function LearnModePage() {
                                 [score.id]: { ...prev[score.id], score: e.target.value },
                               }))
                             }
-                            className="w-36 bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-orange-500"
+                            className="w-36 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-orange-500"
                           />
                           <input
                             type="text"
@@ -238,7 +238,7 @@ export default function LearnModePage() {
                                 [score.id]: { ...prev[score.id], notes: e.target.value },
                               }))
                             }
-                            className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-orange-500"
+                            className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-orange-500"
                           />
                           <button
                             disabled={saving === score.id || !corrections[score.id]?.score}
@@ -253,7 +253,7 @@ export default function LearnModePage() {
                   </div>
                 ) : (
                   <div className="px-5 py-4">
-                    <p className="text-slate-500 text-sm">Loading scores...</p>
+                    <p className="text-zinc-500 text-sm">Loading scores...</p>
                   </div>
                 )}
               </div>

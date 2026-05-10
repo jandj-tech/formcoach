@@ -1,4 +1,4 @@
--- FormCoach database schema
+-- LearnHoops database schema
 
 CREATE TABLE IF NOT EXISTS criteria (
   id SERIAL PRIMARY KEY,

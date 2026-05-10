@@ -230,7 +230,7 @@ export default function VideoUploader() {
         <p className="text-gray-900 font-semibold text-lg mb-1">Tap to upload your video</p>
         <p className="text-gray-400 text-sm hidden sm:block">or drag and drop</p>
         <p className="text-gray-400 text-xs mt-3">MP4, MOV, AVI · Max 200MB</p>
-        <button className="mt-5 bg-orange-500 hover:bg-orange-400 text-white font-bold px-8 py-3 rounded-xl text-sm transition-colors w-full sm:w-auto">
+        <button className="mt-5 bg-orange-500 hover:bg-red-600 text-white font-bold px-8 py-3 rounded-xl text-sm transition-colors w-full sm:w-auto">
           Choose Video
         </button>
       </div>

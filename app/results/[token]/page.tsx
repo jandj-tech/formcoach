@@ -85,7 +85,7 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
           <p className="text-gray-900 font-semibold">Want to analyze another shot?</p>
           <Link
             href="/analyze"
-            className="inline-block bg-orange-500 hover:bg-orange-400 text-white font-bold px-8 py-3 rounded-xl transition-colors"
+            className="inline-block bg-orange-500 hover:bg-red-600 text-white font-bold px-8 py-3 rounded-xl transition-colors"
           >
             Upload Another Video
           </Link>
@@ -93,7 +93,7 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
       </div>
 
       <footer className="py-6 border-t border-gray-200 text-center text-gray-400 text-xs">
-        © {new Date().getFullYear()} FormCoach. All rights reserved.
+        © {new Date().getFullYear()} LearnHoops. All rights reserved.
       </footer>
     </main>
   )

@@ -14,14 +14,14 @@ export default function TopNav() {
   const pathname = usePathname()
 
   return (
-    <nav className="h-20 flex items-center justify-between px-4 sm:px-6 border-b border-gray-200 bg-white">
-      <Link href="/" aria-label="FormCoach home" className="flex items-center shrink-0">
+    <nav className="h-20 flex items-center justify-between px-4 sm:px-6 border-b border-zinc-800 bg-black">
+      <Link href="/" aria-label="LearnHoops home" className="flex items-center shrink-0">
         <Image
-          src="/logo.png"
-          alt="FormCoach"
-          width={429}
-          height={451}
-          style={{ height: '64px', width: 'auto' }}
+          src="/learnhoops-logo.png"
+          alt="LearnHoops"
+          width={578}
+          height={113}
+          style={{ height: '48px', width: 'auto' }}
           priority
         />
       </Link>
@@ -35,7 +35,7 @@ export default function TopNav() {
               className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${
                 active
                   ? 'bg-orange-500 text-white'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                  : 'text-zinc-300 hover:text-white hover:bg-zinc-900'
               }`}
             >
               {tab.label}

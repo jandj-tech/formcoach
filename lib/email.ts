@@ -3,7 +3,7 @@ import { Resend } from 'resend'
 function getResend() {
   return new Resend(process.env.RESEND_API_KEY!)
 }
-const FROM = 'FormCoach <onboarding@resend.dev>'
+const FROM = 'LearnHoops <onboarding@resend.dev>'
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL && process.env.NEXT_PUBLIC_BASE_URL !== 'http://localhost:3000'
   ? process.env.NEXT_PUBLIC_BASE_URL
   : process.env.VERCEL_URL
@@ -15,11 +15,11 @@ export async function sendResultsEmail(to: string, token: string) {
   await getResend().emails.send({
     from: FROM,
     to,
-    subject: 'Your FormCoach Shot Analysis is Ready',
+    subject: 'Your LearnHoops Shot Analysis is Ready',
     html: `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;">
-        <div style="background:#0F172A;padding:24px 32px;">
-          <h1 style="color:#F97316;margin:0;font-size:24px;">FormCoach</h1>
+        <div style="background:#000000;padding:24px 32px;">
+          <h1 style="color:#F97316;margin:0;font-size:24px;">LearnHoops</h1>
           <p style="color:#94A3B8;margin:4px 0 0;font-size:13px;">Your shot. Perfected by AI.</p>
         </div>
         <div style="padding:32px;">
@@ -37,7 +37,7 @@ export async function sendResultsEmail(to: string, token: string) {
           </p>
           <hr style="border:none;border-top:1px solid #E2E8F0;margin:24px 0;"/>
           <p style="color:#94A3B8;font-size:11px;text-align:center;">
-            FormCoach · <a href="${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}" style="color:#94A3B8;">Unsubscribe</a>
+            LearnHoops · <a href="${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}" style="color:#94A3B8;">Unsubscribe</a>
           </p>
         </div>
       </div>
@@ -50,8 +50,8 @@ const MARKETING_EMAILS = [
     subject: 'How did your shot analysis go? Here\'s how to level up',
     getHtml: (to: string) => `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
-        <div style="background:#0F172A;padding:24px 32px;">
-          <h1 style="color:#F97316;margin:0;font-size:24px;">FormCoach</h1>
+        <div style="background:#000000;padding:24px 32px;">
+          <h1 style="color:#F97316;margin:0;font-size:24px;">LearnHoops</h1>
         </div>
         <div style="padding:32px;">
           <h2 style="color:#0F172A;">You've seen your scores. Now it's time to fix them.</h2>
@@ -62,7 +62,7 @@ const MARKETING_EMAILS = [
           <p style="color:#475569;line-height:1.6;">Stay tuned. Something exciting is coming.</p>
           <hr style="border:none;border-top:1px solid #E2E8F0;margin:24px 0;"/>
           <p style="color:#94A3B8;font-size:11px;text-align:center;">
-            FormCoach · <a href="${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}" style="color:#94A3B8;">Unsubscribe</a>
+            LearnHoops · <a href="${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}" style="color:#94A3B8;">Unsubscribe</a>
           </p>
         </div>
       </div>
@@ -72,8 +72,8 @@ const MARKETING_EMAILS = [
     subject: 'The training tool serious players are using right now',
     getHtml: (to: string) => `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
-        <div style="background:#0F172A;padding:24px 32px;">
-          <h1 style="color:#F97316;margin:0;font-size:24px;">FormCoach</h1>
+        <div style="background:#000000;padding:24px 32px;">
+          <h1 style="color:#F97316;margin:0;font-size:24px;">LearnHoops</h1>
         </div>
         <div style="padding:32px;">
           <h2 style="color:#0F172A;">Train smarter. Not just harder.</h2>
@@ -85,7 +85,7 @@ const MARKETING_EMAILS = [
           </p>
           <hr style="border:none;border-top:1px solid #E2E8F0;margin:24px 0;"/>
           <p style="color:#94A3B8;font-size:11px;text-align:center;">
-            FormCoach · <a href="${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}" style="color:#94A3B8;">Unsubscribe</a>
+            LearnHoops · <a href="${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}" style="color:#94A3B8;">Unsubscribe</a>
           </p>
         </div>
       </div>
@@ -95,8 +95,8 @@ const MARKETING_EMAILS = [
     subject: 'What elite coaches look for in a perfect shot',
     getHtml: (to: string) => `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
-        <div style="background:#0F172A;padding:24px 32px;">
-          <h1 style="color:#F97316;margin:0;font-size:24px;">FormCoach</h1>
+        <div style="background:#000000;padding:24px 32px;">
+          <h1 style="color:#F97316;margin:0;font-size:24px;">LearnHoops</h1>
         </div>
         <div style="padding:32px;">
           <h2 style="color:#0F172A;">The 3 things coaches notice immediately</h2>
@@ -109,7 +109,7 @@ const MARKETING_EMAILS = [
           </p>
           <hr style="border:none;border-top:1px solid #E2E8F0;margin:24px 0;"/>
           <p style="color:#94A3B8;font-size:11px;text-align:center;">
-            FormCoach · <a href="${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}" style="color:#94A3B8;">Unsubscribe</a>
+            LearnHoops · <a href="${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}" style="color:#94A3B8;">Unsubscribe</a>
           </p>
         </div>
       </div>
@@ -119,8 +119,8 @@ const MARKETING_EMAILS = [
     subject: '🏀 It\'s here — introducing [Product Name]',
     getHtml: (to: string) => `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
-        <div style="background:#0F172A;padding:24px 32px;">
-          <h1 style="color:#F97316;margin:0;font-size:24px;">FormCoach</h1>
+        <div style="background:#000000;padding:24px 32px;">
+          <h1 style="color:#F97316;margin:0;font-size:24px;">LearnHoops</h1>
         </div>
         <div style="padding:32px;">
           <h2 style="color:#0F172A;">The product we've been building is live.</h2>
@@ -128,7 +128,7 @@ const MARKETING_EMAILS = [
             [Describe your product here — what it is, what it does, why it helps players improve their shot.]
           </p>
           <p style="color:#475569;line-height:1.6;">
-            As a FormCoach user, you get exclusive early access pricing. This offer is limited to our first 100 customers.
+            As a LearnHoops user, you get exclusive early access pricing. This offer is limited to our first 100 customers.
           </p>
           <div style="text-align:center;margin:32px 0;">
             <a href="${BASE_URL}" style="background:#F97316;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:16px;">
@@ -137,7 +137,7 @@ const MARKETING_EMAILS = [
           </div>
           <hr style="border:none;border-top:1px solid #E2E8F0;margin:24px 0;"/>
           <p style="color:#94A3B8;font-size:11px;text-align:center;">
-            FormCoach · <a href="${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}" style="color:#94A3B8;">Unsubscribe</a>
+            LearnHoops · <a href="${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}" style="color:#94A3B8;">Unsubscribe</a>
           </p>
         </div>
       </div>
@@ -147,8 +147,8 @@ const MARKETING_EMAILS = [
     subject: 'Last chance — early access pricing ends soon',
     getHtml: (to: string) => `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
-        <div style="background:#0F172A;padding:24px 32px;">
-          <h1 style="color:#F97316;margin:0;font-size:24px;">FormCoach</h1>
+        <div style="background:#000000;padding:24px 32px;">
+          <h1 style="color:#F97316;margin:0;font-size:24px;">LearnHoops</h1>
         </div>
         <div style="padding:32px;">
           <h2 style="color:#0F172A;">This is your last chance at early access pricing.</h2>
@@ -159,13 +159,13 @@ const MARKETING_EMAILS = [
             You've already taken the first step by analyzing your shot. Don't let this be where you stop.
           </p>
           <div style="text-align:center;margin:32px 0;">
-            <a href="${BASE_URL}" style="background:#F97316;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:16px;">
+            <a href="${BASE_URL}" style="background:#DC2626;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:16px;">
               Claim Your Spot
             </a>
           </div>
           <hr style="border:none;border-top:1px solid #E2E8F0;margin:24px 0;"/>
           <p style="color:#94A3B8;font-size:11px;text-align:center;">
-            FormCoach · <a href="${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}" style="color:#94A3B8;">Unsubscribe</a>
+            LearnHoops · <a href="${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}" style="color:#94A3B8;">Unsubscribe</a>
           </p>
         </div>
       </div>

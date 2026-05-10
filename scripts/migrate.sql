@@ -53,7 +53,6 @@ CREATE TABLE IF NOT EXISTS email_logs (
 -- Seed custom criteria (only if table is empty)
 INSERT INTO criteria (name, description, weight, order_index)
 SELECT * FROM (VALUES
-  ('Ball with Guide Hands', 'Both hands are on the ball with the guide hand on the side providing support and control', 1.0, 1),
   ('Thumb is Spread Wide', 'The shooting hand thumb is spread wide for proper grip and control of the ball', 1.0, 2),
   ('Guide Hand Placement', 'Guide hand is positioned correctly on the side of the ball, not interfering with the shot', 1.0, 3),
   ('Palm Non-Contact with Ball', 'The ball rests on the finger pads, not the palm — palm should not contact the ball', 1.0, 4),

@@ -81,43 +81,40 @@ export async function analyzeShot(
   const midEnd = Math.round(n * 0.7)
 
   const systemPrompt = `You are an expert basketball shooting coach analyzing a player's shooting form.
-You will receive ${n} sequential frames from a basketball shot. Use this frame map to know where to look for each criterion:
+You will receive ${n} sequential frames. Frame guide:
+- Frames 1–${earlyEnd}: SETUP — stance, knees, shot pocket, elbow L-shape, guide hand, thumb, palm
+- Frames ${earlyEnd + 1}–${midEnd}: RELEASE — power, one-hand release, two-finger release, guide hand separation
+- Frames ${midEnd + 1}–${n}: FOLLOW-THROUGH — wrist snap, guide hand finish, ball rotation, arc, forward motion
 
-- Frames 1–${earlyEnd} (SETUP): stance, foot position, knees bent, squareness to basket, shot pocket, elbow L-shape, grip/thumb/palm/guide hand placement
-- Frames ${earlyEnd + 1}–${midEnd} (RELEASE): source of power, one-hand release, two-finger release, guide hand separation, elbow alignment at release
-- Frames ${midEnd + 1}–${n} (FOLLOW-THROUGH): shooting hand follow-through (goose neck), guide hand follow-through, ball rotation/backspin, shot arc, forward motion and toes
-
-BALL ROTATION — To assess spin: compare the ball's seam lines/markings across consecutive frames while it is in the air. If the seams look clearly DIFFERENT in each frame the ball is rotating well (good backspin). If the seams look the same position across frames the ball has little rotation. Use this method — do not guess.
-
-EXCEPTIONS — always return null for these two if you cannot clearly see the detail up close:
-- "Thumb is Spread Wide" (ID 2): requires seeing the thumb clearly. If the hand is too far from camera or not in sharp focus, return null — do NOT give an average score.
-- "Palm Non-Contact with Ball" (ID 4): requires seeing the palm and finger pads clearly. If you cannot see this detail, return null — do NOT give an average score.
-
-SCORING ALGORITHM — follow exactly for every criterion:
-1. Each criterion has sub-criteria with point values (e.g. [4pts], [3pts]) that total 10.
-2. SCORE EVERYTHING YOU CAN SEE. The default is to give a score. Only return null if a criterion is completely unassessable — the body part is fully out of frame or the shot angle makes it impossible to see anything relevant. If you can see the player shooting at all, most criteria should get a score.
-3. For each sub-criterion:
-   - Visible → score from FULL marks, deduct only for clear obvious flaws you can point to
-   - Not visible at all → skip that sub-criterion only (do not null the whole criterion unless 50%+ of points are unassessable)
-   - Visibly wrong → deduct proportional to how bad it looks
-4. Use this scale per criterion (each criterion is scored independently — a player can get 10 on arc and 4 on rotation):
-   - 10: This specific criterion looks perfect in the frames — no visible flaws at all
-   - 9: Near perfect on this criterion, only the tiniest details missing
-   - 8–8.5: Very good on this criterion, clearly correct mechanics with minor issues
-   - 7–7.5: Good, fundamentals are there but some noticeable room to improve
-   - 5–6: Average, clear issues visible on this criterion
-   - 3–4: Bad, obvious mistakes on this criterion
-   - 1–2: Fundamentally wrong on this criterion
-   If the elbow L-shape is clearly perfect → 10. If the arc looks perfect → 10. If the shot pocket is clearly compact and ideal → 10. Score what you see per criterion, not a general impression of the player.
-5. Calculate: (sum of scored sub-scores) ÷ (sum of scored sub-maxes) × 10 = final score, rounded to 1 decimal.
-6. For ball rotation and shot arc: only assess during the ball's clean forward flight. Ignore frames where the ball has hit the rim or backboard.
-7. In your reasoning, show what you saw and the breakdown (e.g. "Elbow under ball [4/4], forearm vertical [3/4], angle not visible [skipped] — 8/8 scored → 10.0").
-
-For the overall_score, average only the criteria you scored (exclude nulls).
-
-Scoring criteria:
+Scoring criteria (read each carefully before scoring):
 ${criteriaText}
 ${feedbackText}
+
+NOW SCORE EACH CRITERION USING THESE EXACT RULES:
+
+RULE 1 — SCORE EVERYTHING VISIBLE. Give a score unless the body part is literally out of frame. Do not return null just because something is hard to see — if you can make any reasonable judgment, give a score.
+
+RULE 2 — EXCEPTIONS (these two require close-up visibility — return null if you cannot clearly see them):
+- ID 2 "Thumb is Spread Wide": null if thumb is not clearly visible up close
+- ID 4 "Palm Non-Contact": null if palm/finger pads are not clearly visible up close
+
+RULE 3 — EACH CRITERION IS INDEPENDENT. Score what you see for that criterion alone:
+- 10 = perfect on this criterion (no visible flaws)
+- 9 = near perfect
+- 8–8.5 = very good, minor issues
+- 7–7.5 = good, some room to improve
+- 5–6 = average, clear issues
+- 3–4 = bad, obvious mistakes
+- 1–2 = fundamentally wrong
+A perfect elbow L-shape → 10. Perfect arc → 10. Perfect shot pocket → 10. Do not cap good things.
+
+RULE 4 — SUB-CRITERIA MATH: score each visible sub-criterion from full marks down. Skip only if completely hidden. Calculate: (scored points) ÷ (scoreable points) × 10.
+
+RULE 5 — BALL ROTATION: compare seam markings between frames in the air. Seams shifting clearly every frame = strong backspin = high score. Seams barely moving = no spin = low score.
+
+RULE 6 — BALL ARC/ROTATION: only assess during clean forward flight, not after rim or backboard contact.
+
+For overall_score: average only scored criteria (exclude nulls).
 
 Return ONLY valid JSON in this exact format, no other text:
 {
@@ -145,7 +142,7 @@ Return ONLY valid JSON in this exact format, no other text:
 
   const response = await getAnthropic().messages.create({
     model: 'claude-sonnet-4-6',
-    max_tokens: 4000,
+    max_tokens: 6000,
     system: systemPrompt,
     messages: [
       {

@@ -50,6 +50,26 @@ CREATE TABLE IF NOT EXISTS email_logs (
   sent_at TIMESTAMP DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS orders (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  stripe_session_id VARCHAR(255) UNIQUE NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  customer_name VARCHAR(255),
+  phone VARCHAR(50),
+  variant VARCHAR(20) NOT NULL CHECK (variant IN ('left','right')),
+  amount_total INTEGER NOT NULL,
+  currency VARCHAR(10) DEFAULT 'usd',
+  shipping_name VARCHAR(255),
+  shipping_line1 VARCHAR(255),
+  shipping_line2 VARCHAR(255),
+  shipping_city VARCHAR(100),
+  shipping_state VARCHAR(100),
+  shipping_postal_code VARCHAR(20),
+  shipping_country VARCHAR(2),
+  status VARCHAR(20) DEFAULT 'paid',
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
 -- Seed custom criteria (only if table is empty)
 INSERT INTO criteria (name, description, weight, order_index)
 SELECT * FROM (VALUES

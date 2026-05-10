@@ -16,7 +16,7 @@ export default async function SubmissionsPage() {
       <div className="bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-zinc-800 text-zinc-400 text-xs">
+            <tr className="border-b border-zinc-800 text-white text-xs">
               <th className="text-left px-5 py-3">Email</th>
               <th className="text-left px-5 py-3">Status</th>
               <th className="text-left px-5 py-3">Score</th>
@@ -27,16 +27,16 @@ export default async function SubmissionsPage() {
           <tbody className="divide-y divide-zinc-800/50">
             {submissions.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-5 py-6 text-zinc-500">No submissions yet.</td>
+                <td colSpan={5} className="px-5 py-6 text-white">No submissions yet.</td>
               </tr>
             ) : (
               submissions.map((s) => (
                 <tr key={String(s.id)} className="hover:bg-zinc-800/30 transition-colors">
-                  <td className="px-5 py-3 text-white">{s.email || <span className="text-zinc-500">—</span>}</td>
+                  <td className="px-5 py-3 text-white">{s.email || <span className="text-white">—</span>}</td>
                   <td className="px-5 py-3">
                     <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      s.status === 'complete' ? 'bg-green-500/10 text-green-400' :
-                      s.status === 'processing' ? 'bg-yellow-500/10 text-yellow-400' :
+                      s.status === 'complete' ? 'bg-green-500/10 text-orange-500' :
+                      s.status === 'processing' ? 'bg-yellow-500/10 text-orange-500' :
                       'bg-red-500/10 text-red-400'
                     }`}>
                       {s.status}
@@ -45,7 +45,7 @@ export default async function SubmissionsPage() {
                   <td className="px-5 py-3 text-orange-400 font-bold">
                     {s.overall_score ? `${s.overall_score}/10` : '—'}
                   </td>
-                  <td className="px-5 py-3 text-zinc-400 text-xs">
+                  <td className="px-5 py-3 text-white text-xs">
                     {new Date(s.created_at).toLocaleString()}
                   </td>
                   <td className="px-5 py-3">
@@ -58,7 +58,7 @@ export default async function SubmissionsPage() {
                         View
                       </a>
                     ) : (
-                      <span className="text-zinc-600 text-xs">—</span>
+                      <span className="text-white text-xs">—</span>
                     )}
                   </td>
                 </tr>

@@ -1,4 +1,4 @@
-import Link from 'next/link'
+﻿import Link from 'next/link'
 import TopNav from '@/components/TopNav'
 
 export default function ShopPage() {
@@ -14,7 +14,7 @@ export default function ShopPage() {
         <h1 className="text-3xl sm:text-5xl font-black text-white leading-tight max-w-2xl">
           The LearnHoops <span className="text-orange-500">basketball</span>
         </h1>
-        <p className="text-zinc-400 text-base sm:text-lg mt-4 max-w-md leading-relaxed">
+        <p className="text-white text-base sm:text-lg mt-4 max-w-md leading-relaxed">
           We&apos;re building a shop. Check back soon — or head to Analyze and try the AI tool now.
         </p>
 
@@ -26,7 +26,7 @@ export default function ShopPage() {
         </Link>
       </section>
 
-      <footer className="py-5 border-t border-zinc-900 text-center text-zinc-600 text-xs">
+      <footer className="py-5 border-t border-zinc-900 text-center text-white text-xs">
         © {new Date().getFullYear()} LearnHoops. All rights reserved.
       </footer>
     </main>

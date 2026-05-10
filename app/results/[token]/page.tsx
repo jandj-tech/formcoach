@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation'
+﻿import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { db } from '@/lib/db'
 import OverallBadge from '@/components/OverallBadge'
@@ -39,8 +39,8 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
       <div className="max-w-2xl mx-auto w-full px-6 py-12 space-y-10">
         {/* Header */}
         <div className="text-center space-y-2">
-          <h1 className="text-3xl font-black text-gray-900">Your Shot Analysis</h1>
-          <p className="text-gray-500 text-sm">Here&apos;s how your form scored across all criteria</p>
+          <h1 className="text-3xl font-black text-black">Your Shot Analysis</h1>
+          <p className="text-black text-sm">Here&apos;s how your form scored across all criteria</p>
         </div>
 
         {/* Overall Score */}
@@ -50,7 +50,7 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
 
         {/* Criteria Breakdown */}
         <div className="space-y-4">
-          <h2 className="text-gray-900 font-bold text-lg">Criteria Breakdown</h2>
+          <h2 className="text-black font-bold text-lg">Criteria Breakdown</h2>
           <div className="space-y-3">
             {scores.map((s) => (
               <ScoreCard
@@ -66,7 +66,7 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
         {/* Frame Thumbnails */}
         {analysis.frame_urls && analysis.frame_urls.length > 0 && (
           <div className="space-y-3">
-            <h2 className="text-gray-900 font-bold text-lg">Analyzed Frames</h2>
+            <h2 className="text-black font-bold text-lg">Analyzed Frames</h2>
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
               {(analysis.frame_urls as string[]).map((url, i) => (
                 <img
@@ -82,7 +82,7 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
 
         {/* CTA */}
         <div className="bg-gray-50 rounded-xl p-6 border border-gray-200 text-center space-y-3">
-          <p className="text-gray-900 font-semibold">Want to analyze another shot?</p>
+          <p className="text-black font-semibold">Want to analyze another shot?</p>
           <Link
             href="/analyze"
             className="inline-block bg-orange-500 hover:bg-red-600 text-white font-bold px-8 py-3 rounded-xl transition-colors"
@@ -92,7 +92,7 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
         </div>
       </div>
 
-      <footer className="py-6 border-t border-gray-200 text-center text-gray-400 text-xs">
+      <footer className="py-6 border-t border-gray-200 text-center text-black text-xs">
         © {new Date().getFullYear()} LearnHoops. All rights reserved.
       </footer>
     </main>

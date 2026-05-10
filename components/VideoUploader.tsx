@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useCallback, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -184,10 +184,10 @@ export default function VideoUploader() {
       <div className="w-full max-w-lg mx-auto text-center space-y-6">
         <div className="text-5xl animate-bounce">🏀</div>
         <div>
-          <p className="text-gray-900 font-semibold text-lg mb-2">
+          <p className="text-black font-semibold text-lg mb-2">
             {status === 'extracting' ? 'Finding your shot...' : 'Uploading & analyzing your shot...'}
           </p>
-          <p className="text-gray-500 text-sm">
+          <p className="text-black text-sm">
             {status === 'extracting'
               ? 'Detecting motion to capture only your shooting form'
               : 'Our AI is studying your form in detail'}
@@ -199,7 +199,7 @@ export default function VideoUploader() {
             style={{ width: `${progress}%` }}
           />
         </div>
-        <p className="text-gray-400 text-xs">{progress}%</p>
+        <p className="text-black text-xs">{progress}%</p>
         {previews.length > 0 && (
           <div className="grid grid-cols-4 gap-2 mt-4">
             {previews.map((src, i) => (
@@ -227,9 +227,9 @@ export default function VideoUploader() {
         onClick={() => inputRef.current?.click()}
       >
         <div className="text-5xl mb-4">🎥</div>
-        <p className="text-gray-900 font-semibold text-lg mb-1">Tap to upload your video</p>
-        <p className="text-gray-400 text-sm hidden sm:block">or drag and drop</p>
-        <p className="text-gray-400 text-xs mt-3">MP4, MOV, AVI · Max 200MB</p>
+        <p className="text-black font-semibold text-lg mb-1">Tap to upload your video</p>
+        <p className="text-black text-sm hidden sm:block">or drag and drop</p>
+        <p className="text-black text-xs mt-3">MP4, MOV, AVI · Max 200MB</p>
         <button className="mt-5 bg-orange-500 hover:bg-red-600 text-white font-bold px-8 py-3 rounded-xl text-sm transition-colors w-full sm:w-auto">
           Choose Video
         </button>

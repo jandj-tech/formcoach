@@ -15,16 +15,16 @@ export default async function EmailsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-black text-white">Email List</h1>
-        <div className="flex gap-4 text-sm text-zinc-400">
-          <span><span className="text-green-400 font-bold">{active.length}</span> active</span>
-          <span><span className="text-zinc-500 font-bold">{unsub.length}</span> unsubscribed</span>
+        <div className="flex gap-4 text-sm text-white">
+          <span><span className="text-orange-500 font-bold">{active.length}</span> active</span>
+          <span><span className="text-white font-bold">{unsub.length}</span> unsubscribed</span>
         </div>
       </div>
 
       <div className="bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-zinc-800 text-zinc-400 text-xs">
+            <tr className="border-b border-zinc-800 text-white text-xs">
               <th className="text-left px-5 py-3">Email</th>
               <th className="text-left px-5 py-3">Marketing Emails Sent</th>
               <th className="text-left px-5 py-3">Joined</th>
@@ -34,7 +34,7 @@ export default async function EmailsPage() {
           <tbody className="divide-y divide-zinc-800/50">
             {emails.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-5 py-6 text-zinc-500">No subscribers yet.</td>
+                <td colSpan={4} className="px-5 py-6 text-white">No subscribers yet.</td>
               </tr>
             ) : (
               emails.map((e) => (
@@ -50,17 +50,17 @@ export default async function EmailsPage() {
                           />
                         ))}
                       </div>
-                      <span className="text-zinc-400 text-xs">{e.marketing_emails_sent}/5</span>
+                      <span className="text-white text-xs">{e.marketing_emails_sent}/5</span>
                     </div>
                   </td>
-                  <td className="px-5 py-3 text-zinc-400 text-xs">
+                  <td className="px-5 py-3 text-white text-xs">
                     {new Date(e.created_at).toLocaleDateString()}
                   </td>
                   <td className="px-5 py-3">
                     {e.unsubscribed_at ? (
-                      <span className="text-xs bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded-full">Unsubscribed</span>
+                      <span className="text-xs bg-zinc-800 text-white px-2 py-0.5 rounded-full">Unsubscribed</span>
                     ) : (
-                      <span className="text-xs bg-green-500/10 text-green-400 px-2 py-0.5 rounded-full">Active</span>
+                      <span className="text-xs bg-green-500/10 text-orange-500 px-2 py-0.5 rounded-full">Active</span>
                     )}
                   </td>
                 </tr>

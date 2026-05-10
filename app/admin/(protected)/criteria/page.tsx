@@ -60,7 +60,7 @@ export default function CriteriaPage() {
         </button>
       </div>
 
-      {msg && <p className="text-green-400 text-sm">{msg}</p>}
+      {msg && <p className="text-orange-500 text-sm">{msg}</p>}
 
       <div className="space-y-2">
         {criteria.map((c) => (
@@ -70,19 +70,19 @@ export default function CriteriaPage() {
           >
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-zinc-500 text-xs font-mono">{c.order_index}.</span>
+                <span className="text-white text-xs font-mono">{c.order_index}.</span>
                 <span className="text-white font-semibold text-sm">{c.name}</span>
-                <span className="text-zinc-500 text-xs">weight: {c.weight}</span>
-                {!c.active && <span className="text-xs bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded-full">inactive</span>}
+                <span className="text-white text-xs">weight: {c.weight}</span>
+                {!c.active && <span className="text-xs bg-zinc-800 text-white px-2 py-0.5 rounded-full">inactive</span>}
               </div>
               {c.description && (
-                <p className="text-zinc-400 text-xs mt-1 leading-relaxed">{c.description}</p>
+                <p className="text-white text-xs mt-1 leading-relaxed">{c.description}</p>
               )}
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <button
                 onClick={() => toggleActive(c)}
-                className="text-xs text-zinc-400 hover:text-white px-2 py-1 rounded border border-zinc-700 hover:border-zinc-500 transition-colors"
+                className="text-xs text-white hover:text-white px-2 py-1 rounded border border-zinc-700 hover:border-zinc-500 transition-colors"
               >
                 {c.active ? 'Disable' : 'Enable'}
               </button>
@@ -105,7 +105,7 @@ export default function CriteriaPage() {
 
             <div className="space-y-3">
               <div>
-                <label className="text-zinc-400 text-xs mb-1 block">Name</label>
+                <label className="text-white text-xs mb-1 block">Name</label>
                 <input
                   value={editing.name}
                   onChange={(e) => setEditing({ ...editing, name: e.target.value })}
@@ -113,7 +113,7 @@ export default function CriteriaPage() {
                 />
               </div>
               <div>
-                <label className="text-zinc-400 text-xs mb-1 block">Description (shown to AI)</label>
+                <label className="text-white text-xs mb-1 block">Description (shown to AI)</label>
                 <textarea
                   value={editing.description}
                   onChange={(e) => setEditing({ ...editing, description: e.target.value })}
@@ -123,7 +123,7 @@ export default function CriteriaPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-zinc-400 text-xs mb-1 block">Weight (0.1–2.0)</label>
+                  <label className="text-white text-xs mb-1 block">Weight (0.1–2.0)</label>
                   <input
                     type="number"
                     min="0.1"
@@ -135,7 +135,7 @@ export default function CriteriaPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-zinc-400 text-xs mb-1 block">Order</label>
+                  <label className="text-white text-xs mb-1 block">Order</label>
                   <input
                     type="number"
                     value={editing.order_index}
@@ -149,7 +149,7 @@ export default function CriteriaPage() {
             <div className="flex gap-3">
               <button
                 onClick={() => setEditing(null)}
-                className="flex-1 border border-zinc-700 text-zinc-300 font-medium py-2 rounded-xl text-sm hover:bg-zinc-800 transition-colors"
+                className="flex-1 border border-zinc-700 text-white font-medium py-2 rounded-xl text-sm hover:bg-zinc-800 transition-colors"
               >
                 Cancel
               </button>

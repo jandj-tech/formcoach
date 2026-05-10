@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import Image from 'next/image'
 import Link from 'next/link'
@@ -35,7 +35,7 @@ export default function TopNav() {
               className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${
                 active
                   ? 'bg-orange-500 text-white'
-                  : 'text-zinc-300 hover:text-white hover:bg-zinc-900'
+                  : 'text-white hover:text-white hover:bg-zinc-900'
               }`}
             >
               {tab.label}

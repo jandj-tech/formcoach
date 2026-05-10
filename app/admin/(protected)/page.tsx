@@ -1,4 +1,4 @@
-import { db } from '@/lib/db'
+﻿import { db } from '@/lib/db'
 
 export default async function AdminDashboard() {
   const [counts] = await db`
@@ -32,7 +32,7 @@ export default async function AdminDashboard() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {stats.map((s) => (
           <div key={s.label} className="bg-zinc-900 rounded-xl p-5 border border-zinc-800">
-            <p className="text-zinc-400 text-xs mb-1">{s.label}</p>
+            <p className="text-white text-xs mb-1">{s.label}</p>
             <p className="text-white text-3xl font-black">{String(s.value)}</p>
           </div>
         ))}
@@ -42,13 +42,13 @@ export default async function AdminDashboard() {
         <h2 className="text-white font-bold text-lg">Recent Analyses</h2>
         <div className="bg-zinc-900 rounded-xl border border-zinc-800 divide-y divide-zinc-800">
           {recent.length === 0 ? (
-            <p className="text-zinc-500 text-sm p-6">No analyses yet.</p>
+            <p className="text-white text-sm p-6">No analyses yet.</p>
           ) : (
             recent.map((row) => (
               <div key={String(row.id)} className="flex items-center justify-between px-5 py-3">
                 <div>
                   <p className="text-white text-sm">{row.email || '—'}</p>
-                  <p className="text-zinc-500 text-xs">
+                  <p className="text-white text-xs">
                     {new Date(row.created_at).toLocaleString()}
                   </p>
                 </div>

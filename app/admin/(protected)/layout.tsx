@@ -1,4 +1,4 @@
-import Image from 'next/image'
+﻿import Image from 'next/image'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 
@@ -19,14 +19,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <span className="text-orange-500 font-black text-sm uppercase tracking-wider">Admin</span>
           </div>
           <div className="flex items-center gap-4 text-sm">
-            <a href="/admin" className="text-zinc-300 hover:text-white transition-colors">Dashboard</a>
-            <a href="/admin/submissions" className="text-zinc-300 hover:text-white transition-colors">Submissions</a>
-            <a href="/admin/criteria" className="text-zinc-300 hover:text-white transition-colors">Criteria</a>
-            <a href="/admin/learn" className="text-zinc-300 hover:text-white transition-colors">Learn Mode</a>
-            <a href="/admin/emails" className="text-zinc-300 hover:text-white transition-colors">Emails</a>
+            <a href="/admin" className="text-white hover:text-white transition-colors">Dashboard</a>
+            <a href="/admin/submissions" className="text-white hover:text-white transition-colors">Submissions</a>
+            <a href="/admin/criteria" className="text-white hover:text-white transition-colors">Criteria</a>
+            <a href="/admin/learn" className="text-white hover:text-white transition-colors">Learn Mode</a>
+            <a href="/admin/emails" className="text-white hover:text-white transition-colors">Emails</a>
           </div>
         </div>
-        <a href="/" className="text-zinc-500 hover:text-zinc-300 text-sm transition-colors">← Back to site</a>
+        <a href="/" className="text-white hover:text-white text-sm transition-colors">← Back to site</a>
       </nav>
       <div className="max-w-5xl mx-auto px-6 py-8">{children}</div>
     </div>

@@ -126,14 +126,14 @@ export default function LearnModePage() {
       )}
       <div>
         <h1 className="text-2xl font-black text-white">Learn Mode</h1>
-        <p className="text-zinc-400 text-sm mt-1">
+        <p className="text-white text-sm mt-1">
           View the frames the AI analyzed, then correct its scores. Every correction improves future analyses.
         </p>
       </div>
 
       <div className="space-y-3">
         {submissions.length === 0 && (
-          <p className="text-zinc-500 text-sm">No analyses yet.</p>
+          <p className="text-white text-sm">No analyses yet.</p>
         )}
         {submissions.map((s) => (
           <div key={s.id} className="bg-zinc-900 rounded-xl border border-zinc-800">
@@ -150,13 +150,13 @@ export default function LearnModePage() {
             >
               <div>
                 <p className="text-white text-sm font-medium">{s.email || 'No email'}</p>
-                <p className="text-zinc-500 text-xs">{new Date(s.created_at).toLocaleString()}</p>
+                <p className="text-white text-xs">{new Date(s.created_at).toLocaleString()}</p>
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-orange-400 font-bold text-sm">
                   {s.overall_score ? `${s.overall_score}/10` : '—'}
                 </span>
-                <span className="text-zinc-400 text-lg">{expanded === s.id ? '▲' : '▼'}</span>
+                <span className="text-white text-lg">{expanded === s.id ? '▲' : '▼'}</span>
               </div>
             </button>
 
@@ -166,7 +166,7 @@ export default function LearnModePage() {
                 {/* Frame thumbnails */}
                 {s.frame_urls && s.frame_urls.length > 0 && (
                   <div className="px-5 py-4 space-y-2">
-                    <p className="text-zinc-400 text-xs font-semibold uppercase tracking-wider">
+                    <p className="text-white text-xs font-semibold uppercase tracking-wider">
                       Frames Analyzed ({s.frame_urls.length})
                     </p>
                     <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
@@ -201,13 +201,13 @@ export default function LearnModePage() {
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1">
                             <p className="text-white text-sm font-semibold">{score.criterion_name}</p>
-                            <p className="text-zinc-400 text-xs mt-1 leading-relaxed">{score.ai_reasoning}</p>
+                            <p className="text-white text-xs mt-1 leading-relaxed">{score.ai_reasoning}</p>
                           </div>
                           <div className="text-right shrink-0">
-                            <p className="text-zinc-500 text-xs">AI Score</p>
+                            <p className="text-white text-xs">AI Score</p>
                             <p className="text-orange-400 font-bold">{score.ai_score}/10</p>
                             {score.admin_score !== null && (
-                              <p className="text-green-400 text-xs mt-1">✓ Corrected: {score.admin_score}/10</p>
+                              <p className="text-orange-500 text-xs mt-1">✓ Corrected: {score.admin_score}/10</p>
                             )}
                           </div>
                         </div>
@@ -253,7 +253,7 @@ export default function LearnModePage() {
                   </div>
                 ) : (
                   <div className="px-5 py-4">
-                    <p className="text-zinc-500 text-sm">Loading scores...</p>
+                    <p className="text-white text-sm">Loading scores...</p>
                   </div>
                 )}
               </div>

@@ -46,7 +46,7 @@ export default function LearnModePage() {
 
   async function saveCorrection(scoreId: number) {
     const c = corrections[scoreId]
-    if (!c?.score) return
+    if (!c?.score && !c?.notes) return
     setSaving(scoreId)
 
     await fetch('/api/admin/feedback', {
@@ -54,7 +54,7 @@ export default function LearnModePage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         scoreId,
-        adminScore: parseFloat(c.score),
+        adminScore: c.score ? parseFloat(c.score) : null,
         adminNotes: c.notes || null,
       }),
     })
@@ -65,7 +65,7 @@ export default function LearnModePage() {
         ...s,
         scores: s.scores?.map((score) =>
           score.id === scoreId
-            ? { ...score, admin_score: parseFloat(c.score), admin_notes: c.notes || null }
+            ? { ...score, admin_score: c.score ? parseFloat(c.score) : null, admin_notes: c.notes || null }
             : score
         ),
       }))
@@ -241,7 +241,7 @@ export default function LearnModePage() {
                             className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-orange-500"
                           />
                           <button
-                            disabled={saving === score.id || !corrections[score.id]?.score}
+                            disabled={saving === score.id || (!corrections[score.id]?.score && !corrections[score.id]?.notes)}
                             onClick={() => saveCorrection(score.id)}
                             className="bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
                           >

@@ -75,16 +75,16 @@ You will receive ${n} sequential frames from a basketball shot. Use this frame m
 
 SCORING ALGORITHM — follow exactly for every criterion:
 1. Each criterion has sub-criteria with point values (e.g. [4pts], [3pts]) that total 10.
-2. There are three distinct cases for each sub-criterion:
-   - Clearly visible and present → score from full marks, deduct only for visible flaws
-   - Not visible due to camera angle, distance, or blur → skip entirely, do NOT penalize
-   - Clearly absent or wrong (the form element is missing, skipped, or visibly incorrect) → score low or 0, do NOT skip
-   The skip rule only applies to visibility problems, not to missing or poor form.
-3. Score accurately — good form earns high marks, OK form loses some points, missing or poor form loses significant points. Do not be lenient on form that is clearly not there or clearly wrong.
-4. Calculate: (sum of scored sub-scores) ÷ (sum of scored sub-maxes) × 10 = final score, rounded to 1 decimal.
-5. Only set score to null if less than 50% of total points could be assessed due to visibility — otherwise always give a score.
-6. For ball rotation and shot arc: only assess these during the ball's clean forward flight toward the basket. If the ball has hit the rim, backboard, or is returning — ignore those frames for these criteria.
-7. In your reasoning, show what you saw and the breakdown (e.g. "Elbow under ball [4/4], forearm vertical [3/4], angle not visible [skipped] — 8/8 scored → 10.0").
+2. For each sub-criterion:
+   - Can see it clearly → score from FULL marks, only deduct for obvious visible flaws. If it looks good, give high marks.
+   - Cannot see it (camera distance, angle, blur) → skip it entirely, do NOT penalize visibility.
+   - Visibly and obviously wrong (clear flaw you can see) → deduct points proportional to how bad it looks.
+3. Default to generous scoring. If something looks decent or good, score it 8–10. Only score below 7 when there is a clear, obvious problem you can point to. A skilled player with good form should score 8–9+ on most criteria.
+4. If you can see any part of the shot at all, score the criteria you can observe — do not skip things that are visible just because they aren't perfect.
+5. Calculate: (sum of scored sub-scores) ÷ (sum of scored sub-maxes) × 10 = final score, rounded to 1 decimal.
+6. Only set score to null if less than 50% of total points are visible — otherwise always give a score.
+7. For ball rotation and shot arc: only assess during the ball's clean forward flight. Ignore frames where the ball has hit the rim or backboard and is returning.
+8. In your reasoning, show what you saw and the breakdown (e.g. "Elbow under ball [4/4], forearm vertical [3/4], angle not visible [skipped] — 8/8 scored → 10.0").
 
 For the overall_score, average only the criteria you scored (exclude nulls).
 

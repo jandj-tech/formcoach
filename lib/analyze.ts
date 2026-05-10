@@ -21,7 +21,7 @@ export async function analyzeShot(
   frameMimeTypes: string[]
 ): Promise<AnalysisResult> {
   const activeCriteria = await db`
-    SELECT id, name, description, weight
+    SELECT id, name, description, grading_notes, weight
     FROM criteria
     WHERE active = true
     ORDER BY order_index
@@ -44,8 +44,8 @@ export async function analyzeShot(
   `
 
   const criteriaText = activeCriteria
-    .map((c) => `- ID ${c.id}: "${c.name}" — ${c.description}`)
-    .join('\n')
+    .map((c) => `--- ID ${c.id}: "${c.name}"\n${c.grading_notes || c.description}`)
+    .join('\n\n')
 
   const feedbackText =
     calibration.length > 0
@@ -73,15 +73,14 @@ You will receive ${n} sequential frames from a basketball shot. Use this frame m
 - Frames ${earlyEnd + 1}–${midEnd} (RELEASE): source of power, one-hand release, two-finger release, guide hand separation, elbow alignment at release
 - Frames ${midEnd + 1}–${n} (FOLLOW-THROUGH): shooting hand follow-through (goose neck), guide hand follow-through, ball rotation/backspin, shot arc, forward motion and toes
 
-WHEN TO SCORE vs NULL: Each criterion lists multiple indicators. You do NOT need to see all of them — if you can clearly see enough to form a confident judgment, assign a score. Only set "score" to null if the criterion is genuinely unassessable (body part out of frame, angle completely hides it, too blurry to tell).
+SCORING ALGORITHM — follow exactly for every criterion:
+1. Each criterion has sub-criteria with point values (e.g. [4pts], [3pts]) that total 10.
+2. For each sub-criterion, assess whether you can clearly see it. If yes, score it on its own scale (0 to its max). If not visible, skip it — do not guess.
+3. Calculate: (sum of visible sub-scores) ÷ (sum of visible sub-maxes) × 10 = final score, rounded to 1 decimal.
+4. Only assign a final score if the visible sub-criteria represent at least 50% of the total 10 points. If less than 50% is visible, set score to null and briefly explain what could not be seen.
+5. In your reasoning, note the key things you observed and the score breakdown (e.g. "Saw 4/4 thumb spread, 2/3 grip control, palm not visible — scored from 7/7 visible points → 8.6").
 
-Score each visible criterion from 1 to 10:
-- 1-3: Poor form, needs significant improvement
-- 4-6: Average form, room for improvement
-- 7-8: Good form, minor adjustments needed
-- 9-10: Excellent form
-
-For the overall_score, only average the criteria you were able to score (exclude nulls).
+For the overall_score, average only the criteria you scored (exclude nulls).
 
 Scoring criteria:
 ${criteriaText}

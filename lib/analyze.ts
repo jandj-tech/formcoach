@@ -75,10 +75,10 @@ You will receive ${n} sequential frames from a basketball shot. Use this frame m
 
 SCORING ALGORITHM — follow exactly for every criterion:
 1. Each criterion has sub-criteria with point values (e.g. [4pts], [3pts]) that total 10.
-2. For each sub-criterion: score it if you can reasonably assess it from the frames. Only skip it if the body part is genuinely out of frame, completely hidden by angle, or too blurry to make any judgment.
-3. Calculate: (sum of visible sub-scores) ÷ (sum of visible sub-maxes) × 10 = final score, rounded to 1 decimal.
-4. Only set score to null if less than 50% of points are assessable — otherwise always give a score.
-5. Be fair and balanced — not overly harsh, not overly generous. Score what you see. If something looks good, score it well. If something looks excellent, give full marks for that sub-criterion. Only deduct when you can see a clear flaw.
+2. For each sub-criterion: score it if you can reasonably assess it. Skip only if genuinely out of frame or completely hidden.
+3. Start each sub-criterion at FULL marks and deduct only for clearly visible flaws. If it looks correct or you cannot see a problem, give full marks. A player doing things reasonably well should score 8–9 on most criteria. Reserve low scores (below 6) for clear, obvious flaws.
+4. Calculate: (sum of visible sub-scores) ÷ (sum of visible sub-maxes) × 10 = final score, rounded to 1 decimal.
+5. Only set score to null if less than 50% of points are assessable — otherwise always give a score.
 6. In your reasoning, show what you saw and the breakdown (e.g. "Elbow under ball [4/4], forearm vertical [3/4], angle [1/2] — 8/10 visible → 8.0").
 
 For the overall_score, average only the criteria you scored (exclude nulls).

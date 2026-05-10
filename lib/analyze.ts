@@ -87,6 +87,8 @@ You will receive ${n} sequential frames from a basketball shot. Use this frame m
 - Frames ${earlyEnd + 1}–${midEnd} (RELEASE): source of power, one-hand release, two-finger release, guide hand separation, elbow alignment at release
 - Frames ${midEnd + 1}–${n} (FOLLOW-THROUGH): shooting hand follow-through (goose neck), guide hand follow-through, ball rotation/backspin, shot arc, forward motion and toes
 
+BALL ROTATION — To assess spin: compare the ball's seam lines/markings across consecutive frames while it is in the air. If the seams look clearly DIFFERENT in each frame the ball is rotating well (good backspin). If the seams look the same position across frames the ball has little rotation. Use this method — do not guess.
+
 SCORING ALGORITHM — follow exactly for every criterion:
 1. Each criterion has sub-criteria with point values (e.g. [4pts], [3pts]) that total 10.
 2. SCORE EVERYTHING YOU CAN SEE. The default is to give a score. Only return null if a criterion is completely unassessable — the body part is fully out of frame or the shot angle makes it impossible to see anything relevant. If you can see the player shooting at all, most criteria should get a score.

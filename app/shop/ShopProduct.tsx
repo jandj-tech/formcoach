@@ -80,8 +80,8 @@ export default function ShopProduct({ usdToCad }: { usdToCad: number }) {
         {/* Product details */}
         <div className="flex flex-col gap-5">
           <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div className="inline-flex items-center gap-2 bg-orange-500/10 border border-orange-500/30 rounded-full px-4 py-1.5">
-              <span className="text-orange-500 text-xs font-semibold tracking-wider uppercase">In Stock</span>
+            <div className="inline-flex items-center gap-2 bg-green-500/10 border border-green-500/30 rounded-full px-4 py-1.5">
+              <span className="text-green-500 text-xs font-semibold tracking-wider uppercase">In Stock</span>
             </div>
             <div
               role="group"

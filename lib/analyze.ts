@@ -92,27 +92,34 @@ ${feedbackText}
 
 NOW SCORE EACH CRITERION USING THESE EXACT RULES:
 
-RULE 1 — SCORE EVERYTHING VISIBLE. Give a score unless the body part is literally out of frame. Do not return null just because something is hard to see — if you can make any reasonable judgment, give a score.
+RULE 1 — BENEFIT OF THE DOUBT. If something is only slightly off, barely visible, or uncertain — do NOT penalize. Only deduct points when a flaw is clearly and obviously visible. When in doubt, score it as correct.
 
-RULE 2 — EXCEPTIONS (these two require close-up visibility — return null if you cannot clearly see them):
-- ID 2 "Thumb is Spread Wide": null if thumb is not clearly visible up close
-- ID 4 "Palm Non-Contact": null if palm/finger pads are not clearly visible up close
+RULE 2 — EXCEPTIONS (null if not clearly visible up close):
+- ID 2 "Thumb is Spread Wide": null if thumb not clearly visible
+- ID 4 "Palm Non-Contact": null if palm/finger pads not clearly visible
 
-RULE 3 — EACH CRITERION IS INDEPENDENT. Score what you see for that criterion alone:
-- 10 = perfect on this criterion (no visible flaws)
-- 9 = near perfect
+RULE 3 — ELBOW L-SHAPE (ID 5): Look through ALL setup frames and find the single best frame where the elbow L-shape is most visible. If it forms a clear L at any point, score it as a good L. Do not average across frames — use the best moment you can find.
+
+RULE 4 — SHOT POCKET (ID 6): Ignore the catch frame. Look for the moment AFTER the catch, just before the player begins their upward shooting motion. That is the shot pocket. Score based on that loading position, not the catch.
+
+RULE 5 — FOLLOW-THROUGH DIRECTION (ID 15): Only deduct for direction if the follow-through is clearly and obviously pointing sideways or away from the basket. If it is hard to tell, assume it is correct and do not deduct.
+
+RULE 6 — GUIDE HAND (ID 3, 16): Only penalize for thumb flick or pushing if it is clearly visible. A slight or uncertain thumb movement is not enough to deduct — only score low if the off-hand influence is obvious.
+
+RULE 7 — BALL ROTATION (ID 13): Do not look for full rotations. Compare the seam/line positions on the ball between consecutive frames while it is in the air. If the seam positions look DIFFERENT between frames = good rotation = high score. Only score low if the seams look identical across multiple frames.
+
+RULE 8 — BALL ARC/ROTATION: only assess during clean forward flight, not after rim or backboard contact.
+
+RULE 9 — SCALE (each criterion scored independently):
+- 10 = perfect, no visible flaws
+- 9 = near perfect, tiny details only
 - 8–8.5 = very good, minor issues
 - 7–7.5 = good, some room to improve
 - 5–6 = average, clear issues
 - 3–4 = bad, obvious mistakes
 - 1–2 = fundamentally wrong
-A perfect elbow L-shape → 10. Perfect arc → 10. Perfect shot pocket → 10. Do not cap good things.
 
-RULE 4 — SUB-CRITERIA MATH: score each visible sub-criterion from full marks down. Skip only if completely hidden. Calculate: (scored points) ÷ (scoreable points) × 10.
-
-RULE 5 — BALL ROTATION: compare seam markings between frames in the air. Seams shifting clearly every frame = strong backspin = high score. Seams barely moving = no spin = low score.
-
-RULE 6 — BALL ARC/ROTATION: only assess during clean forward flight, not after rim or backboard contact.
+RULE 10 — SUB-CRITERIA MATH: score from full marks down, deduct only for clearly visible flaws. Calculate: (scored points) ÷ (scoreable points) × 10.
 
 For overall_score: average only scored criteria (exclude nulls).
 

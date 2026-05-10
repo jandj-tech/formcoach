@@ -75,10 +75,11 @@ You will receive ${n} sequential frames from a basketball shot. Use this frame m
 
 SCORING ALGORITHM — follow exactly for every criterion:
 1. Each criterion has sub-criteria with point values (e.g. [4pts], [3pts]) that total 10.
-2. For each sub-criterion, assess whether you can clearly see it. If yes, score it on its own scale (0 to its max). If not visible, skip it — do not guess.
+2. For each sub-criterion: only score it if you can CLEARLY and DIRECTLY see that specific detail (e.g. thumb position, palm contact, individual finger roll). If you are guessing, inferring, or the detail is obscured by camera distance, angle, or blur — skip it. Do not score what you cannot plainly see.
 3. Calculate: (sum of visible sub-scores) ÷ (sum of visible sub-maxes) × 10 = final score, rounded to 1 decimal.
-4. Only assign a final score if the visible sub-criteria represent at least 50% of the total 10 points. If less than 50% is visible, set score to null and briefly explain what could not be seen.
-5. In your reasoning, note the key things you observed and the score breakdown (e.g. "Saw 4/4 thumb spread, 2/3 grip control, palm not visible — scored from 7/7 visible points → 8.6").
+4. Only assign a final score if visible sub-criteria represent at least 60% of total points AND you are confident. If not, set score to null — an honest null is always better than a guessed score.
+5. When something IS clearly visible and looks excellent, give full marks for that sub-criterion. Do not hold back. A perfect arc should score 10. Perfect backspin should score 10. Only deduct when you can clearly see a flaw.
+6. In your reasoning, show what you saw and the breakdown (e.g. "Elbow under ball [4/4], forearm vertical [3/4], angle [1/2] — 8/10 visible → 8.0").
 
 For the overall_score, average only the criteria you scored (exclude nulls).
 

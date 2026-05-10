@@ -27,37 +27,38 @@ export async function analyzeShot(
     ORDER BY order_index
   `
 
-  const recentFeedback = await db`
-    SELECT c.name, cs.ai_score, cs.admin_score, cs.admin_notes
+  // Aggregate corrections per criterion: avg drift, latest notes, correction count
+  const calibration = await db`
+    SELECT
+      c.name,
+      cs.criterion_id,
+      ROUND(AVG(cs.admin_score - cs.ai_score)::numeric, 2) AS avg_drift,
+      COUNT(*) AS corrections,
+      MAX(cs.admin_notes) FILTER (WHERE cs.admin_notes IS NOT NULL AND cs.admin_notes != '') AS latest_note
     FROM criterion_scores cs
     JOIN criteria c ON cs.criterion_id = c.id
     WHERE cs.admin_score IS NOT NULL
-    ORDER BY cs.id DESC
-    LIMIT 40
+    GROUP BY c.name, cs.criterion_id
+    HAVING COUNT(*) >= 2
+    ORDER BY ABS(AVG(cs.admin_score - cs.ai_score)) DESC
   `
 
   const criteriaText = activeCriteria
-    .map(
-      (c) =>
-        `- ID ${c.id}: "${c.name}" — ${c.description} (weight: ${c.weight})`
-    )
+    .map((c) => `- ID ${c.id}: "${c.name}" — ${c.description}`)
     .join('\n')
 
   const feedbackText =
-    recentFeedback.length > 0
-      ? '\n\nCRITICAL — The following are human expert corrections to past AI scores. ' +
-        'You MUST apply these lessons to your scoring. If you see the same issues, score accordingly:\n' +
-        recentFeedback
-          .map(
-            (f) =>
-              `- "${f.name}": AI scored ${f.ai_score}/10 but expert corrected to ${f.admin_score}/10` +
-              (f.admin_notes ? ` — Expert note: "${f.admin_notes}"` : '') +
-              (Number(f.admin_score) > Number(f.ai_score)
-                ? ' (AI was too harsh — be more generous on this criterion)'
-                : Number(f.admin_score) < Number(f.ai_score)
-                ? ' (AI was too lenient — be stricter on this criterion)'
-                : ' (score was correct but reasoning needed improvement)')
-          )
+    calibration.length > 0
+      ? '\n\nCALIBRATION — Expert corrections from past analyses. Adjust your scoring accordingly:\n' +
+        calibration
+          .map((f) => {
+            const drift = Number(f.avg_drift)
+            const direction =
+              drift > 0
+                ? `you score ${Math.abs(drift).toFixed(1)} pts too LOW on average — be more generous`
+                : `you score ${Math.abs(drift).toFixed(1)} pts too HIGH on average — be stricter`
+            return `- "${f.name}" (${f.corrections} corrections): ${direction}${f.latest_note ? ` — Note: "${f.latest_note}"` : ''}`
+          })
           .join('\n')
       : ''
 

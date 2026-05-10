@@ -111,15 +111,17 @@ RULE 7 — GUIDE HAND (ID 3, 16): Only penalize if pushing or flicking is clearl
 RULE 8 — ARC/ROTATION: only assess during clean forward flight, not after rim or backboard contact.
 
 RULE 9 — SCALE (each criterion scored independently):
-- 10 = perfect, no visible flaws
-- 9 = near perfect, tiny details only
-- 8–8.5 = very good, minor issues
-- 7–7.5 = good, some room to improve
-- 5–6 = average, clear issues
+- 10 = no visible flaws found — use this whenever you cannot name a specific problem
+- 9 = one small but clearly visible detail is off
+- 8–8.5 = minor issue that is clearly visible
+- 7–7.5 = good, some room to improve, clear issues visible
+- 5–6 = average, obvious problems
 - 3–4 = bad, obvious mistakes
 - 1–2 = fundamentally wrong
 
 RULE 10 — SUB-CRITERIA MATH: score from full marks down, deduct only for clearly visible flaws. Calculate: (scored points) ÷ (scoreable points) × 10.
+
+RULE 11 — MANDATORY 10 RULE: If your reasoning does not name a SPECIFIC visible flaw (e.g. "elbow is 3 inches outside the ball" or "wrist does not snap downward"), you MUST give a 10. Saying "looks good", "solid form", "well executed", "appears correct", or "no issues" without naming a flaw = 10. Do not give 9 as a "safe" score — only give 9 if you can name exactly what the tiny detail is.
 
 For overall_score: average only scored criteria (exclude nulls).
 
@@ -174,14 +176,20 @@ Return ONLY valid JSON in this exact format, no other text:
 
   // Enforce: if reasoning uses hedging language for a negative, score must be >= 8.5
   const hedgeWords = /\b(may|might|appears to|seems|possibly|slight indication|could be|unclear)\b/i
+  // Enforce: if reasoning is purely positive (no flaw named), score must be 10
+  const positiveOnly = /\b(looks good|solid|well executed|no issues|no visible|correct|proper|good form|great|excellent|perfect|no problems|no flaws|no concerns|effectively|appropriately|demonstrates|maintains|shows good)\b/i
+  const flawWords = /\b(off|wide|low|high|outside|inside|drift|push|flick|snap|lean|drop|raise|missing|incorrect|wrong|poor|lacks|insufficient|limited|awkward|stiff|early|late|short|far)\b/i
+
   for (const criterion of result.criteria) {
-    if (
-      criterion.score !== null &&
-      criterion.score < 8.5 &&
-      criterion.reasoning &&
-      hedgeWords.test(criterion.reasoning)
-    ) {
+    if (criterion.score === null || !criterion.reasoning) continue
+
+    if (criterion.score < 8.5 && hedgeWords.test(criterion.reasoning)) {
       criterion.score = 8.5
+    }
+
+    // If reasoning is purely positive with no specific flaw word, bump to 10
+    if (criterion.score < 10 && criterion.score >= 8.5 && positiveOnly.test(criterion.reasoning) && !flawWords.test(criterion.reasoning)) {
+      criterion.score = 10
     }
   }
 

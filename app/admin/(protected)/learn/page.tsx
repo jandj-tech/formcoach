@@ -59,13 +59,24 @@ export default function LearnModePage() {
       }),
     })
 
+    // Update just this score in local state — don't reload everything so the panel stays open
+    setSubmissions((prev) =>
+      prev.map((s) => ({
+        ...s,
+        scores: s.scores?.map((score) =>
+          score.id === scoreId
+            ? { ...score, admin_score: parseFloat(c.score), admin_notes: c.notes || null }
+            : score
+        ),
+      }))
+    )
+
     setSaving(null)
     setCorrections((prev) => {
       const next = { ...prev }
       delete next[scoreId]
       return next
     })
-    await load()
   }
 
   return (

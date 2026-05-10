@@ -79,8 +79,38 @@ export default function ShopProduct({ usdToCad }: { usdToCad: number }) {
 
         {/* Product details */}
         <div className="flex flex-col gap-5">
-          <div className="inline-flex items-center gap-2 bg-orange-500/10 border border-orange-500/30 rounded-full px-4 py-1.5 self-start">
-            <span className="text-orange-500 text-xs font-semibold tracking-wider uppercase">In Stock</span>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="inline-flex items-center gap-2 bg-orange-500/10 border border-orange-500/30 rounded-full px-4 py-1.5">
+              <span className="text-orange-500 text-xs font-semibold tracking-wider uppercase">In Stock</span>
+            </div>
+            <div
+              role="group"
+              aria-label="Currency"
+              className="inline-flex items-center gap-1 bg-zinc-900 border border-zinc-800 rounded-full p-1"
+            >
+              <button
+                type="button"
+                onClick={() => setRegion('US')}
+                aria-pressed={region === 'US'}
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                  region === 'US' ? 'bg-orange-500 text-white' : 'text-white hover:bg-zinc-800'
+                }`}
+              >
+                <span aria-hidden className="text-sm leading-none">🇺🇸</span>
+                USD
+              </button>
+              <button
+                type="button"
+                onClick={() => setRegion('CA')}
+                aria-pressed={region === 'CA'}
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                  region === 'CA' ? 'bg-orange-500 text-white' : 'text-white hover:bg-zinc-800'
+                }`}
+              >
+                <span aria-hidden className="text-sm leading-none">🇨🇦</span>
+                CAD
+              </button>
+            </div>
           </div>
 
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white leading-tight">
@@ -91,41 +121,6 @@ export default function ShopProduct({ usdToCad }: { usdToCad: number }) {
             Built with Maple Basketball for serious shooters. Choose the edition that matches your shooting hand
             so the grip lines guide your form.
           </p>
-
-          {/* Region / currency selector */}
-          <div className="space-y-2">
-            <label className="block text-white text-xs font-semibold tracking-wider uppercase">Where are you shopping from?</label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => setRegion('US')}
-                className={`rounded-xl border-2 px-4 py-4 text-left transition-colors ${
-                  region === 'US'
-                    ? 'border-orange-500 bg-orange-500/10'
-                    : 'border-zinc-800 hover:border-zinc-700'
-                }`}
-              >
-                <div className="text-white font-bold text-base flex items-center gap-2">
-                  <span aria-hidden className="text-xl leading-none">🇺🇸</span>
-                  United States
-                </div>
-                <div className="text-white text-xs mt-1">Prices in USD</div>
-              </button>
-              <button
-                onClick={() => setRegion('CA')}
-                className={`rounded-xl border-2 px-4 py-4 text-left transition-colors ${
-                  region === 'CA'
-                    ? 'border-orange-500 bg-orange-500/10'
-                    : 'border-zinc-800 hover:border-zinc-700'
-                }`}
-              >
-                <div className="text-white font-bold text-base flex items-center gap-2">
-                  <span aria-hidden className="text-xl leading-none">🇨🇦</span>
-                  Canada
-                </div>
-                <div className="text-white text-xs mt-1">Prices in CAD</div>
-              </button>
-            </div>
-          </div>
 
           <div className="text-3xl font-black text-white">
             {displayPrice} <span className="text-white text-sm font-medium">{currencyLabel}</span>

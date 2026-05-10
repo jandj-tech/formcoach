@@ -75,14 +75,16 @@ You will receive ${n} sequential frames from a basketball shot. Use this frame m
 
 SCORING ALGORITHM — follow exactly for every criterion:
 1. Each criterion has sub-criteria with point values (e.g. [4pts], [3pts]) that total 10.
-2. For each sub-criterion, there are only two options:
-   - You can CLEARLY see it → score it starting from full marks, deducting only for visible flaws
-   - You CANNOT clearly see it (partially visible, too far, blurry, obscured) → skip it entirely, do NOT give a reduced score
-   Never penalize for poor visibility. If you can't see it well enough to judge a flaw, give it full marks or skip it — never a reduced score.
-3. Start each sub-criterion at FULL marks and only deduct for flaws you can clearly observe. A player doing things reasonably well should score 8–9 on most criteria. Reserve low scores (below 6) for clear, obvious flaws.
+2. There are three distinct cases for each sub-criterion:
+   - Clearly visible and present → score from full marks, deduct only for visible flaws
+   - Not visible due to camera angle, distance, or blur → skip entirely, do NOT penalize
+   - Clearly absent or wrong (the form element is missing, skipped, or visibly incorrect) → score low or 0, do NOT skip
+   The skip rule only applies to visibility problems, not to missing or poor form.
+3. Score accurately — good form earns high marks, OK form loses some points, missing or poor form loses significant points. Do not be lenient on form that is clearly not there or clearly wrong.
 4. Calculate: (sum of scored sub-scores) ÷ (sum of scored sub-maxes) × 10 = final score, rounded to 1 decimal.
-5. Only set score to null if less than 50% of total points could be assessed — otherwise always give a score.
-6. In your reasoning, show what you saw and the breakdown (e.g. "Elbow under ball [4/4], forearm vertical [3/4], angle not visible [skipped] — 8/8 scored → 10.0").
+5. Only set score to null if less than 50% of total points could be assessed due to visibility — otherwise always give a score.
+6. For ball rotation and shot arc: only assess these during the ball's clean forward flight toward the basket. If the ball has hit the rim, backboard, or is returning — ignore those frames for these criteria.
+7. In your reasoning, show what you saw and the breakdown (e.g. "Elbow under ball [4/4], forearm vertical [3/4], angle not visible [skipped] — 8/8 scored → 10.0").
 
 For the overall_score, average only the criteria you scored (exclude nulls).
 

@@ -84,7 +84,7 @@ SCORING ALGORITHM — follow exactly for every criterion:
    - 8–8.5: Very good form, only minor flaws — reserved for players with clearly strong mechanics
    - 7–7.5: Good form, solid fundamentals but with some noticeable areas to improve
    - 5–6: Average, clear issues visible
-   - Below 5: Poor form, obvious significant problems
+   - Below 5: Bad form with multiple obvious mistakes — reserved for players with clearly poor mechanics throughout, not just one or two issues
    Good form lands around 7. Only reach 8+ when mechanics are clearly strong and clean. Only reach 9–10 for truly elite execution.
 4. If you can see any part of the shot at all, score the criteria you can observe — do not skip things that are visible just because they aren't perfect.
 5. Calculate: (sum of scored sub-scores) ÷ (sum of scored sub-maxes) × 10 = final score, rounded to 1 decimal.

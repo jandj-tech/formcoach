@@ -62,18 +62,19 @@ export default function CriteriaShowcase({
   if (criteria.length === 0) return null
 
   return (
-    <section className="px-0 py-12 sm:py-16 max-w-6xl mx-auto w-full">
-      <div className="flex flex-col items-center text-center mb-8 px-4">
-        <div className="inline-flex items-center gap-2 bg-orange-500/10 border border-orange-500/30 rounded-full px-4 py-1.5 mb-5">
-          <span className="text-orange-500 text-xs font-semibold tracking-wider uppercase">{criteria.length} Coaching Criteria</span>
+    <section className="bg-black py-14 sm:py-20">
+      <div className="max-w-6xl mx-auto w-full">
+        <div className="flex flex-col items-center text-center mb-8 px-4">
+          <div className="inline-flex items-center gap-2 bg-orange-500/10 border border-orange-500/30 rounded-full px-4 py-1.5 mb-5">
+            <span className="text-orange-500 text-xs font-semibold tracking-wider uppercase">{criteria.length} Coaching Criteria</span>
+          </div>
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-white leading-tight">
+            The fundamentals of <span className="text-orange-500">a great shot</span>
+          </h2>
+          <p className="text-white text-base mt-4 max-w-xl leading-relaxed">
+            Every shot you upload is scored against these criteria. Tap any one to watch a video that breaks it down.
+          </p>
         </div>
-        <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-black leading-tight">
-          The fundamentals of <span className="text-orange-500">a great shot</span>
-        </h2>
-        <p className="text-black text-base mt-4 max-w-xl leading-relaxed">
-          Every shot you upload is scored against these criteria. Tap any one to watch a video that breaks it down.
-        </p>
-      </div>
 
       <div className="relative">
         <div className="overflow-hidden" ref={emblaRef}>
@@ -86,13 +87,13 @@ export default function CriteriaShowcase({
                   key={c.id}
                   className="shrink-0 basis-[85%] sm:basis-[48%] lg:basis-[32%]"
                 >
-                  <div className="bg-gray-50 rounded-xl border border-gray-200 p-5 flex flex-col gap-3 h-full">
+                  <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-5 flex flex-col gap-3 h-full">
                     <div className="w-8 h-8 rounded-full bg-orange-500 text-white font-bold text-sm flex items-center justify-center">
                       {String(i + 1).padStart(2, '0')}
                     </div>
-                    <h3 className="text-black font-bold text-base leading-tight">{c.name}</h3>
+                    <h3 className="text-white font-bold text-base leading-tight">{c.name}</h3>
                     {c.description && (
-                      <p className="text-black text-xs leading-relaxed line-clamp-3 flex-1">{c.description}</p>
+                      <p className="text-white text-xs leading-relaxed line-clamp-3 flex-1">{c.description}</p>
                     )}
 
                     {videoId ? (
@@ -169,15 +170,16 @@ export default function CriteriaShowcase({
         </button>
       </div>
 
-      <div className="flex justify-center mt-10 px-4">
-        <a
-          href={CHANNEL_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="bg-orange-500 hover:bg-red-600 text-white font-bold px-8 py-3 rounded-xl text-base transition-colors"
-        >
-          Check out our channel →
-        </a>
+        <div className="flex justify-center mt-10 px-4">
+          <a
+            href={CHANNEL_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-orange-500 hover:bg-red-600 text-white font-bold px-8 py-3 rounded-xl text-base transition-colors"
+          >
+            Check out our channel →
+          </a>
+        </div>
       </div>
     </section>
   )

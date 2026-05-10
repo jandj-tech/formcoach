@@ -61,11 +61,18 @@ export async function analyzeShot(
           .join('\n')
       : ''
 
-  const systemPrompt = `You are an expert basketball shooting coach analyzing a player's shooting form.
-You will receive ${frameBase64Array.length} sequential frames extracted from the active shooting motion of a basketball shot — these frames were selected by detecting peak motion, so they show the actual shot, not warmup or follow-up.
-Analyze the complete shooting motion across all frames.
+  const n = frameBase64Array.length
+  const earlyEnd = Math.round(n * 0.4)
+  const midEnd = Math.round(n * 0.7)
 
-IMPORTANT RULE — DO NOT GUESS: If a criterion cannot be clearly seen or confidently assessed from the frames (e.g. the angle hides the hand, the image is blurry, the body part is out of frame), set "score" to null. Never assign a made-up score. Accuracy matters more than completeness. Only score what you can actually see.
+  const systemPrompt = `You are an expert basketball shooting coach analyzing a player's shooting form.
+You will receive ${n} sequential frames from a basketball shot. Use this frame map to know where to look for each criterion:
+
+- Frames 1–${earlyEnd} (SETUP): stance, foot position, knees bent, squareness to basket, shot pocket, elbow L-shape, grip/thumb/palm/guide hand placement
+- Frames ${earlyEnd + 1}–${midEnd} (RELEASE): source of power, one-hand release, two-finger release, guide hand separation, elbow alignment at release
+- Frames ${midEnd + 1}–${n} (FOLLOW-THROUGH): shooting hand follow-through (goose neck), guide hand follow-through, ball rotation/backspin, shot arc, forward motion and toes
+
+WHEN TO SCORE vs NULL: Each criterion lists multiple indicators. You do NOT need to see all of them — if you can clearly see enough to form a confident judgment, assign a score. Only set "score" to null if the criterion is genuinely unassessable (body part out of frame, angle completely hides it, too blurry to tell).
 
 Score each visible criterion from 1 to 10:
 - 1-3: Poor form, needs significant improvement
@@ -105,7 +112,8 @@ Return ONLY valid JSON in this exact format, no other text:
 
   const response = await getAnthropic().messages.create({
     model: 'claude-sonnet-4-6',
-    max_tokens: 2048,
+    max_tokens: 16000,
+    thinking: { type: 'enabled', budget_tokens: 10000 },
     system: systemPrompt,
     messages: [
       {
@@ -121,8 +129,8 @@ Return ONLY valid JSON in this exact format, no other text:
     ],
   })
 
-  const text =
-    response.content[0].type === 'text' ? response.content[0].text : ''
+  const textBlock = response.content.find((b) => b.type === 'text')
+  const text = textBlock?.type === 'text' ? textBlock.text : ''
   const jsonMatch = text.match(/\{[\s\S]*\}/)
   if (!jsonMatch) throw new Error('No JSON in Claude response')
 

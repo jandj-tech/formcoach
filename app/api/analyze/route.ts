@@ -4,7 +4,7 @@ import { db } from '@/lib/db'
 import { analyzeShot } from '@/lib/analyze'
 import crypto from 'crypto'
 
-export const maxDuration = 120
+export const maxDuration = 300
 
 export async function POST(req: NextRequest) {
   try {

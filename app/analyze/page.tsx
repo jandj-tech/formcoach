@@ -11,7 +11,7 @@ export default function AnalyzePage() {
           Analyze your <span className="text-orange-500">shot</span>
         </h1>
         <p className="text-gray-500 text-sm sm:text-base mt-3 max-w-md">
-          Upload a video and our AI will score your form across 18 coaching criteria.
+          Upload a video and our AI will score your form across 17 coaching criteria.
         </p>
       </section>
 

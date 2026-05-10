@@ -66,7 +66,7 @@ export default function GatePage({ params }: { params: Promise<{ id: string }> }
                   <span className="text-green-500">✓</span> Overall shot score
                 </div>
                 <div className="flex items-center gap-3 text-sm text-gray-700">
-                  <span className="text-green-500">✓</span> Score for each of 18 criteria
+                  <span className="text-green-500">✓</span> Score for each of 17 criteria
                 </div>
                 <div className="flex items-center gap-3 text-sm text-gray-700">
                   <span className="text-green-500">✓</span> AI coaching notes per criterion

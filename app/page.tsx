@@ -16,7 +16,7 @@ export default function HomePage() {
           <span className="text-orange-500">professionally analyzed</span>
         </h1>
         <p className="text-gray-500 text-base sm:text-lg mt-4 max-w-lg leading-relaxed px-2">
-          Upload a video of your shot. Our AI studies 12 frames and scores 18 key form criteria — instantly.
+          Upload a video of your shot. Our AI studies 12 frames and scores 17 key form criteria — instantly.
         </p>
 
         {/* CTA Buttons */}
@@ -40,7 +40,7 @@ export default function HomePage() {
       <section className="grid grid-cols-1 sm:grid-cols-3 gap-4 px-4 py-8 max-w-3xl mx-auto w-full">
         {[
           { num: '1', title: 'Upload Your Video', desc: 'Any angle, any device. MP4 or MOV.' },
-          { num: '2', title: 'AI Analyzes Your Form', desc: '12 frames studied across 18 coaching criteria.' },
+          { num: '2', title: 'AI Analyzes Your Form', desc: '12 frames studied across 17 coaching criteria.' },
           { num: '3', title: 'Get Your Results', desc: 'We email you a private breakdown with scores & tips.' },
         ].map((step) => (
           <div key={step.num} className="bg-gray-50 rounded-xl p-5 text-center border border-gray-200">

@@ -92,7 +92,7 @@ ${feedbackText}
 
 NOW SCORE EACH CRITERION USING THESE EXACT RULES:
 
-RULE 1 — CERTAINTY REQUIRED TO DEDUCT. If your reasoning includes words like "may", "might", "slight indication", "possibly", "appears to", "seems like" — that is NOT certain enough to deduct points. Only deduct when you can state clearly and confidently what the flaw is. Uncertainty = no deduction.
+RULE 1 — MANDATORY SCORE OVERRIDE: Before writing any score, check your own reasoning. If your reasoning for a problem uses ANY of these words: "may", "might", "appears to", "seems", "possibly", "slight indication", "could be", "looks like it might", "unclear" — your score for that criterion MUST be 8.5 or higher. You are not certain enough to deduct. This is not optional — if you used hedging language, set the score to 8.5 minimum.
 
 RULE 2 — EXCEPTIONS (null if not clearly visible up close):
 - ID 2 "Thumb is Spread Wide": null if thumb not clearly visible
@@ -170,5 +170,28 @@ Return ONLY valid JSON in this exact format, no other text:
   const jsonMatch = text.match(/\{[\s\S]*\}/)
   if (!jsonMatch) throw new Error('No JSON in Claude response')
 
-  return JSON.parse(jsonMatch[0]) as AnalysisResult
+  const result = JSON.parse(jsonMatch[0]) as AnalysisResult
+
+  // Enforce: if reasoning uses hedging language for a negative, score must be >= 8.5
+  const hedgeWords = /\b(may|might|appears to|seems|possibly|slight indication|could be|unclear)\b/i
+  for (const criterion of result.criteria) {
+    if (
+      criterion.score !== null &&
+      criterion.score < 8.5 &&
+      criterion.reasoning &&
+      hedgeWords.test(criterion.reasoning)
+    ) {
+      criterion.score = 8.5
+    }
+  }
+
+  // Recalculate overall from adjusted scores
+  const scored = result.criteria.filter(c => c.score !== null)
+  if (scored.length > 0) {
+    result.overall_score = Math.round(
+      (scored.reduce((sum, c) => sum + (c.score as number), 0) / scored.length) * 10
+    ) / 10
+  }
+
+  return result
 }

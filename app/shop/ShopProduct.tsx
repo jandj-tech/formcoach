@@ -4,6 +4,7 @@ import { useState } from 'react'
 
 type Variant = 'right' | 'left'
 type Size = '5' | '6' | '7'
+type Region = 'US' | 'CA'
 
 const SIZES: { value: Size; inches: string; label: string }[] = [
   { value: '5', inches: '27.5"', label: 'Youth' },
@@ -11,11 +12,26 @@ const SIZES: { value: Size; inches: string; label: string }[] = [
   { value: '7', inches: '29.5"', label: "Men's" },
 ]
 
-export default function ShopProduct() {
+const PRICE_USD = 49.99
+
+function formatCurrency(amount: number, currency: 'USD' | 'CAD') {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency,
+  }).format(amount)
+}
+
+export default function ShopProduct({ usdToCad }: { usdToCad: number }) {
+  const [region, setRegion] = useState<Region>('US')
   const [variant, setVariant] = useState<Variant>('right')
   const [size, setSize] = useState<Size>('7')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  const priceCad = Math.round(PRICE_USD * usdToCad * 100) / 100
+  const displayPrice =
+    region === 'CA' ? formatCurrency(priceCad, 'CAD') : formatCurrency(PRICE_USD, 'USD')
+  const currencyLabel = region === 'CA' ? 'CAD' : 'USD'
 
   async function handleBuy() {
     setLoading(true)
@@ -24,7 +40,7 @@ export default function ShopProduct() {
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ variant, size }),
+        body: JSON.stringify({ variant, size, region }),
       })
       const data = await res.json()
       if (!res.ok || !data.url) {
@@ -76,7 +92,44 @@ export default function ShopProduct() {
             so the grip lines guide your form.
           </p>
 
-          <div className="text-3xl font-black text-white">$49.99 <span className="text-white text-sm font-medium">USD</span></div>
+          {/* Region / currency selector */}
+          <div className="space-y-2">
+            <label className="block text-white text-xs font-semibold tracking-wider uppercase">Where are you shopping from?</label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => setRegion('US')}
+                className={`rounded-xl border-2 px-4 py-4 text-left transition-colors ${
+                  region === 'US'
+                    ? 'border-orange-500 bg-orange-500/10'
+                    : 'border-zinc-800 hover:border-zinc-700'
+                }`}
+              >
+                <div className="text-white font-bold text-base flex items-center gap-2">
+                  <span aria-hidden className="text-xl leading-none">🇺🇸</span>
+                  United States
+                </div>
+                <div className="text-white text-xs mt-1">Prices in USD</div>
+              </button>
+              <button
+                onClick={() => setRegion('CA')}
+                className={`rounded-xl border-2 px-4 py-4 text-left transition-colors ${
+                  region === 'CA'
+                    ? 'border-orange-500 bg-orange-500/10'
+                    : 'border-zinc-800 hover:border-zinc-700'
+                }`}
+              >
+                <div className="text-white font-bold text-base flex items-center gap-2">
+                  <span aria-hidden className="text-xl leading-none">🇨🇦</span>
+                  Canada
+                </div>
+                <div className="text-white text-xs mt-1">Prices in CAD</div>
+              </button>
+            </div>
+          </div>
+
+          <div className="text-3xl font-black text-white">
+            {displayPrice} <span className="text-white text-sm font-medium">{currencyLabel}</span>
+          </div>
 
           {/* Variant selector */}
           <div className="space-y-2">
@@ -134,7 +187,7 @@ export default function ShopProduct() {
             disabled={loading}
             className="bg-orange-500 hover:bg-red-600 disabled:opacity-50 text-white font-bold px-8 py-4 rounded-xl text-base transition-colors w-full sm:w-auto"
           >
-            {loading ? 'Redirecting to checkout…' : `Buy Now — $49.99`}
+            {loading ? 'Redirecting to checkout…' : `Buy Now — ${displayPrice}`}
           </button>
 
           {error && <p className="text-red-500 text-sm">{error}</p>}

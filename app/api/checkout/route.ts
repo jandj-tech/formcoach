@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getStripe, PRODUCT } from '@/lib/stripe'
+import { getUsdToCadRate } from '@/lib/fx'
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL && process.env.NEXT_PUBLIC_BASE_URL !== 'http://localhost:3000'
   ? process.env.NEXT_PUBLIC_BASE_URL
@@ -15,13 +16,24 @@ const SIZE_INCHES: Record<string, string> = {
 
 export async function POST(req: NextRequest) {
   try {
-    const { variant, size } = await req.json()
+    const { variant, size, region } = await req.json()
 
     if (variant !== 'left' && variant !== 'right') {
       return NextResponse.json({ error: 'Invalid variant' }, { status: 400 })
     }
     if (size !== '5' && size !== '6' && size !== '7') {
       return NextResponse.json({ error: 'Invalid size' }, { status: 400 })
+    }
+    if (region !== 'US' && region !== 'CA') {
+      return NextResponse.json({ error: 'Invalid region' }, { status: 400 })
+    }
+
+    let currency: 'usd' | 'cad' = 'usd'
+    let unitAmount = PRODUCT.priceCents
+    if (region === 'CA') {
+      const rate = await getUsdToCadRate()
+      currency = 'cad'
+      unitAmount = Math.round(PRODUCT.priceCents * rate)
     }
 
     const variantLabel = variant === 'left' ? 'Left-handed' : 'Right-handed'
@@ -34,8 +46,8 @@ export async function POST(req: NextRequest) {
         {
           quantity: 1,
           price_data: {
-            currency: PRODUCT.currency,
-            unit_amount: PRODUCT.priceCents,
+            currency,
+            unit_amount: unitAmount,
             product_data: {
               name: `${PRODUCT.name} — ${variantLabel}, ${sizeLabel}`,
               description: 'Co-designed with Maple Basketball.',
@@ -45,7 +57,7 @@ export async function POST(req: NextRequest) {
       ],
       shipping_address_collection: { allowed_countries: ['US', 'CA'] },
       phone_number_collection: { enabled: true },
-      metadata: { variant, size },
+      metadata: { variant, size, region },
       success_url: `${BASE_URL}/shop/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${BASE_URL}/shop`,
     })

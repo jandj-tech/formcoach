@@ -113,8 +113,7 @@ Return ONLY valid JSON in this exact format, no other text:
 
   const response = await getAnthropic().messages.create({
     model: 'claude-sonnet-4-6',
-    max_tokens: 5000,
-    thinking: { type: 'enabled', budget_tokens: 500 },
+    max_tokens: 4000,
     system: systemPrompt,
     messages: [
       {

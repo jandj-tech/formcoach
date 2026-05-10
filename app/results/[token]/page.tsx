@@ -56,7 +56,7 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
               <ScoreCard
                 key={s.id}
                 name={s.name}
-                score={Number(s.ai_score)}
+                score={s.ai_score !== null ? Number(s.ai_score) : null}
                 reasoning={s.ai_reasoning}
               />
             ))}

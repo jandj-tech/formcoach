@@ -1,6 +1,6 @@
 interface ScoreCardProps {
   name: string
-  score: number
+  score: number | null
   reasoning: string
 }
 
@@ -27,6 +27,18 @@ function scoreLabel(score: number) {
 }
 
 export default function ScoreCard({ name, score, reasoning }: ScoreCardProps) {
+  if (score === null) {
+    return (
+      <div className="bg-gray-50 rounded-xl p-5 border border-gray-200 opacity-75">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-gray-700 font-semibold text-sm">{name}</h3>
+          <span className="text-xs font-medium text-gray-400 bg-gray-200 px-2 py-0.5 rounded-full">Not visible</span>
+        </div>
+        <p className="text-gray-400 text-xs leading-relaxed italic">{reasoning}</p>
+      </div>
+    )
+  }
+
   const pct = (score / 10) * 100
 
   return (

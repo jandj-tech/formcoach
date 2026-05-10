@@ -7,7 +7,7 @@ function getAnthropic() {
 
 interface CriterionResult {
   id: number
-  score: number
+  score: number | null
   reasoning: string
 }
 
@@ -65,11 +65,15 @@ export async function analyzeShot(
 You will receive ${frameBase64Array.length} sequential frames extracted from the active shooting motion of a basketball shot — these frames were selected by detecting peak motion, so they show the actual shot, not warmup or follow-up.
 Analyze the complete shooting motion across all frames.
 
-Score each criterion from 1 to 10:
+IMPORTANT RULE — DO NOT GUESS: If a criterion cannot be clearly seen or confidently assessed from the frames (e.g. the angle hides the hand, the image is blurry, the body part is out of frame), set "score" to null. Never assign a made-up score. Accuracy matters more than completeness. Only score what you can actually see.
+
+Score each visible criterion from 1 to 10:
 - 1-3: Poor form, needs significant improvement
 - 4-6: Average form, room for improvement
 - 7-8: Good form, minor adjustments needed
 - 9-10: Excellent form
+
+For the overall_score, only average the criteria you were able to score (exclude nulls).
 
 Scoring criteria:
 ${criteriaText}
@@ -77,9 +81,9 @@ ${feedbackText}
 
 Return ONLY valid JSON in this exact format, no other text:
 {
-  "overall_score": <weighted average 1-10, one decimal>,
+  "overall_score": <average of scored criteria only, 1-10, one decimal>,
   "criteria": [
-    { "id": <criterion_id>, "score": <1-10>, "reasoning": "<1-2 sentences explaining the score>" },
+    { "id": <criterion_id>, "score": <1-10 or null if not clearly visible>, "reasoning": "<1-2 sentences — if null, explain what prevented assessment>" },
     ...
   ]
 }`

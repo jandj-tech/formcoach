@@ -4,7 +4,7 @@ import { useCallback, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 const FRAME_COUNT = 20
-const PROBE_COUNT = 20  // low-res frames to detect shot window
+const PROBE_COUNT = 30  // low-res frames to detect shot window
 
 export default function VideoUploader() {
   const [isDragging, setIsDragging] = useState(false)

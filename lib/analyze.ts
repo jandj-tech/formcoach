@@ -90,38 +90,24 @@ Scoring criteria (read each carefully before scoring):
 ${criteriaText}
 ${feedbackText}
 
-NOW SCORE EACH CRITERION USING THESE EXACT RULES:
+HOW TO SCORE:
 
-RULE 1 — MANDATORY SCORE OVERRIDE: Before writing any score, check your own reasoning. If your reasoning for a problem uses ANY of these words: "may", "might", "appears to", "seems", "possibly", "slight indication", "could be", "looks like it might", "unclear" — your score for that criterion MUST be 8.5 or higher. You are not certain enough to deduct. This is not optional — if you used hedging language, set the score to 8.5 minimum.
+Use the sub-criteria breakdown in each criterion's grading guide. Score each sub-criterion individually, then calculate the final score using the formula shown (e.g. "Score = (scored pts ÷ 10) × 10"). Only deduct points for flaws you can clearly and confidently see. If you cannot clearly see whether something is a flaw, give full points for that sub-criterion.
 
-RULE 2 — EXCEPTIONS (null if not clearly visible up close):
-- ID 2 "Thumb is Spread Wide": null if thumb not clearly visible
-- ID 4 "Palm Non-Contact": null if palm/finger pads not clearly visible
+CATCH-AND-SHOOT: First check if the player catches a pass before shooting. Signs: another player or hand visible passing the ball, ball arriving from outside the frame, player still rotating to face the basket. All such frames and the adjustment period right after are CATCH FRAMES — ignore them completely. The elbow being out to the side during a catch is normal and must never be penalized. Only begin evaluating from the frame where the player has the ball fully in control and is facing the basket.
 
-RULE 3 — CATCH-AND-SHOOT VIDEOS: First, scan all frames to detect if this is a catch-and-shoot. Signs: another player or hand visible throwing/passing the ball, ball arriving from outside the frame, or player's body still rotating to face basket. If any of these appear, all such frames and the immediately following adjustment frames are CATCH FRAMES — treat them as if they do not exist. The elbow being out to the side during a catch is NORMAL and must never be penalized. Begin scoring only from the frame where the player has the ball fully under control AND is facing the basket AND is about to begin their loading motion. When in doubt about whether a frame is a catch frame, skip it.
+EXCEPTIONS — return null (not scoreable) when:
+- ID 2 "Thumb": thumb is not clearly visible in close-up
+- ID 4 "Palm": palm and finger pads are not clearly visible in close-up
 
-RULE 4 — ELBOW L-SHAPE (ID 5): Scan all non-catch frames. Find the single best frame where the elbow forms an L during the actual shooting motion. If you can see an L-shape at ANY point during the actual shot (not catch), score it based on that best frame. Score high if the L is visible at all during the shot loading or release.
-
-RULE 5 — SHOT POCKET (ID 6): The shot pocket is the deliberate loading position AFTER the catch is fully settled AND before the upward shooting motion begins. Do NOT score the ball position during the catch or during any rotation/adjustment phase. Find the frame where the player has fully settled with the ball and is loading up to shoot — that is the only frame to evaluate.
-
-RULE 6 — FOLLOW-THROUGH DIRECTION (ID 15): Only deduct if follow-through direction is CLEARLY and OBVIOUSLY wrong. If you are not certain, give full marks.
-
-RULE 7 — GUIDE HAND (ID 3, 16): Only penalize if pushing or flicking is clearly confirmed. If you say "may flick" or "slight indication" — that is not confirmed, give full marks.
-
-RULE 8 — ARC/ROTATION: only assess during clean forward flight, not after rim or backboard contact.
-
-RULE 9 — SCALE (each criterion scored independently):
-- 10 = no visible flaws found — use this whenever you cannot name a specific problem
-- 9 = one small but clearly visible detail is off
-- 8–8.5 = minor issue that is clearly visible
-- 7–7.5 = good, some room to improve, clear issues visible
+SCALE (for reference):
+- 10 = no visible flaws
+- 9 = one small clearly visible detail off
+- 8–8.5 = minor clearly visible issue
+- 7–7.5 = decent, clear room to improve
 - 5–6 = average, obvious problems
-- 3–4 = bad, obvious mistakes
+- 3–4 = poor, obvious mistakes
 - 1–2 = fundamentally wrong
-
-RULE 10 — SUB-CRITERIA MATH: score from full marks down, deduct only for clearly visible flaws. Calculate: (scored points) ÷ (scoreable points) × 10.
-
-RULE 11 — MANDATORY 10 RULE: If your reasoning does not name a SPECIFIC visible flaw (e.g. "elbow is 3 inches outside the ball" or "wrist does not snap downward"), you MUST give a 10. Saying "looks good", "solid form", "well executed", "appears correct", or "no issues" without naming a flaw = 10. Do not give 9 as a "safe" score — only give 9 if you can name exactly what the tiny detail is.
 
 For overall_score: average only scored criteria (exclude nulls).
 
@@ -173,25 +159,6 @@ Return ONLY valid JSON in this exact format, no other text:
   if (!jsonMatch) throw new Error('No JSON in Claude response')
 
   const result = JSON.parse(jsonMatch[0]) as AnalysisResult
-
-  // Enforce: if reasoning uses hedging language for a negative, score must be >= 8.5
-  const hedgeWords = /\b(may|might|appears to|seems|possibly|slight indication|could be|unclear)\b/i
-  // Enforce: if reasoning is purely positive (no flaw named), score must be 10
-  const positiveOnly = /\b(looks good|solid|well executed|no issues|no visible|correct|proper|good form|great|excellent|perfect|no problems|no flaws|no concerns|effectively|appropriately|demonstrates|maintains|shows good)\b/i
-  const flawWords = /\b(off|wide|low|high|outside|inside|drift|push|flick|snap|lean|drop|raise|missing|incorrect|wrong|poor|lacks|insufficient|limited|awkward|stiff|early|late|short|far)\b/i
-
-  for (const criterion of result.criteria) {
-    if (criterion.score === null || !criterion.reasoning) continue
-
-    if (criterion.score < 8.5 && hedgeWords.test(criterion.reasoning)) {
-      criterion.score = 8.5
-    }
-
-    // If reasoning is purely positive with no specific flaw word, bump to 10
-    if (criterion.score < 10 && criterion.score >= 8.5 && positiveOnly.test(criterion.reasoning) && !flawWords.test(criterion.reasoning)) {
-      criterion.score = 10
-    }
-  }
 
   // Recalculate overall from adjusted scores
   const scored = result.criteria.filter(c => c.score !== null)

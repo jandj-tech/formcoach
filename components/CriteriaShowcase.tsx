@@ -156,7 +156,7 @@ export default function CriteriaShowcase({
                       >
                         <div className="overflow-hidden">
                           {isOpen && (
-                            <div className="aspect-video bg-black rounded-lg overflow-hidden">
+                            <div className="aspect-video bg-black rounded-lg overflow-hidden animate-in fade-in-0 slide-in-from-top-2 duration-300 ease-out">
                               <iframe
                                 src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0`}
                                 title={c.name}

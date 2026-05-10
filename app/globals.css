@@ -134,3 +134,33 @@ body {
   overflow-x: clip;
   max-width: 100vw;
 }
+
+::view-transition-old(.page-fade) {
+  animation: 150ms ease-in both page-fade-out;
+}
+::view-transition-new(.page-fade) {
+  animation: 260ms ease-out 120ms both page-fade-in;
+}
+@keyframes page-fade-out {
+  to {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+@keyframes page-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+  }
+}

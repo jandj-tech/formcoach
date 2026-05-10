@@ -1,6 +1,6 @@
-﻿import Image from 'next/image'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
+import AdminNav from './AdminNav'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies()
@@ -12,23 +12,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="min-h-screen bg-black">
-      <nav className="bg-zinc-950 border-b border-zinc-800 px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-3">
-            <Image src="/learnhoops-logo.png" alt="LearnHoops.com" width={578} height={113} style={{ height: '32px', width: 'auto' }} priority />
-            <span className="text-orange-500 font-black text-sm uppercase tracking-wider">Admin</span>
-          </div>
-          <div className="flex items-center gap-4 text-sm">
-            <a href="/admin" className="text-white hover:text-white transition-colors">Dashboard</a>
-            <a href="/admin/submissions" className="text-white hover:text-white transition-colors">Submissions</a>
-            <a href="/admin/criteria" className="text-white hover:text-white transition-colors">Criteria</a>
-            <a href="/admin/learn" className="text-white hover:text-white transition-colors">Learn Mode</a>
-            <a href="/admin/emails" className="text-white hover:text-white transition-colors">Emails</a>
-            <a href="/admin/orders" className="text-white hover:text-white transition-colors">Orders</a>
-          </div>
-        </div>
-        <a href="/" className="text-white hover:text-white text-sm transition-colors">← Back to site</a>
-      </nav>
+      <AdminNav />
       <div className="max-w-5xl mx-auto px-6 py-8">{children}</div>
     </div>
   )

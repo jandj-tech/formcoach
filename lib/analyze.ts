@@ -98,11 +98,11 @@ RULE 2 — EXCEPTIONS (null if not clearly visible up close):
 - ID 2 "Thumb is Spread Wide": null if thumb not clearly visible
 - ID 4 "Palm Non-Contact": null if palm/finger pads not clearly visible
 
-RULE 3 — CATCH-AND-SHOOT VIDEOS: If the player catches a pass, completely ignore all frames from the catch itself and any adjustment period immediately after. Only begin evaluating once the player has settled and is in their actual shooting stance loading up. The catch position is irrelevant.
+RULE 3 — CATCH-AND-SHOOT VIDEOS: First, scan all frames to detect if this is a catch-and-shoot. Signs: another player or hand visible throwing/passing the ball, ball arriving from outside the frame, or player's body still rotating to face basket. If any of these appear, all such frames and the immediately following adjustment frames are CATCH FRAMES — treat them as if they do not exist. The elbow being out to the side during a catch is NORMAL and must never be penalized. Begin scoring only from the frame where the player has the ball fully under control AND is facing the basket AND is about to begin their loading motion. When in doubt about whether a frame is a catch frame, skip it.
 
-RULE 4 — ELBOW L-SHAPE (ID 5): Scan all frames AFTER the catch is complete. Find the single best frame where the elbow forms an L. If you can see an L-shape at ANY point during the actual shot (not catch), score it based on that best frame. Score high if the L is visible at all.
+RULE 4 — ELBOW L-SHAPE (ID 5): Scan all non-catch frames. Find the single best frame where the elbow forms an L during the actual shooting motion. If you can see an L-shape at ANY point during the actual shot (not catch), score it based on that best frame. Score high if the L is visible at all during the shot loading or release.
 
-RULE 5 — SHOT POCKET (ID 6): Score the loading position AFTER the catch and BEFORE the upward motion. Ignore where the ball is during the catch. Only evaluate the intentional loading position.
+RULE 5 — SHOT POCKET (ID 6): The shot pocket is the deliberate loading position AFTER the catch is fully settled AND before the upward shooting motion begins. Do NOT score the ball position during the catch or during any rotation/adjustment phase. Find the frame where the player has fully settled with the ball and is loading up to shoot — that is the only frame to evaluate.
 
 RULE 6 — FOLLOW-THROUGH DIRECTION (ID 15): Only deduct if follow-through direction is CLEARLY and OBVIOUSLY wrong. If you are not certain, give full marks.
 

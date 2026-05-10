@@ -2,7 +2,7 @@ import { db } from '@/lib/db'
 
 export default async function OrdersPage() {
   const orders = await db`
-    SELECT id, stripe_session_id, email, customer_name, phone, variant,
+    SELECT id, stripe_session_id, email, customer_name, phone, variant, size,
            amount_total, currency,
            shipping_name, shipping_line1, shipping_line2, shipping_city,
            shipping_state, shipping_postal_code, shipping_country,
@@ -11,6 +11,8 @@ export default async function OrdersPage() {
     ORDER BY created_at DESC
     LIMIT 200
   `
+
+  const sizeInches: Record<string, string> = { '5': '27.5"', '6': '28.5"', '7': '29.5"' }
 
   const totalRevenue = orders.reduce((sum, o) => sum + Number(o.amount_total ?? 0), 0)
   const fmt = (cents: number) => `$${(cents / 100).toFixed(2)}`
@@ -31,6 +33,7 @@ export default async function OrdersPage() {
             <tr className="border-b border-zinc-800 text-white text-xs">
               <th className="text-left px-5 py-3">Customer</th>
               <th className="text-left px-5 py-3">Variant</th>
+              <th className="text-left px-5 py-3">Size</th>
               <th className="text-left px-5 py-3">Amount</th>
               <th className="text-left px-5 py-3">Shipping</th>
               <th className="text-left px-5 py-3">Status</th>
@@ -40,7 +43,7 @@ export default async function OrdersPage() {
           <tbody className="divide-y divide-zinc-800/50">
             {orders.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-5 py-6 text-white">No orders yet.</td>
+                <td colSpan={7} className="px-5 py-6 text-white">No orders yet.</td>
               </tr>
             ) : (
               orders.map((o) => (
@@ -54,6 +57,9 @@ export default async function OrdersPage() {
                     <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-500">
                       {o.variant === 'left' ? 'Left-handed' : 'Right-handed'}
                     </span>
+                  </td>
+                  <td className="px-5 py-3 text-white text-xs">
+                    {o.size ? <>Size {o.size} <span className="text-white">({sizeInches[String(o.size)] ?? '—'})</span></> : '—'}
                   </td>
                   <td className="px-5 py-3 text-orange-500 font-bold">
                     {fmt(Number(o.amount_total))}

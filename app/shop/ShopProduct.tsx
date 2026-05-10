@@ -3,9 +3,17 @@
 import { useState } from 'react'
 
 type Variant = 'right' | 'left'
+type Size = '5' | '6' | '7'
+
+const SIZES: { value: Size; inches: string; label: string }[] = [
+  { value: '5', inches: '27.5"', label: 'Youth' },
+  { value: '6', inches: '28.5"', label: "Women's" },
+  { value: '7', inches: '29.5"', label: "Men's" },
+]
 
 export default function ShopProduct() {
   const [variant, setVariant] = useState<Variant>('right')
+  const [size, setSize] = useState<Size>('7')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -16,7 +24,7 @@ export default function ShopProduct() {
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ variant }),
+        body: JSON.stringify({ variant, size }),
       })
       const data = await res.json()
       if (!res.ok || !data.url) {
@@ -96,6 +104,28 @@ export default function ShopProduct() {
                 <div className="text-white font-bold text-base">Left-handed</div>
                 <div className="text-white text-xs mt-1">For left-hand shooters</div>
               </button>
+            </div>
+          </div>
+
+          {/* Size selector */}
+          <div className="space-y-2">
+            <label className="block text-white text-xs font-semibold tracking-wider uppercase">Size</label>
+            <div className="grid grid-cols-3 gap-3">
+              {SIZES.map((s) => (
+                <button
+                  key={s.value}
+                  onClick={() => setSize(s.value)}
+                  className={`rounded-xl border-2 px-3 py-4 text-center transition-colors ${
+                    size === s.value
+                      ? 'border-orange-500 bg-orange-500/10'
+                      : 'border-zinc-800 hover:border-zinc-700'
+                  }`}
+                >
+                  <div className="text-white font-bold text-base">Size {s.value}</div>
+                  <div className="text-white text-xs mt-1">{s.inches}</div>
+                  <div className="text-white text-xs">{s.label}</div>
+                </button>
+              ))}
             </div>
           </div>
 

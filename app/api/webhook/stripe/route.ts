@@ -24,12 +24,17 @@ export async function POST(req: NextRequest) {
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session
     const variant = session.metadata?.variant
+    const size = session.metadata?.size
     const email = session.customer_details?.email
     const name = session.customer_details?.name
     const phone = session.customer_details?.phone
     const ship = session.collected_information?.shipping_details
 
-    if (!email || (variant !== 'left' && variant !== 'right')) {
+    if (
+      !email ||
+      (variant !== 'left' && variant !== 'right') ||
+      (size !== '5' && size !== '6' && size !== '7')
+    ) {
       console.error('Missing required fields on session', session.id)
       return NextResponse.json({ received: true })
     }
@@ -37,12 +42,12 @@ export async function POST(req: NextRequest) {
     try {
       await db`
         INSERT INTO orders (
-          stripe_session_id, email, customer_name, phone, variant,
+          stripe_session_id, email, customer_name, phone, variant, size,
           amount_total, currency,
           shipping_name, shipping_line1, shipping_line2,
           shipping_city, shipping_state, shipping_postal_code, shipping_country
         ) VALUES (
-          ${session.id}, ${email}, ${name ?? null}, ${phone ?? null}, ${variant},
+          ${session.id}, ${email}, ${name ?? null}, ${phone ?? null}, ${variant}, ${size},
           ${session.amount_total ?? 0}, ${session.currency ?? 'usd'},
           ${ship?.name ?? null}, ${ship?.address?.line1 ?? null}, ${ship?.address?.line2 ?? null},
           ${ship?.address?.city ?? null}, ${ship?.address?.state ?? null},

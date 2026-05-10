@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS orders (
   customer_name VARCHAR(255),
   phone VARCHAR(50),
   variant VARCHAR(20) NOT NULL CHECK (variant IN ('left','right')),
+  size VARCHAR(2) NOT NULL CHECK (size IN ('5','6','7')),
   amount_total INTEGER NOT NULL,
   currency VARCHAR(10) DEFAULT 'usd',
   shipping_name VARCHAR(255),
@@ -69,6 +70,9 @@ CREATE TABLE IF NOT EXISTS orders (
   status VARCHAR(20) DEFAULT 'paid',
   created_at TIMESTAMP DEFAULT NOW()
 );
+
+-- If orders table existed before size column was added
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS size VARCHAR(2);
 
 -- Seed custom criteria (only if table is empty)
 INSERT INTO criteria (name, description, weight, order_index)

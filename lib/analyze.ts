@@ -39,28 +39,42 @@ export async function analyzeShot(
     JOIN criteria c ON cs.criterion_id = c.id
     WHERE cs.admin_score IS NOT NULL
     GROUP BY c.name, cs.criterion_id
-    HAVING COUNT(*) >= 2
+    HAVING COUNT(*) >= 1
     ORDER BY ABS(AVG(cs.admin_score - cs.ai_score)) DESC
+  `
+
+  // Recent individual corrections with notes — captures grading style and reasoning
+  const recentCorrections = await db`
+    SELECT c.name, cs.ai_score, cs.admin_score, cs.admin_notes
+    FROM criterion_scores cs
+    JOIN criteria c ON cs.criterion_id = c.id
+    WHERE cs.admin_score IS NOT NULL
+    ORDER BY cs.id DESC
+    LIMIT 20
   `
 
   const criteriaText = activeCriteria
     .map((c) => `--- ID ${c.id}: "${c.name}"\n${c.grading_notes || c.description}`)
     .join('\n\n')
 
-  const feedbackText =
-    calibration.length > 0
-      ? '\n\nCALIBRATION — Expert corrections from past analyses. Adjust your scoring accordingly:\n' +
-        calibration
-          .map((f) => {
-            const drift = Number(f.avg_drift)
-            const direction =
-              drift > 0
-                ? `you score ${Math.abs(drift).toFixed(1)} pts too LOW on average — be more generous`
-                : `you score ${Math.abs(drift).toFixed(1)} pts too HIGH on average — be stricter`
-            return `- "${f.name}" (${f.corrections} corrections): ${direction}${f.latest_note ? ` — Note: "${f.latest_note}"` : ''}`
-          })
-          .join('\n')
-      : ''
+  const calibrationLines = calibration.map((f) => {
+    const drift = Number(f.avg_drift)
+    const direction =
+      drift > 0
+        ? `you score ${Math.abs(drift).toFixed(1)} pts too LOW — be more generous`
+        : `you score ${Math.abs(drift).toFixed(1)} pts too HIGH — be stricter`
+    return `- "${f.name}" (${f.corrections} correction${Number(f.corrections) > 1 ? 's' : ''}): ${direction}${f.latest_note ? ` — "${f.latest_note}"` : ''}`
+  })
+
+  const recentLines = recentCorrections
+    .filter((r) => r.admin_notes)
+    .map((r) => `- "${r.name}": scored ${r.ai_score} → corrected to ${r.admin_score} — "${r.admin_notes}"`)
+
+  const feedbackText = calibrationLines.length > 0 || recentLines.length > 0
+    ? '\n\nEXPERT GRADING CALIBRATION — This is how the expert grades. Study these corrections and apply the same judgment to your scoring:\n' +
+      (calibrationLines.length > 0 ? 'Score drift per criterion:\n' + calibrationLines.join('\n') : '') +
+      (recentLines.length > 0 ? '\n\nRecent corrections with reasoning (apply this grading style):\n' + recentLines.join('\n') : '')
+    : ''
 
   const n = frameBase64Array.length
   const earlyEnd = Math.round(n * 0.4)

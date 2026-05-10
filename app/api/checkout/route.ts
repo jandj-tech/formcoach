@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import type Stripe from 'stripe'
 import { getStripe, PRODUCT } from '@/lib/stripe'
 import { getUsdToCadRate } from '@/lib/fx'
 
@@ -66,7 +65,7 @@ export async function POST(req: NextRequest) {
       unitAmount = Math.round(PRODUCT.priceCents * rate)
     }
 
-    const line_items: Stripe.Checkout.SessionCreateParams.LineItem[] = items.map((it) => {
+    const line_items = items.map((it) => {
       const variantLabel = it.variant === 'left' ? 'Left-handed' : 'Right-handed'
       const sizeLabel = `Size ${it.size} (${SIZE_INCHES[it.size]})`
       return {

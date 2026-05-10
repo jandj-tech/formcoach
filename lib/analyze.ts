@@ -75,23 +75,23 @@ You will receive ${n} sequential frames from a basketball shot. Use this frame m
 
 SCORING ALGORITHM — follow exactly for every criterion:
 1. Each criterion has sub-criteria with point values (e.g. [4pts], [3pts]) that total 10.
-2. For each sub-criterion:
-   - Can see it clearly → score from FULL marks, only deduct for obvious visible flaws. If it looks good, give high marks.
-   - Cannot see it (camera distance, angle, blur) → skip it entirely, do NOT penalize visibility.
-   - Visibly and obviously wrong (clear flaw you can see) → deduct points proportional to how bad it looks.
-3. Use this scale:
-   - 9–10: Near perfect execution, elite level, almost nothing to improve
-   - 8–8.5: Very good form, only minor flaws — reserved for players with clearly strong mechanics
-   - 7–7.5: Good form, solid fundamentals but with some noticeable areas to improve
-   - 5–6: Average, clear issues visible
-   - 3–4: Bad form, clear and obvious mistakes on this criterion
-   - 1–2: Very bad form, the criterion is being done fundamentally wrong — mechanics are clearly incorrect
-   Good form lands around 7. Only reach 8+ when mechanics are clearly strong and clean. Only reach 9–10 for truly elite execution.
-4. If you can see any part of the shot at all, score the criteria you can observe — do not skip things that are visible just because they aren't perfect.
+2. SCORE EVERYTHING YOU CAN SEE. The default is to give a score. Only return null if a criterion is completely unassessable — the body part is fully out of frame or the shot angle makes it impossible to see anything relevant. If you can see the player shooting at all, most criteria should get a score.
+3. For each sub-criterion:
+   - Visible → score from FULL marks, deduct only for clear obvious flaws you can point to
+   - Not visible at all → skip that sub-criterion only (do not null the whole criterion unless 50%+ of points are unassessable)
+   - Visibly wrong → deduct proportional to how bad it looks
+4. Use this scale accurately:
+   - 10: Perfect execution on this criterion
+   - 9: Near perfect, tiny details only
+   - 8–8.5: Very good, clearly strong mechanics, minor issues
+   - 7–7.5: Good, solid fundamentals, some room to improve
+   - 5–6: Average, clear issues
+   - 3–4: Bad form, obvious mistakes
+   - 1–2: Fundamentally wrong mechanics
+   Good overall form lands ~7. Strong mechanics = 8+. Perfect arc, perfect rotation, perfect follow-through = 10. Do not cap good things at 8 when they are clearly excellent.
 5. Calculate: (sum of scored sub-scores) ÷ (sum of scored sub-maxes) × 10 = final score, rounded to 1 decimal.
-6. Only set score to null if less than 50% of total points are visible — otherwise always give a score.
-7. For ball rotation and shot arc: only assess during the ball's clean forward flight. Ignore frames where the ball has hit the rim or backboard and is returning.
-8. In your reasoning, show what you saw and the breakdown (e.g. "Elbow under ball [4/4], forearm vertical [3/4], angle not visible [skipped] — 8/8 scored → 10.0").
+6. For ball rotation and shot arc: only assess during the ball's clean forward flight. Ignore frames where the ball has hit the rim or backboard.
+7. In your reasoning, show what you saw and the breakdown (e.g. "Elbow under ball [4/4], forearm vertical [3/4], angle not visible [skipped] — 8/8 scored → 10.0").
 
 For the overall_score, average only the criteria you scored (exclude nulls).
 

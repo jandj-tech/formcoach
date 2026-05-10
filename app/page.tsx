@@ -2,6 +2,7 @@ import Link from 'next/link'
 import TopNav from '@/components/TopNav'
 import CriteriaShowcase, { type Criterion } from '@/components/CriteriaShowcase'
 import { db } from '@/lib/db'
+import { getCriteriaVideoMap } from '@/lib/youtube'
 
 export default async function HomePage() {
   const criteria = (await db`
@@ -10,6 +11,8 @@ export default async function HomePage() {
     WHERE active = true
     ORDER BY order_index
   `) as unknown as Criterion[]
+
+  const videoMap = await getCriteriaVideoMap(criteria.map((c) => c.name))
 
   return (
     <main className="flex flex-col min-h-screen bg-white">
@@ -62,7 +65,7 @@ export default async function HomePage() {
         ))}
       </section>
 
-      <CriteriaShowcase criteria={criteria} />
+      <CriteriaShowcase criteria={criteria} videoMap={videoMap} />
 
       <div className="flex-1" />
 

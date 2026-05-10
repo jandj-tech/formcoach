@@ -15,7 +15,13 @@ function videoSearchUrl(criterionName: string) {
   return `${CHANNEL_URL}/search?query=${encodeURIComponent(criterionName)}`
 }
 
-export default function CriteriaShowcase({ criteria }: { criteria: Criterion[] }) {
+export default function CriteriaShowcase({
+  criteria,
+  videoMap = {},
+}: {
+  criteria: Criterion[]
+  videoMap?: Record<string, string>
+}) {
   const [emblaRef, emblaApi] = useEmblaCarousel({
     loop: false,
     align: 'start',
@@ -24,6 +30,7 @@ export default function CriteriaShowcase({ criteria }: { criteria: Criterion[] }
   })
   const [canPrev, setCanPrev] = useState(false)
   const [canNext, setCanNext] = useState(false)
+  const [openIds, setOpenIds] = useState<Set<number>>(new Set())
 
   const onSelect = useCallback(() => {
     if (!emblaApi) return
@@ -37,6 +44,20 @@ export default function CriteriaShowcase({ criteria }: { criteria: Criterion[] }
     emblaApi.on('select', onSelect)
     emblaApi.on('reInit', onSelect)
   }, [emblaApi, onSelect])
+
+  // Re-measure carousel when a card expands/collapses so heights stay aligned.
+  useEffect(() => {
+    emblaApi?.reInit()
+  }, [openIds, emblaApi])
+
+  function toggle(id: number) {
+    setOpenIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   if (criteria.length === 0) return null
 
@@ -56,31 +77,75 @@ export default function CriteriaShowcase({ criteria }: { criteria: Criterion[] }
 
       <div className="relative">
         <div className="overflow-hidden" ref={emblaRef}>
-          <div className="flex gap-4 px-4 sm:px-6">
-            {criteria.map((c, i) => (
-              <div
-                key={c.id}
-                className="shrink-0 basis-[85%] sm:basis-[48%] lg:basis-[32%]"
-              >
-                <div className="bg-gray-50 rounded-xl border border-gray-200 p-5 flex flex-col gap-3 h-full min-h-[220px]">
-                  <div className="w-8 h-8 rounded-full bg-orange-500 text-white font-bold text-sm flex items-center justify-center">
-                    {String(i + 1).padStart(2, '0')}
+          <div className="flex gap-4 px-4 sm:px-6 items-stretch">
+            {criteria.map((c, i) => {
+              const isOpen = openIds.has(c.id)
+              const videoId = videoMap[c.name]
+              return (
+                <div
+                  key={c.id}
+                  className="shrink-0 basis-[85%] sm:basis-[48%] lg:basis-[32%]"
+                >
+                  <div className="bg-gray-50 rounded-xl border border-gray-200 p-5 flex flex-col gap-3 h-full">
+                    <div className="w-8 h-8 rounded-full bg-orange-500 text-white font-bold text-sm flex items-center justify-center">
+                      {String(i + 1).padStart(2, '0')}
+                    </div>
+                    <h3 className="text-black font-bold text-base leading-tight">{c.name}</h3>
+                    {c.description && (
+                      <p className="text-black text-xs leading-relaxed line-clamp-3 flex-1">{c.description}</p>
+                    )}
+
+                    {videoId ? (
+                      <button
+                        type="button"
+                        onClick={() => toggle(c.id)}
+                        aria-expanded={isOpen}
+                        className="text-orange-500 hover:text-red-600 text-xs font-bold transition-colors mt-auto inline-flex items-center gap-1.5 self-start"
+                      >
+                        {isOpen ? 'Hide video' : 'Watch video'}
+                        <span
+                          aria-hidden
+                          className={`inline-block transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+                        >
+                          ▾
+                        </span>
+                      </button>
+                    ) : (
+                      <a
+                        href={videoSearchUrl(c.name)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-orange-500 hover:text-red-600 text-xs font-bold transition-colors mt-auto inline-flex items-center gap-1 self-start"
+                      >
+                        Watch on YouTube →
+                      </a>
+                    )}
+
+                    {videoId && (
+                      <div
+                        className={`grid transition-all duration-300 ease-out ${
+                          isOpen ? 'grid-rows-[1fr] mt-1' : 'grid-rows-[0fr]'
+                        }`}
+                      >
+                        <div className="overflow-hidden">
+                          {isOpen && (
+                            <div className="aspect-video bg-black rounded-lg overflow-hidden">
+                              <iframe
+                                src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0`}
+                                title={c.name}
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                                className="w-full h-full"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <h3 className="text-black font-bold text-base leading-tight">{c.name}</h3>
-                  {c.description && (
-                    <p className="text-black text-xs leading-relaxed line-clamp-3 flex-1">{c.description}</p>
-                  )}
-                  <a
-                    href={videoSearchUrl(c.name)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-orange-500 hover:text-red-600 text-xs font-bold transition-colors mt-auto inline-flex items-center gap-1"
-                  >
-                    Watch video →
-                  </a>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
 

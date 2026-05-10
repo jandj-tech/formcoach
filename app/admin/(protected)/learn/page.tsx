@@ -28,6 +28,17 @@ export default function LearnModePage() {
   const [saving, setSaving] = useState<number | null>(null)
   const [lightbox, setLightbox] = useState<{ urls: string[]; index: number } | null>(null)
 
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (!lightbox) return
+      if (e.key === 'Escape') setLightbox(null)
+      if (e.key === 'ArrowLeft') setLightbox((l) => l && l.index > 0 ? { ...l, index: l.index - 1 } : l)
+      if (e.key === 'ArrowRight') setLightbox((l) => l && l.index < l.urls.length - 1 ? { ...l, index: l.index + 1 } : l)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [lightbox])
+
   async function load() {
     const res = await fetch('/api/admin/submissions')
     const data = await res.json()
@@ -85,42 +96,47 @@ export default function LearnModePage() {
       {/* Lightbox */}
       {lightbox && (
         <div
-          className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/95 z-50 flex flex-col"
           onClick={() => setLightbox(null)}
         >
-          <div className="relative max-w-4xl w-full" onClick={(e) => e.stopPropagation()}>
+          {/* Always-visible top bar */}
+          <div className="flex items-center justify-between px-6 py-4 shrink-0" onClick={(e) => e.stopPropagation()}>
+            <span className="text-zinc-400 text-sm">
+              Frame {lightbox.index + 1} of {lightbox.urls.length}
+            </span>
+            <button
+              onClick={() => setLightbox(null)}
+              className="bg-white text-black font-bold text-sm px-5 py-2 rounded-full hover:bg-zinc-200"
+            >
+              ✕ Close
+            </button>
+          </div>
+
+          {/* Image */}
+          <div className="flex-1 flex items-center justify-center px-6 min-h-0" onClick={(e) => e.stopPropagation()}>
             <img
               src={lightbox.urls[lightbox.index]}
               alt={`Frame ${lightbox.index + 1}`}
-              className="w-full rounded-xl border border-zinc-700"
+              className="max-w-4xl w-full max-h-full object-contain rounded-xl border border-zinc-700"
             />
-            <div className="absolute top-3 right-3 flex gap-2">
-              <span className="bg-black/70 text-white text-sm px-3 py-1 rounded-full">
-                {lightbox.index + 1} / {lightbox.urls.length}
-              </span>
-              <button
-                onClick={() => setLightbox(null)}
-                className="bg-black/70 text-white text-sm px-3 py-1 rounded-full hover:bg-black"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="flex justify-center gap-3 mt-4">
-              <button
-                disabled={lightbox.index === 0}
-                onClick={() => setLightbox((l) => l && { ...l, index: l.index - 1 })}
-                className="bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 text-white px-5 py-2 rounded-lg text-sm font-bold"
-              >
-                ← Prev
-              </button>
-              <button
-                disabled={lightbox.index === lightbox.urls.length - 1}
-                onClick={() => setLightbox((l) => l && { ...l, index: l.index + 1 })}
-                className="bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 text-white px-5 py-2 rounded-lg text-sm font-bold"
-              >
-                Next →
-              </button>
-            </div>
+          </div>
+
+          {/* Nav buttons */}
+          <div className="flex justify-center gap-3 px-6 py-5 shrink-0" onClick={(e) => e.stopPropagation()}>
+            <button
+              disabled={lightbox.index === 0}
+              onClick={() => setLightbox((l) => l && { ...l, index: l.index - 1 })}
+              className="bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 text-white px-6 py-2.5 rounded-lg text-sm font-bold"
+            >
+              ← Prev
+            </button>
+            <button
+              disabled={lightbox.index === lightbox.urls.length - 1}
+              onClick={() => setLightbox((l) => l && { ...l, index: l.index + 1 })}
+              className="bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 text-white px-6 py-2.5 rounded-lg text-sm font-bold"
+            >
+              Next →
+            </button>
           </div>
         </div>
       )}

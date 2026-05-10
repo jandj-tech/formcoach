@@ -63,19 +63,19 @@ export default function VideoUploader() {
           motionScores.push(diff / (160 * 90))
         }
 
-        // Find the FRAME_COUNT-sized sliding window with highest total motion
-        const WIN = FRAME_COUNT
-        let bestStart = 0
-        let bestScore = -1
-        for (let i = 0; i <= motionScores.length - WIN; i++) {
-          let s = 0
-          for (let j = i; j < i + WIN; j++) s += motionScores[j]
-          if (s > bestScore) { bestScore = s; bestStart = i }
-        }
+        // Find the single peak motion frame — the release/jump apex of the shot
+        // This is the highest-motion moment and anchors the window to one shot, not the gap between two
+        const peakIdx = motionScores.indexOf(Math.max(...motionScores))
+
+        // Take mostly frames BEFORE the peak (the shot buildup) with a short tail after (follow-through)
+        const BEFORE = Math.floor(FRAME_COUNT * 0.75)  // ~9 frames before release
+        const AFTER = FRAME_COUNT - BEFORE - 1          // ~2 frames after release
+        const winStart = Math.max(0, peakIdx - BEFORE)
+        const winEnd = Math.min(motionScores.length - 1, peakIdx + AFTER)
 
         // Map window back to video timestamps
-        const shotStart = probeTimestamps[bestStart]
-        const shotEnd = probeTimestamps[Math.min(bestStart + WIN, PROBE_COUNT - 1)]
+        const shotStart = probeTimestamps[winStart]
+        const shotEnd = probeTimestamps[winEnd]
 
         // --- Phase 2: Extract quality frames from the shot window ---
         const mainCanvas = document.createElement('canvas')

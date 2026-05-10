@@ -92,23 +92,23 @@ ${feedbackText}
 
 NOW SCORE EACH CRITERION USING THESE EXACT RULES:
 
-RULE 1 — BENEFIT OF THE DOUBT. If something is only slightly off, barely visible, or uncertain — do NOT penalize. Only deduct points when a flaw is clearly and obviously visible. When in doubt, score it as correct.
+RULE 1 — CERTAINTY REQUIRED TO DEDUCT. If your reasoning includes words like "may", "might", "slight indication", "possibly", "appears to", "seems like" — that is NOT certain enough to deduct points. Only deduct when you can state clearly and confidently what the flaw is. Uncertainty = no deduction.
 
 RULE 2 — EXCEPTIONS (null if not clearly visible up close):
 - ID 2 "Thumb is Spread Wide": null if thumb not clearly visible
 - ID 4 "Palm Non-Contact": null if palm/finger pads not clearly visible
 
-RULE 3 — ELBOW L-SHAPE (ID 5): Look through ALL setup frames and find the single best frame where the elbow L-shape is most visible. If it forms a clear L at any point, score it as a good L. Do not average across frames — use the best moment you can find.
+RULE 3 — CATCH-AND-SHOOT VIDEOS: If the player catches a pass, completely ignore all frames from the catch itself and any adjustment period immediately after. Only begin evaluating once the player has settled and is in their actual shooting stance loading up. The catch position is irrelevant.
 
-RULE 4 — SHOT POCKET (ID 6): Ignore the catch frame. Look for the moment AFTER the catch, just before the player begins their upward shooting motion. That is the shot pocket. Score based on that loading position, not the catch.
+RULE 4 — ELBOW L-SHAPE (ID 5): Scan all frames AFTER the catch is complete. Find the single best frame where the elbow forms an L. If you can see an L-shape at ANY point during the actual shot (not catch), score it based on that best frame. Score high if the L is visible at all.
 
-RULE 5 — FOLLOW-THROUGH DIRECTION (ID 15): Only deduct for direction if the follow-through is clearly and obviously pointing sideways or away from the basket. If it is hard to tell, assume it is correct and do not deduct.
+RULE 5 — SHOT POCKET (ID 6): Score the loading position AFTER the catch and BEFORE the upward motion. Ignore where the ball is during the catch. Only evaluate the intentional loading position.
 
-RULE 6 — GUIDE HAND (ID 3, 16): Only penalize for thumb flick or pushing if it is clearly visible. A slight or uncertain thumb movement is not enough to deduct — only score low if the off-hand influence is obvious.
+RULE 6 — FOLLOW-THROUGH DIRECTION (ID 15): Only deduct if follow-through direction is CLEARLY and OBVIOUSLY wrong. If you are not certain, give full marks.
 
-RULE 7 — BALL ROTATION (ID 13): Do not look for full rotations. Compare the seam/line positions on the ball between consecutive frames while it is in the air. If the seam positions look DIFFERENT between frames = good rotation = high score. Only score low if the seams look identical across multiple frames.
+RULE 7 — GUIDE HAND (ID 3, 16): Only penalize if pushing or flicking is clearly confirmed. If you say "may flick" or "slight indication" — that is not confirmed, give full marks.
 
-RULE 8 — BALL ARC/ROTATION: only assess during clean forward flight, not after rim or backboard contact.
+RULE 8 — ARC/ROTATION: only assess during clean forward flight, not after rim or backboard contact.
 
 RULE 9 — SCALE (each criterion scored independently):
 - 10 = perfect, no visible flaws

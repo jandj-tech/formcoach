@@ -79,7 +79,13 @@ SCORING ALGORITHM — follow exactly for every criterion:
    - Can see it clearly → score from FULL marks, only deduct for obvious visible flaws. If it looks good, give high marks.
    - Cannot see it (camera distance, angle, blur) → skip it entirely, do NOT penalize visibility.
    - Visibly and obviously wrong (clear flaw you can see) → deduct points proportional to how bad it looks.
-3. Default to generous scoring. If something looks decent or good, score it 8–10. Only score below 7 when there is a clear, obvious problem you can point to. A skilled player with good form should score 8–9+ on most criteria.
+3. Use this scale:
+   - 9–10: Near perfect execution, elite level, almost nothing to improve
+   - 8–8.5: Very good form, only minor flaws — reserved for players with clearly strong mechanics
+   - 7–7.5: Good form, solid fundamentals but with some noticeable areas to improve
+   - 5–6: Average, clear issues visible
+   - Below 5: Poor form, obvious significant problems
+   Good form lands around 7. Only reach 8+ when mechanics are clearly strong and clean. Only reach 9–10 for truly elite execution.
 4. If you can see any part of the shot at all, score the criteria you can observe — do not skip things that are visible just because they aren't perfect.
 5. Calculate: (sum of scored sub-scores) ÷ (sum of scored sub-maxes) × 10 = final score, rounded to 1 decimal.
 6. Only set score to null if less than 50% of total points are visible — otherwise always give a score.

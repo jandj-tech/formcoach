@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import TopNav from '@/components/TopNav'
+import ClearCart from './ClearCart'
 
 export const metadata = {
   title: 'Order Confirmed — LearnHoops.com',
@@ -8,6 +9,7 @@ export const metadata = {
 export default function ShopSuccessPage() {
   return (
     <main className="min-h-screen bg-black flex flex-col">
+      <ClearCart />
       <TopNav />
       <div className="flex-1 flex items-center justify-center px-6">
         <div className="text-center space-y-4 max-w-md">

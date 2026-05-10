@@ -1,6 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { useCart } from '@/lib/cart'
+import QuantityStepper from '@/components/QuantityStepper'
 
 type Variant = 'right' | 'left'
 type Size = '5' | '6' | '7'
@@ -22,36 +25,29 @@ function formatCurrency(amount: number, currency: 'USD' | 'CAD') {
 }
 
 export default function ShopProduct({ usdToCad }: { usdToCad: number }) {
+  const { addBall } = useCart()
   const [region, setRegion] = useState<Region>('US')
   const [variant, setVariant] = useState<Variant>('right')
   const [size, setSize] = useState<Size>('7')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [quantity, setQuantity] = useState(1)
+  const [added, setAdded] = useState(false)
 
   const priceCad = Math.round(PRICE_USD * usdToCad * 100) / 100
-  const displayPrice =
-    region === 'CA' ? formatCurrency(priceCad, 'CAD') : formatCurrency(PRICE_USD, 'USD')
-  const currencyLabel = region === 'CA' ? 'CAD' : 'USD'
+  const unitPrice = region === 'CA' ? priceCad : PRICE_USD
+  const lineTotal = Math.round(unitPrice * quantity * 100) / 100
+  const currencyCode: 'USD' | 'CAD' = region === 'CA' ? 'CAD' : 'USD'
+  const displayUnit = formatCurrency(unitPrice, currencyCode)
+  const displayLineTotal = formatCurrency(lineTotal, currencyCode)
 
-  async function handleBuy() {
-    setLoading(true)
-    setError('')
-    try {
-      const res = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ variant, size, region }),
-      })
-      const data = await res.json()
-      if (!res.ok || !data.url) {
-        throw new Error(data.error || 'Checkout failed')
-      }
-      window.location.href = data.url
-    } catch (err) {
-      console.error(err)
-      setError(err instanceof Error ? err.message : 'Something went wrong')
-      setLoading(false)
-    }
+  useEffect(() => {
+    if (!added) return
+    const t = setTimeout(() => setAdded(false), 2500)
+    return () => clearTimeout(t)
+  }, [added])
+
+  function handleAdd() {
+    addBall(variant, size, quantity)
+    setAdded(true)
   }
 
   return (
@@ -123,7 +119,7 @@ export default function ShopProduct({ usdToCad }: { usdToCad: number }) {
           </p>
 
           <div className="text-3xl font-black text-white">
-            {displayPrice} <span className="text-white text-sm font-medium">{currencyLabel}</span>
+            {displayUnit} <span className="text-white text-sm font-medium">{currencyCode}</span>
           </div>
 
           {/* Variant selector */}
@@ -177,15 +173,35 @@ export default function ShopProduct({ usdToCad }: { usdToCad: number }) {
             </div>
           </div>
 
+          {/* Quantity */}
+          <div className="space-y-2">
+            <label className="block text-white text-xs font-semibold tracking-wider uppercase">Quantity</label>
+            <QuantityStepper value={quantity} onChange={setQuantity} />
+          </div>
+
           <button
-            onClick={handleBuy}
-            disabled={loading}
-            className="bg-orange-500 hover:bg-red-600 disabled:opacity-50 text-white font-bold px-8 py-4 rounded-xl text-base transition-colors w-full sm:w-auto"
+            onClick={handleAdd}
+            className="bg-orange-500 hover:bg-red-600 text-white font-bold px-8 py-4 rounded-xl text-base transition-colors w-full sm:w-auto"
           >
-            {loading ? 'Redirecting to checkout…' : `Buy Now — ${displayPrice}`}
+            Add to cart — {displayLineTotal}
           </button>
 
-          {error && <p className="text-red-500 text-sm">{error}</p>}
+          {added && (
+            <div
+              role="status"
+              className="flex items-center justify-between gap-3 rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-3"
+            >
+              <span className="text-green-400 text-sm font-semibold">
+                Added to cart
+              </span>
+              <Link
+                href="/cart"
+                className="text-orange-400 hover:text-orange-300 text-sm font-semibold underline"
+              >
+                View cart →
+              </Link>
+            </div>
+          )}
 
           <p className="text-white text-xs">
             Secure checkout powered by Stripe. Shipping address collected at checkout.

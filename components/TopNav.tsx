@@ -4,6 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import MobileNav from './MobileNav'
+import CartLink from './CartLink'
 
 const tabs = [
   { href: '/', label: 'Home' },
@@ -27,25 +28,28 @@ export default function TopNav() {
           priority
         />
       </Link>
-      <div className="hidden md:flex items-center gap-1 sm:gap-2">
-        {tabs.map((tab) => {
-          const active = tab.href === '/' ? pathname === '/' : pathname.startsWith(tab.href)
-          return (
-            <Link
-              key={tab.href}
-              href={tab.href}
-              className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${
-                active
-                  ? 'bg-orange-500 text-white'
-                  : 'text-white hover:text-white hover:bg-zinc-900'
-              }`}
-            >
-              {tab.label}
-            </Link>
-          )
-        })}
+      <div className="flex items-center gap-1 sm:gap-2">
+        <div className="hidden md:flex items-center gap-1 sm:gap-2">
+          {tabs.map((tab) => {
+            const active = tab.href === '/' ? pathname === '/' : pathname.startsWith(tab.href)
+            return (
+              <Link
+                key={tab.href}
+                href={tab.href}
+                className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${
+                  active
+                    ? 'bg-orange-500 text-white'
+                    : 'text-white hover:text-white hover:bg-zinc-900'
+                }`}
+              >
+                {tab.label}
+              </Link>
+            )
+          })}
+        </div>
+        <CartLink />
+        <MobileNav tabs={tabs} />
       </div>
-      <MobileNav tabs={tabs} />
     </nav>
   )
 }

@@ -19,13 +19,18 @@ export async function POST(req: NextRequest) {
         ...imageBlocks,
         {
           type: 'text',
-          text: `These are ${n} evenly-spaced frames numbered 0 to ${n - 1} from a basketball video.
+          text: `These are ${n} evenly-spaced frames numbered 0 to ${n - 1} from a basketball video. There may be multiple shots in the video.
 
-Find:
-- START: the earliest frame where the shooter is receiving the ball, catching it, or has it in their shot pocket ready to go up (knees bent, ball held at chest/hip level in shooting position)
-- END: the frame where the ball has clearly left their hand and is no longer visible, or the shot result (make or miss) is visible, or the follow-through is fully complete
+Find the LAST frame (highest frame number) where you can see a player holding the basketball at shooting position — meaning:
+- Ball is in the player's hands at hip, waist, or chest level (shot pocket), OR
+- Player is catching or receiving a pass and about to shoot, OR
+- Player's knees are bent with ball in hand, ready to jump
 
-Return ONLY valid JSON with no other text: {"start": <number 0-${n - 1}>, "end": <number 0-${n - 1}>}`,
+Do NOT pick frames showing only the follow-through (arm extended upward, ball already gone) or the ball in the air away from the player. We want the moment just BEFORE the shot goes up.
+
+If you see a shooting setup in multiple places in the video, return the LAST one (highest frame number).
+
+Return ONLY valid JSON: {"start": <frame number 0 to ${n - 1}>}`,
         },
       ],
     }],
@@ -33,11 +38,10 @@ Return ONLY valid JSON with no other text: {"start": <number 0-${n - 1}>, "end":
 
   const text = response.content[0].type === 'text' ? response.content[0].text : ''
   const match = text.match(/\{[\s\S]*?\}/)
-  if (!match) return NextResponse.json({ start: 0, end: n - 1 })
+  if (!match) return NextResponse.json({ start: 0 })
 
   const parsed = JSON.parse(match[0])
   return NextResponse.json({
     start: Math.max(0, Math.min(n - 1, Number(parsed.start))),
-    end: Math.max(0, Math.min(n - 1, Number(parsed.end))),
   })
 }

@@ -51,9 +51,10 @@ export default function VideoUploader() {
 
         setProgress(20)
 
-        // --- Phase 2: Ask Claude to locate the shot window ---
+        // --- Phase 2: Ask Claude to find the last shot setup frame ---
         let shotStart = probeTimestamps[0]
-        let shotEnd = probeTimestamps[PROBE_COUNT - 1]
+        // Fixed 4-second window covers any complete shot from pocket to follow-through
+        let shotEnd = Math.min(duration, shotStart + 4.0)
 
         try {
           const windowRes = await fetch('/api/detect-shot-window', {
@@ -62,12 +63,12 @@ export default function VideoUploader() {
             body: JSON.stringify({ frames: probeBase64 }),
           })
           if (windowRes.ok) {
-            const { start, end } = await windowRes.json()
+            const { start } = await windowRes.json()
             shotStart = probeTimestamps[Math.max(0, start)]
-            shotEnd = probeTimestamps[Math.min(PROBE_COUNT - 1, end)]
+            shotEnd = Math.min(duration, shotStart + 4.0)
           }
         } catch {
-          // Fallback: use full video range
+          // Fallback: use beginning of video
         }
 
         setProgress(40)

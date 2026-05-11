@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-const FRAME_COUNT = 20
+const FRAME_COUNT = 28
 const PROBE_COUNT = 30  // low-res frames to detect shot window
 const SEEK_TIMEOUT_MS = 4000  // max ms to wait for a seek before skipping
 
@@ -58,7 +58,7 @@ export default function VideoUploader() {
 
         // --- Phase 2: Ask Claude to find the shot window (start→end frame range) ---
         let shotStart = 0
-        let shotEnd = Math.min(duration, 3.0)
+        let shotEnd = Math.min(duration, 4.3)
 
         try {
           const windowRes = await fetch('/api/detect-shot-window', {
@@ -67,14 +67,16 @@ export default function VideoUploader() {
             body: JSON.stringify({ frames: probeBase64 }),
           })
           if (windowRes.ok) {
-            const { start, end } = await windowRes.json()
-            const startTime = probeTimestamps[Math.max(0, start - 1)] ?? probeTimestamps[0]
-            const endTime = probeTimestamps[Math.min(PROBE_COUNT - 1, end + 1)] ?? probeTimestamps[PROBE_COUNT - 1]
-            // Cap window to 3.5s max so 20 frames stay focused on the shot
-            const rawStart = Math.max(0, startTime - 0.3)
-            const rawEnd = Math.min(duration, endTime + 0.5)
-            shotStart = rawStart
-            shotEnd = Math.min(rawEnd, rawStart + 3.5)
+            const { setup } = await windowRes.json()
+            const clampedSetup = Math.max(0, Math.min(PROBE_COUNT - 1, setup))
+            const setupTime = probeTimestamps[clampedSetup] ?? probeTimestamps[Math.floor(PROBE_COUNT / 2)]
+            // If setup landed in the first 8% of the video, the detection likely picked the wrong frame
+            // (incomplete shot 1 that starts before recording). Use the middle of the video instead.
+            const effectiveSetupTime = setupTime < duration * 0.08
+              ? duration * 0.3
+              : setupTime
+            shotStart = Math.max(0, effectiveSetupTime - 0.5)
+            shotEnd = Math.min(duration, effectiveSetupTime + 3.8)
           }
         } catch {
           // Fallback: first 3s

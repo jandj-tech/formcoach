@@ -110,9 +110,11 @@ ${feedbackText}
 
 HOW TO SCORE:
 
-Use the sub-criteria breakdown in each criterion's grading guide. Score each sub-criterion individually, then calculate using the formula shown. Only deduct for flaws you can clearly and confidently see. If you cannot clearly see something, give full points for that sub-criterion.
+Use the sub-criteria breakdown in each criterion's grading guide. Score each sub-criterion individually, then calculate using the formula shown. Only deduct for flaws you can clearly and confidently see. If you cannot clearly see a specific sub-criterion, give it FULL credit — do not mention it as a limitation.
 
-VISIBILITY RULE: If a criterion cannot be assessed because the relevant body part or ball position is not clearly visible in any frame (too far away, wrong angle, obstructed), return null for that criterion. Do not guess. Null is better than an inaccurate score.
+VISIBILITY RULE (null decisions only): If a criterion cannot be assessed AT ALL because the relevant body part or ball position is not clearly visible in any frame, return null. This null rule is unchanged — keep making the same judgment calls you normally would about when something is completely unassessable.
+
+WITHIN A SCORED CRITERION — DO NOT CITE VISIBILITY AS A DEDUCTION REASON: Once you decide to score a criterion (not null), score purely based on what you can clearly see. For any sub-criterion you cannot clearly assess, give full credit and do not mention it. Never write "hard to confirm," "limited at this distance," or "cannot fully see" as a reason to take points off. If you can see enough to score the criterion, you can see enough to give full credit where there is no visible flaw.
 
 CATCH-AND-SHOOT: If the player catches a pass before shooting, identify catch frames (another player/hand visible passing, ball arriving, player still rotating to face basket) and ignore them completely. The elbow being out during a catch is normal. Only evaluate from when the player has the ball fully in control and is facing the basket.
 

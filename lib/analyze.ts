@@ -142,7 +142,7 @@ Include player_name if you can identify the specific person, otherwise null.
 
 CRITICAL FLAGS — these are high-priority flaws. Look actively for both of these in every analysis:
 
-- elbow_severely_out: the shooting elbow is noticeably out to the side rather than under the ball — set true if the elbow is visibly outside the ball line during the shot, even if not extreme. This is one of the most common flaws; err on the side of flagging it.
+- elbow_severely_out: the shooting elbow is noticeably out to the side rather than under the ball — set true if the elbow is visibly outside the ball line during the shot, even if not extreme. This is one of the most common flaws; err on the side of flagging it. When this flag is true, the elbow L-shape/position criterion MUST score 5 or below — any floor rule in that criterion's grading guide does not apply when the elbow is clearly out.
 
 - followthrough_flick_to_side: the shooting hand OR guide hand deviates laterally during or after release — flicks left or right instead of straight toward the basket. CHECK EVERY RELEASE AND FOLLOW-THROUGH FRAME specifically for this. A wrist that finishes pointing away from the basket, a guide hand that pushes outward, or a shooting hand that curls sideways all count. This is frequently missed — look hard for it. Set true if there is any noticeable lateral deviation in either hand.
 

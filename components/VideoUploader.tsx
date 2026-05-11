@@ -4,7 +4,7 @@ import { useCallback, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 const FRAME_COUNT = 20
-const PROBE_COUNT = 30  // low-res frames to detect shot window
+const PROBE_COUNT = 40  // low-res frames to detect shot window
 
 export default function VideoUploader() {
   const [isDragging, setIsDragging] = useState(false)
@@ -51,10 +51,9 @@ export default function VideoUploader() {
 
         setProgress(20)
 
-        // --- Phase 2: Ask Claude to find the peak of the first shot ---
-        // Window = peak-1.5s → peak+1.0s: captures full setup, motion, follow-through, ball in air
+        // --- Phase 2: Ask Claude to find the shot window (start→end frame range) ---
         let shotStart = 0
-        let shotEnd = Math.min(duration, 2.5)
+        let shotEnd = Math.min(duration, 3.0)
 
         try {
           const windowRes = await fetch('/api/detect-shot-window', {
@@ -63,13 +62,15 @@ export default function VideoUploader() {
             body: JSON.stringify({ frames: probeBase64 }),
           })
           if (windowRes.ok) {
-            const { peak } = await windowRes.json()
-            const peakTime = probeTimestamps[peak]
-            shotStart = Math.max(0, peakTime - 1.5)
-            shotEnd = Math.min(duration, peakTime + 1.0)
+            const { start, end } = await windowRes.json()
+            // Convert probe frame indices to timestamps, add small buffers
+            const startTime = probeTimestamps[Math.max(0, start - 1)] ?? probeTimestamps[0]
+            const endTime = probeTimestamps[Math.min(PROBE_COUNT - 1, end + 1)] ?? probeTimestamps[PROBE_COUNT - 1]
+            shotStart = Math.max(0, startTime - 0.3)
+            shotEnd = Math.min(duration, endTime + 0.5)
           }
         } catch {
-          // Fallback: first 2.5s
+          // Fallback: first 3s
         }
 
         setProgress(40)

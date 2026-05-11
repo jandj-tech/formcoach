@@ -21,20 +21,17 @@ export async function POST(req: NextRequest) {
           type: 'text',
           text: `These are ${n} evenly-spaced frames numbered 0 to ${n - 1} from a basketball video.
 
-Find the frame showing the RELEASE PEAK of the FIRST basketball shot — the exact moment where:
-- The shooter's arm is fully extended UPWARD with the ball at the fingertips or just released
-- The wrist is snapping or has just snapped downward toward the basket
-- The body is at full extension — this is the highest point of the shooting motion
+Find the FIRST basketball shot and return its window:
+- "start": the frame where the player begins loading up to shoot (knees bending, ball moving to shot pocket) — AFTER any catch/reception is fully settled
+- "end": the frame where the follow-through is complete or the ball is clearly in the air away from the hand
 
-IMPORTANT — do NOT pick:
-- Frames where the player is just catching or receiving the ball
-- Frames where the player is walking, dribbling, or holding the ball at their side or chest
-- Frames showing only follow-through after the ball is already in the air far from the hand
-- Any moment that is not specifically the shooting release
+Rules:
+- If the player catches a pass before shooting, "start" must be AFTER the catch is settled and the player is loading up
+- Do NOT include frames of catching, dribbling, walking, or standing still
+- Find the FIRST shot only
+- If you cannot find a clear shot, pick the most likely window
 
-The peak is the single most visually distinct frame of the shot: arm fully up, ball at or just leaving the fingertips. If the player catches and then shoots, ignore the catch — find the shooting release only.
-
-Do not explain your reasoning. Output ONLY the JSON object, nothing else: {"peak": <frame number 0 to ${n - 1}>}`,
+Output ONLY this JSON, nothing else: {"start": <frame 0 to ${n - 1}>, "end": <frame 0 to ${n - 1}>}`,
         },
       ],
     }],
@@ -42,10 +39,15 @@ Do not explain your reasoning. Output ONLY the JSON object, nothing else: {"peak
 
   const text = response.content[0].type === 'text' ? response.content[0].text : ''
   const match = text.match(/\{[\s\S]*?\}/)
-  if (!match) return NextResponse.json({ peak: Math.floor(n / 4) })
+
+  // Fallback: use middle third of video
+  const fallbackStart = Math.floor(n * 0.1)
+  const fallbackEnd = Math.floor(n * 0.9)
+  if (!match) return NextResponse.json({ start: fallbackStart, end: fallbackEnd })
 
   const parsed = JSON.parse(match[0])
-  return NextResponse.json({
-    peak: Math.max(0, Math.min(n - 1, Number(parsed.peak ?? parsed.start ?? 0))),
-  })
+  const start = Math.max(0, Math.min(n - 1, Number(parsed.start ?? 0)))
+  const end = Math.max(start, Math.min(n - 1, Number(parsed.end ?? n - 1)))
+
+  return NextResponse.json({ start, end })
 }

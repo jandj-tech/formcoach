@@ -22,6 +22,7 @@ interface AnalysisResult {
   critical_flags: {
     elbow_severely_out: boolean
     followthrough_flick_to_side: boolean
+    arc_too_flat: boolean
   }
   criteria: CriterionResult[]
 }
@@ -148,9 +149,14 @@ CRITICAL FLAGS — these operate on their own detection standard, independent of
 
 - elbow_severely_out: the shooting elbow is noticeably out to the side rather than under the ball. Set true if the elbow is visibly outside the ball line at any point during the shot. This is extremely common — if you are unsure, set true. Do NOT apply benefit-of-the-doubt or burden-of-proof here. When true: the elbow L-shape criterion MUST score 5 or below (floor rules in that criterion's grading guide do not apply).
 
-- followthrough_flick_to_side: the shooting hand OR guide hand moves laterally at or after release instead of finishing straight toward the basket. Specifically look for: wrist curling left or right, shooting hand finishing pointing away from the rim, guide hand flicking outward to the side. CHECK EVERY RELEASE FRAME — this happens fast and is easy to miss. If the hand finishes in any direction other than straight toward the basket, set true. Do NOT apply benefit-of-the-doubt here. When true: any follow-through or guide hand criterion MUST score 4 or below.
+- followthrough_flick_to_side: the shooting hand OR guide hand makes a lateral movement at the moment of release. These are two distinct patterns — look for BOTH:
+  • GUIDE HAND flick: at release, the guide hand snaps or flicks toward the shooting hand side (inward, across the body) rather than cleanly separating straight off.
+  • SHOOTING HAND flick: at the exact release moment, the shooting hand briefly flicks toward the guide hand side (or away from the basket), then quickly self-corrects back to a normal-looking follow-through. The FINAL follow-through position may look correct — this does NOT mean there was no flick. The flick happens fast at release and is usually unconscious; players often don't know they do it.
+  CHECK EVERY RELEASE FRAME carefully — not just the final follow-through frame. Look at the 2–3 frames right at release for any lateral hand deviation. Do NOT apply benefit-of-the-doubt here. When true: any follow-through or guide hand criterion MUST score 4 or below.
 
-NOTE: These two flags are the most important flaws to detect. Missing them is a bigger error than a false positive. When in doubt, flag it.
+- arc_too_flat: the ball travels on a low, flat trajectory rather than a proper high arc (45–60 degrees). If the ball visibly shoots out nearly flat or at a shallow angle with little height, set true. A flat shot has almost no arc and the ball comes in at a low angle toward the basket. Do NOT apply benefit-of-the-doubt here. When true: the shot arc criterion MUST score 4 or below.
+
+NOTE: These flags are the most important flaws to detect. Missing them is a bigger error than a false positive. When in doubt, flag it.
 
 For overall_score: average only scored criteria (exclude nulls).
 
@@ -163,7 +169,8 @@ Return ONLY valid JSON, no other text:
   },
   "critical_flags": {
     "elbow_severely_out": <true|false>,
-    "followthrough_flick_to_side": <true|false>
+    "followthrough_flick_to_side": <true|false>,
+    "arc_too_flat": <true|false>
   },
   "criteria": [
     { "id": <criterion_id>, "score": <1-10 or null>, "reasoning": "<1-2 sentences>" },
@@ -211,6 +218,9 @@ Return ONLY valid JSON, no other text:
 
   const result = JSON.parse(jsonMatch[0]) as AnalysisResult
 
+  // Ensure new flag fields default to false if missing from response
+  result.critical_flags.arc_too_flat = result.critical_flags.arc_too_flat ?? false
+
   // Recalculate overall from criteria scores
   const scored = result.criteria.filter(c => c.score !== null)
   if (scored.length > 0) {
@@ -219,13 +229,15 @@ Return ONLY valid JSON, no other text:
     ) / 10
   }
 
-  // Apply critical flag caps FIRST
-  const flagsTriggered = result.critical_flags.elbow_severely_out || result.critical_flags.followthrough_flick_to_side
-  if (result.critical_flags.elbow_severely_out && result.critical_flags.followthrough_flick_to_side) {
+  // Apply critical flag caps FIRST — stacking penalties for multiple flaws
+  const { elbow_severely_out, followthrough_flick_to_side, arc_too_flat } = result.critical_flags
+  const flagCount = [elbow_severely_out, followthrough_flick_to_side, arc_too_flat].filter(Boolean).length
+  const flagsTriggered = flagCount > 0
+  if (flagCount >= 3) {
+    result.overall_score = Math.min(result.overall_score, 5.0)
+  } else if (flagCount === 2) {
     result.overall_score = Math.min(result.overall_score, 5.5)
-  } else if (result.critical_flags.elbow_severely_out) {
-    result.overall_score = Math.min(result.overall_score, 6.0)
-  } else if (result.critical_flags.followthrough_flick_to_side) {
+  } else if (flagCount === 1) {
     result.overall_score = Math.min(result.overall_score, 6.0)
   }
 

@@ -140,9 +140,11 @@ PLAYER ASSESSMENT — identify one of these player_type values:
 - "nba_elite": you can identify this as an NBA player known for exceptional shooting (e.g. Stephen Curry, Devin Booker, Ray Allen, Klay Thompson, Kevin Durant, Damian Lillard)
 Include player_name if you can identify the specific person, otherwise null.
 
-CRITICAL FLAGS — set to true only if clearly and obviously present:
-- elbow_severely_out: the shooting elbow is dramatically far out to the side during the shot — not just slightly off but clearly well outside the ball line
-- followthrough_flick_to_side: the shooting hand OR guide hand clearly flicks/pushes sideways (to the left or right) during or after release — a clear lateral deviation, not straight toward the basket
+CRITICAL FLAGS — these are high-priority flaws. Look actively for both of these in every analysis:
+
+- elbow_severely_out: the shooting elbow is noticeably out to the side rather than under the ball — set true if the elbow is visibly outside the ball line during the shot, even if not extreme. This is one of the most common flaws; err on the side of flagging it.
+
+- followthrough_flick_to_side: the shooting hand OR guide hand deviates laterally during or after release — flicks left or right instead of straight toward the basket. CHECK EVERY RELEASE AND FOLLOW-THROUGH FRAME specifically for this. A wrist that finishes pointing away from the basket, a guide hand that pushes outward, or a shooting hand that curls sideways all count. This is frequently missed — look hard for it. Set true if there is any noticeable lateral deviation in either hand.
 
 For overall_score: average only scored criteria (exclude nulls).
 
@@ -213,11 +215,12 @@ Return ONLY valid JSON, no other text:
 
   // Apply critical flag caps FIRST
   const flagsTriggered = result.critical_flags.elbow_severely_out || result.critical_flags.followthrough_flick_to_side
-  if (result.critical_flags.elbow_severely_out) {
+  if (result.critical_flags.elbow_severely_out && result.critical_flags.followthrough_flick_to_side) {
+    result.overall_score = Math.min(result.overall_score, 5.5)
+  } else if (result.critical_flags.elbow_severely_out) {
     result.overall_score = Math.min(result.overall_score, 6.0)
-  }
-  if (result.critical_flags.followthrough_flick_to_side) {
-    result.overall_score = Math.min(result.overall_score, 7.0)
+  } else if (result.critical_flags.followthrough_flick_to_side) {
+    result.overall_score = Math.min(result.overall_score, 6.0)
   }
 
   // Apply player type adjustments

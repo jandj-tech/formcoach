@@ -4,7 +4,10 @@ import { useCallback, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 const FRAME_COUNT = 28
-const PROBE_COUNT = 30  // low-res frames to detect shot window
+const ROUGH_COUNT = 10      // tiny frames for rough shot location
+const PROBE_COUNT = 30      // low-res frames for precise release detection
+const REGION_PAD = 0.45     // ±45% of video around rough center
+const REGION_MIN_S = 3.5    // minimum dense region width in seconds
 const SEEK_TIMEOUT_MS = 4000  // max ms to wait for a seek before skipping
 
 export default function VideoUploader() {
@@ -36,33 +39,67 @@ export default function VideoUploader() {
       video.onloadedmetadata = async () => {
         const duration = video.duration
 
-        // --- Phase 1: Extract low-res probe frames ---
+        // --- Phase 1a: Extract tiny rough frames for shot location ---
+        const roughCanvas = document.createElement('canvas')
+        roughCanvas.width = 160
+        roughCanvas.height = 90
+        const roughCtx = roughCanvas.getContext('2d')!
+
+        const roughTimestamps = Array.from({ length: ROUGH_COUNT }, (_, i) =>
+          (duration / (ROUGH_COUNT + 1)) * (i + 1)
+        )
+
+        const roughBase64: string[] = []
+        for (let i = 0; i < ROUGH_COUNT; i++) {
+          await seekTo(video, roughTimestamps[i])
+          roughCtx.drawImage(video, 0, 0, 160, 90)
+          roughBase64.push(roughCanvas.toDataURL('image/jpeg', 0.6).split(',')[1])
+          setProgress(Math.round(((i + 1) / ROUGH_COUNT) * 10))
+        }
+
+        // --- Phase 1b: Get rough shot region (which part of video has the shot) ---
+        let roughCenter = 0.6
+        try {
+          const regionRes = await fetch('/api/detect-shot-region', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ frames: roughBase64 }),
+          })
+          if (regionRes.ok) {
+            const { region } = await regionRes.json()
+            roughCenter = Math.max(0, Math.min(100, region)) / 100
+          }
+        } catch {}
+
+        setProgress(20)
+
+        // --- Phase 1c: Extract dense probe frames around rough region ---
         const probeCanvas = document.createElement('canvas')
         probeCanvas.width = 320
         probeCanvas.height = 180
         const probeCtx = probeCanvas.getContext('2d')!
 
-        // Even distribution — release can happen anywhere in the video
+        const roughCenterTime = roughCenter * duration
+        const halfWindow = Math.max(REGION_MIN_S / 2, duration * REGION_PAD)
+        const denseStart = Math.max(0, roughCenterTime - halfWindow)
+        const denseEnd = Math.min(duration, roughCenterTime + halfWindow)
+
         const probeTimestamps = Array.from({ length: PROBE_COUNT }, (_, i) =>
-          (duration / (PROBE_COUNT + 1)) * (i + 1)
+          denseStart + ((denseEnd - denseStart) / (PROBE_COUNT + 1)) * (i + 1)
         )
 
         const probeBase64: string[] = []
-
-        for (const t of probeTimestamps) {
-          await seekTo(video, t)
+        for (let i = 0; i < PROBE_COUNT; i++) {
+          await seekTo(video, probeTimestamps[i])
           probeCtx.drawImage(video, 0, 0, 320, 180)
           probeBase64.push(probeCanvas.toDataURL('image/jpeg', 0.7).split(',')[1])
+          setProgress(Math.round(20 + ((i + 1) / PROBE_COUNT) * 15))
         }
 
-        setProgress(20)
-
-        // --- Phase 2: Find release frame, anchor window ±seconds around it ---
+        // --- Phase 2: Find release frame within dense region ---
         // release - 1.7s covers: gather → shot pocket → jump → release
         // release + 0.8s covers: follow-through + ball in arc
-        // Total: 2.5s — the complete jump shot
-        // Fallback: 60% through the video (reasonable default if API fails)
-        let releaseTime = duration * 0.6
+        let releaseTime = roughCenterTime
         let shotStart = Math.max(0, releaseTime - 1.7)
         let shotEnd = Math.min(duration, releaseTime + 0.8)
 
@@ -79,11 +116,9 @@ export default function VideoUploader() {
             shotStart = Math.max(0, releaseTime - 1.7)
             shotEnd = Math.min(duration, releaseTime + 0.8)
           }
-        } catch {
-          // Keep 60% fallback
-        }
+        } catch {}
 
-        setProgress(40)
+        setProgress(45)
 
         // --- Phase 3: Extract quality frames from the shot window ---
         const mainCanvas = document.createElement('canvas')
@@ -107,7 +142,7 @@ export default function VideoUploader() {
                   blobs.push(blob)
                   thumbs.push(mainCanvas.toDataURL('image/jpeg', 0.4))
                 }
-                setProgress(Math.round(40 + ((i + 1) / timestamps.length) * 20))
+                setProgress(Math.round(45 + ((i + 1) / timestamps.length) * 20))
                 res()
               },
               'image/jpeg',
@@ -193,14 +228,14 @@ export default function VideoUploader() {
           <p className="text-black font-semibold text-lg mb-2">
             {status === 'extracting'
               ? progress < 20 ? 'Scanning your video...'
-              : progress < 40 ? 'Finding your shot...'
+              : progress < 45 ? 'Finding your shot...'
               : 'Capturing your shot...'
               : 'Uploading & analyzing your shot...'}
           </p>
           <p className="text-black text-sm">
             {status === 'extracting'
               ? progress < 20 ? 'Reading frames from your video'
-              : progress < 40 ? 'AI is locating your shot release'
+              : progress < 45 ? 'AI is locating your shot release'
               : 'Extracting frames of your shooting form'
               : 'Our AI is studying your form in detail'}
           </p>

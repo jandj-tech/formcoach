@@ -42,19 +42,10 @@ export default function VideoUploader() {
         probeCanvas.height = 180
         const probeCtx = probeCanvas.getContext('2d')!
 
-        // Front-heavy distribution: 20 frames in first 35%, 10 in remaining 65%
-        // Gives 3× denser coverage where shots usually start without extra API calls
-        const FRONT_FRAMES = 20
-        const BACK_FRAMES = PROBE_COUNT - FRONT_FRAMES
-        const frontEnd = duration * 0.35
-        const probeTimestamps = [
-          ...Array.from({ length: FRONT_FRAMES }, (_, i) =>
-            (frontEnd / (FRONT_FRAMES + 1)) * (i + 1)
-          ),
-          ...Array.from({ length: BACK_FRAMES }, (_, i) =>
-            frontEnd + ((duration - frontEnd) / (BACK_FRAMES + 1)) * (i + 1)
-          ),
-        ]
+        // Even distribution — release can happen anywhere in the video
+        const probeTimestamps = Array.from({ length: PROBE_COUNT }, (_, i) =>
+          (duration / (PROBE_COUNT + 1)) * (i + 1)
+        )
 
         const probeBase64: string[] = []
 
@@ -66,9 +57,14 @@ export default function VideoUploader() {
 
         setProgress(20)
 
-        // --- Phase 2: Ask Claude to find the shot window (start→end frame range) ---
-        let shotStart = 0
-        let shotEnd = Math.min(duration, 4.3)
+        // --- Phase 2: Find release frame, anchor window ±seconds around it ---
+        // release - 1.7s covers: gather → shot pocket → jump → release
+        // release + 0.8s covers: follow-through + ball in arc
+        // Total: 2.5s — the complete jump shot
+        // Fallback: 60% through the video (reasonable default if API fails)
+        let releaseTime = duration * 0.6
+        let shotStart = Math.max(0, releaseTime - 1.7)
+        let shotEnd = Math.min(duration, releaseTime + 0.8)
 
         try {
           const windowRes = await fetch('/api/detect-shot-window', {
@@ -77,19 +73,14 @@ export default function VideoUploader() {
             body: JSON.stringify({ frames: probeBase64 }),
           })
           if (windowRes.ok) {
-            const { setup } = await windowRes.json()
-            const clampedSetup = Math.max(0, Math.min(PROBE_COUNT - 1, setup))
-            const setupTime = probeTimestamps[clampedSetup] ?? probeTimestamps[Math.floor(PROBE_COUNT / 2)]
-            // If setup landed in the first 8% of the video, the detection likely picked the wrong frame
-            // (incomplete shot 1 that starts before recording). Use the middle of the video instead.
-            const effectiveSetupTime = setupTime < duration * 0.20
-              ? duration * 0.3
-              : setupTime
-            shotStart = Math.max(0, effectiveSetupTime - 0.5)
-            shotEnd = Math.min(duration, effectiveSetupTime + 3.8)
+            const { release } = await windowRes.json()
+            const clamped = Math.max(0, Math.min(PROBE_COUNT - 1, release))
+            releaseTime = probeTimestamps[clamped]
+            shotStart = Math.max(0, releaseTime - 1.7)
+            shotEnd = Math.min(duration, releaseTime + 0.8)
           }
         } catch {
-          // Fallback: first 3s
+          // Keep 60% fallback
         }
 
         setProgress(40)

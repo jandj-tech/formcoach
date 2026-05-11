@@ -42,9 +42,19 @@ export default function VideoUploader() {
         probeCanvas.height = 180
         const probeCtx = probeCanvas.getContext('2d')!
 
-        const probeTimestamps = Array.from({ length: PROBE_COUNT }, (_, i) =>
-          (duration / (PROBE_COUNT + 1)) * (i + 1)
-        )
+        // Front-heavy distribution: 20 frames in first 35%, 10 in remaining 65%
+        // Gives 3× denser coverage where shots usually start without extra API calls
+        const FRONT_FRAMES = 20
+        const BACK_FRAMES = PROBE_COUNT - FRONT_FRAMES
+        const frontEnd = duration * 0.35
+        const probeTimestamps = [
+          ...Array.from({ length: FRONT_FRAMES }, (_, i) =>
+            (frontEnd / (FRONT_FRAMES + 1)) * (i + 1)
+          ),
+          ...Array.from({ length: BACK_FRAMES }, (_, i) =>
+            frontEnd + ((duration - frontEnd) / (BACK_FRAMES + 1)) * (i + 1)
+          ),
+        ]
 
         const probeBase64: string[] = []
 
@@ -72,7 +82,7 @@ export default function VideoUploader() {
             const setupTime = probeTimestamps[clampedSetup] ?? probeTimestamps[Math.floor(PROBE_COUNT / 2)]
             // If setup landed in the first 8% of the video, the detection likely picked the wrong frame
             // (incomplete shot 1 that starts before recording). Use the middle of the video instead.
-            const effectiveSetupTime = setupTime < duration * 0.08
+            const effectiveSetupTime = setupTime < duration * 0.20
               ? duration * 0.3
               : setupTime
             shotStart = Math.max(0, effectiveSetupTime - 0.5)

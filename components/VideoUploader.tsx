@@ -1,10 +1,11 @@
-﻿'use client'
+'use client'
 
 import { useCallback, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 const FRAME_COUNT = 20
-const PROBE_COUNT = 40  // low-res frames to detect shot window
+const PROBE_COUNT = 30  // low-res frames to detect shot window
+const SEEK_TIMEOUT_MS = 4000  // max ms to wait for a seek before skipping
 
 export default function VideoUploader() {
   const [isDragging, setIsDragging] = useState(false)
@@ -14,6 +15,15 @@ export default function VideoUploader() {
   const [errorMsg, setErrorMsg] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
+
+  const seekTo = (video: HTMLVideoElement, t: number): Promise<void> =>
+    new Promise((res) => {
+      let done = false
+      const finish = () => { if (!done) { done = true; res() } }
+      const timer = setTimeout(finish, SEEK_TIMEOUT_MS)
+      video.onseeked = () => { clearTimeout(timer); finish() }
+      video.currentTime = t
+    })
 
   const extractFrames = useCallback(async (file: File): Promise<Blob[]> => {
     return new Promise((resolve, reject) => {
@@ -39,14 +49,9 @@ export default function VideoUploader() {
         const probeBase64: string[] = []
 
         for (const t of probeTimestamps) {
-          await new Promise<void>((res) => {
-            video.currentTime = t
-            video.onseeked = () => {
-              probeCtx.drawImage(video, 0, 0, 320, 180)
-              probeBase64.push(probeCanvas.toDataURL('image/jpeg', 0.7).split(',')[1])
-              res()
-            }
-          })
+          await seekTo(video, t)
+          probeCtx.drawImage(video, 0, 0, 320, 180)
+          probeBase64.push(probeCanvas.toDataURL('image/jpeg', 0.7).split(',')[1])
         }
 
         setProgress(20)
@@ -63,11 +68,13 @@ export default function VideoUploader() {
           })
           if (windowRes.ok) {
             const { start, end } = await windowRes.json()
-            // Convert probe frame indices to timestamps, add small buffers
             const startTime = probeTimestamps[Math.max(0, start - 1)] ?? probeTimestamps[0]
             const endTime = probeTimestamps[Math.min(PROBE_COUNT - 1, end + 1)] ?? probeTimestamps[PROBE_COUNT - 1]
-            shotStart = Math.max(0, startTime - 0.3)
-            shotEnd = Math.min(duration, endTime + 0.5)
+            // Cap window to 3.5s max so 20 frames stay focused on the shot
+            const rawStart = Math.max(0, startTime - 0.3)
+            const rawEnd = Math.min(duration, endTime + 0.5)
+            shotStart = rawStart
+            shotEnd = Math.min(rawEnd, rawStart + 3.5)
           }
         } catch {
           // Fallback: first 3s
@@ -86,25 +93,23 @@ export default function VideoUploader() {
         )
 
         for (let i = 0; i < timestamps.length; i++) {
+          await seekTo(video, timestamps[i])
+          mainCanvas.width = video.videoWidth
+          mainCanvas.height = video.videoHeight
+          ctx.drawImage(video, 0, 0)
           await new Promise<void>((res) => {
-            video.currentTime = timestamps[i]
-            video.onseeked = () => {
-              mainCanvas.width = video.videoWidth
-              mainCanvas.height = video.videoHeight
-              ctx.drawImage(video, 0, 0)
-              mainCanvas.toBlob(
-                (blob) => {
-                  if (blob) {
-                    blobs.push(blob)
-                    thumbs.push(mainCanvas.toDataURL('image/jpeg', 0.4))
-                  }
-                  setProgress(Math.round(40 + ((i + 1) / timestamps.length) * 20))
-                  res()
-                },
-                'image/jpeg',
-                0.85
-              )
-            }
+            mainCanvas.toBlob(
+              (blob) => {
+                if (blob) {
+                  blobs.push(blob)
+                  thumbs.push(mainCanvas.toDataURL('image/jpeg', 0.4))
+                }
+                setProgress(Math.round(40 + ((i + 1) / timestamps.length) * 20))
+                res()
+              },
+              'image/jpeg',
+              0.85
+            )
           })
         }
 

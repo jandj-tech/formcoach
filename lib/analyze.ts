@@ -144,11 +144,13 @@ PLAYER ASSESSMENT — identify one of these player_type values:
 - "nba_elite": you can identify this as an NBA player known for exceptional shooting (e.g. Stephen Curry, Devin Booker, Ray Allen, Klay Thompson, Kevin Durant, Damian Lillard)
 Include player_name if you can identify the specific person, otherwise null.
 
-CRITICAL FLAGS — these are high-priority flaws. Look actively for both of these in every analysis:
+CRITICAL FLAGS — these operate on their own detection standard, independent of visibility rules above. Look hard for both in every analysis:
 
-- elbow_severely_out: the shooting elbow is noticeably out to the side rather than under the ball — set true if the elbow is visibly outside the ball line during the shot, even if not extreme. This is one of the most common flaws; err on the side of flagging it. When this flag is true, the elbow L-shape/position criterion MUST score 5 or below — any floor rule in that criterion's grading guide does not apply when the elbow is clearly out.
+- elbow_severely_out: the shooting elbow is noticeably out to the side rather than under the ball. Set true if the elbow is visibly outside the ball line at any point during the shot. This is extremely common — if you are unsure, set true. Do NOT apply benefit-of-the-doubt or burden-of-proof here. When true: the elbow L-shape criterion MUST score 5 or below (floor rules in that criterion's grading guide do not apply).
 
-- followthrough_flick_to_side: the shooting hand OR guide hand deviates laterally during or after release — flicks left or right instead of straight toward the basket. CHECK EVERY RELEASE AND FOLLOW-THROUGH FRAME specifically for this. A wrist that finishes pointing away from the basket, a guide hand that pushes outward, or a shooting hand that curls sideways all count. This is frequently missed — look hard for it. Set true if there is any noticeable lateral deviation in either hand.
+- followthrough_flick_to_side: the shooting hand OR guide hand moves laterally at or after release instead of finishing straight toward the basket. Specifically look for: wrist curling left or right, shooting hand finishing pointing away from the rim, guide hand flicking outward to the side. CHECK EVERY RELEASE FRAME — this happens fast and is easy to miss. If the hand finishes in any direction other than straight toward the basket, set true. Do NOT apply benefit-of-the-doubt here. When true: any follow-through or guide hand criterion MUST score 4 or below.
+
+NOTE: These two flags are the most important flaws to detect. Missing them is a bigger error than a false positive. When in doubt, flag it.
 
 For overall_score: average only scored criteria (exclude nulls).
 

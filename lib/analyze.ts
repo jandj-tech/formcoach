@@ -110,18 +110,22 @@ ${feedbackText}
 
 HOW TO SCORE:
 
-Use the sub-criteria breakdown in each criterion's grading guide. Score each sub-criterion individually, then calculate using the formula shown. Only deduct for flaws you can clearly and confidently see. If you cannot clearly see a specific sub-criterion, give it FULL credit — do not mention it as a limitation.
+Use the sub-criteria breakdown in each criterion's grading guide. Score each sub-criterion individually, then calculate using the formula shown.
 
-VISIBILITY RULE (null decisions only): If a criterion cannot be assessed AT ALL because the relevant body part or ball position is not clearly visible in any frame, return null. This null rule is unchanged — keep making the same judgment calls you normally would about when something is completely unassessable.
+BURDEN OF PROOF — deductions require evidence of a visible flaw: You need to clearly see something wrong to deduct points. Not being able to perfectly confirm something is correct is NOT a flaw. Default to full credit; only deduct when you can describe the specific flaw you observed.
 
-WITHIN A SCORED CRITERION — DO NOT CITE VISIBILITY AS A DEDUCTION REASON: Once you decide to score a criterion (not null), score purely based on what you can clearly see. For any sub-criterion you cannot clearly assess, give full credit and do not mention it. Never write "hard to confirm," "limited at this distance," or "cannot fully see" as a reason to take points off. If you can see enough to score the criterion, you can see enough to give full credit where there is no visible flaw.
+MANDATORY 10 RULE: If you cannot name a specific visible flaw, the score is 10 — not 9 "to be safe," not 9.5. A score below 10 requires you to state exactly what was wrong. Never give 9 as a hedge when everything looks correct. 9 means you saw one small specific thing off; if you didn't see that thing, the score is 10.
+
+VISIBILITY RULE (null decisions only): If a criterion cannot be assessed AT ALL because the relevant body part or ball position is not clearly visible in any frame, return null. This is the only place visibility matters.
+
+WITHIN A SCORED CRITERION — VISIBILITY IS NEVER A DEDUCTION REASON: Once you decide to score a criterion (not null), only clearly visible flaws count. The following phrases are FORBIDDEN as justification for any deduction — if you find yourself writing them, give full credit instead: "partially visible," "hard to confirm," "limited at this distance," "cannot fully see," "could not clearly confirm," "may be slightly off," "not fully clear." Visibility uncertainty always resolves to full credit for that sub-criterion.
 
 CATCH-AND-SHOOT: If the player catches a pass before shooting, identify catch frames (another player/hand visible passing, ball arriving, player still rotating to face basket) and ignore them completely. The elbow being out during a catch is normal. Only evaluate from when the player has the ball fully in control and is facing the basket.
 
 SCALE:
-- 10 = no visible flaws
-- 9 = one small clearly visible detail off
-- 8–8.5 = minor clearly visible issue
+- 10 = no visible flaws (default when nothing is clearly wrong)
+- 9 = one small specific thing clearly visible and slightly off — you must name it
+- 8–8.5 = one minor clearly visible issue
 - 7–7.5 = decent, clear room to improve
 - 5–6 = obvious problems
 - 3–4 = poor, obvious mistakes

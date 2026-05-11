@@ -6,8 +6,8 @@ import { useRouter } from 'next/navigation'
 const FRAME_COUNT = 28
 const ROUGH_COUNT = 10      // tiny frames for rough shot location
 const PROBE_COUNT = 30      // low-res frames for precise release detection
-const REGION_PAD = 0.45     // ±45% of video around rough center
-const REGION_MIN_S = 3.5    // minimum dense region width in seconds
+const REGION_PAD = 0.40     // ±40% of video around rough center
+const REGION_MIN_S = 5.0    // minimum dense region width — covers full short videos
 const SEEK_TIMEOUT_MS = 4000  // max ms to wait for a seek before skipping
 
 export default function VideoUploader() {
@@ -79,6 +79,8 @@ export default function VideoUploader() {
         probeCanvas.height = 180
         const probeCtx = probeCanvas.getContext('2d')!
 
+        // Dense region: roughCenter ± 40%, minimum 5s total
+        // Min 5s covers most short single-shot clips entirely regardless of rough accuracy
         const roughCenterTime = roughCenter * duration
         const halfWindow = Math.max(REGION_MIN_S / 2, duration * REGION_PAD)
         const denseStart = Math.max(0, roughCenterTime - halfWindow)

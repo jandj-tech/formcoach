@@ -14,8 +14,8 @@ const VIDEOS = [
 
 const ROUGH_COUNT = 10
 const PROBE_COUNT = 30
-const REGION_PAD = 0.45
-const REGION_MIN_S = 3.5
+const REGION_PAD = 0.40
+const REGION_MIN_S = 5.0
 const RELEASE_BEFORE = 1.7
 const RELEASE_AFTER = 0.8
 const QUALITY_FRAMES = 5
@@ -109,7 +109,7 @@ async function testVideo(video, idx) {
   const denseStart = Math.max(0, roughCenterTime - halfWindow)
   const denseEnd = Math.min(duration, roughCenterTime + halfWindow)
 
-  console.log(`  Dense region: ${denseStart.toFixed(2)}s → ${denseEnd.toFixed(2)}s (${(denseEnd - denseStart).toFixed(2)}s)`)
+  console.log(`  Dense region: ${denseStart.toFixed(2)}s → ${denseEnd.toFixed(2)}s (${(denseEnd - denseStart).toFixed(2)}s, ${((denseEnd - denseStart) / PROBE_COUNT * 1000).toFixed(0)}ms/frame)`)
 
   const probeTimestamps = Array.from({ length: PROBE_COUNT }, (_, i) =>
     denseStart + ((denseEnd - denseStart) / (PROBE_COUNT + 1)) * (i + 1)

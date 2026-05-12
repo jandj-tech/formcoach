@@ -14,7 +14,14 @@ export async function POST(request: Request): Promise<NextResponse> {
       request,
       onBeforeGenerateToken: async () => {
         return {
-          allowedContentTypes: ['video/*'],
+          allowedContentTypes: [
+            'video/mp4',
+            'video/quicktime',
+            'video/x-msvideo',
+            'video/webm',
+            'video/x-matroska',
+            'application/octet-stream',
+          ],
           maximumSizeInBytes: 200 * 1024 * 1024,
         }
       },
@@ -25,9 +32,8 @@ export async function POST(request: Request): Promise<NextResponse> {
     })
     return NextResponse.json(jsonResponse)
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Upload failed' },
-      { status: 400 },
-    )
+    const msg = error instanceof Error ? error.message : 'Upload failed'
+    console.error('[upload-video] handleUpload error:', msg, error)
+    return NextResponse.json({ error: msg }, { status: 400 })
   }
 }

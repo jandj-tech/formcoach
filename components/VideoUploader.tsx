@@ -198,15 +198,16 @@ export default function VideoUploader() {
         try {
           const ext = (file.name.split('.').pop() || 'mp4').toLowerCase()
           const pathname = `videos/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`
+          console.log('[VideoUploader] uploading video to Blob:', pathname, file.type, file.size)
           const blob = await upload(pathname, file, {
             access: 'public',
             handleUploadUrl: '/api/upload-video',
-            contentType: file.type || 'video/mp4',
           })
           videoUrl = blob.url
+          console.log('[VideoUploader] video uploaded:', videoUrl)
         } catch (err) {
           // Non-fatal: continue without the video if blob upload fails.
-          console.warn('Video blob upload failed; continuing with frames only.', err)
+          console.error('[VideoUploader] video blob upload failed:', err)
         }
         setProgress(75)
 

@@ -11,6 +11,7 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData()
     const files = formData.getAll('frames') as File[]
     const videoUrl = (formData.get('videoUrl') as string | null) || null
+    console.log('[analyze] received videoUrl:', videoUrl ? 'YES' : 'NO', 'frames:', files.length)
 
     if (!files || files.length === 0) {
       return NextResponse.json({ error: 'No frames provided' }, { status: 400 })

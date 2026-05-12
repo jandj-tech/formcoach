@@ -120,6 +120,8 @@ MANDATORY 10 RULE: If you cannot name a specific visible flaw, the score is 10 �
 
 CONSISTENCY CHECK (apply before finalizing every score): If your reasoning for a criterion describes good mechanics, no flaws, or nothing wrong — the score MUST be 10. A positive or neutral reasoning combined with a score below 10 is a direct contradiction. Fix the score to 10, not the reasoning.
 
+USER-FACING LANGUAGE RULE: The "reasoning" string is shown directly to the player. Write it as natural, plain-English coaching feedback — say what they did wrong and how to correct it. NEVER mention internal flag names like elbow_severely_out, followthrough_flick_to_side, arc_too_flat, or critical_flags. NEVER write meta-phrases like "flag triggered," "cap applied," "score capped at X," or "per the rules." Just describe the flaw and a tip to fix it, the way a coach would speak to a player.
+
 VISIBILITY RULE (null decisions only): If a criterion cannot be assessed AT ALL because the relevant body part or ball position is not clearly visible in any frame, return null. This is the only place visibility matters.
 
 SHOT ARC — MANDATORY NULL CONDITION: Return null for the shot arc criterion unless the ball is visible in the frames near the basket or net. You must be able to see the ball close to or at the rim/net to judge arc. If the ball leaves the frame or disappears before reaching the vicinity of the basket, return null — do not estimate, extrapolate, or guess arc from early trajectory alone. No basket visible near the ball = null.

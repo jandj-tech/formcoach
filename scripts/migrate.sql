@@ -74,6 +74,9 @@ CREATE TABLE IF NOT EXISTS orders (
 -- If orders table existed before size column was added
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS size VARCHAR(2);
 
+-- Store original uploaded video URL alongside the analysis
+ALTER TABLE analyses ADD COLUMN IF NOT EXISTS video_url TEXT;
+
 -- Seed custom criteria (only if table is empty)
 INSERT INTO criteria (name, description, weight, order_index)
 SELECT * FROM (VALUES

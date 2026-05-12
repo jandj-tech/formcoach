@@ -10,6 +10,7 @@ export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData()
     const files = formData.getAll('frames') as File[]
+    const videoUrl = (formData.get('videoUrl') as string | null) || null
 
     if (!files || files.length === 0) {
       return NextResponse.json({ error: 'No frames provided' }, { status: 400 })
@@ -51,8 +52,8 @@ export async function POST(req: NextRequest) {
 
     // Store analysis
     const [analysis] = await db`
-      INSERT INTO analyses (submission_id, overall_score, frame_urls)
-      VALUES (${submission.id}, ${result.overall_score}, ${frameUrls})
+      INSERT INTO analyses (submission_id, overall_score, frame_urls, video_url)
+      VALUES (${submission.id}, ${result.overall_score}, ${frameUrls}, ${videoUrl})
       RETURNING id
     `
 

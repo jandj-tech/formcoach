@@ -15,7 +15,7 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
   if (!submission || !submission.email) return notFound()
 
   const [analysis] = await db`
-    SELECT a.id, a.overall_score, a.frame_urls
+    SELECT a.id, a.overall_score, a.frame_urls, a.video_url
     FROM analyses a
     WHERE a.submission_id = ${submission.id}
     ORDER BY a.created_at DESC
@@ -47,6 +47,19 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
         <div className="flex justify-center">
           <OverallBadge score={Number(analysis.overall_score)} />
         </div>
+
+        {/* Uploaded Video */}
+        {analysis.video_url && (
+          <div className="space-y-3">
+            <h2 className="text-black font-bold text-lg">Your Shot</h2>
+            <video
+              src={analysis.video_url as string}
+              controls
+              playsInline
+              className="w-full rounded-xl bg-black border border-gray-200"
+            />
+          </div>
+        )}
 
         {/* Criteria Breakdown */}
         <div className="space-y-4">

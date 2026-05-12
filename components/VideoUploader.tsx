@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { upload } from '@vercel/blob/client'
 
 const FRAME_COUNT = 28
 const ROUGH_COUNT = 10      // tiny frames for rough shot location
@@ -191,8 +192,27 @@ export default function VideoUploader() {
         setStatus('uploading')
         setProgress(60)
 
+        // Upload the original video directly to Vercel Blob (browser → Blob,
+        // bypassing the serverless route's 4.5MB body limit).
+        let videoUrl: string | null = null
+        try {
+          const ext = (file.name.split('.').pop() || 'mp4').toLowerCase()
+          const pathname = `videos/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`
+          const blob = await upload(pathname, file, {
+            access: 'public',
+            handleUploadUrl: '/api/upload-video',
+            contentType: file.type || 'video/mp4',
+          })
+          videoUrl = blob.url
+        } catch (err) {
+          // Non-fatal: continue without the video if blob upload fails.
+          console.warn('Video blob upload failed; continuing with frames only.', err)
+        }
+        setProgress(75)
+
         const formData = new FormData()
         frames.forEach((blob, i) => formData.append('frames', blob, `frame-${i}.jpg`))
+        if (videoUrl) formData.append('videoUrl', videoUrl)
 
         const res = await fetch('/api/analyze', { method: 'POST', body: formData })
         setProgress(90)

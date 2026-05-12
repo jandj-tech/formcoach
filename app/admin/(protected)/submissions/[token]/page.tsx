@@ -20,7 +20,7 @@ export default async function AdminSubmissionPage({
   if (!submission) return notFound()
 
   const [analysis] = await db`
-    SELECT id, overall_score, frame_urls, created_at
+    SELECT id, overall_score, frame_urls, video_url, created_at
     FROM analyses
     WHERE submission_id = ${submission.id}
     ORDER BY created_at DESC
@@ -84,20 +84,15 @@ export default async function AdminSubmissionPage({
             <OverallBadge score={Number(analysis.overall_score)} />
           </div>
 
-          {analysis.frame_urls && (analysis.frame_urls as string[]).length > 0 && (
+          {analysis.video_url && (
             <div className="space-y-3">
-              <h2 className="text-white font-bold text-lg">Analyzed Frames</h2>
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                {(analysis.frame_urls as string[]).map((url, i) => (
-                  <a key={i} href={url} target="_blank" rel="noopener noreferrer">
-                    <img
-                      src={url}
-                      alt={`Frame ${i + 1}`}
-                      className="rounded-lg w-full aspect-video object-cover border border-zinc-800 hover:border-orange-500 transition-colors"
-                    />
-                  </a>
-                ))}
-              </div>
+              <h2 className="text-white font-bold text-lg">Uploaded Video</h2>
+              <video
+                src={analysis.video_url as string}
+                controls
+                playsInline
+                className="w-full rounded-xl bg-black border border-zinc-800"
+              />
             </div>
           )}
 
@@ -114,6 +109,23 @@ export default async function AdminSubmissionPage({
               ))}
             </div>
           </div>
+
+          {analysis.frame_urls && (analysis.frame_urls as string[]).length > 0 && (
+            <div className="space-y-3">
+              <h2 className="text-white font-bold text-lg">Analyzed Frames</h2>
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                {(analysis.frame_urls as string[]).map((url, i) => (
+                  <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                    <img
+                      src={url}
+                      alt={`Frame ${i + 1}`}
+                      className="rounded-lg w-full aspect-video object-cover border border-zinc-800 hover:border-orange-500 transition-colors"
+                    />
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

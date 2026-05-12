@@ -1,32 +1,43 @@
-﻿interface ScoreCardProps {
+import { humanizeReasoning } from '@/lib/sanitize'
+
+interface ScoreCardProps {
   name: string
   score: number | null
   reasoning: string
 }
 
 function scoreColor(score: number) {
-  if (score >= 8) return 'text-orange-500'
-  if (score >= 6) return 'text-orange-500'
-  if (score >= 4) return 'text-orange-500'
-  return 'text-red-500'
+  if (score < 2) return 'text-red-700'
+  if (score < 4) return 'text-red-600'
+  if (score < 5) return 'text-red-500'
+  if (score === 5) return 'text-orange-500'
+  if (score <= 7) return 'text-green-500'
+  if (score <= 9) return 'text-green-600'
+  return 'text-green-700'
 }
 
 function barColor(score: number) {
-  if (score >= 8) return 'bg-green-500'
-  if (score >= 6) return 'bg-yellow-500'
-  if (score >= 4) return 'bg-orange-500'
-  return 'bg-red-500'
+  if (score < 2) return 'bg-red-700'
+  if (score < 4) return 'bg-red-600'
+  if (score < 5) return 'bg-red-500'
+  if (score === 5) return 'bg-orange-500'
+  if (score <= 7) return 'bg-green-500'
+  if (score <= 9) return 'bg-green-600'
+  return 'bg-green-700'
 }
 
 function scoreLabel(score: number) {
   if (score >= 9) return 'Excellent'
   if (score >= 7) return 'Good'
-  if (score >= 5) return 'Average'
+  if (score > 5) return 'Above Average'
+  if (score === 5) return 'Average'
   if (score >= 3) return 'Needs Work'
   return 'Poor'
 }
 
 export default function ScoreCard({ name, score, reasoning }: ScoreCardProps) {
+  const cleanReasoning = humanizeReasoning(reasoning)
+
   if (score === null) {
     return (
       <div className="bg-gray-50 rounded-xl p-5 border border-gray-200 opacity-75">
@@ -34,7 +45,7 @@ export default function ScoreCard({ name, score, reasoning }: ScoreCardProps) {
           <h3 className="text-black font-semibold text-sm">{name}</h3>
           <span className="text-xs font-medium text-black bg-gray-200 px-2 py-0.5 rounded-full">Not visible</span>
         </div>
-        <p className="text-black text-xs leading-relaxed italic">{reasoning}</p>
+        <p className="text-black text-xs leading-relaxed italic">{cleanReasoning}</p>
       </div>
     )
   }
@@ -57,7 +68,7 @@ export default function ScoreCard({ name, score, reasoning }: ScoreCardProps) {
           style={{ width: `${pct}%` }}
         />
       </div>
-      <p className="text-black text-xs leading-relaxed">{reasoning}</p>
+      <p className="text-black text-xs leading-relaxed">{cleanReasoning}</p>
     </div>
   )
 }

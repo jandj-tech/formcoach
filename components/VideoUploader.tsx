@@ -17,6 +17,9 @@ export default function VideoUploader() {
   const [progress, setProgress] = useState(0)
   const [previews, setPreviews] = useState<string[]>([])
   const [errorMsg, setErrorMsg] = useState('')
+  const [videoUploadStatus, setVideoUploadStatus] = useState<
+    { state: 'idle' } | { state: 'uploading' } | { state: 'ok'; url: string } | { state: 'failed'; error: string }
+  >({ state: 'idle' })
   const inputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
@@ -195,6 +198,7 @@ export default function VideoUploader() {
         // Upload the original video directly to Vercel Blob (browser → Blob,
         // bypassing the serverless route's 4.5MB body limit).
         let videoUrl: string | null = null
+        setVideoUploadStatus({ state: 'uploading' })
         try {
           const ext = (file.name.split('.').pop() || 'mp4').toLowerCase()
           const pathname = `videos/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`
@@ -205,9 +209,12 @@ export default function VideoUploader() {
           })
           videoUrl = blob.url
           console.log('[VideoUploader] video uploaded:', videoUrl)
+          setVideoUploadStatus({ state: 'ok', url: blob.url })
         } catch (err) {
           // Non-fatal: continue without the video if blob upload fails.
+          const errMsg = err instanceof Error ? `${err.name}: ${err.message}` : String(err)
           console.error('[VideoUploader] video blob upload failed:', err)
+          setVideoUploadStatus({ state: 'failed', error: errMsg })
         }
         setProgress(75)
 
@@ -275,6 +282,30 @@ export default function VideoUploader() {
           />
         </div>
         <p className="text-black text-xs">{progress}%</p>
+
+        {videoUploadStatus.state !== 'idle' && (
+          <div
+            className={`text-xs rounded-lg px-3 py-2 border ${
+              videoUploadStatus.state === 'ok'
+                ? 'bg-green-50 border-green-200 text-green-800'
+                : videoUploadStatus.state === 'failed'
+                  ? 'bg-red-50 border-red-200 text-red-800'
+                  : 'bg-zinc-50 border-zinc-200 text-zinc-700'
+            }`}
+          >
+            <div className="font-semibold mb-0.5">
+              {videoUploadStatus.state === 'uploading' && 'Uploading video to storage...'}
+              {videoUploadStatus.state === 'ok' && 'Video uploaded ✓'}
+              {videoUploadStatus.state === 'failed' && 'Video upload failed (analysis will continue with frames only)'}
+            </div>
+            {videoUploadStatus.state === 'failed' && (
+              <div className="font-mono text-[10px] text-red-700 break-all">
+                {videoUploadStatus.error}
+              </div>
+            )}
+          </div>
+        )}
+
         {previews.length > 0 && (
           <div className="grid grid-cols-4 gap-2 mt-4">
             {previews.map((src, i) => (

@@ -1,6 +1,8 @@
 import { humanizeReasoning } from '@/lib/sanitize'
 import LearnVideo from './LearnVideo'
 
+const CHANNEL_URL = 'https://www.youtube.com/@LearnHoopsbasketball'
+
 interface ScoreCardProps {
   name: string
   score: number | null
@@ -39,7 +41,9 @@ function scoreLabel(score: number) {
 
 export default function ScoreCard({ name, score, reasoning, videoId }: ScoreCardProps) {
   const cleanReasoning = humanizeReasoning(reasoning)
-  const showTutorial = score !== null && score <= 6 && !!videoId
+  const needsHelp = score !== null && score <= 6
+  const showTutorial = needsHelp && !!videoId
+  const showChannelLink = needsHelp && !videoId
 
   if (score === null) {
     return (
@@ -73,6 +77,16 @@ export default function ScoreCard({ name, score, reasoning, videoId }: ScoreCard
       </div>
       <p className="text-black text-xs leading-relaxed">{cleanReasoning}</p>
       {showTutorial && <LearnVideo videoId={videoId!} label="Watch how to fix this" />}
+      {showChannelLink && (
+        <a
+          href={CHANNEL_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-3 inline-flex items-center gap-1.5 text-orange-500 hover:text-red-600 text-xs font-bold transition-colors"
+        >
+          Learn on the LearnHoops channel →
+        </a>
+      )}
     </div>
   )
 }

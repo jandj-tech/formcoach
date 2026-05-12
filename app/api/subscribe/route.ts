@@ -35,6 +35,7 @@ export async function POST(req: NextRequest) {
       success_url: successUrl,
       cancel_url: `${BASE_URL}/`,
       allow_promotion_codes: true,
+      payment_method_collection: 'if_required',
       metadata: { plan, country, submissionId: submissionId ?? '' },
     })
 

@@ -124,7 +124,7 @@ USER-FACING LANGUAGE RULE: The "reasoning" string is shown directly to the playe
 
 VISIBILITY RULE (null decisions only): If a criterion cannot be assessed AT ALL because the relevant body part or ball position is not clearly visible in any frame, return null. This is the only place visibility matters.
 
-SHOT ARC — ALWAYS NULL UNLESS BOTH CONDITIONS ARE MET: To score arc you need TWO things visible in the same frame(s): (1) the basketball, AND (2) the basket/rim. If you cannot see the ball's height relative to the basket, you cannot judge arc. Return null if: the ball leaves the frame before reaching the basket, the basket is not visible, or you are guessing height from trajectory alone. This rule has NO exceptions. Do not score arc with a number — return null — if you cannot see the ball near the basket.
+SHOT ARC — ALWAYS NULL UNLESS BOTH CONDITIONS ARE MET: To score arc you need TWO things visible in the same frame(s): (1) the basketball in flight, AND (2) the basket/rim the player is shooting AT. The basket must be the TARGET — the one the ball is traveling toward. A background basket behind the player or on a different court does NOT count. Return null if: the ball leaves the frame before reaching the target basket, the target basket is not visible, you can only see a background/unrelated basket, or you are guessing from trajectory alone. This rule has NO exceptions.
 
 THUMB — MANDATORY NULL CONDITION: Return null for the "Thumb is Spread Wide" criterion if the thumb is not clearly and directly visible in at least one frame. Do not infer thumb position from finger spacing or general hand shape — if you cannot see the thumb clearly, return null.
 

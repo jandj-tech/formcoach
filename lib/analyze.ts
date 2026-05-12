@@ -92,7 +92,7 @@ export async function analyzeShot(
   const systemPrompt = `You are an expert basketball shooting coach analyzing a player's shooting form. You have deep knowledge of proper shooting mechanics as taught by top coaches:
 
 KEY FORM PRINCIPLES (use these to evaluate):
-- Elbow: must be under the ball forming an L-shape, pointing toward basket — elbow flared out to the side is a major flaw that destroys shot accuracy
+- Elbow: must form a VERTICAL L-shape — forearm pointing straight up toward the ceiling, elbow pointing straight down toward the floor, directly under the ball. A sideways L (arm reaching out to the side with elbow bent, forearm going sideways rather than straight up) is NOT correct form and scores 0-2, the same as an elbow completely out. Only a vertical L with the forearm going straight up counts as good elbow position.
 - Guide hand: stays on the side of the ball only, comes off first, adds NO force — guide hand pushing, flicking outward, or collapsing inward during release is a significant flaw
 - Shooting hand follow-through: wrist snaps fully downward (goose-neck), fingers point toward rim, palm faces floor — hand flicking sideways rather than straight toward basket is a major flaw
 - Shot arc: approximately 45-60 degrees, high soft arc — flat shots lack forgiveness and are a clear mechanical flaw
@@ -124,7 +124,7 @@ USER-FACING LANGUAGE RULE: The "reasoning" string is shown directly to the playe
 
 VISIBILITY RULE (null decisions only): If a criterion cannot be assessed AT ALL because the relevant body part or ball position is not clearly visible in any frame, return null. This is the only place visibility matters.
 
-SHOT ARC — ALWAYS NULL UNLESS BOTH CONDITIONS ARE MET: To score arc you need TWO things visible in the same frame(s): (1) the basketball in flight, AND (2) the basket/rim the player is shooting AT. The basket must be the TARGET — the one the ball is traveling toward. A background basket behind the player or on a different court does NOT count. Return null if: the ball leaves the frame before reaching the target basket, the target basket is not visible, you can only see a background/unrelated basket, or you are guessing from trajectory alone. This rule has NO exceptions.
+SHOT ARC — OUTCOME-BASED NULL RULE: If you cannot confirm the outcome of the shot — whether the ball went in or clearly missed — return null for arc. No exceptions. Seeing the outcome (made or missed) means you saw the ball reach the basket, which is the only way arc is truly determinable. If you are unsure whether the ball went in or missed, or if the ball disappears before reaching the basket, or if only a background/unrelated basket is visible — return null. Do not score arc based on early trajectory or guesswork.
 
 THUMB — MANDATORY NULL CONDITION: Return null for the "Thumb is Spread Wide" criterion if the thumb is not clearly and directly visible in at least one frame. Do not infer thumb position from finger spacing or general hand shape — if you cannot see the thumb clearly, return null.
 
@@ -238,12 +238,15 @@ Return ONLY valid JSON, no other text:
   // Ensure new flag fields default to false if missing from response
   result.critical_flags.arc_too_flat = result.critical_flags.arc_too_flat ?? false
 
-  // Recalculate overall from criteria scores
+  // Recalculate overall using weighted average (weight column from DB)
+  const weightMap: Record<number, number> = Object.fromEntries(
+    activeCriteria.map((c: { id: number; weight: unknown }) => [Number(c.id), Number(c.weight) || 1])
+  )
   const scored = result.criteria.filter(c => c.score !== null)
   if (scored.length > 0) {
-    result.overall_score = Math.round(
-      (scored.reduce((sum, c) => sum + (c.score as number), 0) / scored.length) * 10
-    ) / 10
+    const totalWeight = scored.reduce((sum, c) => sum + (weightMap[c.id] ?? 1), 0)
+    const weightedSum = scored.reduce((sum, c) => sum + (c.score as number) * (weightMap[c.id] ?? 1), 0)
+    result.overall_score = Math.round((weightedSum / totalWeight) * 10) / 10
   }
 
   // Apply critical flag caps FIRST — stacking penalties for multiple flaws

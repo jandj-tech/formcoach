@@ -49,7 +49,7 @@ export default async function SubmissionsPage() {
                     {new Date(s.created_at).toLocaleString()}
                   </td>
                   <td className="px-5 py-3">
-                    {s.token && s.email ? (
+                    {s.token ? (
                       <a
                         href={`/results/${s.token}`}
                         className="text-orange-400 hover:text-orange-300 text-xs underline"

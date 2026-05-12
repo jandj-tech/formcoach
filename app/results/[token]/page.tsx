@@ -1,18 +1,16 @@
-﻿import { notFound } from 'next/navigation'
-import Link from 'next/link'
+import { notFound } from 'next/navigation'
 import { db } from '@/lib/db'
 import OverallBadge from '@/components/OverallBadge'
 import ScoreCard from '@/components/ScoreCard'
-import TopNav from '@/components/TopNav'
 
 export default async function ResultsPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
 
   const [submission] = await db`
-    SELECT id, email, status FROM submissions WHERE token = ${token}
+    SELECT id, status FROM submissions WHERE token = ${token}
   `
 
-  if (!submission || !submission.email) return notFound()
+  if (!submission) return notFound()
 
   const [analysis] = await db`
     SELECT a.*
@@ -33,81 +31,45 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
   `
 
   return (
-    <main className="min-h-screen bg-white flex flex-col">
-      <TopNav />
-
-      <div className="max-w-2xl mx-auto w-full px-6 py-12 space-y-10">
-        {/* Header */}
-        <div className="text-center space-y-2">
-          <h1 className="text-3xl font-black text-black">Your Shot Analysis</h1>
-          <p className="text-black text-sm">Here&apos;s how your form scored across all criteria</p>
-        </div>
-
-        {/* Overall Score */}
+    <main className="min-h-screen bg-white">
+      <div className="max-w-2xl mx-auto w-full px-6 py-10 space-y-8">
         <div className="flex justify-center">
           <OverallBadge score={Number(analysis.overall_score)} />
         </div>
 
-        {/* Uploaded Video */}
         {analysis.video_url && (
-          <div className="space-y-3">
-            <h2 className="text-black font-bold text-lg">Your Shot</h2>
-            <video
-              src={analysis.video_url as string}
-              controls
-              playsInline
-              className="w-full rounded-xl bg-black border border-gray-200"
-            />
-          </div>
+          <video
+            src={analysis.video_url as string}
+            controls
+            playsInline
+            className="w-full rounded-xl bg-black border border-gray-200"
+          />
         )}
 
-        {/* Criteria Breakdown */}
-        <div className="space-y-4">
-          <h2 className="text-black font-bold text-lg">Criteria Breakdown</h2>
-          <div className="space-y-3">
-            {scores.map((s) => (
-              <ScoreCard
-                key={s.id}
-                name={s.name}
-                score={s.ai_score !== null ? Number(s.ai_score) : null}
-                reasoning={s.ai_reasoning}
+        <div className="space-y-3">
+          {scores.map((s) => (
+            <ScoreCard
+              key={s.id}
+              name={s.name}
+              score={s.ai_score !== null ? Number(s.ai_score) : null}
+              reasoning={s.ai_reasoning}
+            />
+          ))}
+        </div>
+
+        {analysis.frame_urls && (analysis.frame_urls as string[]).length > 0 && (
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+            {(analysis.frame_urls as string[]).map((url, i) => (
+              <img
+                key={i}
+                src={url}
+                alt={`Frame ${i + 1}`}
+                className="rounded-lg w-full aspect-video object-cover border border-gray-200"
               />
             ))}
           </div>
-        </div>
-
-        {/* Frame Thumbnails */}
-        {analysis.frame_urls && analysis.frame_urls.length > 0 && (
-          <div className="space-y-3">
-            <h2 className="text-black font-bold text-lg">Analyzed Frames</h2>
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-              {(analysis.frame_urls as string[]).map((url, i) => (
-                <img
-                  key={i}
-                  src={url}
-                  alt={`Frame ${i + 1}`}
-                  className="rounded-lg w-full aspect-video object-cover border border-gray-200"
-                />
-              ))}
-            </div>
-          </div>
         )}
-
-        {/* CTA */}
-        <div className="bg-gray-50 rounded-xl p-6 border border-gray-200 text-center space-y-3">
-          <p className="text-black font-semibold">Want to analyze another shot?</p>
-          <Link
-            href="/analyze"
-            className="inline-block bg-orange-500 hover:bg-red-600 text-white font-bold px-8 py-3 rounded-xl transition-colors"
-          >
-            Upload Another Video
-          </Link>
-        </div>
       </div>
-
-      <footer className="py-6 border-t border-gray-200 text-center text-black text-xs">
-        © {new Date().getFullYear()} LearnHoops.com. All rights reserved.
-      </footer>
     </main>
   )
 }

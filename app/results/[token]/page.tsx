@@ -38,12 +38,15 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
         </div>
 
         {analysis.video_url && (
-          <video
-            src={analysis.video_url as string}
-            controls
-            playsInline
-            className="w-full rounded-xl bg-black border border-gray-200"
-          />
+          <div className="space-y-2">
+            <h2 className="text-black font-bold text-sm">Your Shot</h2>
+            <video
+              src={analysis.video_url as string}
+              controls
+              playsInline
+              className="w-full rounded-xl bg-black border border-gray-200"
+            />
+          </div>
         )}
 
         <div className="space-y-3">
@@ -58,15 +61,28 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
         </div>
 
         {analysis.frame_urls && (analysis.frame_urls as string[]).length > 0 && (
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-            {(analysis.frame_urls as string[]).map((url, i) => (
-              <img
-                key={i}
-                src={url}
-                alt={`Frame ${i + 1}`}
-                className="rounded-lg w-full aspect-video object-cover border border-gray-200"
-              />
-            ))}
+          <div className="space-y-2">
+            <h2 className="text-black font-bold text-sm">Analyzed Frames</h2>
+            <p className="text-zinc-500 text-xs">Swipe or scroll to see each frame analyzed by the AI.</p>
+            <div className="-mx-6 overflow-x-auto snap-x snap-mandatory">
+              <div className="flex gap-3 px-6 pb-2">
+                {(analysis.frame_urls as string[]).map((url, i) => (
+                  <div
+                    key={i}
+                    className="snap-start flex-shrink-0 w-64 sm:w-72 relative"
+                  >
+                    <img
+                      src={url}
+                      alt={`Frame ${i + 1}`}
+                      className="rounded-lg w-full aspect-video object-cover border border-gray-200"
+                    />
+                    <span className="absolute top-2 left-2 bg-black/70 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">
+                      {i + 1} / {(analysis.frame_urls as string[]).length}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
       </div>

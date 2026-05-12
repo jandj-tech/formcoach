@@ -50,12 +50,25 @@ export async function POST(req: NextRequest) {
     // Run Claude Vision analysis
     const result = await analyzeShot(frameBase64Array, frameMimeTypes)
 
-    // Store analysis
-    const [analysis] = await db`
-      INSERT INTO analyses (submission_id, overall_score, frame_urls, video_url)
-      VALUES (${submission.id}, ${result.overall_score}, ${frameUrls}, ${videoUrl})
-      RETURNING id
-    `
+    // Store analysis — try with video_url, fall back to the legacy column set
+    // if the migration adding video_url hasn't been applied yet.
+    let analysis: { id: number }
+    try {
+      ;[analysis] = (await db`
+        INSERT INTO analyses (submission_id, overall_score, frame_urls, video_url)
+        VALUES (${submission.id}, ${result.overall_score}, ${frameUrls}, ${videoUrl})
+        RETURNING id
+      `) as unknown as [{ id: number }]
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      if (!/column.*video_url.*does not exist/i.test(msg)) throw err
+      console.warn('analyses.video_url column missing — run `npm run migrate`. Inserting without video URL.')
+      ;[analysis] = (await db`
+        INSERT INTO analyses (submission_id, overall_score, frame_urls)
+        VALUES (${submission.id}, ${result.overall_score}, ${frameUrls})
+        RETURNING id
+      `) as unknown as [{ id: number }]
+    }
 
     // Store per-criterion scores
     for (const criterion of result.criteria) {

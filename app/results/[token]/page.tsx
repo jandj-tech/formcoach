@@ -15,7 +15,7 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
   if (!submission || !submission.email) return notFound()
 
   const [analysis] = await db`
-    SELECT a.id, a.overall_score, a.frame_urls, a.video_url
+    SELECT a.*
     FROM analyses a
     WHERE a.submission_id = ${submission.id}
     ORDER BY a.created_at DESC

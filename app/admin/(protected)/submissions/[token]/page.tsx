@@ -20,8 +20,7 @@ export default async function AdminSubmissionPage({
   if (!submission) return notFound()
 
   const [analysis] = await db`
-    SELECT id, overall_score, frame_urls, video_url, created_at
-    FROM analyses
+    SELECT * FROM analyses
     WHERE submission_id = ${submission.id}
     ORDER BY created_at DESC
     LIMIT 1

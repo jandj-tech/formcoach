@@ -124,7 +124,7 @@ USER-FACING LANGUAGE RULE: The "reasoning" string is shown directly to the playe
 
 VISIBILITY RULE (null decisions only): If a criterion cannot be assessed AT ALL because the relevant body part or ball position is not clearly visible in any frame, return null. This is the only place visibility matters.
 
-SHOT ARC — OUTCOME-BASED NULL RULE: If you cannot confirm the outcome of the shot — whether the ball went in or clearly missed — return null for arc. No exceptions. Seeing the outcome (made or missed) means you saw the ball reach the basket, which is the only way arc is truly determinable. If you are unsure whether the ball went in or missed, or if the ball disappears before reaching the basket, or if only a background/unrelated basket is visible — return null. Do not score arc based on early trajectory or guesswork.
+SHOT ARC — STATED OUTCOME REQUIREMENT: Before scoring arc, you MUST be able to write the exact sentence "The ball clearly went in" or "The ball clearly missed [direction]" in your reasoning. If you cannot write this sentence with complete certainty — if the outcome is only possible, probable, apparent, or inferred from trajectory — return null for arc. The following phrases MEAN you cannot see the outcome and MUST return null: "appears to go in," "appears to make it," "seems to go in," "trajectory suggests," "likely went in," "ball appears on track," "on a good trajectory," "suggesting a made shot," "appears to be heading," or any other uncertain language about where the ball ended up. If you catch yourself writing any of those phrases, return null instead. Only an outcome you witnessed and can state with complete certainty qualifies.
 
 THUMB — MANDATORY NULL CONDITION: Return null for the "Thumb is Spread Wide" criterion if the thumb is not clearly and directly visible in at least one frame. Do not infer thumb position from finger spacing or general hand shape — if you cannot see the thumb clearly, return null.
 
@@ -238,6 +238,39 @@ Return ONLY valid JSON, no other text:
   // Ensure new flag fields default to false if missing from response
   result.critical_flags.arc_too_flat = result.critical_flags.arc_too_flat ?? false
 
+  // Hard-enforce arc null rule in TypeScript — prompt instructions alone are not reliable enough.
+  // If the reasoning doesn't contain a confirmed outcome phrase, or contains uncertain language,
+  // force the score to null regardless of what Claude returned.
+  const arcCriterion = result.criteria.find(c => c.id === 17)
+  if (arcCriterion && arcCriterion.score !== null) {
+    const r = arcCriterion.reasoning.toLowerCase()
+    const confirmedOutcome =
+      r.includes('clearly went in') ||
+      r.includes('clearly missed') ||
+      r.includes('went through the hoop') ||
+      r.includes('ball went in') ||
+      r.includes('went in') ||
+      r.includes('missed the basket') ||
+      r.includes('hit the backboard') ||
+      r.includes('bounced off') ||
+      r.includes('off the rim')
+    const uncertainLanguage =
+      r.includes('appears to') ||
+      r.includes('seems to') ||
+      r.includes('trajectory suggests') ||
+      r.includes('likely went') ||
+      r.includes('on track') ||
+      r.includes('suggesting a') ||
+      r.includes('appears on') ||
+      r.includes('heading toward') ||
+      r.includes('probably') ||
+      r.includes('might have') ||
+      r.includes('could have gone')
+    if (!confirmedOutcome || uncertainLanguage) {
+      arcCriterion.score = null
+    }
+  }
+
   // Recalculate overall using weighted average (weight column from DB)
   const activeCriteriaRows = activeCriteria as unknown as Array<{ id: number; weight: unknown }>
   const weightMap: Record<number, number> = Object.fromEntries(
@@ -271,6 +304,14 @@ Return ONLY valid JSON, no other text:
   if (hasVeryLowCriticalScore) {
     result.overall_score = Math.min(result.overall_score, 6.0)
   }
+
+  // Stacking cap: 2+ of the 2.5x-weighted criteria (elbow=5, one-hand release=11, follow-through=15) score ≤5
+  const weightedLowCount = [5, 11, 15].filter(id => {
+    const c = result.criteria.find(c => c.id === id)
+    return c?.score !== null && (c?.score as number) <= 5
+  }).length
+  if (weightedLowCount >= 3) result.overall_score = Math.min(result.overall_score, 5.0)
+  else if (weightedLowCount >= 2) result.overall_score = Math.min(result.overall_score, 5.5)
 
   // Apply player type adjustments
   const pt = result.player_assessment?.player_type ?? 'recreational'

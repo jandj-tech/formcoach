@@ -21,11 +21,48 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
+  // --- Ball shop order ---
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session
     const variant = session.metadata?.variant
     const size = session.metadata?.size
+    const plan = session.metadata?.plan as 'monthly' | 'annual' | undefined
     const email = session.customer_details?.email
+
+    // Subscription checkout
+    if (plan === 'monthly' || plan === 'annual') {
+      if (!email) return NextResponse.json({ received: true })
+
+      const emailLower = email.toLowerCase()
+      const expiresAt = plan === 'annual'
+        ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+        : new Date(Date.now() + 31 * 24 * 60 * 60 * 1000)
+
+      try {
+        // Upsert email_list with subscription info
+        await db`
+          INSERT INTO email_list (email, subscription_type, subscription_expires_at)
+          VALUES (${emailLower}, ${plan}, ${expiresAt})
+          ON CONFLICT (email) DO UPDATE
+          SET subscription_type = ${plan}, subscription_expires_at = ${expiresAt}
+        `
+
+        // If user account exists, sync subscription there too
+        await db`
+          UPDATE users
+          SET subscription_type = ${plan}, subscription_expires_at = ${expiresAt},
+              stripe_customer_id = ${session.customer as string ?? null}
+          WHERE email = ${emailLower}
+        `
+      } catch (err) {
+        console.error('Failed to save subscription:', err)
+        return NextResponse.json({ error: 'DB error' }, { status: 500 })
+      }
+
+      return NextResponse.json({ received: true })
+    }
+
+    // Ball shop order (existing logic)
     const name = session.customer_details?.name
     const phone = session.customer_details?.phone
     const ship = session.collected_information?.shipping_details
@@ -58,6 +95,24 @@ export async function POST(req: NextRequest) {
     } catch (err) {
       console.error('Failed to save order:', err)
       return NextResponse.json({ error: 'DB error' }, { status: 500 })
+    }
+  }
+
+  // --- Subscription cancelled/expired ---
+  if (event.type === 'customer.subscription.deleted') {
+    const sub = event.data.object as Stripe.Subscription
+    const customerId = sub.customer as string
+    try {
+      await db`
+        UPDATE users SET subscription_type = NULL, subscription_expires_at = NULL
+        WHERE stripe_customer_id = ${customerId}
+      `
+      await db`
+        UPDATE email_list SET subscription_type = NULL, subscription_expires_at = NULL
+        WHERE email IN (SELECT email FROM users WHERE stripe_customer_id = ${customerId})
+      `
+    } catch (err) {
+      console.error('Failed to clear subscription:', err)
     }
   }
 

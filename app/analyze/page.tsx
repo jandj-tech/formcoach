@@ -1,5 +1,6 @@
 ﻿import TopNav from '@/components/TopNav'
 import VideoUploader from '@/components/VideoUploader'
+import PremiumCTA from '@/components/PremiumCTA'
 
 export default function AnalyzePage() {
   return (
@@ -17,7 +18,10 @@ export default function AnalyzePage() {
 
       <section className="flex-1 flex flex-col items-center px-4 pb-16">
         <VideoUploader />
-        <p className="text-black text-xs mt-4 text-center max-w-sm px-4">
+        <div className="w-full max-w-lg mt-4 px-2">
+          <PremiumCTA />
+        </div>
+        <p className="text-black text-xs mt-3 text-center max-w-sm px-4">
           Your video is never stored long-term. Frames are analyzed and then used only to generate your report.
         </p>
       </section>

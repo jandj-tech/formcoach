@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useCart } from '@/lib/cart'
 import QuantityStepper from '@/components/QuantityStepper'
+import PremiumCTA from '@/components/PremiumCTA'
 
 type Variant = 'right' | 'left'
 type Size = '5' | '6' | '7'
@@ -121,6 +122,8 @@ export default function ShopProduct({ usdToCad }: { usdToCad: number }) {
           <div className="text-3xl font-black text-white">
             {displayUnit} <span className="text-white text-sm font-medium">{currencyCode}</span>
           </div>
+
+          <PremiumCTA dark />
 
           {/* Variant selector */}
           <div className="space-y-2">

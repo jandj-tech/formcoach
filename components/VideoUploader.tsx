@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { upload } from '@vercel/blob/client'
 
@@ -11,6 +11,8 @@ const REGION_PAD = 0.40     // ±40% of video around rough center
 const REGION_MIN_S = 5.0    // minimum dense region width — covers full short videos
 const SEEK_TIMEOUT_MS = 4000  // max ms to wait for a seek before skipping
 
+interface UploadCount { used: number; remaining: number | null; subscribed: boolean }
+
 export default function VideoUploader() {
   const [isDragging, setIsDragging] = useState(false)
   const [status, setStatus] = useState<'idle' | 'extracting' | 'uploading' | 'error'>('idle')
@@ -20,8 +22,20 @@ export default function VideoUploader() {
   const [videoUploadStatus, setVideoUploadStatus] = useState<
     { state: 'idle' } | { state: 'uploading' } | { state: 'ok'; url: string } | { state: 'failed'; error: string }
   >({ state: 'idle' })
+  const [uploadCount, setUploadCount] = useState<UploadCount | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
+
+  useEffect(() => {
+    try {
+      const email = localStorage.getItem('fc_email')
+      if (!email) return
+      fetch(`/api/upload-count?email=${encodeURIComponent(email)}`)
+        .then(r => r.json())
+        .then((data: UploadCount) => setUploadCount(data))
+        .catch(() => {})
+    } catch {}
+  }, [])
 
   const seekTo = (video: HTMLVideoElement, t: number): Promise<void> =>
     new Promise((res) => {
@@ -322,23 +336,73 @@ export default function VideoUploader() {
     )
   }
 
+  const isLocked = uploadCount !== null && !uploadCount.subscribed && uploadCount.remaining === 0
+
+  async function handleUpgrade() {
+    try {
+      const res = await fetch('/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: 'monthly' }),
+      })
+      const { url } = await res.json()
+      if (url) window.location.href = url
+    } catch {}
+  }
+
   return (
     <div className="w-full max-w-lg mx-auto space-y-4 px-2">
-      <div
-        className={`border-2 border-dashed rounded-2xl p-8 sm:p-12 text-center cursor-pointer transition-all duration-200
-          ${isDragging ? 'border-orange-500 bg-orange-500/5' : 'border-gray-300 hover:border-orange-400 hover:bg-orange-50/50'}`}
-        onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
-        onDragLeave={() => setIsDragging(false)}
-        onDrop={onDrop}
-        onClick={() => inputRef.current?.click()}
-      >
-        <div className="text-5xl mb-4">🎥</div>
-        <p className="text-black font-semibold text-lg mb-1">Tap to upload your video</p>
-        <p className="text-black text-sm hidden sm:block">or drag and drop</p>
-        <p className="text-black text-xs mt-3">MP4, MOV, AVI · Max 200MB</p>
-        <button className="mt-5 bg-orange-500 hover:bg-red-600 text-white font-bold px-8 py-3 rounded-xl text-sm transition-colors w-full sm:w-auto">
-          Choose Video
-        </button>
+
+      {/* Remaining upload countdown — only shown when we know the user's email */}
+      {uploadCount && !uploadCount.subscribed && uploadCount.remaining !== null && uploadCount.remaining > 0 && (
+        uploadCount.remaining === 1 ? (
+          <div className="flex items-center justify-center gap-2 bg-orange-50 border border-orange-300 rounded-xl px-4 py-2">
+            <span className="text-orange-500 text-sm font-black tracking-wide">1 UPLOAD REMAINING THIS MONTH</span>
+          </div>
+        ) : (
+          <p className="text-center text-gray-400 text-xs">{uploadCount.remaining} uploads remaining this month</p>
+        )
+      )}
+
+      {/* Drop zone — locked when out of uploads */}
+      <div className="relative">
+        <div
+          className={`border-2 border-dashed rounded-2xl p-8 sm:p-12 text-center transition-all duration-200
+            ${isLocked
+              ? 'border-gray-200 opacity-40 pointer-events-none select-none'
+              : isDragging
+                ? 'border-orange-500 bg-orange-500/5 cursor-pointer'
+                : 'border-gray-300 hover:border-orange-400 hover:bg-orange-50/50 cursor-pointer'
+            }`}
+          onDragOver={(e) => { if (!isLocked) { e.preventDefault(); setIsDragging(true) } }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={isLocked ? undefined : onDrop}
+          onClick={() => { if (!isLocked) inputRef.current?.click() }}
+        >
+          <div className="text-5xl mb-4">🎥</div>
+          <p className="text-black font-semibold text-lg mb-1">Tap to upload your video</p>
+          <p className="text-black text-sm hidden sm:block">or drag and drop</p>
+          <p className="text-black text-xs mt-3">MP4, MOV, AVI · Max 200MB</p>
+          <button className="mt-5 bg-orange-500 hover:bg-red-600 text-white font-bold px-8 py-3 rounded-xl text-sm transition-colors w-full sm:w-auto">
+            Choose Video
+          </button>
+        </div>
+
+        {/* Locked overlay */}
+        {isLocked && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6">
+            <p className="text-black font-bold text-base text-center leading-snug">
+              Buy a Premium Plan to keep improving your shot
+            </p>
+            <button
+              onClick={handleUpgrade}
+              className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors"
+            >
+              Upgrade — from $2.49/mo
+            </button>
+            <p className="text-gray-400 text-xs">3 free analyses per month · Cancel anytime</p>
+          </div>
+        )}
       </div>
 
       {errorMsg && (

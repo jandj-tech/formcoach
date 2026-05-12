@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { put } from '@vercel/blob'
 import { db } from '@/lib/db'
 import { analyzeShot } from '@/lib/analyze'
+import { getSessionFromRequest } from '@/lib/auth'
 import crypto from 'crypto'
 
 export const maxDuration = 300
@@ -17,11 +18,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No frames provided' }, { status: 400 })
     }
 
+    // Attach logged-in user if session exists
+    const session = await getSessionFromRequest(req)
+    const userId = session?.userId ?? null
+
     // Create submission record
     const submissionToken = crypto.randomBytes(32).toString('hex')
     const [submission] = await db`
-      INSERT INTO submissions (token, status)
-      VALUES (${submissionToken}, 'processing')
+      INSERT INTO submissions (token, status, user_id)
+      VALUES (${submissionToken}, 'processing', ${userId})
       RETURNING id
     `
 

@@ -12,6 +12,30 @@ export async function POST(req: NextRequest) {
 
     const emailLower = email.toLowerCase().trim()
 
+    // Check subscription status
+    const [emailRow] = await db`
+      SELECT subscription_type, subscription_expires_at FROM email_list WHERE email = ${emailLower}
+    `
+    const isSubscribed =
+      emailRow?.subscription_type &&
+      emailRow?.subscription_expires_at &&
+      new Date(emailRow.subscription_expires_at) > new Date()
+
+    if (!isSubscribed) {
+      // Count uploads this calendar month (excluding this submission)
+      const [{ count }] = await db`
+        SELECT COUNT(*)::int AS count
+        FROM submissions
+        WHERE email = ${emailLower}
+          AND id != ${submissionId}
+          AND created_at >= date_trunc('month', NOW())
+      ` as unknown as [{ count: number }]
+
+      if (count >= 3) {
+        return NextResponse.json({ error: 'limit_reached', uploadsThisMonth: count }, { status: 429 })
+      }
+    }
+
     // Fetch submission + its token
     const [submission] = await db`
       SELECT id, token, status FROM submissions WHERE id = ${submissionId}

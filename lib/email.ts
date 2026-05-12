@@ -21,7 +21,7 @@ export async function sendResultsEmail(to: string, token: string) {
   const unsubscribe = `${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}`
   const shopLink = `${BASE_URL}/shop`
 
-  await getResend().emails.send({
+  const { data, error } = await getResend().emails.send({
     from: FROM,
     to,
     replyTo: 'noreply@learnhoops.com',
@@ -110,6 +110,15 @@ export async function sendResultsEmail(to: string, token: string) {
 </html>
     `.trim(),
   })
+
+  if (error) {
+    console.error('[email] Resend rejected send:', error, 'from:', FROM, 'to:', to)
+    throw new Error(
+      `Resend send failed: ${error.message || JSON.stringify(error)}. ` +
+        `Check the EMAIL_FROM env var and verify the sending domain in Resend.`,
+    )
+  }
+  console.log('[email] sent results email:', data?.id, 'to:', to, 'from:', FROM)
 }
 
 const MARKETING_EMAILS = [

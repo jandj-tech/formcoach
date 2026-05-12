@@ -51,9 +51,8 @@ export default async function SubmissionsPage() {
                   <td className="px-5 py-3">
                     {s.token ? (
                       <a
-                        href={`/results/${s.token}`}
+                        href={`/admin/submissions/${s.token}`}
                         className="text-orange-400 hover:text-orange-300 text-xs underline"
-                        target="_blank"
                       >
                         View
                       </a>

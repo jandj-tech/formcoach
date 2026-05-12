@@ -258,6 +258,16 @@ Return ONLY valid JSON, no other text:
     result.overall_score = Math.min(result.overall_score, 6.0)
   }
 
+  // Cap overall if any critical criterion scored very low (< 5)
+  // Elbow L-shape (5), one-hand release (11), shooting follow-through (15), guide follow-through (16)
+  const criticalCriteriaIds = [5, 11, 15, 16]
+  const hasVeryLowCriticalScore = result.criteria.some(
+    c => criticalCriteriaIds.includes(c.id) && c.score !== null && (c.score as number) < 5
+  )
+  if (hasVeryLowCriticalScore) {
+    result.overall_score = Math.min(result.overall_score, 6.0)
+  }
+
   // Apply player type adjustments
   const pt = result.player_assessment?.player_type ?? 'recreational'
   let multiplier = 1.0

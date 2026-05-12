@@ -122,7 +122,7 @@ CONSISTENCY CHECK (apply before finalizing every score): If your reasoning for a
 
 VISIBILITY RULE (null decisions only): If a criterion cannot be assessed AT ALL because the relevant body part or ball position is not clearly visible in any frame, return null. This is the only place visibility matters.
 
-SHOT ARC — MANDATORY NULL CONDITION: Return null for the shot arc criterion unless the ball can be seen traveling at least 75% of the way to the basket. If the ball exits the frame, hits the rim, or disappears before that point, you cannot judge the arc — return null. Do not estimate or guess arc from a partial trajectory.
+SHOT ARC — MANDATORY NULL CONDITION: Return null for the shot arc criterion unless the ball is visible in the frames near the basket or net. You must be able to see the ball close to or at the rim/net to judge arc. If the ball leaves the frame or disappears before reaching the vicinity of the basket, return null — do not estimate, extrapolate, or guess arc from early trajectory alone. No basket visible near the ball = null.
 
 THUMB — MANDATORY NULL CONDITION: Return null for the "Thumb is Spread Wide" criterion if the thumb is not clearly and directly visible in at least one frame. Do not infer thumb position from finger spacing or general hand shape — if you cannot see the thumb clearly, return null.
 

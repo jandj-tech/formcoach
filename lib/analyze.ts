@@ -124,7 +124,7 @@ USER-FACING LANGUAGE RULE: The "reasoning" string is shown directly to the playe
 
 VISIBILITY RULE (null decisions only): If a criterion cannot be assessed AT ALL because the relevant body part or ball position is not clearly visible in any frame, return null. This is the only place visibility matters.
 
-SHOT ARC — STATED OUTCOME REQUIREMENT: Before scoring arc, you MUST be able to write the exact sentence "The ball clearly went in" or "The ball clearly missed [direction]" in your reasoning. If you cannot write this sentence with complete certainty — if the outcome is only possible, probable, apparent, or inferred from trajectory — return null for arc. The following phrases MEAN you cannot see the outcome and MUST return null: "appears to go in," "appears to make it," "seems to go in," "trajectory suggests," "likely went in," "ball appears on track," "on a good trajectory," "suggesting a made shot," "appears to be heading," or any other uncertain language about where the ball ended up. If you catch yourself writing any of those phrases, return null instead. Only an outcome you witnessed and can state with complete certainty qualifies.
+SHOT ARC — RIM OR NET CONTACT REQUIRED: You may only score arc if you can clearly see the ball physically contact the rim (backboard, rim, or glass) OR visibly touch the mesh of the net. If you cannot see the ball make contact with the rim or net mesh — even if you think it went in, even if you can see the basket — return null. Trajectory alone is never enough. The ball must visibly interact with the basket hardware or net. If the ball disappears before reaching the rim, or you only see the basket from a distance without visible ball-rim/net contact, return null.
 
 THUMB — MANDATORY NULL CONDITION: Return null for the "Thumb is Spread Wide" criterion if the thumb is not clearly and directly visible in at least one frame. Do not infer thumb position from finger spacing or general hand shape — if you cannot see the thumb clearly, return null.
 
@@ -241,32 +241,34 @@ Return ONLY valid JSON, no other text:
   // Hard-enforce arc null rule in TypeScript — prompt instructions alone are not reliable enough.
   // If the reasoning doesn't contain a confirmed outcome phrase, or contains uncertain language,
   // force the score to null regardless of what Claude returned.
+  // Hard-enforce arc rule: reasoning must describe visible rim or net contact.
   const arcCriterion = result.criteria.find(c => c.id === 17)
   if (arcCriterion && arcCriterion.score !== null) {
     const r = arcCriterion.reasoning.toLowerCase()
-    const confirmedOutcome =
-      r.includes('clearly went in') ||
-      r.includes('clearly missed') ||
-      r.includes('went through the hoop') ||
-      r.includes('ball went in') ||
-      r.includes('went in') ||
-      r.includes('missed the basket') ||
-      r.includes('hit the backboard') ||
+    const hasRimOrNetContact =
+      r.includes('hit the rim') ||
+      r.includes('hits the rim') ||
+      r.includes('off the rim') ||
       r.includes('bounced off') ||
-      r.includes('off the rim')
-    const uncertainLanguage =
-      r.includes('appears to') ||
-      r.includes('seems to') ||
-      r.includes('trajectory suggests') ||
-      r.includes('likely went') ||
-      r.includes('on track') ||
-      r.includes('suggesting a') ||
-      r.includes('appears on') ||
-      r.includes('heading toward') ||
-      r.includes('probably') ||
-      r.includes('might have') ||
-      r.includes('could have gone')
-    if (!confirmedOutcome || uncertainLanguage) {
+      r.includes('hit the backboard') ||
+      r.includes('hits the backboard') ||
+      r.includes('off the backboard') ||
+      r.includes('touch the net') ||
+      r.includes('touches the net') ||
+      r.includes('through the net') ||
+      r.includes('through the hoop') ||
+      r.includes('swished') ||
+      r.includes('swish') ||
+      r.includes('net mesh') ||
+      r.includes('went through') ||
+      r.includes('goes through') ||
+      r.includes('rimmed out') ||
+      r.includes('rimmed in') ||
+      r.includes('hit the glass') ||
+      r.includes('off the glass') ||
+      r.includes('clanked') ||
+      r.includes('rattled')
+    if (!hasRimOrNetContact) {
       arcCriterion.score = null
     }
   }

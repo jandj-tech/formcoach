@@ -8,7 +8,7 @@ const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })
 const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'LearnHoops.com — AI Basketball Shot Analysis',
+  title: 'LearnHoops.com',
   description:
     'Upload a video of your basketball shot and get an AI-powered breakdown of your form, scored across 10 key criteria.',
   openGraph: {

@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { db } from '@/lib/db'
 import OverallBadge from '@/components/OverallBadge'
@@ -91,6 +92,23 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
             )}
           </div>
         )}
+
+        {/* Closing CTA — promotes the basketball, lives here instead of the email so the email stays purely transactional. */}
+        <div className="bg-orange-50 border border-orange-200 rounded-2xl p-6 sm:p-8 text-center">
+          <h2 className="text-black font-black text-xl sm:text-2xl mb-2">
+            Fix what you just saw — faster.
+          </h2>
+          <p className="text-zinc-700 text-sm sm:text-base leading-relaxed mb-5 max-w-md mx-auto">
+            The LearnHoops basketball has finger guides printed on the leather, game weight,
+            and comes right- or left-handed. The fastest way to drill in the form your analysis just exposed.
+          </p>
+          <Link
+            href="/shop"
+            className="inline-block bg-orange-500 hover:bg-red-600 text-white font-bold px-7 py-3 rounded-xl text-sm sm:text-base transition-colors"
+          >
+            Shop the Ball →
+          </Link>
+        </div>
       </div>
     </main>
   )

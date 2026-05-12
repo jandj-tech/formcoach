@@ -19,7 +19,6 @@ const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL && process.env.NEXT_PUBLIC_BAS
 export async function sendResultsEmail(to: string, token: string) {
   const link = `${BASE_URL}/results/${token}`
   const unsubscribe = `${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}`
-  const shopLink = `${BASE_URL}/shop`
 
   const { data, error } = await getResend().emails.send({
     from: FROM,
@@ -39,9 +38,6 @@ export async function sendResultsEmail(to: string, token: string) {
       link,
       ``,
       `This link is private to you — bookmark it, it'll always work.`,
-      ``,
-      `--`,
-      `P.S. Want to fix what your analysis found? Train with the LearnHoops Ball: ${shopLink}`,
       ``,
       `LearnHoops.com`,
       `Unsubscribe: ${unsubscribe}`,
@@ -82,16 +78,6 @@ export async function sendResultsEmail(to: string, token: string) {
           <p style="margin:0;color:#A1A1AA;font-size:12px;line-height:1.5;">
             Your link is private — bookmark it, it'll always work.<br/>
             <a href="${link}" style="color:#A1A1AA;word-break:break-all;text-decoration:underline;">${link}</a>
-          </p>
-        </td></tr>
-
-        <!-- Subtle P.S. shop mention -->
-        <tr><td style="padding:20px 32px 28px;border-top:1px solid #F4F4F5;">
-          <p style="margin:0;color:#52525B;font-size:14px;line-height:1.55;">
-            <strong style="color:#111111;">P.S.</strong>
-            Want to fix what your analysis found faster? Train with the
-            <a href="${shopLink}" style="color:#C2410C;font-weight:700;text-decoration:none;">LearnHoops basketball</a> —
-            finger guides on the leather, game weight, available right- or left-handed.
           </p>
         </td></tr>
 

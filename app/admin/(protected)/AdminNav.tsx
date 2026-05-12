@@ -12,6 +12,7 @@ const ADMIN_TABS = [
   { href: '/admin/learn', label: 'Learn Mode' },
   { href: '/admin/emails', label: 'Emails' },
   { href: '/admin/orders', label: 'Orders' },
+  { href: '/admin/access', label: 'Access' },
 ]
 
 export default function AdminNav() {

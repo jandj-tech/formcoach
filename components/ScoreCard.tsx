@@ -1,9 +1,11 @@
 import { humanizeReasoning } from '@/lib/sanitize'
+import LearnVideo from './LearnVideo'
 
 interface ScoreCardProps {
   name: string
   score: number | null
   reasoning: string
+  videoId?: string
 }
 
 function scoreColor(score: number) {
@@ -35,8 +37,9 @@ function scoreLabel(score: number) {
   return 'Poor'
 }
 
-export default function ScoreCard({ name, score, reasoning }: ScoreCardProps) {
+export default function ScoreCard({ name, score, reasoning, videoId }: ScoreCardProps) {
   const cleanReasoning = humanizeReasoning(reasoning)
+  const showTutorial = score !== null && score <= 6 && !!videoId
 
   if (score === null) {
     return (
@@ -69,6 +72,7 @@ export default function ScoreCard({ name, score, reasoning }: ScoreCardProps) {
         />
       </div>
       <p className="text-black text-xs leading-relaxed">{cleanReasoning}</p>
+      {showTutorial && <LearnVideo videoId={videoId!} label="Watch how to fix this" />}
     </div>
   )
 }

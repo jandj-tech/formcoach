@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { db } from '@/lib/db'
 import OverallBadge from '@/components/OverallBadge'
 import ScoreCard from '@/components/ScoreCard'
+import { getCriteriaVideoMap } from '@/lib/youtube'
 import FrameViewer from './FrameViewer'
 
 export default async function ResultsPage({ params }: { params: Promise<{ token: string }> }) {
@@ -23,13 +24,26 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
 
   if (!analysis) return notFound()
 
-  const scores = await db`
+  const scores = (await db`
     SELECT cs.id, cs.ai_score, cs.ai_reasoning, c.name, c.order_index
     FROM criterion_scores cs
     JOIN criteria c ON cs.criterion_id = c.id
     WHERE cs.analysis_id = ${analysis.id}
     ORDER BY c.order_index
-  `
+  `) as unknown as Array<{
+    id: number
+    ai_score: number | null
+    ai_reasoning: string
+    name: string
+    order_index: number
+  }>
+
+  // Load tutorial-video map for the criteria the player needs help with (≤ 6).
+  // The video map function handles manual overrides and YouTube auto-matching.
+  const needsHelp = scores
+    .filter((s) => s.ai_score !== null && Number(s.ai_score) <= 6)
+    .map((s) => s.name)
+  const videoMap = needsHelp.length > 0 ? await getCriteriaVideoMap(needsHelp) : {}
 
   const frameUrls = (analysis.frame_urls as string[] | null) ?? []
   const hasFrames = frameUrls.length > 0
@@ -49,6 +63,7 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
               name={s.name}
               score={s.ai_score !== null ? Number(s.ai_score) : null}
               reasoning={s.ai_reasoning}
+              videoId={videoMap[s.name]}
             />
           ))}
         </div>

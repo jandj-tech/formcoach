@@ -8,13 +8,22 @@ const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })
 const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] })
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://www.learnhoops.com'),
   title: 'LearnHoops.com',
   description:
-    'Upload a video of your basketball shot and get an AI-powered breakdown of your form, scored across 10 key criteria.',
+    'AI basketball shot analysis. Upload a video, get a private breakdown across 17 form criteria in minutes — find what is holding your shot back.',
+  alternates: { canonical: '/' },
   openGraph: {
     title: 'LearnHoops.com',
-    description: 'Your shot. Perfected by AI.',
+    description: 'AI basketball shot analysis. Upload a video, get scored across 17 form criteria.',
     siteName: 'LearnHoops.com',
+    url: 'https://www.learnhoops.com',
+    type: 'website',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, 'max-image-preview': 'large' },
   },
 }
 

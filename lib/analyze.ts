@@ -239,8 +239,9 @@ Return ONLY valid JSON, no other text:
   result.critical_flags.arc_too_flat = result.critical_flags.arc_too_flat ?? false
 
   // Recalculate overall using weighted average (weight column from DB)
+  const activeCriteriaRows = activeCriteria as unknown as Array<{ id: number; weight: unknown }>
   const weightMap: Record<number, number> = Object.fromEntries(
-    activeCriteria.map((c: { id: number; weight: unknown }) => [Number(c.id), Number(c.weight) || 1])
+    activeCriteriaRows.map((c) => [Number(c.id), Number(c.weight) || 1])
   )
   const scored = result.criteria.filter(c => c.score !== null)
   if (scored.length > 0) {

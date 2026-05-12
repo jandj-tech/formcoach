@@ -31,24 +31,16 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
     ORDER BY c.order_index
   `
 
+  const frameUrls = (analysis.frame_urls as string[] | null) ?? []
+  const hasFrames = frameUrls.length > 0
+  const hasVideo = !!analysis.video_url
+
   return (
     <main className="min-h-screen bg-white">
-      <div className="max-w-2xl mx-auto w-full px-6 py-10 space-y-8">
+      <div className="max-w-3xl mx-auto w-full px-6 py-10 space-y-8">
         <div className="flex justify-center">
           <OverallBadge score={Number(analysis.overall_score)} />
         </div>
-
-        {analysis.video_url && (
-          <div className="space-y-2">
-            <h2 className="text-black font-bold text-sm">Your Shot</h2>
-            <video
-              src={analysis.video_url as string}
-              controls
-              playsInline
-              className="w-full rounded-xl bg-black border border-gray-200"
-            />
-          </div>
-        )}
 
         <div className="space-y-3">
           {scores.map((s) => (
@@ -61,8 +53,28 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
           ))}
         </div>
 
-        {analysis.frame_urls && (analysis.frame_urls as string[]).length > 0 && (
-          <FrameViewer urls={analysis.frame_urls as string[]} />
+        {(hasFrames || hasVideo) && (
+          <div
+            className={
+              hasFrames && hasVideo
+                ? 'grid grid-cols-1 md:grid-cols-2 gap-6 items-start'
+                : ''
+            }
+          >
+            {hasFrames && <FrameViewer urls={frameUrls} compact={hasVideo} />}
+
+            {hasVideo && (
+              <div className="space-y-2">
+                <h2 className="text-black font-bold text-sm">Your Shot</h2>
+                <video
+                  src={analysis.video_url as string}
+                  controls
+                  playsInline
+                  className="w-full max-w-sm rounded-xl bg-black border border-gray-200"
+                />
+              </div>
+            )}
+          </div>
         )}
       </div>
     </main>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 
-export default function FrameViewer({ urls }: { urls: string[] }) {
+export default function FrameViewer({ urls, compact = false }: { urls: string[]; compact?: boolean }) {
   const [index, setIndex] = useState<number | null>(null)
   const open = index !== null
 
@@ -34,7 +34,7 @@ export default function FrameViewer({ urls }: { urls: string[] }) {
       <h2 className="text-black font-bold text-sm">Analyzed Frames</h2>
       <p className="text-zinc-500 text-xs">Tap any frame to step through the shot in slow motion.</p>
 
-      <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+      <div className={`grid gap-1.5 ${compact ? 'grid-cols-3' : 'grid-cols-4 sm:grid-cols-6 gap-2'}`}>
         {urls.map((url, i) => (
           <button
             key={i}

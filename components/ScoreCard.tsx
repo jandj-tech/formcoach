@@ -14,9 +14,11 @@ function scoreColor(score: number) {
   if (score < 2) return 'text-red-700'
   if (score < 4) return 'text-red-600'
   if (score < 5) return 'text-red-500'
-  if (score === 5) return 'text-orange-500'
-  if (score <= 7) return 'text-green-500'
-  if (score <= 9) return 'text-green-600'
+  if (score < 6) return 'text-yellow-400'
+  if (score < 7) return 'text-yellow-500'
+  if (score <= 7) return 'text-yellow-600'
+  if (score < 9) return 'text-green-500'
+  if (score < 10) return 'text-green-600'
   return 'text-green-700'
 }
 
@@ -24,17 +26,19 @@ function barColor(score: number) {
   if (score < 2) return 'bg-red-700'
   if (score < 4) return 'bg-red-600'
   if (score < 5) return 'bg-red-500'
-  if (score === 5) return 'bg-orange-500'
-  if (score <= 7) return 'bg-green-500'
-  if (score <= 9) return 'bg-green-600'
+  if (score < 6) return 'bg-yellow-400'
+  if (score < 7) return 'bg-yellow-500'
+  if (score <= 7) return 'bg-yellow-600'
+  if (score < 9) return 'bg-green-500'
+  if (score < 10) return 'bg-green-600'
   return 'bg-green-700'
 }
 
 function scoreLabel(score: number) {
   if (score >= 9) return 'Excellent'
-  if (score >= 7) return 'Good'
-  if (score > 5) return 'Above Average'
-  if (score === 5) return 'Average'
+  if (score > 7) return 'Good'
+  if (score >= 6) return 'Okay'
+  if (score >= 5) return 'Below Average'
   if (score >= 3) return 'Needs Work'
   return 'Poor'
 }

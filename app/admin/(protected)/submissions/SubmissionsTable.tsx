@@ -116,8 +116,8 @@ export default function SubmissionsTable({ submissions }: { submissions: Submiss
         </div>
       </div>
 
-      <div className="bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-zinc-900 rounded-xl border border-zinc-800 overflow-x-auto">
+        <table className="w-full min-w-[640px] text-sm">
           <thead>
             <tr className="border-b border-zinc-800 text-white text-xs">
               {selectMode && (

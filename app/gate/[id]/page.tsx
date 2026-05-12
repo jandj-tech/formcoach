@@ -15,6 +15,8 @@ export default function GatePage({ params }: { params: Promise<{ id: string }> }
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [subscribing, setSubscribing] = useState(false)
+  const [upgradePlan, setUpgradePlan] = useState<'monthly' | 'annual'>('annual')
+  const [upgradeCountry, setUpgradeCountry] = useState<'US' | 'CA'>('US')
 
   // Check if user is already logged in with active subscription
   useEffect(() => {
@@ -73,19 +75,24 @@ export default function GatePage({ params }: { params: Promise<{ id: string }> }
     }
   }
 
-  async function handleSubscribe(plan: 'monthly' | 'annual') {
+  async function handleSubscribe() {
     setSubscribing(true)
     try {
       const res = await fetch('/api/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan, submissionId: id }),
+        body: JSON.stringify({ plan: upgradePlan, country: upgradeCountry, submissionId: id }),
       })
       const { url } = await res.json()
       if (url) window.location.href = url
     } catch {
       setSubscribing(false)
     }
+  }
+
+  const PRICES = {
+    monthly: { US: '$2.49/mo', CA: '$3.49/mo CAD' },
+    annual:  { US: '$11.99/yr', CA: '$16.99/yr CAD' },
   }
 
   if (pageState === 'loading') {
@@ -128,26 +135,62 @@ export default function GatePage({ params }: { params: Promise<{ id: string }> }
                 </p>
               </div>
 
-              <div className="space-y-3">
-                <button
-                  onClick={() => handleSubscribe('annual')}
-                  disabled={subscribing}
-                  className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold py-4 rounded-xl transition-colors relative"
-                >
-                  <span className="absolute -top-2 right-3 bg-green-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">BEST VALUE</span>
-                  Unlimited for a Year — $14.99
-                  <span className="block text-sm font-normal opacity-90">$1.25/month · Cancel anytime</span>
-                </button>
-
-                <button
-                  onClick={() => handleSubscribe('monthly')}
-                  disabled={subscribing}
-                  className="w-full bg-white hover:bg-gray-50 disabled:opacity-50 text-black font-bold py-4 rounded-xl transition-colors border-2 border-gray-200"
-                >
-                  Unlimited for a Month — $2.49
-                  <span className="block text-sm font-normal text-gray-500">Cancel anytime</span>
-                </button>
+              {/* Plan toggle */}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-gray-500 tracking-wider uppercase">Plan</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setUpgradePlan('monthly')}
+                    className={`py-3 px-4 rounded-xl border-2 text-sm font-bold transition-colors ${
+                      upgradePlan === 'monthly' ? 'border-orange-500 bg-orange-50 text-black' : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                    }`}
+                  >
+                    Monthly
+                    <span className="block text-xs font-normal mt-0.5">{PRICES.monthly[upgradeCountry]}</span>
+                  </button>
+                  <button
+                    onClick={() => setUpgradePlan('annual')}
+                    className={`py-3 px-4 rounded-xl border-2 text-sm font-bold transition-colors relative ${
+                      upgradePlan === 'annual' ? 'border-orange-500 bg-orange-50 text-black' : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                    }`}
+                  >
+                    <span className="absolute -top-2 right-2 bg-green-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">BEST VALUE</span>
+                    Yearly
+                    <span className="block text-xs font-normal mt-0.5">{PRICES.annual[upgradeCountry]}</span>
+                  </button>
+                </div>
               </div>
+
+              {/* Country toggle */}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-gray-500 tracking-wider uppercase">Location</p>
+                <div className="inline-flex rounded-lg p-1 gap-1 border border-gray-200 bg-white">
+                  <button
+                    onClick={() => setUpgradeCountry('US')}
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-bold transition-colors ${
+                      upgradeCountry === 'US' ? 'bg-orange-500 text-white' : 'text-gray-500 hover:text-black'
+                    }`}
+                  >
+                    🇺🇸 USA
+                  </button>
+                  <button
+                    onClick={() => setUpgradeCountry('CA')}
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-bold transition-colors ${
+                      upgradeCountry === 'CA' ? 'bg-orange-500 text-white' : 'text-gray-500 hover:text-black'
+                    }`}
+                  >
+                    🇨🇦 Canada
+                  </button>
+                </div>
+              </div>
+
+              <button
+                onClick={handleSubscribe}
+                disabled={subscribing}
+                className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold py-4 rounded-xl transition-colors"
+              >
+                {subscribing ? 'Redirecting...' : `Subscribe — ${PRICES[upgradePlan][upgradeCountry]}`}
+              </button>
 
               <button
                 onClick={() => setPageState('email-form')}

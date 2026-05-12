@@ -3,16 +3,22 @@ import { getStripe } from '@/lib/stripe'
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://learnhoops.com'
 
-// Stripe Price IDs — set these in env after creating products in Stripe dashboard
-// STRIPE_PRICE_MONTHLY and STRIPE_PRICE_ANNUAL
+function getPriceId(plan: 'monthly' | 'annual', country: 'US' | 'CA'): string | undefined {
+  if (plan === 'annual') {
+    return country === 'CA' ? process.env.STRIPE_PRICE_ANNUAL_CAD : process.env.STRIPE_PRICE_ANNUAL
+  }
+  return country === 'CA' ? process.env.STRIPE_PRICE_MONTHLY_CAD : process.env.STRIPE_PRICE_MONTHLY
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const { plan, submissionId } = await req.json() as { plan: 'monthly' | 'annual'; submissionId?: string }
+    const { plan, country = 'US', submissionId } = await req.json() as {
+      plan: 'monthly' | 'annual'
+      country?: 'US' | 'CA'
+      submissionId?: string
+    }
 
-    const priceId = plan === 'annual'
-      ? process.env.STRIPE_PRICE_ANNUAL
-      : process.env.STRIPE_PRICE_MONTHLY
-
+    const priceId = getPriceId(plan, country)
     if (!priceId) {
       return NextResponse.json({ error: 'Subscription not configured' }, { status: 500 })
     }
@@ -25,10 +31,11 @@ export async function POST(req: NextRequest) {
       mode: 'subscription',
       payment_method_types: ['card'],
       line_items: [{ price: priceId, quantity: 1 }],
+      billing_address_collection: 'required',
       success_url: successUrl,
       cancel_url: `${BASE_URL}/`,
       allow_promotion_codes: true,
-      metadata: { plan, submissionId: submissionId ?? '' },
+      metadata: { plan, country, submissionId: submissionId ?? '' },
     })
 
     return NextResponse.json({ url: session.url })

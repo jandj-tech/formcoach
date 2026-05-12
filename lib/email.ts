@@ -25,81 +25,77 @@ export async function sendResultsEmail(to: string, token: string) {
     from: FROM,
     to,
     replyTo: 'noreply@learnhoops.com',
-    subject: '🏀 Your shot is graded — see where you stand',
+    subject: 'Your shot analysis is ready',
     headers: {
       'List-Unsubscribe': `<${unsubscribe}>`,
       'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
     },
+    // Plain-text alternative is a strong "this is transactional" signal to
+    // Gmail and other clients — emails with no text body skew toward Promotions.
+    text: [
+      `Your shot analysis is ready.`,
+      ``,
+      `We studied 12 frames across 17 coaching criteria. View your full breakdown here:`,
+      link,
+      ``,
+      `This link is private to you — bookmark it, it'll always work.`,
+      ``,
+      `--`,
+      `P.S. Want to fix what your analysis found? Train with the LearnHoops Ball: ${shopLink}`,
+      ``,
+      `LearnHoops.com`,
+      `Unsubscribe: ${unsubscribe}`,
+    ].join('\n'),
     html: `
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /></head>
-<body style="margin:0;padding:0;background:#F4F4F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
-  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background:#F4F4F5;">
-    <tr><td align="center" style="padding:32px 16px;">
-      <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #E4E4E7;">
+<body style="margin:0;padding:0;background:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#111111;">
+  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+    <tr><td align="center" style="padding:24px 16px;">
+      <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:560px;">
 
-        <!-- Brand bar -->
-        <tr><td style="background:#000000;padding:24px 32px;">
-          <div style="color:#F97316;font-size:22px;font-weight:900;letter-spacing:-0.5px;">🏀 LearnHoops<span style="color:#71717A;">.com</span></div>
-          <div style="color:#A1A1AA;font-size:12px;margin-top:4px;">Your shot. Perfected by AI.</div>
+        <!-- Simple brand line, no images -->
+        <tr><td style="padding:0 0 24px;">
+          <div style="font-size:15px;font-weight:700;color:#111111;letter-spacing:-0.2px;">LearnHoops.com</div>
         </td></tr>
 
-        <!-- Hero -->
-        <tr><td style="padding:40px 32px 24px;text-align:center;">
-          <div style="display:inline-block;background:#FFEDD5;color:#9A3412;padding:6px 14px;border-radius:9999px;font-size:11px;font-weight:700;letter-spacing:1px;margin-bottom:18px;">SHOT ANALYSIS READY</div>
-          <h1 style="margin:0 0 12px;color:#000000;font-size:30px;line-height:1.15;font-weight:900;">Your form, broken down.</h1>
-          <p style="margin:0;color:#52525B;font-size:15px;line-height:1.6;">
-            We studied 12 frames across 17 coaching criteria.<br/>
-            Tap below to see what your shot does well — and exactly what to fix.
+        <!-- Greeting + result line -->
+        <tr><td style="padding:0;">
+          <p style="margin:0 0 12px;color:#111111;font-size:16px;line-height:1.5;">Hey,</p>
+          <p style="margin:0 0 12px;color:#111111;font-size:16px;line-height:1.5;">
+            Your shot analysis is ready. We studied 12 frames across 17 coaching criteria — your full breakdown is below.
           </p>
         </td></tr>
 
         <!-- Primary CTA -->
-        <tr><td align="center" style="padding:8px 32px 40px;">
-          <a href="${link}" style="display:inline-block;background:#F97316;color:#ffffff;padding:16px 40px;border-radius:12px;text-decoration:none;font-weight:800;font-size:16px;box-shadow:0 4px 0 #C2410C;">
-            View My Shot Analysis →
+        <tr><td align="left" style="padding:20px 0 8px;">
+          <a href="${link}" style="display:inline-block;background:#111111;color:#ffffff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">
+            View my shot analysis
           </a>
-          <div style="margin-top:14px;color:#A1A1AA;font-size:12px;">Your private link — bookmark it, it'll always work.</div>
         </td></tr>
 
-        <!-- Section divider -->
-        <tr><td style="padding:0 32px;">
-          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
-            <tr>
-              <td style="border-top:1px solid #E4E4E7;font-size:0;line-height:0;">&nbsp;</td>
-              <td style="padding:0 14px;color:#71717A;font-size:11px;font-weight:700;letter-spacing:1.5px;white-space:nowrap;">FIX IT FASTER</td>
-              <td style="border-top:1px solid #E4E4E7;font-size:0;line-height:0;">&nbsp;</td>
-            </tr>
-          </table>
+        <!-- Plain-text link fallback -->
+        <tr><td style="padding:8px 0 24px;">
+          <p style="margin:0;color:#555555;font-size:13px;line-height:1.5;">
+            Or paste this link in your browser:<br/>
+            <a href="${link}" style="color:#555555;word-break:break-all;">${link}</a>
+          </p>
         </td></tr>
 
-        <!-- Shop promo -->
-        <tr><td style="padding:28px 32px 32px;">
-          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:14px;">
-            <tr><td style="padding:28px;text-align:center;">
-              <div style="font-size:42px;line-height:1;margin-bottom:6px;">🏀</div>
-              <h2 style="margin:0 0 10px;color:#7C2D12;font-size:22px;font-weight:900;">Train with the LearnHoops Ball</h2>
-              <p style="margin:0 0 22px;color:#9A3412;font-size:14px;line-height:1.55;max-width:380px;margin-left:auto;margin-right:auto;">
-                Finger guides printed on the leather. Game weight and feel.
-                Right- or left-handed.<br/><strong>The fastest way to fix the form your analysis just exposed.</strong>
-              </p>
-              <a href="${shopLink}" style="display:inline-block;background:#000000;color:#ffffff;padding:13px 32px;border-radius:10px;text-decoration:none;font-weight:800;font-size:14px;">
-                Shop the Ball →
-              </a>
-            </td></tr>
-          </table>
+        <!-- Soft P.S. shop mention - text-only, no card -->
+        <tr><td style="padding:24px 0 8px;border-top:1px solid #EEEEEE;">
+          <p style="margin:0;color:#555555;font-size:14px;line-height:1.55;">
+            <strong style="color:#111111;">P.S.</strong> Want to fix what your analysis found? Train with the
+            <a href="${shopLink}" style="color:#111111;font-weight:600;">LearnHoops basketball</a> — finger guides on the leather, game weight, right- or left-handed.
+          </p>
         </td></tr>
 
         <!-- Footer -->
-        <tr><td style="padding:20px 32px;background:#FAFAFA;border-top:1px solid #E4E4E7;text-align:center;">
-          <p style="margin:0 0 6px;color:#71717A;font-size:11px;line-height:1.5;">
-            You're getting this because you submitted a shot at LearnHoops.com.
-          </p>
-          <p style="margin:0;color:#A1A1AA;font-size:11px;">
-            <a href="${BASE_URL}" style="color:#71717A;text-decoration:none;font-weight:700;">LearnHoops.com</a>
-            &nbsp;·&nbsp;
-            <a href="${unsubscribe}" style="color:#71717A;text-decoration:underline;">Unsubscribe</a>
+        <tr><td style="padding:24px 0 0;">
+          <p style="margin:0;color:#999999;font-size:12px;line-height:1.5;">
+            You're receiving this because you submitted a shot at LearnHoops.com.
+            <a href="${unsubscribe}" style="color:#999999;">Unsubscribe</a>.
           </p>
         </td></tr>
 

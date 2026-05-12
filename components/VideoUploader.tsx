@@ -24,7 +24,12 @@ export default function VideoUploader() {
       let done = false
       const finish = () => { if (!done) { done = true; res() } }
       const timer = setTimeout(finish, SEEK_TIMEOUT_MS)
-      video.onseeked = () => { clearTimeout(timer); finish() }
+      video.onseeked = () => {
+        clearTimeout(timer)
+        // Double rAF ensures the browser has decoded and painted the new frame
+        // before we drawImage — without this, some formats return the previous frame
+        requestAnimationFrame(() => requestAnimationFrame(() => finish()))
+      }
       video.currentTime = t
     })
 

@@ -156,7 +156,7 @@ Include player_name if you can identify the specific person, otherwise null.
 
 CRITICAL FLAGS — these operate on their own detection standard, independent of visibility rules above. Look hard for both in every analysis:
 
-- elbow_severely_out: the shooting elbow is noticeably out to the side rather than under the ball. Set true if the elbow is visibly outside the ball line at any point during the shot. This is extremely common — if you are unsure, set true. Do NOT apply benefit-of-the-doubt or burden-of-proof here. When true: the elbow L-shape criterion MUST score 5 or below (floor rules in that criterion's grading guide do not apply).
+- elbow_severely_out: the shooting elbow is dramatically and unmistakably out to the side during the SHOOTING/RELEASE phase. Only set true for obvious, severe cases — the kind of elbow flaw you would notice immediately even in a small frame. Loading phase elbow being slightly outside the ball line is biomechanically common and does NOT trigger this flag. When in doubt, leave false and let criterion 5 handle the scoring. When true: the elbow L-shape criterion MUST score 4 or below and the overall score is capped.
 
 - followthrough_flick_to_side: the shooting hand OR guide hand makes a lateral movement at the moment of release. These are two distinct patterns — look for BOTH:
   • GUIDE HAND flick: at release, the guide hand snaps or flicks toward the shooting hand side (inward, across the body) rather than cleanly separating straight off.

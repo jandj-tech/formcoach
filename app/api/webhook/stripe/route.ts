@@ -131,8 +131,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'DB error' }, { status: 500 })
     }
 
-    // Grant 10 free analysis tokens with every single ball order
-    const tokensToGrant = 10
+    // Grant tokens: 15 for the 2-ball bundle, 10 for a single ball purchase
+    const bundleUploads = parseInt(session.metadata?.bundle_uploads ?? '0', 10)
+    const tokensToGrant = bundleUploads > 0 ? bundleUploads : 10
     const emailLower = email.toLowerCase()
     try {
       await db`

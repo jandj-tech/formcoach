@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
         quantity: 1,
         price_data: {
           currency: region === 'CA' ? 'cad' : 'usd',
-          unit_amount: 500,
+          unit_amount: 499,
           product_data: {
             name: '1 Shot Analysis',
             description: 'One AI-powered basketball shot analysis on LearnHoops.com',

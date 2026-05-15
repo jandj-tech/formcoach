@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import MobileNav from './MobileNav'
 import CartLink from './CartLink'
 
@@ -15,15 +16,23 @@ const tabs = [
 
 export default function TopNav() {
   const pathname = usePathname()
+  const [loggedIn, setLoggedIn] = useState(false)
 
-  // "Account" always points at the dashboard; middleware redirects
-  // logged-out visitors to the login page.
-  const accountHref = '/dashboard'
+  useEffect(() => {
+    fetch('/api/auth/session')
+      .then(r => r.json())
+      .then(({ user }) => setLoggedIn(!!user))
+      .catch(() => {})
+  }, [])
+
+  // Shows "Account" → dashboard once signed in, "Log In" → login page otherwise.
+  const accountHref = loggedIn ? '/dashboard' : '/login'
+  const accountLabel = loggedIn ? 'Account' : 'Log In'
   const accountActive =
     pathname.startsWith('/dashboard') ||
     pathname.startsWith('/login') ||
     pathname.startsWith('/signup')
-  const mobileTabs = [...tabs, { href: accountHref, label: 'Account' }]
+  const mobileTabs = [...tabs, { href: accountHref, label: accountLabel }]
 
   return (
     <nav className="h-20 flex items-center justify-between px-4 sm:px-6 border-b border-zinc-800 bg-black">
@@ -63,7 +72,7 @@ export default function TopNav() {
                 : 'text-white hover:text-white hover:bg-zinc-900'
             }`}
           >
-            Account
+            {accountLabel}
           </Link>
         </div>
         <CartLink />

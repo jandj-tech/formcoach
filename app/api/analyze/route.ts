@@ -18,22 +18,46 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No frames provided' }, { status: 400 })
     }
 
-    // Attach logged-in user if session exists
     const session = await getSessionFromRequest(req)
-    const userId = session?.userId ?? null
 
     // Team upload fields (optional)
     const teamCode = (formData.get('teamCode') as string | null) || null
     const playerFirstName = (formData.get('playerFirstName') as string | null) || null
     const playerLastInitial = (formData.get('playerLastInitial') as string | null) || null
+    const isTeamUpload = !!(teamCode && playerFirstName && playerLastInitial)
+
+    // Require login for non-team uploads
+    if (!isTeamUpload && !session) {
+      return NextResponse.json({ error: 'Login required' }, { status: 401 })
+    }
+
+    const userId = session?.userId ?? null
+
+    // Check + reserve token before doing any expensive work
+    if (!isTeamUpload && userId) {
+      const [user] = await db`
+        SELECT analysis_tokens, subscription_type, subscription_expires_at
+        FROM users WHERE id = ${userId}
+      ` as unknown as [{ analysis_tokens: number; subscription_type: string | null; subscription_expires_at: string | null } | undefined]
+
+      const isSubscribed =
+        !!user?.subscription_type &&
+        !!user?.subscription_expires_at &&
+        new Date(user.subscription_expires_at) > new Date()
+
+      const tokens = user?.analysis_tokens ?? 0
+
+      if (!isSubscribed && tokens <= 0) {
+        return NextResponse.json({ error: 'No analysis tokens' }, { status: 402 })
+      }
+    }
 
     let teamId: string | null = null
     let teamPlayerId: string | null = null
 
-    if (teamCode && playerFirstName && playerLastInitial) {
-      // Lock + check credits atomically
+    if (isTeamUpload) {
       const [team] = await db`
-        SELECT id, credits FROM teams WHERE access_code = ${teamCode.toUpperCase()} FOR UPDATE
+        SELECT id, credits FROM teams WHERE access_code = ${teamCode!.toUpperCase()} FOR UPDATE
       ` as unknown as [{ id: string; credits: number } | undefined]
 
       if (!team) {
@@ -45,17 +69,16 @@ export async function POST(req: NextRequest) {
 
       teamId = team.id
 
-      // Upsert player record
       await db`
         INSERT INTO team_players (team_id, first_name, last_name_initial)
-        VALUES (${teamId}, ${playerFirstName.trim()}, ${playerLastInitial.toUpperCase().charAt(0)})
+        VALUES (${teamId}, ${playerFirstName!.trim()}, ${playerLastInitial!.toUpperCase().charAt(0)})
         ON CONFLICT (team_id, first_name, last_name_initial) DO NOTHING
       `
       const [player] = await db`
         SELECT id FROM team_players
         WHERE team_id = ${teamId}
-          AND first_name = ${playerFirstName.trim()}
-          AND last_name_initial = ${playerLastInitial.toUpperCase().charAt(0)}
+          AND first_name = ${playerFirstName!.trim()}
+          AND last_name_initial = ${playerLastInitial!.toUpperCase().charAt(0)}
       ` as unknown as [{ id: string }]
 
       teamPlayerId = player.id
@@ -95,8 +118,7 @@ export async function POST(req: NextRequest) {
     // Run Claude Vision analysis
     const result = await analyzeShot(frameBase64Array, frameMimeTypes)
 
-    // Store analysis — try with video_url, fall back to the legacy column set
-    // if the migration adding video_url hasn't been applied yet.
+    // Store analysis
     let analysis: { id: number }
     try {
       ;[analysis] = (await db`
@@ -123,19 +145,27 @@ export async function POST(req: NextRequest) {
       `
     }
 
-    // Mark submission as complete
+    // Mark submission complete
     await db`
       UPDATE submissions SET status = 'complete' WHERE id = ${submission.id}
     `
 
-    // Deduct team credit now that analysis succeeded
-    if (teamId) {
+    // Deduct token after successful analysis
+    if (!isTeamUpload && userId) {
+      await db`
+        UPDATE users SET analysis_tokens = analysis_tokens - 1
+        WHERE id = ${userId} AND analysis_tokens > 0
+      `
+    }
+
+    if (isTeamUpload && teamId) {
       await db`UPDATE teams SET credits = credits - 1 WHERE id = ${teamId} AND credits > 0`
     }
 
     return NextResponse.json({
       submissionId: submission.id,
       analysisId: analysis.id,
+      token: submissionToken,
     })
   } catch (err) {
     console.error('Analysis error:', err instanceof Error ? err.message : err)

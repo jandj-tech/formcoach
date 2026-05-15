@@ -1,23 +1,25 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 import TopNav from '@/components/TopNav'
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const next = searchParams.get('next') || '/dashboard'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [error, setError] = useState('')
 
-  // Already signed in? Skip the form — go straight to the dashboard.
   useEffect(() => {
     fetch('/api/auth/session')
       .then(r => r.json())
-      .then(({ user }) => { if (user) router.replace('/dashboard') })
+      .then(({ user }) => { if (user) router.replace(next) })
       .catch(() => {})
-  }, [router])
+  }, [router, next])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -38,7 +40,7 @@ export default function LoginPage() {
         return
       }
 
-      router.push('/dashboard')
+      router.push(next)
     } catch {
       setError('Something went wrong. Please try again.')
       setStatus('error')
@@ -85,10 +87,25 @@ export default function LoginPage() {
 
           <p className="text-center text-sm text-gray-500">
             Don&apos;t have an account?{' '}
-            <a href="/signup" className="text-orange-500 hover:underline font-medium">Sign up</a>
+            <a href={`/signup?next=${encodeURIComponent(next)}`} className="text-orange-500 hover:underline font-medium">Sign up</a>
           </p>
         </div>
       </div>
     </main>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <main className="min-h-screen bg-white flex flex-col">
+        <TopNav />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-5xl animate-bounce">🏀</div>
+        </div>
+      </main>
+    }>
+      <LoginForm />
+    </Suspense>
   )
 }

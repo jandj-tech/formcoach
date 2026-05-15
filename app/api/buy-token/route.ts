@@ -1,21 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe'
+import { getSessionFromRequest } from '@/lib/auth'
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://learnhoops.com'
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, submissionId, region } = await req.json() as { email?: string; submissionId?: string; region?: string }
+    const session = await getSessionFromRequest(req)
+    if (!session) {
+      return NextResponse.json({ error: 'Login required' }, { status: 401 })
+    }
 
-    const successUrl = submissionId
-      ? `${BASE_URL}/gate/${submissionId}?token_purchased=1`
-      : `${BASE_URL}/analyze?token_purchased=1`
+    const body = await req.json().catch(() => ({})) as { region?: string }
+    const region = body.region ?? 'US'
 
-    const cancelUrl = submissionId
-      ? `${BASE_URL}/gate/${submissionId}`
-      : `${BASE_URL}/analyze`
-
-    const session = await getStripe().checkout.sessions.create({
+    const stripeSession = await getStripe().checkout.sessions.create({
       mode: 'payment',
       payment_method_types: ['card'],
       line_items: [{
@@ -29,16 +28,16 @@ export async function POST(req: NextRequest) {
           },
         },
       }],
-      customer_email: email || undefined,
+      customer_email: session.email,
       metadata: {
         type: 'analysis_token',
-        submissionId: submissionId ?? '',
+        userId: session.userId,
       },
-      success_url: successUrl,
-      cancel_url: cancelUrl,
+      success_url: `${BASE_URL}/analyze?token_purchased=1`,
+      cancel_url: `${BASE_URL}/analyze`,
     })
 
-    return NextResponse.json({ url: session.url })
+    return NextResponse.json({ url: stripeSession.url })
   } catch (err) {
     console.error('Buy token error:', err)
     return NextResponse.json({ error: 'Failed to create checkout session' }, { status: 500 })

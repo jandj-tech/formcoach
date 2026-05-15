@@ -11,7 +11,7 @@ const REGION_PAD = 0.40     // ±40% of video around rough center
 const REGION_MIN_S = 5.0    // minimum dense region width — covers full short videos
 const SEEK_TIMEOUT_MS = 4000  // max ms to wait for a seek before skipping
 
-interface UploadCount { tokens: number; subscribed: boolean }
+interface SessionUser { id: string; email: string; tokens: number; subscribed: boolean }
 
 interface TeamMode {
   code: string
@@ -29,20 +29,16 @@ export default function VideoUploader({ teamMode }: { teamMode?: TeamMode } = {}
   const [videoUploadStatus, setVideoUploadStatus] = useState<
     { state: 'idle' } | { state: 'uploading' } | { state: 'ok'; url: string } | { state: 'failed'; error: string }
   >({ state: 'idle' })
-  const [uploadCount, setUploadCount] = useState<UploadCount | null>(null)
+  const [sessionUser, setSessionUser] = useState<SessionUser | null | undefined>(undefined)
   const inputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
   useEffect(() => {
     if (teamMode) return
-    try {
-      const email = localStorage.getItem('fc_email')
-      if (!email) return
-      fetch(`/api/upload-count?email=${encodeURIComponent(email)}`)
-        .then(r => r.json())
-        .then((data: UploadCount) => setUploadCount(data))
-        .catch(() => {})
-    } catch {}
+    fetch('/api/auth/session')
+      .then(r => r.json())
+      .then(({ user }) => setSessionUser(user ?? null))
+      .catch(() => setSessionUser(null))
   }, [teamMode])
 
   const seekTo = (video: HTMLVideoElement, t: number): Promise<void> =>
@@ -264,7 +260,7 @@ export default function VideoUploader({ teamMode }: { teamMode?: TeamMode } = {}
         if (teamMode) {
           teamMode.onSuccess(data.submissionId)
         } else {
-          router.push(`/gate/${data.submissionId}`)
+          router.push(`/results/${data.token}`)
         }
       } catch (err) {
         console.error(err)
@@ -357,15 +353,17 @@ export default function VideoUploader({ teamMode }: { teamMode?: TeamMode } = {}
     )
   }
 
-  const isLocked = !teamMode && uploadCount !== null && !uploadCount.subscribed && uploadCount.tokens === 0
+  const sessionLoading = !teamMode && sessionUser === undefined
+  const notLoggedIn = !teamMode && sessionUser === null
+  const noTokens = !teamMode && !!sessionUser && !sessionUser.subscribed && sessionUser.tokens === 0
+  const isLocked = sessionLoading || notLoggedIn || noTokens
 
   async function handleBuyToken() {
     try {
-      const email = (() => { try { return localStorage.getItem('fc_email') || '' } catch { return '' } })()
       const res = await fetch('/api/buy-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({}),
       })
       const { url } = await res.json()
       if (url) window.location.href = url
@@ -375,18 +373,18 @@ export default function VideoUploader({ teamMode }: { teamMode?: TeamMode } = {}
   return (
     <div className="w-full max-w-lg mx-auto space-y-4 px-2">
 
-      {/* Token count — only shown when we know the user's email */}
-      {uploadCount && !uploadCount.subscribed && uploadCount.tokens > 0 && (
-        uploadCount.tokens === 1 ? (
+      {/* Token count for logged-in users */}
+      {sessionUser && !sessionUser.subscribed && sessionUser.tokens > 0 && (
+        sessionUser.tokens === 1 ? (
           <div className="flex items-center justify-center gap-2 bg-orange-50 border border-orange-300 rounded-xl px-4 py-2">
             <span className="text-orange-500 text-sm font-black tracking-wide">1 ANALYSIS TOKEN REMAINING</span>
           </div>
         ) : (
-          <p className="text-center text-gray-400 text-xs">{uploadCount.tokens} analysis tokens remaining</p>
+          <p className="text-center text-gray-400 text-xs">{sessionUser.tokens} analysis tokens remaining</p>
         )
       )}
 
-      {/* Drop zone — locked when out of uploads */}
+      {/* Drop zone */}
       <div className="relative">
         <div
           className={`border-2 border-dashed rounded-2xl p-8 sm:p-12 text-center transition-all duration-200
@@ -410,8 +408,31 @@ export default function VideoUploader({ teamMode }: { teamMode?: TeamMode } = {}
           </button>
         </div>
 
-        {/* Locked overlay */}
-        {isLocked && (
+        {/* Not logged in overlay */}
+        {notLoggedIn && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6">
+            <p className="text-black font-bold text-base text-center leading-snug">
+              Create a free account to analyze your shot
+            </p>
+            <div className="flex gap-2">
+              <a
+                href="/signup"
+                className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-colors"
+              >
+                Sign Up Free
+              </a>
+              <a
+                href="/login"
+                className="bg-gray-100 hover:bg-gray-200 text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-colors"
+              >
+                Log In
+              </a>
+            </div>
+          </div>
+        )}
+
+        {/* No tokens overlay */}
+        {noTokens && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6">
             <p className="text-black font-bold text-base text-center leading-snug">
               Buy a token to analyze your shot

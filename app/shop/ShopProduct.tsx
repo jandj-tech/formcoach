@@ -185,7 +185,7 @@ export default function ShopProduct({ region }: { region: Region }) {
 
         {/* 1 Shot Analysis */}
         <div className="max-w-xl">
-          <PremiumCTA dark />
+          <PremiumCTA dark region={region} />
         </div>
       </div>
     </section>

@@ -2,13 +2,11 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import type { Region } from '@/lib/geo'
 
-type Region = 'US' | 'CA'
-
-export default function PremiumCTA({ dark = false }: { dark?: boolean }) {
+export default function PremiumCTA({ dark = false, region }: { dark?: boolean; region: Region }) {
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
-  const [region, setRegion] = useState<Region>('US')
 
   async function handleBuyToken() {
     setLoading(true)
@@ -29,7 +27,7 @@ export default function PremiumCTA({ dark = false }: { dark?: boolean }) {
   const subColor = dark ? 'text-zinc-400' : 'text-gray-500'
   const borderColor = dark ? 'border-zinc-700' : 'border-orange-200'
   const bgColor = dark ? 'bg-zinc-900' : 'bg-orange-50'
-  const currencyCode = region === 'CA' ? 'CAD' : 'USD'
+  const currencyLabel = region === 'CA' ? ' CAD' : ''
 
   if (!open) {
     return (
@@ -37,7 +35,7 @@ export default function PremiumCTA({ dark = false }: { dark?: boolean }) {
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-base shrink-0">🏀</span>
           <span className={`text-sm font-medium truncate ${labelColor}`}>
-            1 shot analysis — <span className="font-bold text-orange-500">$4.99 {currencyCode}</span>
+            1 shot analysis — <span className="font-bold text-orange-500">$4.99{currencyLabel}</span>
           </span>
         </div>
         <button
@@ -57,39 +55,12 @@ export default function PremiumCTA({ dark = false }: { dark?: boolean }) {
         <button onClick={() => setOpen(false)} className={`text-xs ${subColor} hover:opacity-70`}>✕</button>
       </div>
 
-      <div
-        role="group"
-        aria-label="Country"
-        className="inline-flex items-center gap-1 bg-zinc-800/50 border border-zinc-700 rounded-full p-0.5"
-      >
-        <button
-          type="button"
-          onClick={() => setRegion('US')}
-          aria-pressed={region === 'US'}
-          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors ${
-            region === 'US' ? 'bg-orange-500 text-white' : `${subColor} hover:bg-zinc-700`
-          }`}
-        >
-          🇺🇸 USA
-        </button>
-        <button
-          type="button"
-          onClick={() => setRegion('CA')}
-          aria-pressed={region === 'CA'}
-          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors ${
-            region === 'CA' ? 'bg-orange-500 text-white' : `${subColor} hover:bg-zinc-700`
-          }`}
-        >
-          🇨🇦 Canada
-        </button>
-      </div>
-
       <div>
         <p className={`text-xs ${subColor} mb-2`}>Each token gives you one full AI shot analysis across 17 coaching criteria.</p>
         <div className="flex items-center justify-between gap-3">
           <div>
             <span className="text-orange-500 font-black text-2xl">$4.99</span>
-            <span className={`text-xs ${subColor} ml-1`}>{currencyCode}</span>
+            {currencyLabel && <span className={`text-xs ${subColor} ml-1`}>CAD</span>}
             <p className={`text-xs ${subColor} mt-0.5`}>per analysis · one-time payment</p>
           </div>
           <button

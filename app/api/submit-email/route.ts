@@ -12,28 +12,32 @@ export async function POST(req: NextRequest) {
 
     const emailLower = email.toLowerCase().trim()
 
-    // Check subscription status
+    // Check token balance / active subscription
     const [emailRow] = await db`
-      SELECT subscription_type, subscription_expires_at FROM email_list WHERE email = ${emailLower}
+      SELECT subscription_type, subscription_expires_at, analysis_tokens
+      FROM email_list WHERE email = ${emailLower}
     `
+
     const isSubscribed =
-      emailRow?.subscription_type &&
-      emailRow?.subscription_expires_at &&
+      !!emailRow?.subscription_type &&
+      !!emailRow?.subscription_expires_at &&
       new Date(emailRow.subscription_expires_at) > new Date()
 
-    if (!isSubscribed) {
-      // Count uploads this calendar month (excluding this submission)
-      const [{ count }] = await db`
-        SELECT COUNT(*)::int AS count
-        FROM submissions
-        WHERE email = ${emailLower}
-          AND id != ${submissionId}
-          AND created_at >= date_trunc('month', NOW())
-      ` as unknown as [{ count: number }]
+    const tokens: number = emailRow?.analysis_tokens ?? 0
 
-      if (count >= 3) {
-        return NextResponse.json({ error: 'limit_reached', uploadsThisMonth: count }, { status: 429 })
-      }
+    if (!isSubscribed && tokens <= 0) {
+      return NextResponse.json({ error: 'no_tokens' }, { status: 402 })
+    }
+
+    // Deduct one token (subscribed accounts are unlimited)
+    if (!isSubscribed) {
+      await db`
+        UPDATE email_list SET analysis_tokens = analysis_tokens - 1 WHERE email = ${emailLower}
+      `
+      await db`
+        UPDATE users SET analysis_tokens = analysis_tokens - 1
+        WHERE email = ${emailLower} AND analysis_tokens > 0
+      `
     }
 
     // Fetch submission + its token

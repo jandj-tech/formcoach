@@ -11,9 +11,16 @@ const REGION_PAD = 0.40     // ±40% of video around rough center
 const REGION_MIN_S = 5.0    // minimum dense region width — covers full short videos
 const SEEK_TIMEOUT_MS = 4000  // max ms to wait for a seek before skipping
 
-interface UploadCount { used: number; remaining: number | null; subscribed: boolean }
+interface UploadCount { tokens: number; subscribed: boolean }
 
-export default function VideoUploader() {
+interface TeamMode {
+  code: string
+  firstName: string
+  lastInitial: string
+  onSuccess: (submissionId: string) => void
+}
+
+export default function VideoUploader({ teamMode }: { teamMode?: TeamMode } = {}) {
   const [isDragging, setIsDragging] = useState(false)
   const [status, setStatus] = useState<'idle' | 'extracting' | 'uploading' | 'error'>('idle')
   const [progress, setProgress] = useState(0)
@@ -27,6 +34,7 @@ export default function VideoUploader() {
   const router = useRouter()
 
   useEffect(() => {
+    if (teamMode) return
     try {
       const email = localStorage.getItem('fc_email')
       if (!email) return
@@ -35,7 +43,7 @@ export default function VideoUploader() {
         .then((data: UploadCount) => setUploadCount(data))
         .catch(() => {})
     } catch {}
-  }, [])
+  }, [teamMode])
 
   const seekTo = (video: HTMLVideoElement, t: number): Promise<void> =>
     new Promise((res) => {
@@ -236,15 +244,28 @@ export default function VideoUploader() {
         frames.forEach((blob, i) => formData.append('frames', blob, `frame-${i}.jpg`))
         if (videoUrl) formData.append('videoUrl', videoUrl)
 
+        if (teamMode) {
+          formData.append('teamCode', teamMode.code)
+          formData.append('playerFirstName', teamMode.firstName)
+          formData.append('playerLastInitial', teamMode.lastInitial)
+        }
+
         const res = await fetch('/api/analyze', { method: 'POST', body: formData })
         setProgress(90)
 
-        if (!res.ok) throw new Error('Analysis failed')
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}))
+          throw new Error(errData.error || 'Analysis failed')
+        }
 
         const data = await res.json()
         setProgress(100)
 
-        router.push(`/gate/${data.submissionId}`)
+        if (teamMode) {
+          teamMode.onSuccess(data.submissionId)
+        } else {
+          router.push(`/gate/${data.submissionId}`)
+        }
       } catch (err) {
         console.error(err)
         setStatus('error')
@@ -336,14 +357,15 @@ export default function VideoUploader() {
     )
   }
 
-  const isLocked = uploadCount !== null && !uploadCount.subscribed && uploadCount.remaining === 0
+  const isLocked = !teamMode && uploadCount !== null && !uploadCount.subscribed && uploadCount.tokens === 0
 
-  async function handleUpgrade() {
+  async function handleBuyToken() {
     try {
-      const res = await fetch('/api/subscribe', {
+      const email = (() => { try { return localStorage.getItem('fc_email') || '' } catch { return '' } })()
+      const res = await fetch('/api/buy-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: 'monthly' }),
+        body: JSON.stringify({ email }),
       })
       const { url } = await res.json()
       if (url) window.location.href = url
@@ -353,14 +375,14 @@ export default function VideoUploader() {
   return (
     <div className="w-full max-w-lg mx-auto space-y-4 px-2">
 
-      {/* Remaining upload countdown — only shown when we know the user's email */}
-      {uploadCount && !uploadCount.subscribed && uploadCount.remaining !== null && uploadCount.remaining > 0 && (
-        uploadCount.remaining === 1 ? (
+      {/* Token count — only shown when we know the user's email */}
+      {uploadCount && !uploadCount.subscribed && uploadCount.tokens > 0 && (
+        uploadCount.tokens === 1 ? (
           <div className="flex items-center justify-center gap-2 bg-orange-50 border border-orange-300 rounded-xl px-4 py-2">
-            <span className="text-orange-500 text-sm font-black tracking-wide">1 UPLOAD REMAINING THIS MONTH</span>
+            <span className="text-orange-500 text-sm font-black tracking-wide">1 ANALYSIS TOKEN REMAINING</span>
           </div>
         ) : (
-          <p className="text-center text-gray-400 text-xs">{uploadCount.remaining} uploads remaining this month</p>
+          <p className="text-center text-gray-400 text-xs">{uploadCount.tokens} analysis tokens remaining</p>
         )
       )}
 
@@ -392,15 +414,19 @@ export default function VideoUploader() {
         {isLocked && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6">
             <p className="text-black font-bold text-base text-center leading-snug">
-              Buy a Premium Plan to keep improving your shot
+              Buy a token to analyze your shot
             </p>
             <button
-              onClick={handleUpgrade}
+              onClick={handleBuyToken}
               className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors"
             >
-              Upgrade — from $2.49/mo
+              Buy Analysis — $4.99
             </button>
-            <p className="text-gray-400 text-xs">3 free analyses per month · Cancel anytime</p>
+            <p className="text-gray-400 text-xs text-center">
+              Or{' '}
+              <a href="/shop" className="underline hover:text-gray-600">buy the training ball</a>
+              {' '}and get 10 free analyses
+            </p>
           </div>
         )}
       </div>

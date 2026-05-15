@@ -77,6 +77,10 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS size VARCHAR(2);
 -- Store original uploaded video URL alongside the analysis
 ALTER TABLE analyses ADD COLUMN IF NOT EXISTS video_url TEXT;
 
+-- Pay-per-use analysis tokens (replaces monthly subscription model)
+ALTER TABLE email_list ADD COLUMN IF NOT EXISTS analysis_tokens INTEGER DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS analysis_tokens INTEGER DEFAULT 0;
+
 -- Seed custom criteria (only if table is empty)
 INSERT INTO criteria (name, description, weight, order_index)
 SELECT * FROM (VALUES

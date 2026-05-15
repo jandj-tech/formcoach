@@ -16,3 +16,10 @@ export const PRODUCT = {
   priceCents: 4999,
   currency: 'usd',
 }
+
+// 2-Ball Bundle: full price + 50% off second ball + 15 upload credits
+export const BUNDLE = {
+  ball1PriceCents: 4999,
+  ball2PriceCents: 2500,  // Math.round(4999 * 0.5) = 2500
+  uploadsGranted: 15,
+}

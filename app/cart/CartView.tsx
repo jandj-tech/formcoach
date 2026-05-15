@@ -33,7 +33,7 @@ export default function CartView({ usdToCad }: { usdToCad: number }) {
   const unitPrice = region === 'CA' ? Math.round(PRICE_USD * usdToCad * 100) / 100 : PRICE_USD
   const currencyCode: 'USD' | 'CAD' = region === 'CA' ? 'CAD' : 'USD'
 
-  const subtotal = items.reduce((sum, it) => sum + unitPrice * it.quantity, 0)
+  const subtotal = items.reduce((sum, it) => sum + unitPrice * ('quantity' in it ? it.quantity : 1), 0)
   const subtotalRounded = Math.round(subtotal * 100) / 100
 
   async function handleCheckout() {

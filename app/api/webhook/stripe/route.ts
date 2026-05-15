@@ -21,15 +21,52 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
-  // --- Ball shop order ---
+  // --- All checkout.session.completed events ---
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session
     const variant = session.metadata?.variant
     const size = session.metadata?.size
-    const plan = session.metadata?.plan as 'monthly' | 'annual' | undefined
+    const plan = session.metadata?.plan as 'monthly' | 'annual' | 'team-credits' | undefined
+    const metaType = session.metadata?.type
     const email = session.customer_details?.email
 
-    // Subscription checkout
+    // --- Team upload credits purchase ---
+    if (plan === 'team-credits') {
+      const teamId = session.metadata?.teamId
+      const quantity = parseInt(session.metadata?.quantity || '0', 10)
+      if (teamId && quantity > 0) {
+        try {
+          await db`UPDATE teams SET credits = credits + ${quantity} WHERE id = ${teamId}`
+        } catch (err) {
+          console.error('Failed to credit team uploads:', err)
+          return NextResponse.json({ error: 'DB error' }, { status: 500 })
+        }
+      }
+      return NextResponse.json({ received: true })
+    }
+
+    // --- Analysis token purchase ---
+    if (metaType === 'analysis_token') {
+      if (!email) return NextResponse.json({ received: true })
+      const emailLower = email.toLowerCase()
+      try {
+        await db`
+          INSERT INTO email_list (email, analysis_tokens)
+          VALUES (${emailLower}, 1)
+          ON CONFLICT (email) DO UPDATE
+          SET analysis_tokens = email_list.analysis_tokens + 1
+        `
+        await db`
+          UPDATE users SET analysis_tokens = analysis_tokens + 1 WHERE email = ${emailLower}
+        `
+      } catch (err) {
+        console.error('Failed to credit analysis token:', err)
+        return NextResponse.json({ error: 'DB error' }, { status: 500 })
+      }
+      return NextResponse.json({ received: true })
+    }
+
+    // --- Legacy subscription checkout (honored until expiry, no longer sold) ---
     if (plan === 'monthly' || plan === 'annual') {
       if (!email) return NextResponse.json({ received: true })
 
@@ -39,15 +76,12 @@ export async function POST(req: NextRequest) {
         : new Date(Date.now() + 31 * 24 * 60 * 60 * 1000)
 
       try {
-        // Upsert email_list with subscription info
         await db`
           INSERT INTO email_list (email, subscription_type, subscription_expires_at)
           VALUES (${emailLower}, ${plan}, ${expiresAt})
           ON CONFLICT (email) DO UPDATE
           SET subscription_type = ${plan}, subscription_expires_at = ${expiresAt}
         `
-
-        // If user account exists, sync subscription there too
         await db`
           UPDATE users
           SET subscription_type = ${plan}, subscription_expires_at = ${expiresAt},
@@ -62,7 +96,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ received: true })
     }
 
-    // Ball shop order (existing logic)
+    // --- Ball shop order ---
     const name = session.customer_details?.name
     const phone = session.customer_details?.phone
     const ship = session.collected_information?.shipping_details
@@ -95,6 +129,23 @@ export async function POST(req: NextRequest) {
     } catch (err) {
       console.error('Failed to save order:', err)
       return NextResponse.json({ error: 'DB error' }, { status: 500 })
+    }
+
+    // Grant 10 free analysis tokens for buying a ball
+    const emailLower = email.toLowerCase()
+    try {
+      await db`
+        INSERT INTO email_list (email, analysis_tokens)
+        VALUES (${emailLower}, 10)
+        ON CONFLICT (email) DO UPDATE
+        SET analysis_tokens = email_list.analysis_tokens + 10
+      `
+      await db`
+        UPDATE users SET analysis_tokens = analysis_tokens + 10 WHERE email = ${emailLower}
+      `
+    } catch (err) {
+      console.error('Failed to grant ball bonus tokens:', err)
+      // Non-fatal — order is saved, tokens can be credited manually
     }
   }
 

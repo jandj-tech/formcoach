@@ -11,7 +11,7 @@ import {
 export type Variant = 'right' | 'left'
 export type Size = '5' | '6' | '7'
 
-export type CartItem = {
+export type CartBallItem = {
   id: string
   productSlug: 'ball'
   variant: Variant
@@ -19,11 +19,23 @@ export type CartItem = {
   quantity: number
 }
 
+export type CartBundleItem = {
+  id: string
+  productSlug: 'bundle'
+  variant1: Variant
+  size1: Size
+  variant2: Variant
+  size2: Size
+}
+
+export type CartItem = CartBallItem | CartBundleItem
+
 type CartContextValue = {
   items: CartItem[]
   count: number
   hydrated: boolean
   addBall: (variant: Variant, size: Size, quantity: number) => void
+  addBundle: (variant1: Variant, size1: Size, variant2: Variant, size2: Size) => void
   setQuantity: (id: string, quantity: number) => void
   removeItem: (id: string) => void
   clear: () => void
@@ -37,6 +49,14 @@ export function ballId(variant: Variant, size: Size) {
   return `ball:${variant}:${size}`
 }
 
+function isVariant(v: unknown): v is Variant {
+  return v === 'right' || v === 'left'
+}
+
+function isSize(s: unknown): s is Size {
+  return s === '5' || s === '6' || s === '7'
+}
+
 function loadFromStorage(): CartItem[] {
   if (typeof window === 'undefined') return []
   try {
@@ -44,15 +64,16 @@ function loadFromStorage(): CartItem[] {
     if (!raw) return []
     const parsed = JSON.parse(raw)
     if (!Array.isArray(parsed)) return []
-    return parsed.filter(
-      (it): it is CartItem =>
-        !!it &&
-        typeof it.id === 'string' &&
-        (it.variant === 'right' || it.variant === 'left') &&
-        (it.size === '5' || it.size === '6' || it.size === '7') &&
-        typeof it.quantity === 'number' &&
-        it.quantity > 0,
-    )
+    return parsed.filter((it): it is CartItem => {
+      if (!it || typeof it.id !== 'string') return false
+      if (it.productSlug === 'ball') {
+        return isVariant(it.variant) && isSize(it.size) && typeof it.quantity === 'number' && it.quantity > 0
+      }
+      if (it.productSlug === 'bundle') {
+        return isVariant(it.variant1) && isSize(it.size1) && isVariant(it.variant2) && isSize(it.size2)
+      }
+      return false
+    })
   } catch {
     return []
   }
@@ -84,9 +105,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const id = ballId(variant, size)
     setItems((prev) => {
       const existing = prev.find((it) => it.id === id)
-      if (existing) {
+      if (existing && existing.productSlug === 'ball') {
         return prev.map((it) =>
-          it.id === id
+          it.id === id && it.productSlug === 'ball'
             ? { ...it, quantity: Math.min(MAX_QTY, it.quantity + quantity) }
             : it,
         )
@@ -95,13 +116,21 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         ...prev,
         {
           id,
-          productSlug: 'ball',
+          productSlug: 'ball' as const,
           variant,
           size,
           quantity: Math.min(MAX_QTY, quantity),
         },
       ]
     })
+  }, [])
+
+  const addBundle = useCallback((variant1: Variant, size1: Size, variant2: Variant, size2: Size) => {
+    const id = `bundle:${Date.now()}`
+    setItems((prev) => [
+      ...prev,
+      { id, productSlug: 'bundle' as const, variant1, size1, variant2, size2 },
+    ])
   }, [])
 
   const setQuantity = useCallback((id: string, quantity: number) => {
@@ -111,7 +140,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
     setItems((prev) =>
       prev.map((it) =>
-        it.id === id ? { ...it, quantity: Math.min(MAX_QTY, quantity) } : it,
+        it.id === id && it.productSlug === 'ball' ? { ...it, quantity: Math.min(MAX_QTY, quantity) } : it,
       ),
     )
   }, [])
@@ -122,11 +151,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const clear = useCallback(() => setItems([]), [])
 
-  const count = items.reduce((sum, it) => sum + it.quantity, 0)
+  const count = items.reduce((sum, it) => sum + (it.productSlug === 'ball' ? it.quantity : 1), 0)
 
   return (
     <CartContext.Provider
-      value={{ items, count, hydrated, addBall, setQuantity, removeItem, clear }}
+      value={{ items, count, hydrated, addBall, addBundle, setQuantity, removeItem, clear }}
     >
       {children}
     </CartContext.Provider>

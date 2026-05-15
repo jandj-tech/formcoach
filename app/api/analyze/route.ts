@@ -22,11 +22,50 @@ export async function POST(req: NextRequest) {
     const session = await getSessionFromRequest(req)
     const userId = session?.userId ?? null
 
+    // Team upload fields (optional)
+    const teamCode = (formData.get('teamCode') as string | null) || null
+    const playerFirstName = (formData.get('playerFirstName') as string | null) || null
+    const playerLastInitial = (formData.get('playerLastInitial') as string | null) || null
+
+    let teamId: string | null = null
+    let teamPlayerId: string | null = null
+
+    if (teamCode && playerFirstName && playerLastInitial) {
+      // Lock + check credits atomically
+      const [team] = await db`
+        SELECT id, credits FROM teams WHERE access_code = ${teamCode.toUpperCase()} FOR UPDATE
+      ` as unknown as [{ id: string; credits: number } | undefined]
+
+      if (!team) {
+        return NextResponse.json({ error: 'Team not found' }, { status: 404 })
+      }
+      if (team.credits < 1) {
+        return NextResponse.json({ error: 'Insufficient credits' }, { status: 402 })
+      }
+
+      teamId = team.id
+
+      // Upsert player record
+      await db`
+        INSERT INTO team_players (team_id, first_name, last_name_initial)
+        VALUES (${teamId}, ${playerFirstName.trim()}, ${playerLastInitial.toUpperCase().charAt(0)})
+        ON CONFLICT (team_id, first_name, last_name_initial) DO NOTHING
+      `
+      const [player] = await db`
+        SELECT id FROM team_players
+        WHERE team_id = ${teamId}
+          AND first_name = ${playerFirstName.trim()}
+          AND last_name_initial = ${playerLastInitial.toUpperCase().charAt(0)}
+      ` as unknown as [{ id: string }]
+
+      teamPlayerId = player.id
+    }
+
     // Create submission record
     const submissionToken = crypto.randomBytes(32).toString('hex')
     const [submission] = await db`
-      INSERT INTO submissions (token, status, user_id)
-      VALUES (${submissionToken}, 'processing', ${userId})
+      INSERT INTO submissions (token, status, user_id, team_id, team_player_id)
+      VALUES (${submissionToken}, 'processing', ${userId}, ${teamId}, ${teamPlayerId})
       RETURNING id
     `
 
@@ -88,6 +127,11 @@ export async function POST(req: NextRequest) {
     await db`
       UPDATE submissions SET status = 'complete' WHERE id = ${submission.id}
     `
+
+    // Deduct team credit now that analysis succeeded
+    if (teamId) {
+      await db`UPDATE teams SET credits = credits - 1 WHERE id = ${teamId} AND credits > 0`
+    }
 
     return NextResponse.json({
       submissionId: submission.id,

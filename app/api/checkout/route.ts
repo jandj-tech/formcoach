@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getStripe, PRODUCT } from '@/lib/stripe'
+import { getStripe, PRODUCT, BUNDLE } from '@/lib/stripe'
 import { getUsdToCadRate } from '@/lib/fx'
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL && process.env.NEXT_PUBLIC_BASE_URL !== 'http://localhost:3000'
@@ -14,11 +14,37 @@ const SIZE_INCHES: Record<string, string> = {
   '7': '29.5"',
 }
 
-type IncomingItem = {
-  productSlug?: string
+type IncomingBallItem = {
+  productSlug: 'ball'
   variant?: string
   size?: string
   quantity?: number
+}
+
+type IncomingBundleItem = {
+  productSlug: 'bundle'
+  variant1?: string
+  size1?: string
+  variant2?: string
+  size2?: string
+}
+
+type IncomingItem = IncomingBallItem | IncomingBundleItem | { productSlug?: string; variant?: string; size?: string; quantity?: number }
+
+function variantLabel(v: string) {
+  return v === 'left' ? 'Left-handed' : 'Right-handed'
+}
+
+function sizeLabel(s: string) {
+  return `Size ${s} (${SIZE_INCHES[s]})`
+}
+
+function validateVariant(v: unknown): asserts v is 'left' | 'right' {
+  if (v !== 'left' && v !== 'right') throw new Error('Invalid variant')
+}
+
+function validateSize(s: unknown): asserts s is '5' | '6' | '7' {
+  if (s !== '5' && s !== '6' && s !== '7') throw new Error('Invalid size')
 }
 
 export async function POST(req: NextRequest) {
@@ -30,7 +56,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid region' }, { status: 400 })
     }
 
-    // Accept new multi-item shape; fall back to legacy single-item shape.
     const rawItems: IncomingItem[] = Array.isArray(body?.items)
       ? body.items
       : [{ variant: body?.variant, size: body?.size, quantity: 1, productSlug: 'ball' }]
@@ -39,59 +64,111 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Cart is empty' }, { status: 400 })
     }
 
-    const items = rawItems.map((it) => {
-      if (it.variant !== 'left' && it.variant !== 'right') {
-        throw new Error('Invalid variant')
-      }
-      if (it.size !== '5' && it.size !== '6' && it.size !== '7') {
-        throw new Error('Invalid size')
-      }
-      const qty = typeof it.quantity === 'number' ? Math.floor(it.quantity) : 1
-      if (qty < 1 || qty > 99) {
-        throw new Error('Invalid quantity')
-      }
-      return {
-        variant: it.variant as 'left' | 'right',
-        size: it.size as '5' | '6' | '7',
-        quantity: qty,
-      }
-    })
-
     let currency: 'usd' | 'cad' = 'usd'
     let unitAmount = PRODUCT.priceCents
+    let ball1Amount = BUNDLE.ball1PriceCents
+    let ball2Amount = BUNDLE.ball2PriceCents
+
     if (region === 'CA') {
       const rate = await getUsdToCadRate()
       currency = 'cad'
       unitAmount = Math.round(PRODUCT.priceCents * rate)
+      ball1Amount = Math.round(BUNDLE.ball1PriceCents * rate)
+      ball2Amount = Math.round(BUNDLE.ball2PriceCents * rate)
     }
 
-    const line_items = items.map((it) => {
-      const variantLabel = it.variant === 'left' ? 'Left-handed' : 'Right-handed'
-      const sizeLabel = `Size ${it.size} (${SIZE_INCHES[it.size]})`
-      return {
-        quantity: it.quantity,
-        price_data: {
-          currency,
-          unit_amount: unitAmount,
-          product_data: {
-            name: `${PRODUCT.name} — ${variantLabel}, ${sizeLabel}`,
-            description: 'Co-designed with Maple Basketball.',
-          },
-        },
+    const line_items: {
+      quantity: number
+      price_data: {
+        currency: string
+        unit_amount: number
+        product_data: { name: string; description: string }
       }
-    })
+    }[] = []
 
-    // Keep legacy variant/size in metadata (first item) so the existing webhook
-    // continues to work without a schema change. Full cart is also stringified
-    // for future use.
-    const first = items[0]
-    const cartJson = JSON.stringify(items)
+    let hasBundles = false
+    let firstBallVariant: string | undefined
+    let firstBallSize: string | undefined
+
+    for (const it of rawItems) {
+      if (it.productSlug === 'bundle') {
+        const bundleItem = it as IncomingBundleItem
+        validateVariant(bundleItem.variant1)
+        validateSize(bundleItem.size1)
+        validateVariant(bundleItem.variant2)
+        validateSize(bundleItem.size2)
+
+        if (!firstBallVariant) {
+          firstBallVariant = bundleItem.variant1
+          firstBallSize = bundleItem.size1
+        }
+
+        hasBundles = true
+        line_items.push({
+          quantity: 1,
+          price_data: {
+            currency,
+            unit_amount: ball1Amount,
+            product_data: {
+              name: `${PRODUCT.name} — ${variantLabel(bundleItem.variant1)}, ${sizeLabel(bundleItem.size1)} (Bundle Ball 1)`,
+              description: 'Co-designed with Maple Basketball.',
+            },
+          },
+        })
+        line_items.push({
+          quantity: 1,
+          price_data: {
+            currency,
+            unit_amount: ball2Amount,
+            product_data: {
+              name: `${PRODUCT.name} — ${variantLabel(bundleItem.variant2)}, ${sizeLabel(bundleItem.size2)} (Bundle Ball 2 — 50% off)`,
+              description: 'Co-designed with Maple Basketball.',
+            },
+          },
+        })
+      } else {
+        validateVariant(it.variant)
+        validateSize(it.size)
+        const qty = typeof (it as IncomingBallItem).quantity === 'number' ? Math.floor((it as IncomingBallItem).quantity!) : 1
+        if (qty < 1 || qty > 99) throw new Error('Invalid quantity')
+
+        if (!firstBallVariant) {
+          firstBallVariant = it.variant as string
+          firstBallSize = it.size as string
+        }
+
+        line_items.push({
+          quantity: qty,
+          price_data: {
+            currency,
+            unit_amount: unitAmount,
+            product_data: {
+              name: `${PRODUCT.name} — ${variantLabel(it.variant as string)}, ${sizeLabel(it.size as string)}`,
+              description: 'Co-designed with Maple Basketball.',
+            },
+          },
+        })
+      }
+    }
+
     const metadata: Record<string, string> = {
       region,
-      variant: first.variant,
-      size: first.size,
-      items_count: String(items.length),
+      variant: firstBallVariant ?? '',
+      size: firstBallSize ?? '',
+      items_count: String(rawItems.length),
     }
+
+    if (hasBundles) {
+      metadata.bundle_uploads = String(BUNDLE.uploadsGranted)
+    }
+
+    const cartJson = JSON.stringify(
+      rawItems.map((it) =>
+        it.productSlug === 'bundle'
+          ? { productSlug: 'bundle', variant1: (it as IncomingBundleItem).variant1, size1: (it as IncomingBundleItem).size1, variant2: (it as IncomingBundleItem).variant2, size2: (it as IncomingBundleItem).size2 }
+          : { productSlug: 'ball', variant: it.variant, size: it.size, quantity: (it as IncomingBallItem).quantity }
+      )
+    )
     if (cartJson.length <= 480) {
       metadata.cart = cartJson
     }

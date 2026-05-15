@@ -10,9 +10,9 @@ export default async function DashboardPage() {
   if (!session) redirect('/login')
 
   const [user] = await db`
-    SELECT id, email, subscription_type, subscription_expires_at
+    SELECT id, email, subscription_type, subscription_expires_at, analysis_tokens
     FROM users WHERE id = ${session.userId}
-  ` as unknown as [{ id: string; email: string; subscription_type: string | null; subscription_expires_at: string | null } | undefined]
+  ` as unknown as [{ id: string; email: string; subscription_type: string | null; subscription_expires_at: string | null; analysis_tokens: number } | undefined]
 
   if (!user) redirect('/login')
 
@@ -20,6 +20,8 @@ export default async function DashboardPage() {
     !!user.subscription_type &&
     !!user.subscription_expires_at &&
     new Date(user.subscription_expires_at) > new Date()
+
+  const tokens = user.analysis_tokens ?? 0
 
   const submissions = await db`
     SELECT s.id, s.created_at, s.token, a.overall_score, a.frame_urls
@@ -56,33 +58,41 @@ export default async function DashboardPage() {
           <div className="flex items-center gap-3">
             {isSubscribed && (
               <span className="bg-orange-100 text-orange-700 text-xs font-bold px-3 py-1 rounded-full">
-                {user.subscription_type === 'annual' ? 'Annual' : 'Monthly'} Pro
+                {user.subscription_type === 'complimentary' ? 'Complimentary' : user.subscription_type === 'annual' ? 'Annual Pro' : 'Monthly Pro'}
+              </span>
+            )}
+            {!isSubscribed && (
+              <span className="bg-gray-100 text-gray-700 text-xs font-bold px-3 py-1 rounded-full">
+                {tokens} token{tokens !== 1 ? 's' : ''}
               </span>
             )}
             <LogoutButton />
           </div>
         </div>
 
-        {/* Subscription banner if expired */}
+        {/* Token balance / buy CTA */}
         {!isSubscribed && (
           <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-center justify-between gap-4">
             <div>
-              <p className="font-semibold text-black text-sm">Your subscription has expired</p>
-              <p className="text-gray-500 text-xs mt-0.5">Renew to get unlimited analyses</p>
+              <p className="font-semibold text-black text-sm">
+                {tokens > 0 ? `${tokens} analysis token${tokens !== 1 ? 's' : ''} remaining` : 'No analysis tokens'}
+              </p>
+              <p className="text-gray-500 text-xs mt-0.5">
+                {tokens > 0 ? 'Each token gives you one full shot analysis' : 'Buy a token to analyze your next shot'}
+              </p>
             </div>
-            <div className="flex gap-2 shrink-0">
-              <a
-                href="/api/subscribe"
-                onClick={(e) => {
-                  e.preventDefault()
-                  fetch('/api/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan: 'monthly' }) })
-                    .then(r => r.json()).then(({ url }) => { if (url) window.location.href = url })
-                }}
-                className="bg-orange-500 hover:bg-orange-400 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors"
-              >
-                Renew
-              </a>
-            </div>
+            <a
+              href="#"
+              onClick={async (e) => {
+                e.preventDefault()
+                const res = await fetch('/api/buy-token', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: user.email }) })
+                const { url } = await res.json()
+                if (url) window.location.href = url
+              }}
+              className="shrink-0 bg-orange-500 hover:bg-orange-400 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors"
+            >
+              Buy Token — $4.99
+            </a>
           </div>
         )}
 

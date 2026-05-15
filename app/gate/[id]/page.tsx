@@ -2,36 +2,35 @@
 
 import { useState, useEffect } from 'react'
 import { use } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 import TopNav from '@/components/TopNav'
+import Link from 'next/link'
 
-type PageState = 'loading' | 'email-form' | 'upgrade' | 'sent'
+type PageState = 'loading' | 'email-form' | 'buy-token' | 'sent'
 
-export default function GatePage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
+function GateContent({ id }: { id: string }) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [pageState, setPageState] = useState<PageState>('loading')
   const [email, setEmail] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
-  const [subscribing, setSubscribing] = useState(false)
-  const [upgradePlan, setUpgradePlan] = useState<'monthly' | 'annual'>('annual')
-  const [upgradeCountry, setUpgradeCountry] = useState<'US' | 'CA'>('US')
+  const [buying, setBuying] = useState(false)
 
-  // Check if user is already logged in with active subscription
+  const tokenPurchased = searchParams.get('token_purchased') === '1'
+
   useEffect(() => {
     fetch('/api/auth/session')
       .then(r => r.json())
       .then(async ({ user }) => {
         if (user?.subscribed) {
-          // Auto-submit their email and redirect to results
           const res = await fetch('/api/submit-email', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: user.email, submissionId: id }),
           })
           if (res.ok) {
-            // Get token to redirect directly
             const tokenRes = await fetch(`/api/submission-token/${id}`)
             if (tokenRes.ok) {
               const { token } = await tokenRes.json()
@@ -40,10 +39,10 @@ export default function GatePage({ params }: { params: Promise<{ id: string }> }
             }
           }
         }
-        setPageState('email-form')
+        setPageState(tokenPurchased ? 'email-form' : 'email-form')
       })
       .catch(() => setPageState('email-form'))
-  }, [id, router])
+  }, [id, router, tokenPurchased])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -58,14 +57,13 @@ export default function GatePage({ params }: { params: Promise<{ id: string }> }
         body: JSON.stringify({ email: email.trim(), submissionId: id }),
       })
 
-      if (res.status === 429) {
-        setPageState('upgrade')
+      if (res.status === 402) {
+        setPageState('buy-token')
         setSubmitting(false)
         return
       }
 
       if (!res.ok) throw new Error('Failed')
-      // Remember email so analyze page can show remaining upload count
       try { localStorage.setItem('fc_email', email.trim().toLowerCase()) } catch {}
       setPageState('sent')
     } catch {
@@ -75,24 +73,19 @@ export default function GatePage({ params }: { params: Promise<{ id: string }> }
     }
   }
 
-  async function handleSubscribe() {
-    setSubscribing(true)
+  async function handleBuyToken() {
+    setBuying(true)
     try {
-      const res = await fetch('/api/subscribe', {
+      const res = await fetch('/api/buy-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: upgradePlan, country: upgradeCountry, submissionId: id }),
+        body: JSON.stringify({ email: email.trim(), submissionId: id }),
       })
       const { url } = await res.json()
       if (url) window.location.href = url
     } catch {
-      setSubscribing(false)
+      setBuying(false)
     }
-  }
-
-  const PRICES = {
-    monthly: { US: '$2.49/mo', CA: '$3.49/mo CAD' },
-    annual:  { US: '$11.99/yr', CA: '$16.99/yr CAD' },
   }
 
   if (pageState === 'loading') {
@@ -125,72 +118,47 @@ export default function GatePage({ params }: { params: Promise<{ id: string }> }
             </div>
           )}
 
-          {pageState === 'upgrade' && (
+          {pageState === 'buy-token' && (
             <div className="space-y-6">
               <div className="text-center space-y-3">
-                <div className="text-5xl">🔒</div>
-                <h1 className="text-2xl font-black text-black">You&apos;ve used your 3 free analyses this month</h1>
+                <div className="text-5xl">🏀</div>
+                <h1 className="text-2xl font-black text-black">Get your shot breakdown</h1>
                 <p className="text-black leading-relaxed">
-                  Upgrade to keep getting unlimited feedback on your shot — your analysis is ready and waiting.
+                  Your analysis is ready. Buy one token to view your full results — scored across 17 coaching criteria.
                 </p>
               </div>
 
-              {/* Plan toggle */}
-              <div className="space-y-2">
-                <p className="text-xs font-semibold text-gray-500 tracking-wider uppercase">Plan</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => setUpgradePlan('monthly')}
-                    className={`py-3 px-4 rounded-xl border-2 text-sm font-bold transition-colors ${
-                      upgradePlan === 'monthly' ? 'border-orange-500 bg-orange-50 text-black' : 'border-gray-200 text-gray-500 hover:border-gray-300'
-                    }`}
-                  >
-                    Monthly
-                    <span className="block text-xs font-normal mt-0.5">{PRICES.monthly[upgradeCountry]}</span>
-                  </button>
-                  <button
-                    onClick={() => setUpgradePlan('annual')}
-                    className={`py-3 px-4 rounded-xl border-2 text-sm font-bold transition-colors relative ${
-                      upgradePlan === 'annual' ? 'border-orange-500 bg-orange-50 text-black' : 'border-gray-200 text-gray-500 hover:border-gray-300'
-                    }`}
-                  >
-                    <span className="absolute -top-2 right-2 bg-green-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">BEST VALUE</span>
-                    Yearly
-                    <span className="block text-xs font-normal mt-0.5">{PRICES.annual[upgradeCountry]}</span>
-                  </button>
+              <div className="bg-orange-50 border border-orange-200 rounded-2xl p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-black font-black text-3xl">$4.99</p>
+                    <p className="text-gray-500 text-sm mt-0.5">1 shot analysis · one-time</p>
+                  </div>
+                  <div className="text-4xl">📊</div>
                 </div>
+                <ul className="space-y-1.5 text-sm text-black">
+                  <li className="flex items-center gap-2"><span className="text-orange-500">✓</span> Overall shot score</li>
+                  <li className="flex items-center gap-2"><span className="text-orange-500">✓</span> 17 criteria scored with AI coaching notes</li>
+                  <li className="flex items-center gap-2"><span className="text-orange-500">✓</span> Frame-by-frame breakdown</li>
+                </ul>
+                <button
+                  onClick={handleBuyToken}
+                  disabled={buying}
+                  className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold py-4 rounded-xl transition-colors text-base"
+                >
+                  {buying ? 'Redirecting...' : 'Buy Analysis — $4.99'}
+                </button>
               </div>
 
-              {/* Country toggle */}
-              <div className="space-y-2">
-                <p className="text-xs font-semibold text-gray-500 tracking-wider uppercase">Location</p>
-                <div className="inline-flex rounded-lg p-1 gap-1 border border-gray-200 bg-white">
-                  <button
-                    onClick={() => setUpgradeCountry('US')}
-                    className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-bold transition-colors ${
-                      upgradeCountry === 'US' ? 'bg-orange-500 text-white' : 'text-gray-500 hover:text-black'
-                    }`}
-                  >
-                    🇺🇸 USA
-                  </button>
-                  <button
-                    onClick={() => setUpgradeCountry('CA')}
-                    className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-bold transition-colors ${
-                      upgradeCountry === 'CA' ? 'bg-orange-500 text-white' : 'text-gray-500 hover:text-black'
-                    }`}
-                  >
-                    🇨🇦 Canada
-                  </button>
-                </div>
+              <div className="text-center space-y-2">
+                <p className="text-gray-500 text-sm font-semibold">Want more analyses?</p>
+                <Link
+                  href="/shop"
+                  className="inline-flex items-center gap-2 bg-black hover:bg-zinc-800 text-white font-bold px-6 py-3 rounded-xl text-sm transition-colors"
+                >
+                  🏀 Buy the Training Ball — get 10 free analyses
+                </Link>
               </div>
-
-              <button
-                onClick={handleSubscribe}
-                disabled={subscribing}
-                className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold py-4 rounded-xl transition-colors"
-              >
-                {subscribing ? 'Redirecting...' : `Subscribe — ${PRICES[upgradePlan][upgradeCountry]}`}
-              </button>
 
               <button
                 onClick={() => setPageState('email-form')}
@@ -205,27 +173,32 @@ export default function GatePage({ params }: { params: Promise<{ id: string }> }
             <div className="space-y-6">
               <div className="text-center space-y-3">
                 <div className="text-5xl">🏀</div>
-                <h1 className="text-3xl font-black text-black">Your analysis is ready!</h1>
+                <h1 className="text-3xl font-black text-black">
+                  {tokenPurchased ? 'Token purchased!' : 'Your analysis is ready!'}
+                </h1>
                 <p className="text-black leading-relaxed">
-                  We&apos;ve scored your shot across all criteria. Enter your email and we&apos;ll
-                  send you a private link to your full breakdown.
+                  {tokenPurchased
+                    ? 'Enter your email and we\'ll send you a private link to your full shot breakdown.'
+                    : 'We\'ve scored your shot across all criteria. Enter your email and we\'ll send you a private link to your full breakdown.'}
                 </p>
               </div>
 
-              <div className="bg-gray-50 rounded-xl p-6 border border-gray-200 space-y-2">
-                <div className="flex items-center gap-3 text-sm text-black">
-                  <span className="text-orange-500">✓</span> Overall shot score
+              {!tokenPurchased && (
+                <div className="bg-gray-50 rounded-xl p-6 border border-gray-200 space-y-2">
+                  <div className="flex items-center gap-3 text-sm text-black">
+                    <span className="text-orange-500">✓</span> Overall shot score
+                  </div>
+                  <div className="flex items-center gap-3 text-sm text-black">
+                    <span className="text-orange-500">✓</span> Score for each of 17 criteria
+                  </div>
+                  <div className="flex items-center gap-3 text-sm text-black">
+                    <span className="text-orange-500">✓</span> AI coaching notes per criterion
+                  </div>
+                  <div className="flex items-center gap-3 text-sm text-black">
+                    <span className="text-orange-500">✓</span> Frame-by-frame thumbnails
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 text-sm text-black">
-                  <span className="text-orange-500">✓</span> Score for each of 17 criteria
-                </div>
-                <div className="flex items-center gap-3 text-sm text-black">
-                  <span className="text-orange-500">✓</span> AI coaching notes per criterion
-                </div>
-                <div className="flex items-center gap-3 text-sm text-black">
-                  <span className="text-orange-500">✓</span> Frame-by-frame thumbnails
-                </div>
-              </div>
+              )}
 
               <form onSubmit={handleSubmit} className="space-y-3">
                 <input
@@ -246,10 +219,6 @@ export default function GatePage({ params }: { params: Promise<{ id: string }> }
                 </button>
               </form>
 
-              <p className="text-black text-xs text-center">
-                Free: 3 analyses per month. No spam. Unsubscribe anytime.
-              </p>
-
               <p className="text-center text-sm text-gray-500">
                 Already have an account?{' '}
                 <a href="/login" className="text-orange-500 hover:underline font-medium">Log in</a>
@@ -260,5 +229,21 @@ export default function GatePage({ params }: { params: Promise<{ id: string }> }
         </div>
       </div>
     </main>
+  )
+}
+
+export default function GatePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params)
+  return (
+    <Suspense fallback={
+      <main className="min-h-screen bg-white flex flex-col">
+        <TopNav />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-5xl animate-bounce">🏀</div>
+        </div>
+      </main>
+    }>
+      <GateContent id={id} />
+    </Suspense>
   )
 }

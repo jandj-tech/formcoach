@@ -7,8 +7,6 @@ import type { Variant, Size } from '@/lib/cart'
 import QuantityStepper from '@/components/QuantityStepper'
 import PremiumCTA from '@/components/PremiumCTA'
 
-type Region = 'US' | 'CA'
-
 const SIZES: { value: Size; inches: string; label: string }[] = [
   { value: '5', inches: '27.5"', label: 'Youth' },
   { value: '6', inches: '28.5"', label: "Women's" },
@@ -23,15 +21,13 @@ function formatPrice(amount: number): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)
 }
 
-export default function ShopProduct({ usdToCad: _ }: { usdToCad: number }) {
+export default function ShopProduct() {
   const { addBall } = useCart()
-  const [region, setRegion] = useState<Region>('US')
   const [variant, setVariant] = useState<Variant>('right')
   const [size, setSize] = useState<Size>('7')
   const [quantity, setQuantity] = useState(1)
   const [added, setAdded] = useState(false)
 
-  const currencyCode: 'USD' | 'CAD' = region === 'CA' ? 'CAD' : 'USD'
   const lineTotal = Math.round(PRICE * quantity * 100) / 100
   const displayUnit = formatPrice(PRICE)
   const displayLineTotal = formatPrice(lineTotal)
@@ -73,38 +69,13 @@ export default function ShopProduct({ usdToCad: _ }: { usdToCad: number }) {
 
           {/* Product details */}
           <div className="flex flex-col gap-5">
-            <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-3 flex-wrap">
               <div className="inline-flex items-center gap-2 bg-green-500/10 border border-green-500/30 rounded-full px-4 py-1.5">
                 <span className="text-green-500 text-xs font-semibold tracking-wider uppercase">In Stock</span>
               </div>
-              <div
-                role="group"
-                aria-label="Country"
-                className="inline-flex items-center gap-1 bg-zinc-900 border border-zinc-800 rounded-full p-1"
-              >
-                <button
-                  type="button"
-                  onClick={() => setRegion('US')}
-                  aria-pressed={region === 'US'}
-                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
-                    region === 'US' ? 'bg-orange-500 text-white' : 'text-white hover:bg-zinc-800'
-                  }`}
-                >
-                  <span aria-hidden className="text-sm leading-none">🇺🇸</span>
-                  USA
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRegion('CA')}
-                  aria-pressed={region === 'CA'}
-                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
-                    region === 'CA' ? 'bg-orange-500 text-white' : 'text-white hover:bg-zinc-800'
-                  }`}
-                >
-                  <span aria-hidden className="text-sm leading-none">🇨🇦</span>
-                  Canada
-                </button>
-              </div>
+              <span className="inline-flex items-center bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-semibold px-3 py-1.5 rounded-full">
+                10 Shot Analyses Included Free
+              </span>
             </div>
 
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white leading-tight">
@@ -117,7 +88,7 @@ export default function ShopProduct({ usdToCad: _ }: { usdToCad: number }) {
             </p>
 
             <div className="text-3xl font-black text-white">
-              {displayUnit} <span className="text-white text-sm font-medium">{currencyCode}</span>
+              {displayUnit}
             </div>
 
             {/* Variant selector */}
@@ -208,7 +179,7 @@ export default function ShopProduct({ usdToCad: _ }: { usdToCad: number }) {
         </div>
 
         {/* 2-Ball Bundle */}
-        <BundleCard region={region} />
+        <BundleCard />
 
         {/* 1 Shot Analysis */}
         <div className="max-w-xl">
@@ -219,7 +190,7 @@ export default function ShopProduct({ usdToCad: _ }: { usdToCad: number }) {
   )
 }
 
-function BundleCard({ region }: { region: Region }) {
+function BundleCard() {
   const { addBundle } = useCart()
   const [v1, setV1] = useState<Variant>('right')
   const [s1, setS1] = useState<Size>('7')
@@ -227,7 +198,6 @@ function BundleCard({ region }: { region: Region }) {
   const [s2, setS2] = useState<Size>('7')
   const [added, setAdded] = useState(false)
 
-  const currencyCode: 'USD' | 'CAD' = region === 'CA' ? 'CAD' : 'USD'
   const originalPrice = Math.round(PRICE * 2 * 100) / 100
   const savings = Math.round((originalPrice - BUNDLE_PRICE) * 100) / 100
 
@@ -263,8 +233,7 @@ function BundleCard({ region }: { region: Region }) {
         </div>
         <div className="text-right">
           <div className="text-3xl font-black text-white">
-            {formatPrice(BUNDLE_PRICE)}{' '}
-            <span className="text-sm font-medium text-zinc-400">{currencyCode}</span>
+            {formatPrice(BUNDLE_PRICE)}
           </div>
           <div className="text-sm text-zinc-500 line-through">
             {formatPrice(originalPrice)}

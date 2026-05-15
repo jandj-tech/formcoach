@@ -27,7 +27,7 @@ export default async function DashboardPage() {
     SELECT s.id, s.created_at, s.token, a.overall_score, a.frame_urls
     FROM submissions s
     LEFT JOIN analyses a ON a.submission_id = s.id
-    WHERE s.user_id = ${user.id}
+    WHERE s.user_id = ${user.id} OR s.email = ${user.email}
     ORDER BY s.created_at DESC
     LIMIT 100
   ` as unknown as Array<{

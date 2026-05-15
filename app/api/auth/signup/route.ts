@@ -12,32 +12,24 @@ export async function POST(req: NextRequest) {
 
     const emailLower = email.toLowerCase().trim()
 
-    // Check subscription exists for this email before allowing account creation
+    const existing = await db`SELECT id FROM users WHERE email = ${emailLower}`
+    if (existing.length > 0) {
+      return NextResponse.json({ error: 'Account already exists. Please log in.' }, { status: 409 })
+    }
+
+    // Signup is open to anyone. If this email already has subscription state
+    // (e.g. a legacy subscriber), carry it over — but it is not required.
     const [sub] = await db`
       SELECT subscription_type, subscription_expires_at
       FROM email_list
       WHERE email = ${emailLower}
     `
 
-    const isSubscribed =
-      sub?.subscription_type &&
-      sub?.subscription_expires_at &&
-      new Date(sub.subscription_expires_at) > new Date()
-
-    if (!isSubscribed) {
-      return NextResponse.json({ error: 'No active subscription found for this email' }, { status: 403 })
-    }
-
-    const existing = await db`SELECT id FROM users WHERE email = ${emailLower}`
-    if (existing.length > 0) {
-      return NextResponse.json({ error: 'Account already exists. Please log in.' }, { status: 409 })
-    }
-
     const hash = await bcrypt.hash(password, 10)
 
     const [user] = await db`
       INSERT INTO users (email, password_hash, subscription_type, subscription_expires_at)
-      VALUES (${emailLower}, ${hash}, ${sub.subscription_type}, ${sub.subscription_expires_at})
+      VALUES (${emailLower}, ${hash}, ${sub?.subscription_type ?? null}, ${sub?.subscription_expires_at ?? null})
       RETURNING id, email
     ` as unknown as [{ id: string; email: string }]
 

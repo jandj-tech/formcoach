@@ -9,9 +9,9 @@ import QuantityStepper from '@/components/QuantityStepper'
 
 type Region = 'US' | 'CA'
 
-const PRICE_USD = 49.99
+const PRICE = 49.99
 // Bundle: ball 1 full price + ball 2 at 50% off = $49.99 + $25.00 = $74.99
-const BUNDLE_USD = PRICE_USD + Math.round(PRICE_USD * 50) / 100
+const BUNDLE_PRICE = PRICE + Math.round(PRICE * 50) / 100
 
 const SIZE_INCHES: Record<Size, string> = {
   '5': '27.5"',
@@ -19,30 +19,25 @@ const SIZE_INCHES: Record<Size, string> = {
   '7': '29.5"',
 }
 
-function formatCurrency(amount: number, currency: 'USD' | 'CAD') {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount)
+function formatPrice(amount: number): string {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)
 }
 
 function variantLabel(v: Variant) {
   return v === 'left' ? 'Left-handed' : 'Right-handed'
 }
 
-export default function CartView({ usdToCad }: { usdToCad: number }) {
+export default function CartView({ usdToCad: _ }: { usdToCad: number }) {
   const { items, hydrated, setQuantity, removeItem } = useCart()
   const [region, setRegion] = useState<Region>('US')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const unitPrice = region === 'CA' ? Math.round(PRICE_USD * usdToCad * 100) / 100 : PRICE_USD
-  const priceCad = Math.round(PRICE_USD * usdToCad * 100) / 100
-  const bundlePrice = region === 'CA'
-    ? Math.round((priceCad + Math.round(priceCad * 50) / 100) * 100) / 100
-    : BUNDLE_USD
   const currencyCode: 'USD' | 'CAD' = region === 'CA' ? 'CAD' : 'USD'
 
   const subtotal = items.reduce<number>((sum, it) => {
-    if (it.productSlug === 'bundle') return sum + bundlePrice
-    return sum + unitPrice * it.quantity
+    if (it.productSlug === 'bundle') return sum + BUNDLE_PRICE
+    return sum + PRICE * it.quantity
   }, 0)
   const subtotalRounded = Math.round(subtotal * 100) / 100
 
@@ -120,7 +115,7 @@ export default function CartView({ usdToCad }: { usdToCad: number }) {
           <h1 className="text-3xl sm:text-4xl font-black text-white">Your cart</h1>
           <div
             role="group"
-            aria-label="Currency"
+            aria-label="Country"
             className="inline-flex items-center gap-1 bg-zinc-900 border border-zinc-800 rounded-full p-1"
           >
             <button
@@ -132,7 +127,7 @@ export default function CartView({ usdToCad }: { usdToCad: number }) {
               }`}
             >
               <span aria-hidden className="text-sm leading-none">🇺🇸</span>
-              USD
+              USA
             </button>
             <button
               type="button"
@@ -143,7 +138,7 @@ export default function CartView({ usdToCad }: { usdToCad: number }) {
               }`}
             >
               <span aria-hidden className="text-sm leading-none">🇨🇦</span>
-              CAD
+              Canada
             </button>
           </div>
         </div>
@@ -154,7 +149,7 @@ export default function CartView({ usdToCad }: { usdToCad: number }) {
               <BundleCartLine
                 key={it.id}
                 item={it}
-                bundlePrice={bundlePrice}
+                bundlePrice={BUNDLE_PRICE}
                 currencyCode={currencyCode}
                 onRemove={() => removeItem(it.id)}
               />
@@ -162,7 +157,7 @@ export default function CartView({ usdToCad }: { usdToCad: number }) {
               <BallCartLine
                 key={it.id}
                 item={it}
-                unitPrice={unitPrice}
+                unitPrice={PRICE}
                 currencyCode={currencyCode}
                 onChangeQty={(q) => setQuantity(it.id, q)}
                 onRemove={() => removeItem(it.id)}
@@ -174,7 +169,7 @@ export default function CartView({ usdToCad }: { usdToCad: number }) {
         <div className="border-t border-zinc-800 pt-5 flex items-center justify-between gap-3">
           <span className="text-white text-base">Subtotal</span>
           <span className="text-white text-2xl font-black">
-            {formatCurrency(subtotalRounded, currencyCode)}{' '}
+            {formatPrice(subtotalRounded)}{' '}
             <span className="text-white text-xs font-medium">{currencyCode}</span>
           </span>
         </div>
@@ -186,7 +181,7 @@ export default function CartView({ usdToCad }: { usdToCad: number }) {
         >
           {loading
             ? 'Redirecting to checkout…'
-            : `Checkout — ${formatCurrency(subtotalRounded, currencyCode)}`}
+            : `Checkout — ${formatPrice(subtotalRounded)} ${currencyCode}`}
         </button>
 
         {error && <p className="text-red-500 text-sm">{error}</p>}
@@ -223,7 +218,7 @@ function BallCartLine({
           {variantLabel(item.variant)} · Size {item.size} ({SIZE_INCHES[item.size]})
         </div>
         <div className="text-white text-xs mt-1">
-          {formatCurrency(unitPrice, currencyCode)} each
+          {formatPrice(unitPrice)} each
         </div>
       </div>
       <div className="flex items-center justify-between gap-3 sm:gap-4">
@@ -234,7 +229,7 @@ function BallCartLine({
           size="sm"
         />
         <div className="text-white font-bold min-w-[5rem] text-right">
-          {formatCurrency(lineTotal, currencyCode)}
+          {formatPrice(lineTotal)}
         </div>
         <button
           type="button"
@@ -279,7 +274,7 @@ function BundleCartLine({
       </div>
       <div className="flex items-center justify-between gap-3 sm:gap-4 sm:self-center">
         <div className="text-white font-bold min-w-[5rem] text-right">
-          {formatCurrency(bundlePrice, currencyCode)}
+          {formatPrice(bundlePrice)}
         </div>
         <button
           type="button"

@@ -15,18 +15,15 @@ const SIZES: { value: Size; inches: string; label: string }[] = [
   { value: '7', inches: '29.5"', label: "Men's" },
 ]
 
-const PRICE_USD = 49.99
+const PRICE = 49.99
 // Bundle: ball 1 full price + ball 2 at 50% off = $49.99 + $25.00 = $74.99
-const BUNDLE_USD = PRICE_USD + Math.round(PRICE_USD * 50) / 100
+const BUNDLE_PRICE = PRICE + Math.round(PRICE * 50) / 100
 
-function formatCurrency(amount: number, currency: 'USD' | 'CAD') {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-  }).format(amount)
+function formatPrice(amount: number): string {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)
 }
 
-export default function ShopProduct({ usdToCad }: { usdToCad: number }) {
+export default function ShopProduct({ usdToCad: _ }: { usdToCad: number }) {
   const { addBall } = useCart()
   const [region, setRegion] = useState<Region>('US')
   const [variant, setVariant] = useState<Variant>('right')
@@ -34,12 +31,10 @@ export default function ShopProduct({ usdToCad }: { usdToCad: number }) {
   const [quantity, setQuantity] = useState(1)
   const [added, setAdded] = useState(false)
 
-  const priceCad = Math.round(PRICE_USD * usdToCad * 100) / 100
-  const unitPrice = region === 'CA' ? priceCad : PRICE_USD
-  const lineTotal = Math.round(unitPrice * quantity * 100) / 100
   const currencyCode: 'USD' | 'CAD' = region === 'CA' ? 'CAD' : 'USD'
-  const displayUnit = formatCurrency(unitPrice, currencyCode)
-  const displayLineTotal = formatCurrency(lineTotal, currencyCode)
+  const lineTotal = Math.round(PRICE * quantity * 100) / 100
+  const displayUnit = formatPrice(PRICE)
+  const displayLineTotal = formatPrice(lineTotal)
 
   useEffect(() => {
     if (!added) return
@@ -84,7 +79,7 @@ export default function ShopProduct({ usdToCad }: { usdToCad: number }) {
               </div>
               <div
                 role="group"
-                aria-label="Currency"
+                aria-label="Country"
                 className="inline-flex items-center gap-1 bg-zinc-900 border border-zinc-800 rounded-full p-1"
               >
                 <button
@@ -96,7 +91,7 @@ export default function ShopProduct({ usdToCad }: { usdToCad: number }) {
                   }`}
                 >
                   <span aria-hidden className="text-sm leading-none">🇺🇸</span>
-                  USD
+                  USA
                 </button>
                 <button
                   type="button"
@@ -107,7 +102,7 @@ export default function ShopProduct({ usdToCad }: { usdToCad: number }) {
                   }`}
                 >
                   <span aria-hidden className="text-sm leading-none">🇨🇦</span>
-                  CAD
+                  Canada
                 </button>
               </div>
             </div>
@@ -124,8 +119,6 @@ export default function ShopProduct({ usdToCad }: { usdToCad: number }) {
             <div className="text-3xl font-black text-white">
               {displayUnit} <span className="text-white text-sm font-medium">{currencyCode}</span>
             </div>
-
-            <PremiumCTA dark />
 
             {/* Variant selector */}
             <div className="space-y-2">
@@ -215,13 +208,18 @@ export default function ShopProduct({ usdToCad }: { usdToCad: number }) {
         </div>
 
         {/* 2-Ball Bundle */}
-        <BundleCard region={region} usdToCad={usdToCad} />
+        <BundleCard region={region} />
+
+        {/* 1 Shot Analysis */}
+        <div className="max-w-xl">
+          <PremiumCTA dark />
+        </div>
       </div>
     </section>
   )
 }
 
-function BundleCard({ region, usdToCad }: { region: Region; usdToCad: number }) {
+function BundleCard({ region }: { region: Region }) {
   const { addBundle } = useCart()
   const [v1, setV1] = useState<Variant>('right')
   const [s1, setS1] = useState<Size>('7')
@@ -229,15 +227,9 @@ function BundleCard({ region, usdToCad }: { region: Region; usdToCad: number }) 
   const [s2, setS2] = useState<Size>('7')
   const [added, setAdded] = useState(false)
 
-  const priceCad = Math.round(PRICE_USD * usdToCad * 100) / 100
-  const ball2Cad = Math.round(priceCad * 50) / 100
-  const bundleCad = Math.round((priceCad + ball2Cad) * 100) / 100
-  const originalCad = Math.round(priceCad * 2 * 100) / 100
-
-  const bundlePrice = region === 'CA' ? bundleCad : BUNDLE_USD
-  const originalPrice = region === 'CA' ? originalCad : Math.round(PRICE_USD * 2 * 100) / 100
-  const savings = Math.round((originalPrice - bundlePrice) * 100) / 100
   const currencyCode: 'USD' | 'CAD' = region === 'CA' ? 'CAD' : 'USD'
+  const originalPrice = Math.round(PRICE * 2 * 100) / 100
+  const savings = Math.round((originalPrice - BUNDLE_PRICE) * 100) / 100
 
   useEffect(() => {
     if (!added) return
@@ -271,14 +263,14 @@ function BundleCard({ region, usdToCad }: { region: Region; usdToCad: number }) 
         </div>
         <div className="text-right">
           <div className="text-3xl font-black text-white">
-            {formatCurrency(bundlePrice, currencyCode)}{' '}
+            {formatPrice(BUNDLE_PRICE)}{' '}
             <span className="text-sm font-medium text-zinc-400">{currencyCode}</span>
           </div>
           <div className="text-sm text-zinc-500 line-through">
-            {formatCurrency(originalPrice, currencyCode)}
+            {formatPrice(originalPrice)}
           </div>
           <div className="text-sm text-green-400 font-semibold">
-            Save {formatCurrency(savings, currencyCode)}
+            Save {formatPrice(savings)}
           </div>
         </div>
       </div>
@@ -306,7 +298,7 @@ function BundleCard({ region, usdToCad }: { region: Region; usdToCad: number }) 
           onClick={handleAdd}
           className="bg-orange-500 hover:bg-red-600 text-white font-bold px-8 py-4 rounded-xl text-base transition-colors w-full sm:w-auto"
         >
-          Add Bundle to Cart — {formatCurrency(bundlePrice, currencyCode)}
+          Add Bundle to Cart — {formatPrice(BUNDLE_PRICE)}
         </button>
 
         {added && (

@@ -5,7 +5,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://learnhoops.com'
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, submissionId } = await req.json() as { email?: string; submissionId?: string }
+    const { email, submissionId, region } = await req.json() as { email?: string; submissionId?: string; region?: string }
 
     const successUrl = submissionId
       ? `${BASE_URL}/gate/${submissionId}?token_purchased=1`
@@ -21,8 +21,8 @@ export async function POST(req: NextRequest) {
       line_items: [{
         quantity: 1,
         price_data: {
-          currency: 'usd',
-          unit_amount: 499,
+          currency: region === 'CA' ? 'cad' : 'usd',
+          unit_amount: 500,
           product_data: {
             name: '1 Shot Analysis',
             description: 'One AI-powered basketball shot analysis on LearnHoops.com',

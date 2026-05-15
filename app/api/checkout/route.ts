@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getStripe, PRODUCT, BUNDLE } from '@/lib/stripe'
-import { getUsdToCadRate } from '@/lib/fx'
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL && process.env.NEXT_PUBLIC_BASE_URL !== 'http://localhost:3000'
   ? process.env.NEXT_PUBLIC_BASE_URL
@@ -64,18 +63,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Cart is empty' }, { status: 400 })
     }
 
-    let currency: 'usd' | 'cad' = 'usd'
-    let unitAmount = PRODUCT.priceCents
-    let ball1Amount = BUNDLE.ball1PriceCents
-    let ball2Amount = BUNDLE.ball2PriceCents
-
-    if (region === 'CA') {
-      const rate = await getUsdToCadRate()
-      currency = 'cad'
-      unitAmount = Math.round(PRODUCT.priceCents * rate)
-      ball1Amount = Math.round(BUNDLE.ball1PriceCents * rate)
-      ball2Amount = Math.round(BUNDLE.ball2PriceCents * rate)
-    }
+    const currency: 'usd' | 'cad' = region === 'CA' ? 'cad' : 'usd'
+    const unitAmount = PRODUCT.priceCents
+    const ball1Amount = BUNDLE.ball1PriceCents
+    const ball2Amount = BUNDLE.ball2PriceCents
 
     const line_items: {
       quantity: number

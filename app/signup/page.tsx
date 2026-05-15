@@ -49,8 +49,8 @@ function SignupForm() {
         return
       }
 
-      const submissionId = searchParams.get('submission')
-      router.push(submissionId ? `/gate/${submissionId}` : '/dashboard')
+      const next = searchParams.get('next') || '/dashboard'
+      router.push(next)
     } catch {
       setError('Something went wrong. Please try again.')
       setStatus('error')

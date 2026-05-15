@@ -47,18 +47,14 @@ export async function POST(req: NextRequest) {
 
     // --- Analysis token purchase ---
     if (metaType === 'analysis_token') {
-      if (!email) return NextResponse.json({ received: true })
-      const emailLower = email.toLowerCase()
+      const userId = session.metadata?.userId
+      const emailLower = session.customer_details?.email?.toLowerCase()
       try {
-        await db`
-          INSERT INTO email_list (email, analysis_tokens)
-          VALUES (${emailLower}, 1)
-          ON CONFLICT (email) DO UPDATE
-          SET analysis_tokens = email_list.analysis_tokens + 1
-        `
-        await db`
-          UPDATE users SET analysis_tokens = analysis_tokens + 1 WHERE email = ${emailLower}
-        `
+        if (userId) {
+          await db`UPDATE users SET analysis_tokens = analysis_tokens + 1 WHERE id = ${userId}`
+        } else if (emailLower) {
+          await db`UPDATE users SET analysis_tokens = analysis_tokens + 1 WHERE email = ${emailLower}`
+        }
       } catch (err) {
         console.error('Failed to credit analysis token:', err)
         return NextResponse.json({ error: 'DB error' }, { status: 500 })

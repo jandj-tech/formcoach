@@ -22,6 +22,10 @@ function GateContent({ id }: { id: string }) {
   const tokenPurchased = searchParams.get('token_purchased') === '1'
 
   useEffect(() => {
+    fetch('/api/region').then(r => r.json()).then(({ region }) => setRegion(region)).catch(() => {})
+  }, [])
+
+  useEffect(() => {
     fetch('/api/auth/session')
       .then(r => r.json())
       .then(async ({ user }) => {
@@ -130,39 +134,9 @@ function GateContent({ id }: { id: string }) {
               </div>
 
               <div className="bg-orange-50 border border-orange-200 rounded-2xl p-6 space-y-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-black font-black text-3xl">
-                      $4.99 <span className="text-base font-semibold text-gray-500">{region === 'CA' ? 'CAD' : 'USD'}</span>
-                    </p>
-                    <p className="text-gray-500 text-sm mt-0.5">1 shot analysis · one-time</p>
-                  </div>
-                  <div
-                    role="group"
-                    aria-label="Country"
-                    className="inline-flex items-center gap-1 bg-gray-100 border border-gray-200 rounded-full p-0.5"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setRegion('US')}
-                      aria-pressed={region === 'US'}
-                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors ${
-                        region === 'US' ? 'bg-orange-500 text-white' : 'text-gray-500 hover:bg-gray-200'
-                      }`}
-                    >
-                      🇺🇸 USA
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setRegion('CA')}
-                      aria-pressed={region === 'CA'}
-                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors ${
-                        region === 'CA' ? 'bg-orange-500 text-white' : 'text-gray-500 hover:bg-gray-200'
-                      }`}
-                    >
-                      🇨🇦 Canada
-                    </button>
-                  </div>
+                <div>
+                  <p className="text-black font-black text-3xl">$4.99</p>
+                  <p className="text-gray-500 text-sm mt-0.5">1 shot analysis · one-time</p>
                 </div>
                 <ul className="space-y-1.5 text-sm text-black">
                   <li className="flex items-center gap-2"><span className="text-orange-500">✓</span> Overall shot score</li>
@@ -174,7 +148,7 @@ function GateContent({ id }: { id: string }) {
                   disabled={buying}
                   className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold py-4 rounded-xl transition-colors text-base"
                 >
-                  {buying ? 'Redirecting...' : `Buy Analysis — $4.99 ${region === 'CA' ? 'CAD' : 'USD'}`}
+                  {buying ? 'Redirecting...' : 'Buy Analysis — $4.99'}
                 </button>
               </div>
 

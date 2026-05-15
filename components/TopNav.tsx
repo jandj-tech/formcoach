@@ -32,7 +32,7 @@ export default function TopNav() {
     pathname.startsWith('/dashboard') ||
     pathname.startsWith('/login') ||
     pathname.startsWith('/signup')
-  const mobileTabs = [...tabs, { href: accountHref, label: accountLabel }]
+  const mobileTabs = [...tabs, { href: '/team', label: 'Register Team' }, { href: accountHref, label: accountLabel }]
 
   return (
     <nav className="h-20 flex items-center justify-between px-4 sm:px-6 border-b border-zinc-800 bg-black">
@@ -64,6 +64,16 @@ export default function TopNav() {
               </Link>
             )
           })}
+          <Link
+            href="/team"
+            className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors border ${
+              pathname.startsWith('/team')
+                ? 'border-orange-500 bg-orange-500 text-white'
+                : 'border-orange-500 text-orange-400 hover:bg-orange-500 hover:text-white'
+            }`}
+          >
+            Register Team
+          </Link>
           <Link
             href={accountHref}
             className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${

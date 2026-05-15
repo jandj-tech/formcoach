@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import TopNav from '@/components/TopNav'
 
@@ -10,6 +10,14 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [error, setError] = useState('')
+
+  // Already signed in? Skip the form — go straight to the dashboard.
+  useEffect(() => {
+    fetch('/api/auth/session')
+      .then(r => r.json())
+      .then(({ user }) => { if (user) router.replace('/dashboard') })
+      .catch(() => {})
+  }, [router])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()

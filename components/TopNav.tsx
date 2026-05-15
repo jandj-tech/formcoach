@@ -1,9 +1,8 @@
-﻿'use client'
+'use client'
 
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useEffect, useState } from 'react'
 import MobileNav from './MobileNav'
 import CartLink from './CartLink'
 
@@ -16,23 +15,17 @@ const tabs = [
 
 export default function TopNav() {
   const pathname = usePathname()
-  const [loggedIn, setLoggedIn] = useState(false)
 
-  useEffect(() => {
-    fetch('/api/auth/session')
-      .then(r => r.json())
-      .then(({ user }) => setLoggedIn(!!user))
-      .catch(() => {})
-  }, [])
-
-  // Shows "Account" → dashboard once signed in, "Log In" → login page otherwise.
-  const accountHref = loggedIn ? '/dashboard' : '/login'
-  const accountLabel = loggedIn ? 'Account' : 'Log In'
-  const accountActive =
-    pathname.startsWith('/dashboard') ||
+  // Login tab — already-signed-in visitors are bounced from /login to their dashboard.
+  const loginActive =
     pathname.startsWith('/login') ||
-    pathname.startsWith('/signup')
-  const mobileTabs = [...tabs, { href: '/team', label: 'Register Team' }, { href: accountHref, label: accountLabel }]
+    pathname.startsWith('/signup') ||
+    pathname.startsWith('/dashboard')
+  const mobileTabs = [
+    ...tabs,
+    { href: '/team', label: 'Register Team' },
+    { href: '/login', label: 'Login' },
+  ]
 
   return (
     <nav className="h-20 flex items-center justify-between px-4 sm:px-6 border-b border-zinc-800 bg-black">
@@ -75,14 +68,14 @@ export default function TopNav() {
             Register Team
           </Link>
           <Link
-            href={accountHref}
+            href="/login"
             className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${
-              accountActive
+              loginActive
                 ? 'bg-orange-500 text-white'
                 : 'text-white hover:text-white hover:bg-zinc-900'
             }`}
           >
-            {accountLabel}
+            Login
           </Link>
         </div>
         <CartLink />

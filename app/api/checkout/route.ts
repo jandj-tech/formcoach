@@ -127,14 +127,15 @@ export async function POST(req: NextRequest) {
           },
         })
       } else {
-        validateVariant(it.variant)
-        validateSize(it.size)
-        const qty = typeof (it as IncomingBallItem).quantity === 'number' ? Math.floor((it as IncomingBallItem).quantity!) : 1
+        const ballItem = it as IncomingBallItem
+        validateVariant(ballItem.variant)
+        validateSize(ballItem.size)
+        const qty = typeof ballItem.quantity === 'number' ? Math.floor(ballItem.quantity) : 1
         if (qty < 1 || qty > 99) throw new Error('Invalid quantity')
 
         if (!firstBallVariant) {
-          firstBallVariant = it.variant as string
-          firstBallSize = it.size as string
+          firstBallVariant = ballItem.variant
+          firstBallSize = ballItem.size
         }
 
         line_items.push({
@@ -143,7 +144,7 @@ export async function POST(req: NextRequest) {
             currency,
             unit_amount: unitAmount,
             product_data: {
-              name: `${PRODUCT.name} — ${variantLabel(it.variant as string)}, ${sizeLabel(it.size as string)}`,
+              name: `${PRODUCT.name} — ${variantLabel(ballItem.variant)}, ${sizeLabel(ballItem.size)}`,
               description: 'Co-designed with Maple Basketball.',
             },
           },
@@ -166,7 +167,7 @@ export async function POST(req: NextRequest) {
       rawItems.map((it) =>
         it.productSlug === 'bundle'
           ? { productSlug: 'bundle', variant1: (it as IncomingBundleItem).variant1, size1: (it as IncomingBundleItem).size1, variant2: (it as IncomingBundleItem).variant2, size2: (it as IncomingBundleItem).size2 }
-          : { productSlug: 'ball', variant: it.variant, size: it.size, quantity: (it as IncomingBallItem).quantity }
+          : { productSlug: 'ball', variant: (it as IncomingBallItem).variant, size: (it as IncomingBallItem).size, quantity: (it as IncomingBallItem).quantity }
       )
     )
     if (cartJson.length <= 480) {

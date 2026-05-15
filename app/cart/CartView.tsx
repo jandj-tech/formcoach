@@ -3,12 +3,15 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { Trash2Icon } from 'lucide-react'
-import { useCart, type CartItem, type Variant, type Size } from '@/lib/cart'
+import { useCart } from '@/lib/cart'
+import type { CartBallItem, CartBundleItem, Variant, Size } from '@/lib/cart'
 import QuantityStepper from '@/components/QuantityStepper'
 
 type Region = 'US' | 'CA'
 
 const PRICE_USD = 49.99
+// Bundle: ball 1 full price + ball 2 at 50% off = $49.99 + $25.00 = $74.99
+const BUNDLE_USD = PRICE_USD + Math.round(PRICE_USD * 50) / 100
 
 const SIZE_INCHES: Record<Size, string> = {
   '5': '27.5"',
@@ -31,9 +34,16 @@ export default function CartView({ usdToCad }: { usdToCad: number }) {
   const [error, setError] = useState('')
 
   const unitPrice = region === 'CA' ? Math.round(PRICE_USD * usdToCad * 100) / 100 : PRICE_USD
+  const priceCad = Math.round(PRICE_USD * usdToCad * 100) / 100
+  const bundlePrice = region === 'CA'
+    ? Math.round((priceCad + Math.round(priceCad * 50) / 100) * 100) / 100
+    : BUNDLE_USD
   const currencyCode: 'USD' | 'CAD' = region === 'CA' ? 'CAD' : 'USD'
 
-  const subtotal = items.reduce((sum, it) => sum + unitPrice * ('quantity' in it ? it.quantity : 1), 0)
+  const subtotal = items.reduce<number>((sum, it) => {
+    if (it.productSlug === 'bundle') return sum + bundlePrice
+    return sum + unitPrice * it.quantity
+  }, 0)
   const subtotalRounded = Math.round(subtotal * 100) / 100
 
   async function handleCheckout() {
@@ -46,12 +56,23 @@ export default function CartView({ usdToCad }: { usdToCad: number }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           region,
-          items: items.map((it) => ({
-            productSlug: it.productSlug,
-            variant: it.variant,
-            size: it.size,
-            quantity: it.quantity,
-          })),
+          items: items.map((it) => {
+            if (it.productSlug === 'bundle') {
+              return {
+                productSlug: 'bundle',
+                variant1: it.variant1,
+                size1: it.size1,
+                variant2: it.variant2,
+                size2: it.size2,
+              }
+            }
+            return {
+              productSlug: it.productSlug,
+              variant: it.variant,
+              size: it.size,
+              quantity: it.quantity,
+            }
+          }),
         }),
       })
       const data = await res.json()
@@ -128,16 +149,26 @@ export default function CartView({ usdToCad }: { usdToCad: number }) {
         </div>
 
         <ul className="flex flex-col gap-3">
-          {items.map((it) => (
-            <CartLine
-              key={it.id}
-              item={it}
-              unitPrice={unitPrice}
-              currencyCode={currencyCode}
-              onChangeQty={(q) => setQuantity(it.id, q)}
-              onRemove={() => removeItem(it.id)}
-            />
-          ))}
+          {items.map((it) =>
+            it.productSlug === 'bundle' ? (
+              <BundleCartLine
+                key={it.id}
+                item={it}
+                bundlePrice={bundlePrice}
+                currencyCode={currencyCode}
+                onRemove={() => removeItem(it.id)}
+              />
+            ) : (
+              <BallCartLine
+                key={it.id}
+                item={it}
+                unitPrice={unitPrice}
+                currencyCode={currencyCode}
+                onChangeQty={(q) => setQuantity(it.id, q)}
+                onRemove={() => removeItem(it.id)}
+              />
+            )
+          )}
         </ul>
 
         <div className="border-t border-zinc-800 pt-5 flex items-center justify-between gap-3">
@@ -168,14 +199,14 @@ export default function CartView({ usdToCad }: { usdToCad: number }) {
   )
 }
 
-function CartLine({
+function BallCartLine({
   item,
   unitPrice,
   currencyCode,
   onChangeQty,
   onRemove,
 }: {
-  item: CartItem
+  item: CartBallItem
   unitPrice: number
   currencyCode: 'USD' | 'CAD'
   onChangeQty: (q: number) => void
@@ -209,6 +240,51 @@ function CartLine({
           type="button"
           onClick={onRemove}
           aria-label="Remove from cart"
+          className="inline-flex items-center justify-center h-9 w-9 rounded-md text-white hover:bg-zinc-900 hover:text-red-400 transition-colors"
+        >
+          <Trash2Icon className="h-5 w-5" />
+        </button>
+      </div>
+    </li>
+  )
+}
+
+function BundleCartLine({
+  item,
+  bundlePrice,
+  currencyCode,
+  onRemove,
+}: {
+  item: CartBundleItem
+  bundlePrice: number
+  currencyCode: 'USD' | 'CAD'
+  onRemove: () => void
+}) {
+  return (
+    <li className="flex flex-col sm:flex-row sm:items-start gap-4 rounded-xl border border-orange-500/30 bg-orange-500/5 p-4">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap mb-1">
+          <div className="text-white font-bold text-base">2-Ball Bundle</div>
+          <span className="text-xs font-semibold text-blue-400 bg-blue-500/10 border border-blue-500/30 px-2 py-0.5 rounded-full">
+            + 15 Shot Analyses Free
+          </span>
+        </div>
+        <div className="text-zinc-400 text-sm">
+          Ball 1: {variantLabel(item.variant1)} · Size {item.size1} ({SIZE_INCHES[item.size1]})
+        </div>
+        <div className="text-zinc-400 text-sm">
+          Ball 2: {variantLabel(item.variant2)} · Size {item.size2} ({SIZE_INCHES[item.size2]}){' '}
+          <span className="text-green-400">50% off</span>
+        </div>
+      </div>
+      <div className="flex items-center justify-between gap-3 sm:gap-4 sm:self-center">
+        <div className="text-white font-bold min-w-[5rem] text-right">
+          {formatCurrency(bundlePrice, currencyCode)}
+        </div>
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label="Remove bundle from cart"
           className="inline-flex items-center justify-center h-9 w-9 rounded-md text-white hover:bg-zinc-900 hover:text-red-400 transition-colors"
         >
           <Trash2Icon className="h-5 w-5" />

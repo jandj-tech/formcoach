@@ -131,20 +131,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'DB error' }, { status: 500 })
     }
 
-    // Grant 10 free analysis tokens for buying a ball
+    // Grant analysis tokens: 15 for the 2-ball bundle, 10 for a single ball
+    const bundleUploads = parseInt(session.metadata?.bundle_uploads ?? '0', 10)
+    const tokensToGrant = bundleUploads > 0 ? bundleUploads : 10
     const emailLower = email.toLowerCase()
     try {
       await db`
         INSERT INTO email_list (email, analysis_tokens)
-        VALUES (${emailLower}, 10)
+        VALUES (${emailLower}, ${tokensToGrant})
         ON CONFLICT (email) DO UPDATE
-        SET analysis_tokens = email_list.analysis_tokens + 10
+        SET analysis_tokens = COALESCE(email_list.analysis_tokens, 0) + ${tokensToGrant}
       `
       await db`
-        UPDATE users SET analysis_tokens = analysis_tokens + 10 WHERE email = ${emailLower}
+        UPDATE users SET analysis_tokens = COALESCE(analysis_tokens, 0) + ${tokensToGrant}
+        WHERE email = ${emailLower}
       `
     } catch (err) {
-      console.error('Failed to grant ball bonus tokens:', err)
+      console.error('Failed to grant tokens:', err)
       // Non-fatal — order is saved, tokens can be credited manually
     }
   }

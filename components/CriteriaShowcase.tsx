@@ -34,10 +34,6 @@ const SHORT_DESCRIPTIONS: Record<string, string> = {
   'Connected Shot': 'Legs, core, and release in one motion.',
 }
 
-function videoSearchUrl(criterionName: string) {
-  return `${CHANNEL_URL}/search?query=${encodeURIComponent(criterionName)}`
-}
-
 export default function CriteriaShowcase({
   criteria,
   videoMap = {},
@@ -45,6 +41,11 @@ export default function CriteriaShowcase({
   criteria: Criterion[]
   videoMap?: Record<string, string>
 }) {
+  const sorted = [
+    ...criteria.filter((c) => videoMap[c.name]),
+    ...criteria.filter((c) => !videoMap[c.name]),
+  ]
+
   const [emblaRef, emblaApi] = useEmblaCarousel({
     loop: false,
     align: 'start',
@@ -102,7 +103,7 @@ export default function CriteriaShowcase({
       <div className="relative">
         <div className="overflow-hidden" ref={emblaRef}>
           <div className="flex gap-4 px-4 sm:px-6 items-stretch">
-            {criteria.map((c, i) => {
+            {sorted.map((c, i) => {
               const isOpen = openIds.has(c.id)
               const videoId = videoMap[c.name]
               return (
@@ -139,7 +140,7 @@ export default function CriteriaShowcase({
                       </button>
                     ) : (
                       <a
-                        href={videoSearchUrl(c.name)}
+                        href={CHANNEL_URL}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-orange-500 hover:text-red-600 text-xs font-bold transition-colors mt-auto inline-flex items-center gap-1 self-start"

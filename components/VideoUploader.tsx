@@ -244,7 +244,12 @@ export default function VideoUploader() {
         const data = await res.json()
         setProgress(100)
 
-        router.push(`/gate/${data.submissionId}`)
+        // Logged-in users skip the email gate — send them straight to results.
+        if (data.loggedIn && data.token) {
+          router.push(`/results/${data.token}`)
+        } else {
+          router.push(`/gate/${data.submissionId}`)
+        }
       } catch (err) {
         console.error(err)
         setStatus('error')

@@ -8,6 +8,7 @@ import MobileNav from '@/components/MobileNav'
 const ADMIN_TABS = [
   { href: '/admin', label: 'Dashboard' },
   { href: '/admin/submissions', label: 'Submissions' },
+  { href: '/admin/accounts', label: 'Accounts' },
   { href: '/admin/criteria', label: 'Criteria' },
   { href: '/admin/learn', label: 'Learn Mode' },
   { href: '/admin/emails', label: 'Emails' },

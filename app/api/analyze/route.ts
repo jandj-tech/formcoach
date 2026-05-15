@@ -18,15 +18,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No frames provided' }, { status: 400 })
     }
 
-    // Attach logged-in user if session exists
+    // Attach logged-in user if session exists. Logged-in users skip the email
+    // gate entirely, so stamp the submission with their account email now.
     const session = await getSessionFromRequest(req)
     const userId = session?.userId ?? null
+    const userEmail = session?.email ?? null
 
     // Create submission record
     const submissionToken = crypto.randomBytes(32).toString('hex')
     const [submission] = await db`
-      INSERT INTO submissions (token, status, user_id)
-      VALUES (${submissionToken}, 'processing', ${userId})
+      INSERT INTO submissions (token, status, user_id, email)
+      VALUES (${submissionToken}, 'processing', ${userId}, ${userEmail})
       RETURNING id
     `
 
@@ -92,6 +94,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       submissionId: submission.id,
       analysisId: analysis.id,
+      token: submissionToken,
+      loggedIn: !!session,
     })
   } catch (err) {
     console.error('Analysis error:', err instanceof Error ? err.message : err)

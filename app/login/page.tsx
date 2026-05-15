@@ -44,7 +44,7 @@ export default function LoginPage() {
         <div className="w-full max-w-sm space-y-6">
           <div className="text-center space-y-2">
             <div className="text-4xl">🏀</div>
-            <h1 className="text-2xl font-black text-black">Log in to FormCoach</h1>
+            <h1 className="text-2xl font-black text-black">Log in to LearnHoops</h1>
             <p className="text-gray-500 text-sm">View your shot history and progress</p>
           </div>
 

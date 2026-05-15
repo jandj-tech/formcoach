@@ -3,7 +3,6 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useEffect, useState } from 'react'
 import MobileNav from './MobileNav'
 import CartLink from './CartLink'
 
@@ -16,14 +15,15 @@ const tabs = [
 
 export default function TopNav() {
   const pathname = usePathname()
-  const [loggedIn, setLoggedIn] = useState(false)
 
-  useEffect(() => {
-    fetch('/api/auth/session')
-      .then(r => r.json())
-      .then(({ user }) => setLoggedIn(!!user))
-      .catch(() => {})
-  }, [])
+  // "Account" always points at the dashboard; middleware redirects
+  // logged-out visitors to the login page.
+  const accountHref = '/dashboard'
+  const accountActive =
+    pathname.startsWith('/dashboard') ||
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/signup')
+  const mobileTabs = [...tabs, { href: accountHref, label: 'Account' }]
 
   return (
     <nav className="h-20 flex items-center justify-between px-4 sm:px-6 border-b border-zinc-800 bg-black">
@@ -55,21 +55,19 @@ export default function TopNav() {
               </Link>
             )
           })}
-          {loggedIn && (
-            <Link
-              href="/dashboard"
-              className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${
-                pathname.startsWith('/dashboard')
-                  ? 'bg-orange-500 text-white'
-                  : 'text-white hover:text-white hover:bg-zinc-900'
-              }`}
-            >
-              My Shots
-            </Link>
-          )}
+          <Link
+            href={accountHref}
+            className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${
+              accountActive
+                ? 'bg-orange-500 text-white'
+                : 'text-white hover:text-white hover:bg-zinc-900'
+            }`}
+          >
+            Account
+          </Link>
         </div>
         <CartLink />
-        <MobileNav tabs={tabs} />
+        <MobileNav tabs={mobileTabs} />
       </div>
     </nav>
   )

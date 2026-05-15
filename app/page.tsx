@@ -3,8 +3,11 @@ import TopNav from '@/components/TopNav'
 import CriteriaShowcase, { type Criterion } from '@/components/CriteriaShowcase'
 import { db } from '@/lib/db'
 import { getCriteriaVideoMap } from '@/lib/youtube'
+import { getSession } from '@/lib/auth'
 
 export default async function HomePage() {
+  const session = await getSession()
+
   const criteria = (await db`
     SELECT id, name, description
     FROM criteria
@@ -17,6 +20,12 @@ export default async function HomePage() {
   return (
     <main className="flex flex-col min-h-screen bg-white">
       <TopNav />
+
+      {session && (
+        <div className="bg-orange-500 text-white text-center text-sm font-semibold py-2 px-4">
+          Welcome: {session.email}
+        </div>
+      )}
 
       {/* Hero */}
       <section className="flex flex-col items-center justify-center text-center px-4 pt-12 pb-8">

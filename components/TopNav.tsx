@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import MobileNav from './MobileNav'
 import CartLink from './CartLink'
 
@@ -15,16 +16,26 @@ const tabs = [
 
 export default function TopNav() {
   const pathname = usePathname()
+  const [loggedIn, setLoggedIn] = useState(false)
 
-  // Login tab — already-signed-in visitors are bounced from /login to their dashboard.
-  const loginActive =
+  useEffect(() => {
+    fetch('/api/auth/session')
+      .then(r => r.json())
+      .then(({ user }) => setLoggedIn(!!user))
+      .catch(() => {})
+  }, [])
+
+  // Signed in → "Account" (shot history at /dashboard); signed out → "Login".
+  const accountHref = loggedIn ? '/dashboard' : '/login'
+  const accountLabel = loggedIn ? 'Account' : 'Login'
+  const accountActive =
     pathname.startsWith('/login') ||
     pathname.startsWith('/signup') ||
     pathname.startsWith('/dashboard')
   const mobileTabs = [
     ...tabs,
     { href: '/team', label: 'Register Team' },
-    { href: '/login', label: 'Login' },
+    { href: accountHref, label: accountLabel },
   ]
 
   return (
@@ -68,14 +79,14 @@ export default function TopNav() {
             Register Team
           </Link>
           <Link
-            href="/login"
+            href={accountHref}
             className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${
-              loginActive
+              accountActive
                 ? 'bg-orange-500 text-white'
                 : 'text-white hover:text-white hover:bg-zinc-900'
             }`}
           >
-            Login
+            {accountLabel}
           </Link>
         </div>
         <CartLink />

@@ -5,9 +5,8 @@ import Link from 'next/link'
 import { Trash2Icon } from 'lucide-react'
 import { useCart } from '@/lib/cart'
 import type { CartBallItem, CartBundleItem, Variant, Size } from '@/lib/cart'
+import type { Region } from '@/lib/geo'
 import QuantityStepper from '@/components/QuantityStepper'
-
-type Region = 'US' | 'CA'
 
 const PRICE = 49.99
 // Bundle: ball 1 full price + ball 2 at 50% off = $49.99 + $25.00 = $74.99
@@ -27,13 +26,12 @@ function variantLabel(v: Variant) {
   return v === 'left' ? 'Left-handed' : 'Right-handed'
 }
 
-export default function CartView({ usdToCad: _ }: { usdToCad: number }) {
+export default function CartView({ region }: { region: Region }) {
   const { items, hydrated, setQuantity, removeItem } = useCart()
-  const [region, setRegion] = useState<Region>('US')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const currencyCode: 'USD' | 'CAD' = region === 'CA' ? 'CAD' : 'USD'
+  const currencyLabel = region === 'CA' ? ' CAD' : ''
 
   const subtotal = items.reduce<number>((sum, it) => {
     if (it.productSlug === 'bundle') return sum + BUNDLE_PRICE
@@ -111,37 +109,7 @@ export default function CartView({ usdToCad: _ }: { usdToCad: number }) {
   return (
     <section className="flex-1 px-4 py-10 sm:py-16">
       <div className="max-w-3xl mx-auto flex flex-col gap-6">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <h1 className="text-3xl sm:text-4xl font-black text-white">Your cart</h1>
-          <div
-            role="group"
-            aria-label="Country"
-            className="inline-flex items-center gap-1 bg-zinc-900 border border-zinc-800 rounded-full p-1"
-          >
-            <button
-              type="button"
-              onClick={() => setRegion('US')}
-              aria-pressed={region === 'US'}
-              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
-                region === 'US' ? 'bg-orange-500 text-white' : 'text-white hover:bg-zinc-800'
-              }`}
-            >
-              <span aria-hidden className="text-sm leading-none">🇺🇸</span>
-              USA
-            </button>
-            <button
-              type="button"
-              onClick={() => setRegion('CA')}
-              aria-pressed={region === 'CA'}
-              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
-                region === 'CA' ? 'bg-orange-500 text-white' : 'text-white hover:bg-zinc-800'
-              }`}
-            >
-              <span aria-hidden className="text-sm leading-none">🇨🇦</span>
-              Canada
-            </button>
-          </div>
-        </div>
+        <h1 className="text-3xl sm:text-4xl font-black text-white">Your cart</h1>
 
         <ul className="flex flex-col gap-3">
           {items.map((it) =>
@@ -150,7 +118,7 @@ export default function CartView({ usdToCad: _ }: { usdToCad: number }) {
                 key={it.id}
                 item={it}
                 bundlePrice={BUNDLE_PRICE}
-                currencyCode={currencyCode}
+                currencyLabel={currencyLabel}
                 onRemove={() => removeItem(it.id)}
               />
             ) : (
@@ -158,7 +126,7 @@ export default function CartView({ usdToCad: _ }: { usdToCad: number }) {
                 key={it.id}
                 item={it}
                 unitPrice={PRICE}
-                currencyCode={currencyCode}
+                currencyLabel={currencyLabel}
                 onChangeQty={(q) => setQuantity(it.id, q)}
                 onRemove={() => removeItem(it.id)}
               />
@@ -169,8 +137,7 @@ export default function CartView({ usdToCad: _ }: { usdToCad: number }) {
         <div className="border-t border-zinc-800 pt-5 flex items-center justify-between gap-3">
           <span className="text-white text-base">Subtotal</span>
           <span className="text-white text-2xl font-black">
-            {formatPrice(subtotalRounded)}{' '}
-            <span className="text-white text-xs font-medium">{currencyCode}</span>
+            {formatPrice(subtotalRounded)}{currencyLabel}
           </span>
         </div>
 
@@ -181,7 +148,7 @@ export default function CartView({ usdToCad: _ }: { usdToCad: number }) {
         >
           {loading
             ? 'Redirecting to checkout…'
-            : `Checkout — ${formatPrice(subtotalRounded)} ${currencyCode}`}
+            : `Checkout — ${formatPrice(subtotalRounded)}${currencyLabel}`}
         </button>
 
         {error && <p className="text-red-500 text-sm">{error}</p>}
@@ -197,13 +164,13 @@ export default function CartView({ usdToCad: _ }: { usdToCad: number }) {
 function BallCartLine({
   item,
   unitPrice,
-  currencyCode,
+  currencyLabel,
   onChangeQty,
   onRemove,
 }: {
   item: CartBallItem
   unitPrice: number
-  currencyCode: 'USD' | 'CAD'
+  currencyLabel: string
   onChangeQty: (q: number) => void
   onRemove: () => void
 }) {
@@ -211,14 +178,17 @@ function BallCartLine({
   return (
     <li className="flex flex-col sm:flex-row sm:items-center gap-4 rounded-xl border border-zinc-800 bg-zinc-950 p-4">
       <div className="flex-1 min-w-0">
-        <div className="text-white font-bold text-base">
-          The LearnHoops.com Training Ball
+        <div className="flex items-center gap-2 flex-wrap mb-1">
+          <div className="text-white font-bold text-base">The LearnHoops.com Training Ball</div>
+          <span className="text-xs font-semibold text-blue-400 bg-blue-500/10 border border-blue-500/30 px-2 py-0.5 rounded-full">
+            + 10 Shot Analyses Free
+          </span>
         </div>
-        <div className="text-white text-sm mt-1">
+        <div className="text-white text-sm">
           {variantLabel(item.variant)} · Size {item.size} ({SIZE_INCHES[item.size]})
         </div>
         <div className="text-white text-xs mt-1">
-          {formatPrice(unitPrice)} each
+          {formatPrice(unitPrice)}{currencyLabel} each
         </div>
       </div>
       <div className="flex items-center justify-between gap-3 sm:gap-4">
@@ -229,7 +199,7 @@ function BallCartLine({
           size="sm"
         />
         <div className="text-white font-bold min-w-[5rem] text-right">
-          {formatPrice(lineTotal)}
+          {formatPrice(lineTotal)}{currencyLabel}
         </div>
         <button
           type="button"
@@ -247,12 +217,12 @@ function BallCartLine({
 function BundleCartLine({
   item,
   bundlePrice,
-  currencyCode,
+  currencyLabel,
   onRemove,
 }: {
   item: CartBundleItem
   bundlePrice: number
-  currencyCode: 'USD' | 'CAD'
+  currencyLabel: string
   onRemove: () => void
 }) {
   return (
@@ -274,7 +244,7 @@ function BundleCartLine({
       </div>
       <div className="flex items-center justify-between gap-3 sm:gap-4 sm:self-center">
         <div className="text-white font-bold min-w-[5rem] text-right">
-          {formatPrice(bundlePrice)}
+          {formatPrice(bundlePrice)}{currencyLabel}
         </div>
         <button
           type="button"

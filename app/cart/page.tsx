@@ -1,6 +1,6 @@
 import TopNav from '@/components/TopNav'
 import CartView from './CartView'
-import { getUsdToCadRate } from '@/lib/fx'
+import { getRegion } from '@/lib/geo'
 
 export const metadata = {
   title: 'Cart — LearnHoops.com',
@@ -8,12 +8,12 @@ export const metadata = {
 }
 
 export default async function CartPage() {
-  const usdToCad = await getUsdToCadRate()
+  const region = await getRegion()
 
   return (
     <main className="flex flex-col min-h-screen bg-black">
       <TopNav />
-      <CartView usdToCad={usdToCad} />
+      <CartView region={region} />
       <footer className="py-5 border-t border-zinc-900 text-center text-white text-xs">
         © {new Date().getFullYear()} LearnHoops.com. All rights reserved.
       </footer>

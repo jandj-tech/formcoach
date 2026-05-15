@@ -1,6 +1,6 @@
 import TopNav from '@/components/TopNav'
 import ShopProduct from './ShopProduct'
-import { getUsdToCadRate } from '@/lib/fx'
+import { getRegion } from '@/lib/geo'
 
 export const metadata = {
   title: 'Shop — LearnHoops.com',
@@ -8,13 +8,13 @@ export const metadata = {
 }
 
 export default async function ShopPage() {
-  const usdToCad = await getUsdToCadRate()
+  const region = await getRegion()
 
   return (
     <main className="flex flex-col min-h-screen bg-black">
       <TopNav />
 
-      <ShopProduct usdToCad={usdToCad} />
+      <ShopProduct region={region} />
 
       <footer className="py-5 border-t border-zinc-900 text-center text-white text-xs">
         © {new Date().getFullYear()} LearnHoops.com. All rights reserved.

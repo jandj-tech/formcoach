@@ -131,9 +131,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'DB error' }, { status: 500 })
     }
 
-    // Grant analysis tokens: 15 for the 2-ball bundle, 10 for a single ball
-    const bundleUploads = parseInt(session.metadata?.bundle_uploads ?? '0', 10)
-    const tokensToGrant = bundleUploads > 0 ? bundleUploads : 10
+    // Grant 10 analysis tokens per ball purchased
+    let totalBalls = 1
+    try {
+      const cartStr = session.metadata?.cart
+      if (cartStr) {
+        const cartItems = JSON.parse(cartStr) as Array<{ quantity?: number }>
+        totalBalls = cartItems.reduce((sum, it) => sum + (it.quantity ?? 1), 0)
+      } else {
+        const lineItems = await getStripe().checkout.sessions.listLineItems(session.id)
+        totalBalls = lineItems.data.reduce((sum, it) => sum + (it.quantity ?? 1), 0)
+      }
+    } catch {}
+    const tokensToGrant = totalBalls * 10
     const emailLower = email.toLowerCase()
     try {
       await db`

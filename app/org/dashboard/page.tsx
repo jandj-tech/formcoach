@@ -81,7 +81,7 @@ export default async function OrgDashboardPage() {
           </p>
         </div>
 
-        <OrgDashboardClient teams={teams} />
+        <OrgDashboardClient teams={teams} orgName={org.name} />
       </div>
     </main>
   )

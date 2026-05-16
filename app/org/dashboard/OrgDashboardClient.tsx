@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 interface Member {
   id: string
@@ -18,14 +19,52 @@ interface TeamData {
 
 interface Props {
   teams: TeamData[]
+  orgName: string
 }
 
-export default function OrgDashboardClient({ teams }: Props) {
+export default function OrgDashboardClient({ teams, orgName }: Props) {
+  const router = useRouter()
   const [expanded, setExpanded] = useState<string | null>(teams[0]?.id ?? null)
   const [selected, setSelected] = useState<Record<string, boolean>>({})
   const [quantity, setQuantity] = useState(1)
   const [buying, setBuying] = useState(false)
   const [error, setError] = useState('')
+
+  const [addOpen, setAddOpen] = useState(false)
+  const [newName, setNewName] = useState('')
+  const [newAgeGroup, setNewAgeGroup] = useState('')
+  const [newCoachEmail, setNewCoachEmail] = useState('')
+  const [addStatus, setAddStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+  const [addError, setAddError] = useState('')
+  const [addSuccessEmail, setAddSuccessEmail] = useState('')
+
+  async function addTeam(e: React.FormEvent) {
+    e.preventDefault()
+    setAddStatus('loading')
+    setAddError('')
+    try {
+      const res = await fetch('/api/org/add-team', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newName, ageGroup: newAgeGroup, coachEmail: newCoachEmail }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setAddError(data.error || 'Failed to add team')
+        setAddStatus('error')
+        return
+      }
+      setAddSuccessEmail(newCoachEmail)
+      setAddStatus('success')
+      setNewName('')
+      setNewAgeGroup('')
+      setNewCoachEmail('')
+      setTimeout(() => router.refresh(), 2000)
+    } catch {
+      setAddError('Something went wrong. Please try again.')
+      setAddStatus('error')
+    }
+  }
 
   function toggleMember(userId: string) {
     setSelected(prev => ({ ...prev, [userId]: !prev[userId] }))
@@ -59,19 +98,83 @@ export default function OrgDashboardClient({ teams }: Props) {
     }
   }
 
+  const addTeamSection = (
+    <div className="border border-gray-200 rounded-2xl p-5 space-y-3">
+      <div className="flex items-center justify-between gap-4">
+        <h2 className="text-xl font-black text-black">Add a Team</h2>
+        <button
+          onClick={() => {
+            setAddOpen(o => !o)
+            setAddStatus('idle')
+            setAddError('')
+          }}
+          className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+        >
+          {addOpen ? 'Cancel' : 'Add Team'}
+        </button>
+      </div>
+
+      {addOpen && (
+        <form onSubmit={addTeam} className="space-y-3">
+          <input
+            type="text"
+            required
+            placeholder="Team name (e.g. Westside Hawks)"
+            value={newName}
+            onChange={e => setNewName(e.target.value)}
+            className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
+          />
+          <input
+            type="text"
+            placeholder="Age group (optional) — e.g. U14, Varsity, JV"
+            value={newAgeGroup}
+            onChange={e => setNewAgeGroup(e.target.value)}
+            className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
+          />
+          <input
+            type="email"
+            required
+            placeholder="Coach email"
+            value={newCoachEmail}
+            onChange={e => setNewCoachEmail(e.target.value)}
+            className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
+          />
+          {addError && <p className="text-red-500 text-sm">{addError}</p>}
+          {addStatus === 'success' && (
+            <p className="text-green-600 text-sm font-medium">
+              Team added! Invite sent to {addSuccessEmail}.
+            </p>
+          )}
+          <button
+            type="submit"
+            disabled={addStatus === 'loading' || addStatus === 'success'}
+            className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+          >
+            {addStatus === 'loading' ? 'Adding team...' : 'Add Team & Send Invite'}
+          </button>
+        </form>
+      )}
+    </div>
+  )
+
   if (teams.length === 0) {
     return (
-      <div className="text-center py-12 text-gray-400 border-2 border-dashed border-gray-200 rounded-2xl">
-        <p className="font-semibold">No teams in your organization yet</p>
-        <p className="text-sm mt-1">
-          Share your organization code with coaches so they can link their teams.
-        </p>
+      <div className="space-y-4">
+        {addTeamSection}
+        <div className="text-center py-12 text-gray-400 border-2 border-dashed border-gray-200 rounded-2xl">
+          <p className="font-semibold">No teams in {orgName} yet</p>
+          <p className="text-sm mt-1">
+            Add a team above to create it and email the coach a setup link.
+          </p>
+        </div>
       </div>
     )
   }
 
   return (
     <div className="space-y-4">
+      {addTeamSection}
+
       <h2 className="text-xl font-black text-black">Your Teams</h2>
 
       <div className="flex items-center gap-2">

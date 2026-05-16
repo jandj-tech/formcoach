@@ -56,6 +56,14 @@ export default function TeamSignupPage() {
             <p className="text-gray-500 text-sm">$2.50 per upload — no monthly fee</p>
           </div>
 
+          <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
+            <p className="text-sm text-gray-600">
+              If your team is part of an organization, your organization will add your team
+              and email you a setup link. Only use this form if you&apos;re registering an
+              independent team.
+            </p>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-3">
             <input
               type="text"

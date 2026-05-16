@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import OrgAddCoach from './OrgAddCoach'
+import InitiationPanel from '@/components/InitiationPanel'
+import PoolAssignPanel from '@/components/PoolAssignPanel'
 
 interface Member {
   id: string
@@ -29,6 +31,8 @@ interface TeamData {
   members: Member[]
   coaches: Coach[]
   coachNickname: string | null
+  initiated: boolean
+  tokenPool: number
 }
 
 interface Props {
@@ -341,6 +345,22 @@ export default function OrgDashboardClient({ teams, orgName }: Props) {
 
               {isOpen && (
                 <div className="px-5 py-4 space-y-4">
+                  {/* Initiation / token pool — shown first, before anything can be bought */}
+                  {team.initiated ? (
+                    <PoolAssignPanel
+                      endpoint="/api/org/assign-tokens"
+                      teamId={team.id}
+                      tokenPool={team.tokenPool}
+                      players={team.members.map(m => ({ id: m.id, label: memberDisplayName(m) }))}
+                    />
+                  ) : (
+                    <InitiationPanel
+                      endpoint="/api/org/buy-initiation"
+                      teamId={team.id}
+                      playerCount={team.members.length}
+                    />
+                  )}
+
                   {/* Roster — coach, players, and the player signup link */}
                   <div className="space-y-3">
                     <div>
@@ -432,6 +452,9 @@ export default function OrgDashboardClient({ teams, orgName }: Props) {
                     </div>
                   </div>
 
+                  {/* Buy-tokens section — only after the team is initiated */}
+                  {team.initiated && (
+                  <>
                   {/* Destination mode picker */}
                   <div className="space-y-1">
                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Send tokens to</p>
@@ -521,6 +544,8 @@ export default function OrgDashboardClient({ teams, orgName }: Props) {
                   >
                     {buying ? 'Redirecting...' : buyLabel}
                   </button>
+                  </>
+                  )}
                 </div>
               )}
             </div>

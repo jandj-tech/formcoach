@@ -30,6 +30,8 @@ interface TeamData {
   members: Member[]
   coaches: Coach[]
   coachNickname: string | null
+  initiated: boolean
+  tokenPool: number
 }
 
 export default async function OrgDashboardPage() {
@@ -76,13 +78,20 @@ export default async function OrgDashboardPage() {
         }
 
         let coachNickname: string | null = null
+        let initiated = false
+        let tokenPool = 0
         try {
           const [r] = (await db`
-            SELECT coach_nickname FROM teams WHERE id = ${t.id}
-          `) as unknown as [{ coach_nickname: string | null } | undefined]
+            SELECT coach_nickname,
+                   COALESCE(token_pool, 0)::int AS token_pool,
+                   (initiated_at IS NOT NULL) AS initiated
+            FROM teams WHERE id = ${t.id}
+          `) as unknown as [{ coach_nickname: string | null; token_pool: number; initiated: boolean } | undefined]
           coachNickname = r?.coach_nickname ?? null
+          tokenPool = r?.token_pool ?? 0
+          initiated = r?.initiated ?? false
         } catch {
-          // coach_nickname column may not exist yet
+          // coach_nickname / token_pool / initiated_at columns may not exist yet
         }
 
         return {
@@ -95,6 +104,8 @@ export default async function OrgDashboardPage() {
           members,
           coaches,
           coachNickname,
+          initiated,
+          tokenPool,
         }
       })
     )

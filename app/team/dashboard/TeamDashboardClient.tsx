@@ -5,12 +5,16 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import CoachUploadForm from './CoachUploadForm'
 import TeamCoaches from './TeamCoaches'
+import InitiationPanel from '@/components/InitiationPanel'
+import PoolAssignPanel from '@/components/PoolAssignPanel'
 
 interface Team {
   id: string
   name: string
   accessCode: string
   credits: number
+  initiated: boolean
+  tokenPool: number
 }
 
 interface LeaderboardEntry {
@@ -251,37 +255,58 @@ export default function TeamDashboardClient({
         </button>
       </div>
 
-      {/* Credits + Buy */}
-      <div className="bg-orange-50 border border-orange-200 rounded-2xl p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-gray-500">Upload credits remaining</p>
-            <p className="text-4xl font-black text-black">{team.credits}</p>
-          </div>
-          <div className="text-right space-y-2">
-            <div className="flex items-center gap-2 justify-end">
-              <span className="text-sm text-gray-600">Buy</span>
-              <input
-                type="number"
-                min={1}
-                max={500}
-                value={quantity}
-                onChange={e => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                className="w-16 border border-gray-300 rounded-lg px-2 py-1 text-center text-black text-sm focus:outline-none focus:border-orange-500"
-              />
-              <span className="text-sm text-gray-600">credits</span>
+      {/* Initiation gate / token pool */}
+      {team.initiated ? (
+        <PoolAssignPanel
+          endpoint="/api/team/assign-tokens"
+          tokenPool={team.tokenPool}
+          players={members.map(m => ({
+            id: m.id,
+            label: m.first_name
+              ? `${m.first_name}${m.last_name_initial ? ' ' + m.last_name_initial + '.' : ''}`
+              : m.email,
+          }))}
+        />
+      ) : (
+        <InitiationPanel
+          endpoint="/api/team/buy-initiation"
+          playerCount={members.length}
+        />
+      )}
+
+      {/* Credits + Buy — available once the team is initiated */}
+      {team.initiated && (
+        <div className="bg-orange-50 border border-orange-200 rounded-2xl p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500">Upload credits remaining</p>
+              <p className="text-4xl font-black text-black">{team.credits}</p>
             </div>
-            <p className="text-xs text-gray-400 text-right">${(quantity * 2.5).toFixed(2)} total @ $2.50 each</p>
-            <button
-              onClick={buyCredits}
-              disabled={buying}
-              className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
-            >
-              {buying ? 'Redirecting...' : 'Buy Credits'}
-            </button>
+            <div className="text-right space-y-2">
+              <div className="flex items-center gap-2 justify-end">
+                <span className="text-sm text-gray-600">Buy</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={500}
+                  value={quantity}
+                  onChange={e => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-16 border border-gray-300 rounded-lg px-2 py-1 text-center text-black text-sm focus:outline-none focus:border-orange-500"
+                />
+                <span className="text-sm text-gray-600">credits</span>
+              </div>
+              <p className="text-xs text-gray-400 text-right">${(quantity * 2.5).toFixed(2)} total @ $2.50 each</p>
+              <button
+                onClick={buyCredits}
+                disabled={buying}
+                className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+              >
+                {buying ? 'Redirecting...' : 'Buy Credits'}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Invite Players */}
       <div className="space-y-3">

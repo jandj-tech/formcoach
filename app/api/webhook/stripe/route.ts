@@ -30,6 +30,26 @@ export async function POST(req: NextRequest) {
     const metaType = session.metadata?.type
     const email = session.customer_details?.email
 
+    // --- Team initiation package: unlocks $2.50 pricing + fills the token pool ---
+    if (metaType === 'team_initiation') {
+      const teamId = session.metadata?.teamId
+      const tokens = parseInt(session.metadata?.tokens || '0', 10)
+      if (teamId && tokens > 0) {
+        try {
+          await db`
+            UPDATE teams
+            SET token_pool = COALESCE(token_pool, 0) + ${tokens},
+                initiated_at = COALESCE(initiated_at, NOW())
+            WHERE id = ${teamId}
+          `
+        } catch (err) {
+          console.error('Failed to initiate team:', err)
+          return NextResponse.json({ error: 'DB error' }, { status: 500 })
+        }
+      }
+      return NextResponse.json({ received: true })
+    }
+
     // --- Token grant for team/org players ---
     if (metaType === 'team_token_grant') {
       const recipientIds = (session.metadata?.recipientUserIds || '').split(',').filter(Boolean)

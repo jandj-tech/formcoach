@@ -2,14 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { db } from '@/lib/db'
 import { getTeamSessionFromRequest } from '@/lib/team-auth'
+import { sendCoachSignupEmail } from '@/lib/email'
 
-// Lets a logged-in coach add another coach to their team. Returns an invite
-// token; the dashboard turns it into a coach signup link to share.
+// Lets a logged-in coach add another coach to their team. Always returns an
+// invite token (for a shareable link); optionally emails the signup link too.
 export async function POST(req: NextRequest) {
   const session = await getTeamSessionFromRequest(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body = (await req.json().catch(() => ({}))) as { email?: string }
+  const body = (await req.json().catch(() => ({}))) as { email?: string; sendEmail?: boolean }
   const email = body.email?.toLowerCase().trim()
   if (!email) return NextResponse.json({ error: 'Coach email is required' }, { status: 400 })
 
@@ -26,5 +27,20 @@ export async function POST(req: NextRequest) {
     VALUES (${session.teamId}, ${email}, ${inviteToken})
   `
 
-  return NextResponse.json({ inviteToken })
+  // Optionally email the signup link. The coach is created either way, so a
+  // failed email is non-fatal — the dashboard falls back to showing the link.
+  let emailed = false
+  if (body.sendEmail) {
+    try {
+      const [team] = (await db`
+        SELECT name FROM teams WHERE id = ${session.teamId}
+      `) as unknown as [{ name: string } | undefined]
+      await sendCoachSignupEmail(email, team?.name ?? 'your team', inviteToken)
+      emailed = true
+    } catch (err) {
+      console.error('Coach invite email failed:', err instanceof Error ? err.message : err)
+    }
+  }
+
+  return NextResponse.json({ inviteToken, emailed })
 }

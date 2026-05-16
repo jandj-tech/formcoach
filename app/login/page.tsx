@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
 import TopNav from '@/components/TopNav'
+import PasswordInput from '@/components/PasswordInput'
 
 function LoginForm() {
   const router = useRouter()
@@ -11,7 +12,6 @@ function LoginForm() {
   const next = searchParams.get('next') || '/dashboard'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [error, setError] = useState('')
 
@@ -68,23 +68,12 @@ function LoginForm() {
               onChange={e => setEmail(e.target.value)}
               className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
             />
-            <div className="space-y-1">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                required
-                placeholder="Password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(s => !s)}
-                className="text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors"
-              >
-                {showPassword ? 'Hide password' : 'View password'}
-              </button>
-            </div>
+            <PasswordInput
+              required
+              placeholder="Password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+            />
             {error && <p className="text-red-500 text-sm">{error}</p>}
             <button
               type="submit"

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
 import TopNav from '@/components/TopNav'
+import PasswordInput from '@/components/PasswordInput'
 
 function SignupForm() {
   const router = useRouter()
@@ -12,7 +13,6 @@ function SignupForm() {
   const [nickname, setNickname] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
   const [teamCode, setTeamCode] = useState(searchParams.get('teamCode') || '')
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [error, setError] = useState('')
@@ -106,30 +106,19 @@ function SignupForm() {
               onChange={e => setNickname(e.target.value)}
               className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
             />
-            <input
-              type={showPassword ? 'text' : 'password'}
+            <PasswordInput
               required
               minLength={6}
               placeholder="Password (6+ characters)"
               value={password}
               onChange={e => setPassword(e.target.value)}
-              className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
             />
-            <input
-              type={showPassword ? 'text' : 'password'}
+            <PasswordInput
               required
               placeholder="Confirm password"
               value={confirm}
               onChange={e => setConfirm(e.target.value)}
-              className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
             />
-            <button
-              type="button"
-              onClick={() => setShowPassword(s => !s)}
-              className="text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors self-start"
-            >
-              {showPassword ? 'Hide password' : 'View password'}
-            </button>
             <div>
               <input
                 type="text"

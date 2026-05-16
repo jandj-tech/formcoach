@@ -53,6 +53,7 @@ export default function LearnModePage() {
     )
   }
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load() }, [])
 
   async function saveCorrection(scoreId: number) {

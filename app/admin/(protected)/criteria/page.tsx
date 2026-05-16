@@ -23,6 +23,7 @@ export default function CriteriaPage() {
     setCriteria(data)
   }
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load() }, [])
 
   async function save(action: string, payload: object) {

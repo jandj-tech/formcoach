@@ -378,7 +378,7 @@ export default function TeamDashboardClient({
         {addOpen && (
           <div className="border border-gray-200 rounded-2xl p-5 space-y-3">
             <p className="text-sm text-gray-500">
-              Add a player by name. You can optionally send them a link to create their account — once they sign up, they'll be automatically added to the team under this name.
+              Add a player by name. You can optionally send them a link to create their account — once they sign up, they&apos;ll be automatically added to the team under this name.
             </p>
             <form onSubmit={addPlayer} className="space-y-3">
               <div className="flex gap-2">

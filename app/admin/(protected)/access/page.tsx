@@ -54,8 +54,10 @@ export default function AccessPage() {
     }
   }, [])
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => { loadAccounts() }, [loadAccounts])
   useEffect(() => { if (tab === 'codes') loadCodes() }, [tab, loadCodes])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   async function handleCreateAccount(e: React.FormEvent) {
     e.preventDefault()

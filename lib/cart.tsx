@@ -149,7 +149,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setItems((prev) => prev.filter((it) => it.id !== id))
   }, [])
 
-  const clear = useCallback(() => setItems([]), [])
+  const clear = useCallback(() => {
+    setItems([])
+    // Wipe storage synchronously too, so a logout reliably empties the cart
+    // even if navigation interrupts the persistence effect.
+    try {
+      if (typeof window !== 'undefined') window.localStorage.removeItem(STORAGE_KEY)
+    } catch {}
+  }, [])
 
   const count = items.reduce((sum, it) => sum + (it.productSlug === 'ball' ? it.quantity : 1), 0)
 

@@ -12,6 +12,7 @@ function SignupForm() {
   const [nickname, setNickname] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
+  const [teamCode, setTeamCode] = useState(searchParams.get('teamCode') || '')
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [error, setError] = useState('')
 
@@ -55,8 +56,15 @@ function SignupForm() {
         return
       }
 
-      const next = searchParams.get('next') || '/dashboard'
-      router.push(next)
+      const tc = teamCode.trim()
+      if (tc) {
+        // Carry the team code to the dashboard, which pops up the
+        // "enter your name to join" prompt.
+        router.push(`/dashboard?joinTeam=${encodeURIComponent(tc)}`)
+      } else {
+        const next = searchParams.get('next') || '/dashboard'
+        router.push(next)
+      }
     } catch {
       setError('Something went wrong. Please try again.')
       setStatus('error')
@@ -114,6 +122,18 @@ function SignupForm() {
               onChange={e => setConfirm(e.target.value)}
               className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
             />
+            <div>
+              <input
+                type="text"
+                placeholder="Team code (optional)"
+                value={teamCode}
+                onChange={e => setTeamCode(e.target.value.toUpperCase())}
+                className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                Have a team? Enter your coach&apos;s team code to join after signing up.
+              </p>
+            </div>
             {error && <p className="text-red-500 text-sm">{error}</p>}
             <button
               type="submit"

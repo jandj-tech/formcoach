@@ -9,6 +9,7 @@ import DeleteSubmissionButton from './DeleteSubmissionButton'
 import JoinTeamForm from './JoinTeamForm'
 import LeaveTeamButton from './LeaveTeamButton'
 import NicknameForm from './NicknameForm'
+import JoinTeamPopup from './JoinTeamPopup'
 
 type UserRow = {
   id: string
@@ -126,6 +127,7 @@ export default async function DashboardPage() {
   return (
     <main className="min-h-screen bg-white flex flex-col">
       <TopNav />
+      <JoinTeamPopup hasTeam={!!team} />
 
       <div className="max-w-3xl mx-auto w-full px-6 py-10 space-y-8">
         {/* Header */}

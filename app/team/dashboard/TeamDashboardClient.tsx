@@ -81,8 +81,10 @@ export default function TeamDashboardClient({
 
   // Per-pending-player invite copy state
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [copiedSignup, setCopiedSignup] = useState(false)
 
   const BASE_URL = typeof window !== 'undefined' ? window.location.origin : 'https://learnhoops.com'
+  const playerSignupLink = `${BASE_URL}/signup?teamCode=${team.accessCode}`
 
   async function buyCredits() {
     setBuying(true)
@@ -166,6 +168,13 @@ export default function TeamDashboardClient({
     navigator.clipboard.writeText(url).then(() => {
       setCopiedId(id)
       setTimeout(() => setCopiedId(null), 2000)
+    })
+  }
+
+  function copySignupLink() {
+    navigator.clipboard.writeText(playerSignupLink).then(() => {
+      setCopiedSignup(true)
+      setTimeout(() => setCopiedSignup(false), 2000)
     })
   }
 
@@ -258,6 +267,32 @@ export default function TeamDashboardClient({
             >
               {buying ? 'Redirecting...' : 'Buy Credits'}
             </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Invite Players */}
+      <div className="space-y-3">
+        <h2 className="text-xl font-black text-black">Invite Players</h2>
+        <div className="bg-orange-50 border border-orange-200 rounded-2xl p-5 space-y-4">
+          <div>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Team code</p>
+            <p className="text-2xl font-black font-mono tracking-widest text-black mt-0.5">{team.accessCode}</p>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Player signup link</p>
+            <div className="flex items-center gap-2 bg-white border border-gray-300 rounded-xl p-2.5">
+              <span className="flex-1 text-xs font-mono text-gray-600 truncate">{playerSignupLink}</span>
+              <button
+                onClick={copySignupLink}
+                className="shrink-0 text-sm font-semibold text-orange-500 hover:text-orange-400 transition-colors"
+              >
+                {copiedSignup ? 'Copied!' : 'Copy'}
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 mt-1.5">
+              Share this link with players. They sign up, then enter their name to join your team.
+            </p>
           </div>
         </div>
       </div>

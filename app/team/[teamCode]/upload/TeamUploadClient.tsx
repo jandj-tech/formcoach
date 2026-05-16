@@ -73,7 +73,7 @@ export default function TeamUploadClient({ teamName, teamCode, initialCredits }:
           teamMode={{
             code: teamCode,
             firstName,
-            lastName,
+            lastInitial: lastName,
             onSuccess: (id) => {
               setSubmissionId(id)
               setStage('done')

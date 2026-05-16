@@ -16,7 +16,7 @@ interface SessionUser { id: string; email: string; tokens: number; subscribed: b
 interface TeamMode {
   code: string
   firstName: string
-  lastName: string
+  lastInitial: string
   onSuccess: (submissionId: string) => void
 }
 
@@ -243,7 +243,7 @@ export default function VideoUploader({ teamMode }: { teamMode?: TeamMode } = {}
         if (teamMode) {
           formData.append('teamCode', teamMode.code)
           formData.append('playerFirstName', teamMode.firstName)
-          formData.append('playerLastName', teamMode.lastName)
+          formData.append('playerLastName', teamMode.lastInitial)
         }
 
         const res = await fetch('/api/analyze', { method: 'POST', body: formData })

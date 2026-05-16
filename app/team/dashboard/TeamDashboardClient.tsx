@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import CoachUploadForm from './CoachUploadForm'
 
 interface Team {
@@ -67,6 +68,7 @@ export default function TeamDashboardClient({
   const [buying, setBuying] = useState(false)
   const [quantity, setQuantity] = useState(10)
   const [loggingOut, setLoggingOut] = useState(false)
+  const [kicking, setKicking] = useState<string | null>(null)
 
   // Add player form
   const [addOpen, setAddOpen] = useState(false)
@@ -101,6 +103,23 @@ export default function TeamDashboardClient({
     setLoggingOut(true)
     await fetch('/api/team/logout', { method: 'POST' })
     router.push('/team/login')
+  }
+
+  async function kickMember(userId: string) {
+    if (!confirm('Remove this player from the team?')) return
+    setKicking(userId)
+    try {
+      const res = await fetch('/api/team/remove-member', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      })
+      if (!res.ok) throw new Error('Failed')
+      router.refresh()
+    } catch {
+      setKicking(null)
+      alert('Could not remove that player. Please try again.')
+    }
   }
 
   function scoreColor(score: number) {
@@ -322,6 +341,13 @@ export default function TeamDashboardClient({
                   {m.first_name ? formatPlayerName(m.first_name, m.last_name_initial) : m.email}
                 </span>
                 <span className="text-xs text-gray-400">{m.tokens} token{m.tokens !== 1 ? 's' : ''}</span>
+                <button
+                  onClick={() => kickMember(m.id)}
+                  disabled={kicking === m.id}
+                  className="shrink-0 text-xs font-semibold text-gray-400 hover:text-red-500 disabled:opacity-50 transition-colors"
+                >
+                  {kicking === m.id ? 'Removing…' : 'Remove'}
+                </button>
               </div>
             ))}
           </div>
@@ -382,8 +408,13 @@ export default function TeamDashboardClient({
                     <td className="px-4 py-3 text-sm font-bold text-gray-400">
                       {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}
                     </td>
-                    <td className="px-4 py-3 font-semibold text-black">
-                      {formatPlayerName(entry.first_name, entry.last_name_initial)}
+                    <td className="px-4 py-3 font-semibold">
+                      <Link
+                        href={`/team/dashboard/player/${entry.id}`}
+                        className="text-black hover:text-orange-600 hover:underline transition-colors"
+                      >
+                        {formatPlayerName(entry.first_name, entry.last_name_initial)}
+                      </Link>
                     </td>
                     <td className={`px-4 py-3 text-right font-black text-lg ${scoreColor(entry.best_score)}`}>
                       {Number(entry.best_score).toFixed(1)}

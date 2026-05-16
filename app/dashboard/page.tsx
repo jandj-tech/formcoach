@@ -8,6 +8,7 @@ import BuyTokenButton from './BuyTokenButton'
 import DeleteSubmissionButton from './DeleteSubmissionButton'
 import JoinTeamForm from './JoinTeamForm'
 import LeaveTeamButton from './LeaveTeamButton'
+import NicknameForm from './NicknameForm'
 
 type UserRow = {
   id: string
@@ -15,6 +16,7 @@ type UserRow = {
   subscription_type: string | null
   subscription_expires_at: string | null
   analysis_tokens?: number
+  nickname?: string | null
 }
 
 type SubmissionRow = {
@@ -35,16 +37,16 @@ export default async function DashboardPage() {
   let loadError: string | null = null
 
   try {
-    // The analysis_tokens column may not exist yet if the DB migration
-    // hasn't been applied — fall back to the legacy column set.
+    // The analysis_tokens / nickname columns may not exist yet if the DB
+    // migration hasn't been applied — fall back to the base column set.
     try {
       ;[user] = (await db`
-        SELECT id, email, subscription_type, subscription_expires_at, analysis_tokens
+        SELECT id, email, subscription_type, subscription_expires_at, analysis_tokens, nickname
         FROM users WHERE id = ${session.userId}
       `) as unknown as [UserRow | undefined]
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
-      if (!/analysis_tokens.*does not exist/i.test(msg)) throw err
+      if (!/column .* does not exist/i.test(msg)) throw err
       ;[user] = (await db`
         SELECT id, email, subscription_type, subscription_expires_at
         FROM users WHERE id = ${session.userId}
@@ -130,7 +132,9 @@ export default async function DashboardPage() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl font-black text-black">Your Shot History</h1>
-            <p className="text-gray-500 text-sm mt-1">{user.email}</p>
+            <p className="text-gray-500 text-sm mt-1">
+              {user.nickname ? `${user.nickname} · ${user.email}` : user.email}
+            </p>
           </div>
           <div className="flex items-center gap-3">
             {isSubscribed && (
@@ -145,6 +149,12 @@ export default async function DashboardPage() {
             )}
             <LogoutButton />
           </div>
+        </div>
+
+        {/* Nickname */}
+        <div className="space-y-2">
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Nickname</h2>
+          <NicknameForm current={user.nickname ?? null} />
         </div>
 
         {/* Token balance / buy CTA */}

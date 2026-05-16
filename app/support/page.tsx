@@ -54,7 +54,7 @@ export default function SupportPage() {
                 <span className="text-gray-400 text-lg group-open:rotate-180 transition-transform">›</span>
               </summary>
               <div className="px-5 pb-5 text-sm text-gray-600 leading-relaxed">
-                Film from directly in front of the shooter, centered on their body. Stand at roughly chest height, keep the camera steady, and make sure the shooter&apos;s full body — from feet to fingertips at the top of the release — is in frame. Avoid filming from the side or at an angle, as the AI evaluates form criteria that are most visible head-on.
+                For the most accurate analysis, film from under or near the net — either directly behind the basket or slightly to the side at an angle where the shooter&apos;s elbow, arms, and hands are all clearly visible throughout the shot. This gives the AI a clear view of arm mechanics, elbow alignment, and release. If you also want arc to be evaluated, choose an angle where the ball&apos;s flight path is visible. Avoid filming directly face-on, as key form details are hidden from that perspective. Video examples for each angle are coming soon.
               </div>
             </details>
           </div>

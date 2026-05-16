@@ -35,6 +35,21 @@ export default function TeamLandingPage() {
           </div>
         </div>
 
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Link
+            href="/org/signup"
+            className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-8 py-3 rounded-xl transition-colors"
+          >
+            Register Organization
+          </Link>
+          <Link
+            href="/login"
+            className="bg-white border border-gray-300 hover:border-orange-400 text-black font-bold px-8 py-3 rounded-xl transition-colors"
+          >
+            Log In
+          </Link>
+        </div>
+
         <div className="max-w-2xl w-full bg-orange-500 rounded-2xl px-6 py-4 flex items-center gap-4 text-white">
           <span className="text-3xl shrink-0">🎓</span>
           <div className="text-left">
@@ -62,21 +77,6 @@ export default function TeamLandingPage() {
               <div className="text-gray-500 text-sm">Buy credits for players, watch the leaderboard fill up, and see who&apos;s improving across every team.</div>
             </div>
           </div>
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-3">
-          <Link
-            href="/org/signup"
-            className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-8 py-3 rounded-xl transition-colors"
-          >
-            Register Organization
-          </Link>
-          <Link
-            href="/login"
-            className="bg-white border border-gray-300 hover:border-orange-400 text-black font-bold px-8 py-3 rounded-xl transition-colors"
-          >
-            Log In
-          </Link>
         </div>
 
       </div>

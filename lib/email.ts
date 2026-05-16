@@ -388,6 +388,78 @@ export async function sendPasswordResetEmail(to: string, token: string) {
   console.log('[email] password reset sent:', data?.id, 'to:', to)
 }
 
+// Biweekly promotional email — pitches the LearnHoops ball and the site.
+export async function sendPromoEmail(to: string) {
+  const unsubscribe = `${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}`
+  const { data, error } = await getResend().emails.send({
+    from: FROM,
+    to,
+    replyTo: 'noreply@learnhoops.com',
+    subject: 'Sharpen your shot with LearnHoops',
+    headers: {
+      'List-Unsubscribe': `<${unsubscribe}>`,
+      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+    },
+    text: [
+      `Your jump shot, broken down by AI.`,
+      ``,
+      `Upload a video at LearnHoops.com and get your shooting form scored across 17 coaching criteria.`,
+      `Analyze your shot: ${BASE_URL}/analyze`,
+      ``,
+      `Train the right way with the right ball — the LearnHoops basketball has finger guides printed on the leather, game weight, and comes right- or left-handed.`,
+      `Shop the ball: ${BASE_URL}/shop`,
+      ``,
+      `LearnHoops.com`,
+      `Unsubscribe: ${unsubscribe}`,
+    ].join('\n'),
+    html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /></head>
+<body style="margin:0;padding:0;background:#F4F4F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#111111;">
+  <table role="presentation" width="100%" style="background:#F4F4F5;"><tr><td align="center" style="padding:32px 16px;">
+    <table role="presentation" width="100%" style="max-width:560px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #E4E4E7;">
+      <tr><td style="background:#000000;padding:22px 32px;">
+        <div style="color:#F97316;font-size:20px;font-weight:800;">LearnHoops<span style="color:#71717A;">.com</span></div>
+      </td></tr>
+      <tr><td style="padding:36px 32px 8px;">
+        <h1 style="margin:0 0 10px;color:#111;font-size:23px;line-height:1.25;font-weight:800;">Your jump shot, broken down by AI.</h1>
+        <p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;">
+          Upload a video and LearnHoops scores your shooting form across 17 coaching criteria — so you know
+          exactly what to fix.
+        </p>
+      </td></tr>
+      <tr><td style="padding:20px 32px 4px;">
+        <a href="${BASE_URL}/analyze" style="display:inline-block;background:#F97316;color:#fff;padding:13px 26px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">Analyze your shot</a>
+      </td></tr>
+      <tr><td style="padding:24px 32px 8px;">
+        <p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;">
+          Train the right way with the right ball — the <strong>LearnHoops basketball</strong> has finger
+          guides printed on the leather, game weight, and comes right- or left-handed.
+        </p>
+      </td></tr>
+      <tr><td style="padding:14px 32px 32px;">
+        <a href="${BASE_URL}/shop" style="display:inline-block;background:#000;color:#fff;padding:13px 26px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">Shop the ball</a>
+      </td></tr>
+      <tr><td style="padding:18px 32px;background:#FAFAFA;border-top:1px solid #E4E4E7;">
+        <p style="margin:0;color:#A1A1AA;font-size:11px;line-height:1.6;">
+          You're getting this because you signed up at <a href="${BASE_URL}" style="color:#71717A;text-decoration:none;font-weight:600;">LearnHoops.com</a>.
+          &nbsp;·&nbsp;
+          <a href="${unsubscribe}" style="color:#71717A;text-decoration:underline;">Unsubscribe</a>
+        </p>
+      </td></tr>
+    </table>
+  </td></tr></table>
+</body>
+</html>`.trim(),
+  })
+  if (error) {
+    console.error('[email] promo failed:', error)
+    throw new Error(`Promo email failed: ${error.message}`)
+  }
+  console.log('[email] promo sent:', data?.id, 'to:', to)
+}
+
 export async function sendCoachAddedEmail(to: string, orgName: string, teamName: string) {
   const link = `${BASE_URL}/team/login`
   await getResend().emails.send({

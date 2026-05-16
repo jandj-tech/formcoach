@@ -6,35 +6,83 @@ import Link from 'next/link'
 import LogoutButton from './LogoutButton'
 import BuyTokenButton from './BuyTokenButton'
 
+type UserRow = {
+  id: string
+  email: string
+  subscription_type: string | null
+  subscription_expires_at: string | null
+  analysis_tokens?: number
+}
+
+type SubmissionRow = {
+  id: string
+  created_at: string
+  token: string
+  overall_score: number | null
+  frame_urls: string[] | null
+}
+
 export default async function DashboardPage() {
   const session = await getSession()
   if (!session) redirect('/login')
 
-  type UserRow = {
-    id: string
-    email: string
-    subscription_type: string | null
-    subscription_expires_at: string | null
-    analysis_tokens?: number
+  let user: UserRow | undefined
+  let submissions: SubmissionRow[] = []
+  let loadError: string | null = null
+
+  try {
+    // The analysis_tokens column may not exist yet if the DB migration
+    // hasn't been applied — fall back to the legacy column set.
+    try {
+      ;[user] = (await db`
+        SELECT id, email, subscription_type, subscription_expires_at, analysis_tokens
+        FROM users WHERE id = ${session.userId}
+      `) as unknown as [UserRow | undefined]
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      if (!/analysis_tokens.*does not exist/i.test(msg)) throw err
+      ;[user] = (await db`
+        SELECT id, email, subscription_type, subscription_expires_at
+        FROM users WHERE id = ${session.userId}
+      `) as unknown as [UserRow | undefined]
+    }
+
+    if (user) {
+      submissions = (await db`
+        SELECT s.id, s.created_at, s.token, a.overall_score, a.frame_urls
+        FROM submissions s
+        LEFT JOIN analyses a ON a.submission_id = s.id
+        WHERE s.user_id = ${user.id} OR s.email = ${user.email}
+        ORDER BY s.created_at DESC
+        LIMIT 100
+      `) as unknown as SubmissionRow[]
+    }
+  } catch (err) {
+    // Don't crash with a 500 — surface the real reason so it can be fixed.
+    loadError = err instanceof Error ? `${err.name}: ${err.message}` : String(err)
+    console.error('[dashboard] load error:', err)
   }
 
-  // The analysis_tokens column may not exist yet if the DB migration
-  // hasn't been applied — fall back to the legacy column set so the
-  // page still loads (same pattern as app/api/analyze/route.ts).
-  let user: UserRow | undefined
-  try {
-    ;[user] = (await db`
-      SELECT id, email, subscription_type, subscription_expires_at, analysis_tokens
-      FROM users WHERE id = ${session.userId}
-    `) as unknown as [UserRow | undefined]
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    if (!/analysis_tokens.*does not exist/i.test(msg)) throw err
-    console.warn('users.analysis_tokens column missing — run `npm run migrate`.')
-    ;[user] = (await db`
-      SELECT id, email, subscription_type, subscription_expires_at
-      FROM users WHERE id = ${session.userId}
-    `) as unknown as [UserRow | undefined]
+  // Couldn't load data — show the actual error instead of a blank server error.
+  if (loadError) {
+    return (
+      <main className="min-h-screen bg-white flex flex-col">
+        <TopNav />
+        <div className="max-w-3xl mx-auto w-full px-6 py-20 space-y-4 text-center">
+          <div className="text-5xl">⚠️</div>
+          <h1 className="text-2xl font-black text-black">Couldn&apos;t load your dashboard</h1>
+          <p className="text-gray-500 text-sm">
+            Something went wrong reading your data. Technical detail:
+          </p>
+          <pre className="text-left text-xs bg-gray-100 border border-gray-200 rounded-lg p-4 overflow-x-auto whitespace-pre-wrap text-red-600">
+            {loadError}
+          </pre>
+          <div className="pt-2">
+            <LogoutButton />
+          </div>
+        </div>
+      </main>
+    )
   }
 
   if (!user) redirect('/login')
@@ -45,21 +93,6 @@ export default async function DashboardPage() {
     new Date(user.subscription_expires_at) > new Date()
 
   const tokens = user.analysis_tokens ?? 0
-
-  const submissions = await db`
-    SELECT s.id, s.created_at, s.token, a.overall_score, a.frame_urls
-    FROM submissions s
-    LEFT JOIN analyses a ON a.submission_id = s.id
-    WHERE s.user_id = ${user.id} OR s.email = ${user.email}
-    ORDER BY s.created_at DESC
-    LIMIT 100
-  ` as unknown as Array<{
-    id: string
-    created_at: string
-    token: string
-    overall_score: number | null
-    frame_urls: string[] | null
-  }>
 
   function scoreColor(score: number) {
     if (score >= 8) return 'text-green-600'

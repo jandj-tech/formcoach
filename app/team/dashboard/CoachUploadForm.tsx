@@ -8,6 +8,8 @@ interface Member {
   id: string
   email: string
   tokens: number
+  first_name: string | null
+  last_name_initial: string | null
 }
 
 interface Props {
@@ -18,20 +20,19 @@ interface Props {
 export default function CoachUploadForm({ accessCode, members }: Props) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
-  const [step, setStep] = useState<'pick' | 'name' | 'upload' | 'done'>('pick')
-  const [selectedEmail, setSelectedEmail] = useState('')
-  const [firstName, setFirstName] = useState('')
-  const [lastInitial, setLastInitial] = useState('')
+  const [search, setSearch] = useState('')
+  const [selected, setSelected] = useState<Member | null>(null)
+  const [step, setStep] = useState<'pick' | 'upload' | 'done'>('pick')
   const [resultToken, setResultToken] = useState('')
 
-  function selectMember(email: string) {
-    setSelectedEmail(email)
-    setStep('name')
-  }
+  const filtered = members.filter(m => {
+    const q = search.toLowerCase()
+    const name = `${m.first_name ?? ''} ${m.last_name_initial ?? ''}`.toLowerCase()
+    return name.includes(q) || m.email.toLowerCase().includes(q)
+  })
 
-  function handleNameSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!firstName.trim() || !lastInitial.trim()) return
+  function selectMember(m: Member) {
+    setSelected(m)
     setStep('upload')
   }
 
@@ -42,12 +43,17 @@ export default function CoachUploadForm({ accessCode, members }: Props) {
 
   function reset() {
     setStep('pick')
-    setSelectedEmail('')
-    setFirstName('')
-    setLastInitial('')
+    setSelected(null)
+    setSearch('')
     setResultToken('')
     setOpen(false)
   }
+
+  const displayName = selected
+    ? selected.first_name
+      ? `${selected.first_name} ${selected.last_name_initial ?? ''}.`
+      : selected.email
+    : ''
 
   if (!open) {
     return (
@@ -70,70 +76,46 @@ export default function CoachUploadForm({ accessCode, members }: Props) {
 
       {step === 'pick' && (
         <div className="space-y-3">
-          <p className="text-sm font-semibold text-black">Select a player</p>
-          <div className="space-y-2">
-            {members.map((m) => (
+          <input
+            type="text"
+            placeholder="Search by name or email..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2.5 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors text-sm"
+          />
+          <div className="space-y-2 max-h-60 overflow-y-auto">
+            {filtered.length === 0 && (
+              <p className="text-sm text-gray-400 text-center py-4">No players found</p>
+            )}
+            {filtered.map((m) => (
               <button
                 key={m.id}
-                onClick={() => selectMember(m.email)}
-                className="w-full text-left border border-gray-200 hover:border-orange-400 bg-white rounded-xl px-4 py-3 text-sm font-semibold text-black transition-colors"
+                onClick={() => selectMember(m)}
+                className="w-full text-left border border-gray-200 hover:border-orange-400 bg-white rounded-xl px-4 py-3 transition-colors"
               >
-                {m.email}
+                <p className="text-sm font-bold text-black">
+                  {m.first_name ? `${m.first_name} ${m.last_name_initial ?? ''}.` : m.email}
+                </p>
+                {m.first_name && (
+                  <p className="text-xs text-gray-400">{m.email}</p>
+                )}
               </button>
             ))}
           </div>
         </div>
       )}
 
-      {step === 'name' && (
-        <form onSubmit={handleNameSubmit} className="space-y-4">
-          <div>
-            <p className="text-sm font-semibold text-black mb-1">Uploading for</p>
-            <p className="text-orange-600 font-bold">{selectedEmail}</p>
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-black mb-2">Enter their display name for the leaderboard</p>
-            <div className="flex gap-3">
-              <input
-                type="text"
-                required
-                placeholder="First name"
-                value={firstName}
-                onChange={e => setFirstName(e.target.value)}
-                className="flex-1 bg-white border border-gray-300 rounded-xl px-4 py-2.5 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors text-sm"
-              />
-              <input
-                type="text"
-                required
-                maxLength={1}
-                placeholder="Last initial"
-                value={lastInitial}
-                onChange={e => setLastInitial(e.target.value.toUpperCase())}
-                className="w-24 bg-white border border-gray-300 rounded-xl px-4 py-2.5 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors text-sm"
-              />
-            </div>
-          </div>
-          <button
-            type="submit"
-            className="w-full bg-black hover:bg-zinc-800 text-white font-bold py-2.5 rounded-xl transition-colors text-sm"
-          >
-            Continue to Upload
-          </button>
-        </form>
-      )}
-
-      {step === 'upload' && (
+      {step === 'upload' && selected && (
         <div className="space-y-3">
           <p className="text-sm text-gray-600">
-            Uploading for{' '}
-            <span className="font-bold text-black">{firstName} {lastInitial}.</span>
-            <button onClick={() => setStep('name')} className="ml-2 text-orange-500 hover:underline text-xs">Change</button>
+            Uploading for <span className="font-bold text-black">{displayName}</span>
+            <button onClick={() => { setStep('pick'); setSelected(null) }} className="ml-2 text-orange-500 hover:underline text-xs">Change</button>
           </p>
           <VideoUploader
             teamMode={{
               code: accessCode,
-              firstName: firstName.trim(),
-              lastInitial: lastInitial.trim().charAt(0).toUpperCase(),
+              firstName: (selected.first_name ?? selected.email.split('@')[0]).trim(),
+              lastInitial: (selected.last_name_initial ?? '?').charAt(0).toUpperCase(),
               onSuccess: handleSuccess,
             }}
           />
@@ -142,8 +124,8 @@ export default function CoachUploadForm({ accessCode, members }: Props) {
 
       {step === 'done' && (
         <div className="text-center space-y-4 py-4">
-          <div className="text-4xl">✓</div>
-          <p className="font-black text-black text-lg">Shot uploaded for {firstName} {lastInitial}.</p>
+          <div className="text-3xl font-black text-green-600">✓</div>
+          <p className="font-black text-black text-lg">Shot uploaded for {displayName}</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button
               onClick={() => router.push(`/results/${resultToken}`)}
@@ -152,7 +134,7 @@ export default function CoachUploadForm({ accessCode, members }: Props) {
               View Results
             </button>
             <button
-              onClick={() => { setStep('pick'); setFirstName(''); setLastInitial(''); setResultToken('') }}
+              onClick={() => { setStep('pick'); setSelected(null); setSearch(''); setResultToken('') }}
               className="bg-white border border-gray-300 hover:border-orange-400 text-black font-bold px-6 py-2.5 rounded-xl transition-colors text-sm"
             >
               Upload Another

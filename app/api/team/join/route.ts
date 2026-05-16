@@ -9,9 +9,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Login required' }, { status: 401 })
     }
 
-    const { teamCode } = await req.json()
+    const { teamCode, firstName, lastInitial } = await req.json()
     if (!teamCode || typeof teamCode !== 'string') {
       return NextResponse.json({ error: 'Team code required' }, { status: 400 })
+    }
+    if (!firstName || !lastInitial) {
+      return NextResponse.json({ error: 'First name and last initial required' }, { status: 400 })
     }
 
     const [team] = await db`
@@ -22,10 +25,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Team not found' }, { status: 404 })
     }
 
+    const firstNameClean = String(firstName).trim()
+    const lastInitialClean = String(lastInitial).trim().charAt(0).toUpperCase()
+
     await db`
-      INSERT INTO team_memberships (user_id, team_id)
-      VALUES (${session.userId}, ${team.id})
-      ON CONFLICT (user_id, team_id) DO NOTHING
+      INSERT INTO team_memberships (user_id, team_id, first_name, last_name_initial)
+      VALUES (${session.userId}, ${team.id}, ${firstNameClean}, ${lastInitialClean})
+      ON CONFLICT (user_id, team_id) DO UPDATE
+        SET first_name = ${firstNameClean}, last_name_initial = ${lastInitialClean}
     `
 
     return NextResponse.json({ success: true, teamName: team.name })

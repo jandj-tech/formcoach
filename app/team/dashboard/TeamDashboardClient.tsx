@@ -16,6 +16,8 @@ interface Member {
   id: string
   email: string
   tokens: number
+  first_name: string | null
+  last_name_initial: string | null
 }
 
 interface LeaderboardEntry {

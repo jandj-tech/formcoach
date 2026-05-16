@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 export default function JoinTeamForm() {
   const router = useRouter()
   const [teamCode, setTeamCode] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastInitial, setLastInitial] = useState('')
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [message, setMessage] = useState('')
 
@@ -18,7 +20,7 @@ export default function JoinTeamForm() {
       const res = await fetch('/api/team/join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ teamCode }),
+        body: JSON.stringify({ teamCode, firstName, lastInitial }),
       })
       const data = await res.json()
 
@@ -30,7 +32,7 @@ export default function JoinTeamForm() {
 
       setMessage(`Joined ${data.teamName}!`)
       setStatus('success')
-      router.refresh()
+      setTimeout(() => router.refresh(), 800)
     } catch {
       setMessage('Something went wrong. Please try again.')
       setStatus('error')
@@ -43,10 +45,29 @@ export default function JoinTeamForm() {
         <input
           type="text"
           required
-          placeholder="Enter team code"
-          value={teamCode}
-          onChange={e => setTeamCode(e.target.value)}
+          placeholder="First name"
+          value={firstName}
+          onChange={e => setFirstName(e.target.value)}
           className="flex-1 bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
+        />
+        <input
+          type="text"
+          required
+          maxLength={1}
+          placeholder="Last initial"
+          value={lastInitial}
+          onChange={e => setLastInitial(e.target.value.toUpperCase())}
+          className="w-28 bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
+        />
+      </div>
+      <div className="flex gap-2">
+        <input
+          type="text"
+          required
+          placeholder="Team code"
+          value={teamCode}
+          onChange={e => setTeamCode(e.target.value.toUpperCase())}
+          className="flex-1 bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors font-mono tracking-wider"
         />
         <button
           type="submit"

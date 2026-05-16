@@ -7,6 +7,7 @@ import OrgAddCoach from './OrgAddCoach'
 import InitiationPanel from '@/components/InitiationPanel'
 import PoolAssignPanel from '@/components/PoolAssignPanel'
 import TokenBalances from '@/components/TokenBalances'
+import { CLASS_MIN_PLAYERS, CLASS_BULK_THRESHOLD, classPriceCents } from '@/lib/org-class-pricing'
 
 interface Member {
   id: string
@@ -37,14 +38,42 @@ interface TeamData {
   tokenPool: number
 }
 
+export interface ClassEnrollment {
+  id: string
+  user_id: string | null
+  first_name: string | null
+  last_name_initial: string | null
+  first_score: number | null
+  final_score: number | null
+  display_final_score: number | null
+  is_first_class: boolean
+  certificate_issued_at: string | null
+  has_first: boolean
+  has_final: boolean
+}
+
+export interface ClassPackage {
+  id: string
+  player_count: number
+  price_per_player_cents: number
+  total_cents: number
+  token_pool: number
+  status: string
+  created_at: string
+  enrolled_count: number
+  completed_count: number
+  enrollments: ClassEnrollment[]
+}
+
 interface Props {
   teams: TeamData[]
   orgName: string
+  classPackages: ClassPackage[]
 }
 
 type DestMode = 'all' | 'specific' | 'coach'
 
-export default function OrgDashboardClient({ teams, orgName }: Props) {
+export default function OrgDashboardClient({ teams, orgName, classPackages }: Props) {
   const router = useRouter()
   const [expanded, setExpanded] = useState<string | null>(teams[0]?.id ?? null)
   const [destMode, setDestMode] = useState<Record<string, DestMode>>({})
@@ -57,6 +86,22 @@ export default function OrgDashboardClient({ teams, orgName }: Props) {
   const [removingPlayer, setRemovingPlayer] = useState<string | null>(null)
 
   const BASE_URL = typeof window !== 'undefined' ? window.location.origin : 'https://learnhoops.com'
+
+  // Class program state
+  const [classPlayerCount, setClassPlayerCount] = useState(CLASS_MIN_PLAYERS)
+  const [buyingClass, setBuyingClass] = useState(false)
+  const [classError, setClassError] = useState('')
+  const [expandedPackage, setExpandedPackage] = useState<string | null>(classPackages[0]?.id ?? null)
+  const [enrollOpen, setEnrollOpen] = useState<string | null>(null)
+  const [enrollFirstName, setEnrollFirstName] = useState('')
+  const [enrollLastInit, setEnrollLastInit] = useState('')
+  const [enrollUserId, setEnrollUserId] = useState('')
+  const [enrolling, setEnrolling] = useState(false)
+  const [enrollError, setEnrollError] = useState('')
+  const [enrollSuccess, setEnrollSuccess] = useState(false)
+  const [showLeaderboard, setShowLeaderboard] = useState<string | null>(null)
+  const [leaderboard, setLeaderboard] = useState<ClassEnrollment[]>([])
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false)
 
   const [addOpen, setAddOpen] = useState(false)
   const [newName, setNewName] = useState('')
@@ -232,6 +277,383 @@ export default function OrgDashboardClient({ teams, orgName }: Props) {
     }
   }
 
+  async function handleBuyClass() {
+    setBuyingClass(true)
+    setClassError('')
+    try {
+      const res = await fetch('/api/org/buy-class-package', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playerCount: classPlayerCount }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.url) {
+        setClassError(data.error || 'Checkout failed')
+        setBuyingClass(false)
+        return
+      }
+      window.location.href = data.url
+    } catch {
+      setClassError('Something went wrong. Please try again.')
+      setBuyingClass(false)
+    }
+  }
+
+  async function handleEnroll(packageId: string) {
+    if (!enrollFirstName.trim()) { setEnrollError('First name required'); return }
+    setEnrolling(true)
+    setEnrollError('')
+    try {
+      const res = await fetch('/api/org/class/enroll', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          packageId,
+          userId: enrollUserId.trim() || undefined,
+          firstName: enrollFirstName.trim(),
+          lastNameInitial: enrollLastInit.trim() || undefined,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setEnrollError(data.error || 'Enrollment failed')
+        setEnrolling(false)
+        return
+      }
+      setEnrollSuccess(true)
+      setEnrollFirstName('')
+      setEnrollLastInit('')
+      setEnrollUserId('')
+      setTimeout(() => { setEnrollSuccess(false); setEnrollOpen(null); router.refresh() }, 2000)
+    } catch {
+      setEnrollError('Something went wrong.')
+    }
+    setEnrolling(false)
+  }
+
+  async function loadLeaderboard(packageId: string) {
+    setLeaderboardLoading(true)
+    try {
+      const res = await fetch(`/api/org/class/leaderboard?packageId=${packageId}`)
+      const data = await res.json()
+      setLeaderboard(data.leaderboard || [])
+    } catch { setLeaderboard([]) }
+    setLeaderboardLoading(false)
+  }
+
+  function toggleLeaderboard(packageId: string) {
+    if (showLeaderboard === packageId) {
+      setShowLeaderboard(null)
+    } else {
+      setShowLeaderboard(packageId)
+      loadLeaderboard(packageId)
+    }
+  }
+
+  const classPricePerPlayer = classPlayerCount >= CLASS_BULK_THRESHOLD ? 45 : 50
+  const classTotal = classPriceCents(classPlayerCount) / 100
+
+  const classProgramSection = (
+    <div className="space-y-4">
+      {/* Program summary card */}
+      <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-6 text-white">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="space-y-1">
+            <p className="text-orange-100 text-xs font-bold uppercase tracking-widest">New</p>
+            <h2 className="text-2xl font-black">10-Week Shooting Class</h2>
+            <p className="text-orange-100 text-sm max-w-sm">
+              A structured program that turns your organization into a coaching powerhouse.
+              Each player gets a ball, 2 shot analyses, and a personalized completion certificate.
+            </p>
+          </div>
+          <div className="bg-white/20 rounded-xl px-4 py-3 text-center shrink-0">
+            <p className="text-4xl font-black">$50</p>
+            <p className="text-orange-100 text-xs">per player</p>
+            <p className="text-orange-200 text-xs mt-1">$45/player for 30+</p>
+          </div>
+        </div>
+
+        {/* Perks row */}
+        <div className="grid grid-cols-3 gap-2 mt-5">
+          {[
+            { icon: '🏀', label: '1 Training Ball', sub: 'per player' },
+            { icon: '🎯', label: '2 Shot Analyses', sub: 'start & end' },
+            { icon: '🏆', label: 'Certificate', sub: 'with scores' },
+          ].map(p => (
+            <div key={p.label} className="bg-white/15 rounded-xl px-3 py-2 text-center">
+              <p className="text-xl">{p.icon}</p>
+              <p className="font-bold text-sm leading-tight mt-0.5">{p.label}</p>
+              <p className="text-orange-200 text-xs">{p.sub}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* 10-week outline */}
+        <details className="mt-4 group">
+          <summary className="cursor-pointer text-sm font-semibold text-orange-100 hover:text-white list-none flex items-center gap-1">
+            <span className="group-open:hidden">▶ View 10-week session outline</span>
+            <span className="hidden group-open:inline">▼ Hide session outline</span>
+          </summary>
+          <div className="mt-3 grid grid-cols-2 gap-1.5 text-xs">
+            {[
+              'Session 1 — Initial shot analysis',
+              'Session 2 — Grip & hand placement',
+              'Session 3 — Elbow alignment',
+              'Session 4 — Stance & base',
+              'Session 5 — Shot pocket',
+              'Session 6 — Release mechanics',
+              'Session 7 — Shot arc (45–60°)',
+              'Session 8 — Guide hand discipline',
+              'Session 9 — Full shot flow',
+              'Session 10 — Final evaluation + certificate',
+            ].map(s => (
+              <div key={s} className="bg-white/10 rounded-lg px-2.5 py-1.5 text-orange-50 font-medium">{s}</div>
+            ))}
+          </div>
+        </details>
+      </div>
+
+      {/* Buy package form */}
+      <div className="border border-gray-200 rounded-2xl p-5 space-y-4">
+        <h3 className="font-black text-black text-lg">Purchase a Class Package</h3>
+        <p className="text-sm text-gray-500">Minimum {CLASS_MIN_PLAYERS} players. Each player gets 2 analysis tokens + a certificate when they complete both evaluations.</p>
+
+        <div className="space-y-2">
+          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Number of players</label>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setClassPlayerCount(c => Math.max(CLASS_MIN_PLAYERS, c - 5))}
+              className="w-9 h-9 rounded-full border border-gray-300 text-black font-bold hover:border-orange-400 transition-colors flex items-center justify-center"
+            >−</button>
+            <span className="text-2xl font-black text-black w-12 text-center">{classPlayerCount}</span>
+            <button
+              onClick={() => setClassPlayerCount(c => c + 5)}
+              className="w-9 h-9 rounded-full border border-gray-300 text-black font-bold hover:border-orange-400 transition-colors flex items-center justify-center"
+            >+</button>
+            <input
+              type="number"
+              min={CLASS_MIN_PLAYERS}
+              value={classPlayerCount}
+              onChange={e => setClassPlayerCount(Math.max(CLASS_MIN_PLAYERS, parseInt(e.target.value) || CLASS_MIN_PLAYERS))}
+              className="w-20 border border-gray-300 rounded-xl px-3 py-2 text-black text-sm focus:outline-none focus:border-orange-500"
+            />
+          </div>
+          {classPlayerCount >= CLASS_BULK_THRESHOLD && (
+            <p className="text-xs text-green-600 font-semibold">Bulk rate unlocked — $45/player</p>
+          )}
+        </div>
+
+        <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 flex items-center justify-between">
+          <div>
+            <p className="text-sm text-gray-600">{classPlayerCount} players × ${classPricePerPlayer}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{classPlayerCount * 2} total analyses + {classPlayerCount} certificates</p>
+          </div>
+          <p className="text-2xl font-black text-black">${classTotal.toLocaleString()}</p>
+        </div>
+
+        {classError && <p className="text-red-500 text-sm">{classError}</p>}
+
+        <button
+          onClick={handleBuyClass}
+          disabled={buyingClass}
+          className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-black py-3 rounded-xl transition-colors"
+        >
+          {buyingClass ? 'Redirecting to checkout...' : `Buy Class Package — $${classTotal.toLocaleString()}`}
+        </button>
+      </div>
+
+      {/* Active class packages */}
+      {classPackages.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="font-black text-black text-lg">Active Class Programs</h3>
+          {classPackages.map(pkg => {
+            const isOpen = expandedPackage === pkg.id
+            const purchasedAt = new Date(pkg.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            return (
+              <div key={pkg.id} className="border border-gray-200 rounded-2xl overflow-hidden">
+                <button
+                  onClick={() => setExpandedPackage(isOpen ? null : pkg.id)}
+                  className="w-full flex items-center justify-between gap-4 px-5 py-4 bg-gray-50 hover:bg-orange-50 transition-colors text-left"
+                >
+                  <div>
+                    <p className="font-bold text-black">{pkg.player_count}-Player Class Package</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {pkg.enrolled_count}/{pkg.player_count} enrolled · {pkg.completed_count} completed · purchased {purchasedAt}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${pkg.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                      {pkg.status}
+                    </span>
+                    <span className="text-gray-400 text-sm">{isOpen ? '−' : '+'}</span>
+                  </div>
+                </button>
+
+                {isOpen && (
+                  <div className="px-5 py-4 space-y-5">
+                    {/* Stats row */}
+                    <div className="grid grid-cols-4 gap-2">
+                      {[
+                        { label: 'Players', value: pkg.player_count },
+                        { label: 'Enrolled', value: pkg.enrolled_count },
+                        { label: 'Completed', value: pkg.completed_count },
+                        { label: 'Tokens left', value: pkg.token_pool },
+                      ].map(s => (
+                        <div key={s.label} className="bg-orange-50 border border-orange-100 rounded-xl px-3 py-2 text-center">
+                          <p className="text-xs text-gray-500">{s.label}</p>
+                          <p className="text-xl font-black text-black">{s.value}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Enroll a player */}
+                    {pkg.enrolled_count < pkg.player_count && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Enroll a Player</p>
+                          <button
+                            onClick={() => { setEnrollOpen(enrollOpen === pkg.id ? null : pkg.id); setEnrollSuccess(false); setEnrollError('') }}
+                            className="text-sm font-bold text-orange-500 hover:text-orange-400"
+                          >
+                            {enrollOpen === pkg.id ? 'Cancel' : '+ Add Player'}
+                          </button>
+                        </div>
+                        {enrollOpen === pkg.id && (
+                          <div className="space-y-2 bg-gray-50 border border-gray-200 rounded-xl p-4">
+                            <input
+                              type="text"
+                              placeholder="First name *"
+                              value={enrollFirstName}
+                              onChange={e => setEnrollFirstName(e.target.value)}
+                              className="w-full border border-gray-300 rounded-xl px-3 py-2 text-black text-sm focus:outline-none focus:border-orange-500"
+                            />
+                            <input
+                              type="text"
+                              placeholder="Last name initial (optional)"
+                              value={enrollLastInit}
+                              onChange={e => setEnrollLastInit(e.target.value)}
+                              className="w-full border border-gray-300 rounded-xl px-3 py-2 text-black text-sm focus:outline-none focus:border-orange-500"
+                            />
+                            <input
+                              type="text"
+                              placeholder="Player account ID (optional — links to their login)"
+                              value={enrollUserId}
+                              onChange={e => setEnrollUserId(e.target.value)}
+                              className="w-full border border-gray-300 rounded-xl px-3 py-2 text-black text-sm font-mono focus:outline-none focus:border-orange-500"
+                            />
+                            {enrollError && <p className="text-red-500 text-sm">{enrollError}</p>}
+                            {enrollSuccess && <p className="text-green-600 text-sm font-medium">Player enrolled!</p>}
+                            <button
+                              onClick={() => handleEnroll(pkg.id)}
+                              disabled={enrolling || enrollSuccess}
+                              className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+                            >
+                              {enrolling ? 'Enrolling...' : 'Enroll Player'}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Enrolled players list */}
+                    {pkg.enrollments.length > 0 && (
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Enrolled Players ({pkg.enrollments.length})</p>
+                        <div className="border border-gray-100 rounded-xl divide-y divide-gray-100">
+                          {pkg.enrollments.map(e => {
+                            const name = `${e.first_name || 'Player'}${e.last_name_initial ? ' ' + e.last_name_initial + '.' : ''}`
+                            const startScore = e.first_score != null ? Number(e.first_score).toFixed(1) : null
+                            const finalScore = e.display_final_score != null ? Number(e.display_final_score).toFixed(1) : null
+                            return (
+                              <div key={e.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
+                                <div className="min-w-0">
+                                  <p className="text-sm font-semibold text-black">{name}</p>
+                                  <p className="text-xs text-gray-400 mt-0.5">
+                                    {!e.has_first && 'Not started'}
+                                    {e.has_first && !e.has_final && `Start: ${startScore} — awaiting final`}
+                                    {e.has_final && `${startScore} → ${finalScore}`}
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  {e.has_final ? (
+                                    <span className="text-xs bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full">Done</span>
+                                  ) : e.has_first ? (
+                                    <span className="text-xs bg-orange-100 text-orange-700 font-bold px-2 py-0.5 rounded-full">In progress</span>
+                                  ) : (
+                                    <span className="text-xs bg-gray-100 text-gray-500 font-bold px-2 py-0.5 rounded-full">Not started</span>
+                                  )}
+                                  {e.has_final && (
+                                    <Link
+                                      href={`/org/certificate/${e.id}`}
+                                      target="_blank"
+                                      className="text-xs font-bold text-orange-500 hover:text-orange-400"
+                                    >
+                                      Certificate
+                                    </Link>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Leaderboard toggle */}
+                    {pkg.enrollments.some(e => e.has_first) && (
+                      <div>
+                        <button
+                          onClick={() => toggleLeaderboard(pkg.id)}
+                          className="text-sm font-bold text-orange-500 hover:text-orange-400"
+                        >
+                          {showLeaderboard === pkg.id ? 'Hide Leaderboard' : 'Show Leaderboard'}
+                        </button>
+                        {showLeaderboard === pkg.id && (
+                          <div className="mt-3 border border-gray-100 rounded-xl overflow-hidden">
+                            <div className="bg-orange-50 px-4 py-2.5 border-b border-orange-100">
+                              <p className="text-sm font-black text-black">Class Leaderboard</p>
+                            </div>
+                            {leaderboardLoading ? (
+                              <p className="text-sm text-gray-400 p-4">Loading...</p>
+                            ) : (
+                              <div className="divide-y divide-gray-100">
+                                {leaderboard.map((e, i) => {
+                                  const name = `${e.first_name || 'Player'}${e.last_name_initial ? ' ' + e.last_name_initial + '.' : ''}`
+                                  const score = e.display_final_score ?? e.first_score
+                                  const improvement = e.first_score != null && e.display_final_score != null
+                                    ? (Number(e.display_final_score) - Number(e.first_score)).toFixed(1)
+                                    : null
+                                  return (
+                                    <div key={e.id} className="flex items-center gap-3 px-4 py-2.5">
+                                      <span className="text-lg font-black text-gray-300 w-6 text-center">{i + 1}</span>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-semibold text-black">{name}</p>
+                                        {improvement && (
+                                          <p className="text-xs text-green-600 font-medium">+{improvement} pts</p>
+                                        )}
+                                      </div>
+                                      {score != null && (
+                                        <span className="text-lg font-black text-black">{Number(score).toFixed(1)}</span>
+                                      )}
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+
   const addTeamSection = (
     <div className="border border-gray-200 rounded-2xl p-5 space-y-3">
       <div className="flex items-center justify-between gap-4">
@@ -294,6 +716,7 @@ export default function OrgDashboardClient({ teams, orgName }: Props) {
   if (teams.length === 0) {
     return (
       <div className="space-y-4">
+        {classProgramSection}
         {addTeamSection}
         <div className="text-center py-12 text-gray-400 border-2 border-dashed border-gray-200 rounded-2xl">
           <p className="font-semibold">No teams in {orgName} yet</p>
@@ -307,6 +730,7 @@ export default function OrgDashboardClient({ teams, orgName }: Props) {
 
   return (
     <div className="space-y-4">
+      {classProgramSection}
       {addTeamSection}
 
       {(() => {

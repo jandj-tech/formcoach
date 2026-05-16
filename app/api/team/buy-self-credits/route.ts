@@ -66,6 +66,7 @@ export async function POST(req: NextRequest) {
         quantity: String(qty),
       },
       success_url: `${BASE_URL}/analyze?credits=1`,
+      allow_promotion_codes: true,
       cancel_url: `${BASE_URL}/analyze`,
     })
 

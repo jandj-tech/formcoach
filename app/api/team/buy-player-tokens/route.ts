@@ -64,6 +64,7 @@ export async function POST(req: NextRequest) {
         teamId: session.teamId,
       },
       success_url: `${BASE_URL}/team/dashboard?tokens_purchased=1`,
+      allow_promotion_codes: true,
       cancel_url: `${BASE_URL}/team/dashboard`,
     })
 

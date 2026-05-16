@@ -7,6 +7,7 @@ import CoachUploadForm from './CoachUploadForm'
 import TeamCoaches from './TeamCoaches'
 import InitiationPanel from '@/components/InitiationPanel'
 import PoolAssignPanel from '@/components/PoolAssignPanel'
+import TokenBalances from '@/components/TokenBalances'
 
 interface Team {
   id: string
@@ -307,6 +308,17 @@ export default function TeamDashboardClient({
           </div>
         </div>
       )}
+
+      {/* Token balances */}
+      <TokenBalances
+        players={members.map(m => ({
+          id: m.id,
+          label: m.first_name ? formatPlayerName(m.first_name, m.last_name_initial) : m.email,
+          tokens: m.tokens,
+        }))}
+        coachCredits={team.credits}
+        tokenPool={team.tokenPool}
+      />
 
       {/* Invite Players */}
       <div className="space-y-3">

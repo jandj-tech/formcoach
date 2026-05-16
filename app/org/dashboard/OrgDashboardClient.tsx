@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import OrgAddCoach from './OrgAddCoach'
 import InitiationPanel from '@/components/InitiationPanel'
 import PoolAssignPanel from '@/components/PoolAssignPanel'
+import TokenBalances from '@/components/TokenBalances'
 
 interface Member {
   id: string
@@ -451,6 +452,13 @@ export default function OrgDashboardClient({ teams, orgName }: Props) {
                       </p>
                     </div>
                   </div>
+
+                  {/* Token balances */}
+                  <TokenBalances
+                    players={team.members.map(m => ({ id: m.id, label: memberDisplayName(m), tokens: m.tokens }))}
+                    coachCredits={team.credits}
+                    tokenPool={team.tokenPool}
+                  />
 
                   {/* Buy-tokens section — only after the team is initiated */}
                   {team.initiated && (

@@ -441,9 +441,9 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
           </button>
         </div>
 
-        {/* Not logged in overlay */}
+        {/* Not logged in overlay — semi-transparent wash signals the zone is locked */}
         {notLoggedIn && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center px-6">
+          <div className="absolute inset-0 flex flex-col items-center justify-center px-6 bg-white/60 backdrop-blur-[1px] rounded-2xl">
             <div className="flex flex-col items-center gap-2.5 bg-white/85 backdrop-blur-sm border border-gray-200 shadow-xl rounded-2xl px-5 py-4">
               <p className="text-black font-black text-base sm:text-lg text-center leading-snug">
                 Create a free account to analyze your shot

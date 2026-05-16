@@ -6,10 +6,32 @@ export async function GET() {
   const session = await getSession()
   if (!session) return NextResponse.json({ user: null })
 
-  const [user] = await db`
-    SELECT id, email, subscription_type, subscription_expires_at, analysis_tokens
-    FROM users WHERE id = ${session.userId}
-  ` as unknown as [{ id: string; email: string; subscription_type: string | null; subscription_expires_at: string | null; analysis_tokens: number } | undefined]
+  type UserRow = {
+    id: string
+    email: string
+    subscription_type: string | null
+    subscription_expires_at: string | null
+    analysis_tokens?: number
+  }
+
+  // The analysis_tokens column may not exist yet if the DB migration
+  // hasn't been applied — fall back to the legacy column set so the
+  // session endpoint still works (same pattern as app/dashboard/page.tsx).
+  let user: UserRow | undefined
+  try {
+    ;[user] = (await db`
+      SELECT id, email, subscription_type, subscription_expires_at, analysis_tokens
+      FROM users WHERE id = ${session.userId}
+    `) as unknown as [UserRow | undefined]
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    if (!/analysis_tokens.*does not exist/i.test(msg)) throw err
+    console.warn('users.analysis_tokens column missing — run `npm run migrate`.')
+    ;[user] = (await db`
+      SELECT id, email, subscription_type, subscription_expires_at
+      FROM users WHERE id = ${session.userId}
+    `) as unknown as [UserRow | undefined]
+  }
 
   if (!user) return NextResponse.json({ user: null })
 

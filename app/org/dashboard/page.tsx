@@ -5,6 +5,7 @@ import TopNav from '@/components/TopNav'
 import InlineEdit from '@/components/InlineEdit'
 import OrgDashboardClient from './OrgDashboardClient'
 import LogoutButton from './LogoutButton'
+import type { ClassPackage } from './OrgDashboardClient'
 
 interface Member {
   id: string
@@ -45,6 +46,43 @@ export default async function OrgDashboardPage() {
   ` as unknown as [{ id: string; name: string; access_code: string } | undefined]
 
   if (!org) redirect('/login')
+
+  let classPackages: ClassPackage[] = []
+  try {
+    const pkgs = await db`
+      SELECT
+        p.id, p.player_count, p.price_per_player_cents, p.total_cents,
+        p.token_pool, p.status, p.created_at,
+        COUNT(e.id)::int AS enrolled_count,
+        COUNT(e.final_submission_id)::int AS completed_count
+      FROM org_class_packages p
+      LEFT JOIN org_class_enrollments e ON e.package_id = p.id
+      WHERE p.org_id = ${org.id}
+      GROUP BY p.id
+      ORDER BY p.created_at DESC
+    ` as unknown as Array<{
+      id: string; player_count: number; price_per_player_cents: number; total_cents: number
+      token_pool: number; status: string; created_at: string
+      enrolled_count: number; completed_count: number
+    }>
+
+    classPackages = await Promise.all(pkgs.map(async (pkg) => {
+      const enrollments = await db`
+        SELECT
+          e.id, e.user_id, e.first_name, e.last_name_initial,
+          e.first_score, e.final_score, e.display_final_score,
+          e.is_first_class, e.certificate_issued_at,
+          (e.first_submission_id IS NOT NULL) AS has_first,
+          (e.final_submission_id IS NOT NULL) AS has_final
+        FROM org_class_enrollments e
+        WHERE e.package_id = ${pkg.id}
+        ORDER BY e.created_at ASC
+      ` as unknown as ClassPackage['enrollments']
+      return { ...pkg, enrollments }
+    }))
+  } catch {
+    // table may not exist yet — run migration
+  }
 
   let teams: TeamData[] = []
 
@@ -140,7 +178,7 @@ export default async function OrgDashboardPage() {
           </p>
         </div>
 
-        <OrgDashboardClient teams={teams} orgName={org.name} />
+        <OrgDashboardClient teams={teams} orgName={org.name} classPackages={classPackages} />
       </div>
     </main>
   )

@@ -82,7 +82,7 @@ type DestMode = 'all' | 'specific' | 'coach'
 
 export default function OrgDashboardClient({ teams, orgName, classPackages, myUploads }: Props) {
   const router = useRouter()
-  const [expanded, setExpanded] = useState<string | null>(teams[0]?.id ?? null)
+  const [expanded, setExpanded] = useState<string | null>(null)
   const [destMode, setDestMode] = useState<Record<string, DestMode>>({})
   const [selected, setSelected] = useState<Record<string, boolean>>({})
   const [quantity, setQuantity] = useState<Record<string, number>>({})
@@ -101,7 +101,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   const [classPlayerCount, setClassPlayerCount] = useState(CLASS_MIN_PLAYERS)
   const [buyingClass, setBuyingClass] = useState(false)
   const [classError, setClassError] = useState('')
-  const [expandedPackage, setExpandedPackage] = useState<string | null>(classPackages[0]?.id ?? null)
+  const [expandedPackage, setExpandedPackage] = useState<string | null>(null)
   const [enrollOpen, setEnrollOpen] = useState<string | null>(null)
   const [enrollFirstName, setEnrollFirstName] = useState('')
   const [enrollLastInit, setEnrollLastInit] = useState('')

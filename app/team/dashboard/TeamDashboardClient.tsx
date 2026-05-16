@@ -99,8 +99,8 @@ export default function TeamDashboardClient({
   const [showCoaches, setShowCoaches] = useState(true)
   const [showPlayers, setShowPlayers] = useState(true)
   const [showLeaderboardSection, setShowLeaderboardSection] = useState(true)
-  const [showTeamInfo, setShowTeamInfo] = useState(true)
-  const [showMyUploads, setShowMyUploads] = useState(true)
+  const [showTeamInfo, setShowTeamInfo] = useState(false)
+  const [showMyUploads, setShowMyUploads] = useState(false)
   const [kicking, setKicking] = useState<string | null>(null)
   const [cancelling, setCancelling] = useState<string | null>(null)
 

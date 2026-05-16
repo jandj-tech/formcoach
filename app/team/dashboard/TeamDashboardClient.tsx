@@ -99,6 +99,10 @@ export default function TeamDashboardClient({
   const [quantity, setQuantity] = useState(10)
   const [loggingOut, setLoggingOut] = useState(false)
   const [showLeaderboard, setShowLeaderboard] = useState(false)
+  const [showInvite, setShowInvite] = useState(true)
+  const [showCoaches, setShowCoaches] = useState(true)
+  const [showPlayers, setShowPlayers] = useState(true)
+  const [showLeaderboardSection, setShowLeaderboardSection] = useState(true)
   const [kicking, setKicking] = useState<string | null>(null)
 
   // Add player form
@@ -349,39 +353,54 @@ export default function TeamDashboardClient({
       </div>
 
       {/* Invite Players */}
-      <div className="space-y-3">
-        <h2 className="text-base font-black text-black">Invite Players</h2>
-        <div className="bg-orange-50 border border-orange-200 rounded-2xl p-5 space-y-4">
-          <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Team code</p>
-            <p className="text-2xl font-black font-mono tracking-widest text-black mt-0.5">{team.accessCode}</p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Player signup link</p>
-            <div className="flex items-center gap-2 bg-white border border-gray-300 rounded-xl p-2.5">
-              <span className="flex-1 text-xs font-mono text-gray-600 truncate">{playerSignupLink}</span>
-              <button
-                onClick={copySignupLink}
-                className="shrink-0 text-sm font-semibold text-orange-500 hover:text-orange-400 transition-colors"
-              >
-                {copiedSignup ? 'Copied!' : 'Copy'}
-              </button>
-            </div>
-            <p className="text-xs text-gray-500 mt-1.5">
-              Share this link with players. They sign up, then enter their name to join your team.
-            </p>
-          </div>
+      <div className="bg-gray-50 rounded-2xl p-5 space-y-3">
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="text-base font-black text-black">Invite Players</h2>
+          <button onClick={() => setShowInvite(o => !o)} className="text-xs font-semibold text-gray-400 hover:text-black transition-colors">
+            {showInvite ? 'Hide ▲' : 'Show ▼'}
+          </button>
         </div>
+        {showInvite && (
+          <div className="bg-orange-50 border border-orange-200 rounded-2xl p-5 space-y-4">
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Team code</p>
+              <p className="text-2xl font-black font-mono tracking-widest text-black mt-0.5">{team.accessCode}</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Player signup link</p>
+              <div className="flex items-center gap-2 bg-white border border-gray-300 rounded-xl p-2.5">
+                <span className="flex-1 text-xs font-mono text-gray-600 truncate">{playerSignupLink}</span>
+                <button
+                  onClick={copySignupLink}
+                  className="shrink-0 text-sm font-semibold text-orange-500 hover:text-orange-400 transition-colors"
+                >
+                  {copiedSignup ? 'Copied!' : 'Copy'}
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-1.5">
+                Share this link with players. They sign up, then enter their name to join your team.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Coaches */}
-      <div className="bg-gray-50 rounded-2xl p-5">
-        <TeamCoaches
-          foundingCoachEmail={foundingCoachEmail}
-          foundingCoachNickname={foundingCoachNickname}
-          coaches={coaches}
-          myNickname={myNickname}
-        />
+      <div className="bg-gray-50 rounded-2xl p-5 space-y-3">
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="text-base font-black text-black">Coaches</h2>
+          <button onClick={() => setShowCoaches(o => !o)} className="text-xs font-semibold text-gray-400 hover:text-black transition-colors">
+            {showCoaches ? 'Hide ▲' : 'Show ▼'}
+          </button>
+        </div>
+        {showCoaches && (
+          <TeamCoaches
+            foundingCoachEmail={foundingCoachEmail}
+            foundingCoachNickname={foundingCoachNickname}
+            coaches={coaches}
+            myNickname={myNickname}
+          />
+        )}
       </div>
 
       {/* Upload a Shot for a Player */}
@@ -420,15 +439,22 @@ export default function TeamDashboardClient({
       <div className="bg-gray-50 rounded-2xl p-5 space-y-3">
         <div className="flex items-center justify-between gap-4">
           <h2 className="text-base font-black text-black">Players</h2>
-          <button
-            onClick={() => { setAddOpen(o => !o); setAddStatus('idle'); setAddError(''); setNewInviteUrl('') }}
-            className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
-          >
-            {addOpen ? 'Cancel' : 'Add Player'}
-          </button>
+          <div className="flex items-center gap-2">
+            {showPlayers && (
+              <button
+                onClick={() => { setAddOpen(o => !o); setAddStatus('idle'); setAddError(''); setNewInviteUrl('') }}
+                className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-3 py-1.5 rounded-xl text-sm transition-colors"
+              >
+                {addOpen ? 'Cancel' : 'Add Player'}
+              </button>
+            )}
+            <button onClick={() => setShowPlayers(o => !o)} className="text-xs font-semibold text-gray-400 hover:text-black transition-colors">
+              {showPlayers ? 'Hide ▲' : 'Show ▼'}
+            </button>
+          </div>
         </div>
 
-        {addOpen && (
+        {showPlayers && addOpen && (
           <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-3">
             <p className="text-sm text-gray-500">
               Add a player by name. You can optionally send them a link to create their account — once they sign up, they&apos;ll be automatically added to the team under this name.
@@ -479,7 +505,7 @@ export default function TeamDashboardClient({
           </div>
         )}
 
-        {members.length > 0 && (
+        {showPlayers && members.length > 0 && (
           <div className="space-y-1">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Joined with account</p>
             {members.map(m => (
@@ -506,7 +532,7 @@ export default function TeamDashboardClient({
           </div>
         )}
 
-        {pendingMembers.length > 0 && (
+        {showPlayers && pendingMembers.length > 0 && (
           <div className="space-y-1">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Added by coach (no account yet)</p>
             {pendingMembers.map(p => {
@@ -530,7 +556,7 @@ export default function TeamDashboardClient({
           </div>
         )}
 
-        {members.length === 0 && pendingMembers.length === 0 && (
+        {showPlayers && members.length === 0 && pendingMembers.length === 0 && (
           <p className="text-sm text-gray-400">No players yet. Add a player above or have them join using the team code: <span className="font-mono font-semibold text-gray-600">{team.accessCode}</span></p>
         )}
       </div>
@@ -539,22 +565,29 @@ export default function TeamDashboardClient({
       <div className="bg-gray-50 rounded-2xl p-5 space-y-4">
         <div className="flex items-center justify-between gap-4">
           <h2 className="text-base font-black text-black">Team Leaderboard</h2>
-          {leaderboard.length > 0 && (
-            <button
-              onClick={() => setShowLeaderboard(true)}
-              className="shrink-0 bg-white border border-gray-300 hover:border-orange-400 text-black font-bold text-sm px-4 py-2 rounded-xl transition-colors"
-            >
-              View full
+          <div className="flex items-center gap-2">
+            {showLeaderboardSection && leaderboard.length > 0 && (
+              <button
+                onClick={() => setShowLeaderboard(true)}
+                className="shrink-0 bg-white border border-gray-300 hover:border-orange-400 text-black font-bold text-sm px-3 py-1.5 rounded-xl transition-colors"
+              >
+                View full
+              </button>
+            )}
+            <button onClick={() => setShowLeaderboardSection(o => !o)} className="text-xs font-semibold text-gray-400 hover:text-black transition-colors">
+              {showLeaderboardSection ? 'Hide ▲' : 'Show ▼'}
             </button>
-          )}
-        </div>
-        {leaderboard.length === 0 ? (
-          <div className="text-center py-10 text-gray-400 border-2 border-dashed border-gray-200 rounded-2xl bg-white">
-            <p className="font-semibold">No shots analyzed yet</p>
-            <p className="text-sm mt-1">Upload a shot above to get started.</p>
           </div>
-        ) : (
-          <LeaderboardTable entries={leaderboard} />
+        </div>
+        {showLeaderboardSection && (
+          leaderboard.length === 0 ? (
+            <div className="text-center py-10 text-gray-400 border-2 border-dashed border-gray-200 rounded-2xl bg-white">
+              <p className="font-semibold">No shots analyzed yet</p>
+              <p className="text-sm mt-1">Upload a shot above to get started.</p>
+            </div>
+          ) : (
+            <LeaderboardTable entries={leaderboard} />
+          )
         )}
       </div>
 

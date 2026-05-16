@@ -74,22 +74,30 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
           <OverallBadge score={Number(analysis.overall_score)} />
         </div>
 
-        {/* Your shot video + analyzed frames — kept near the top so the player
-            sees their actual shot right after the score, not buried below. */}
-        {hasVideo && (
-          <div className="space-y-2">
-            <h2 className="text-black font-bold text-base">Your Shot</h2>
-            <video
-              src={analysis.video_url as string}
-              controls
-              playsInline
-              className="w-full rounded-xl bg-black border border-gray-200"
-            />
-          </div>
-        )}
+        {/* Your shot video beside the analyzed frames — kept near the top so
+            the player sees their shot right after the score. */}
+        {(hasFrames || hasVideo) && (
+          <div
+            className={
+              hasFrames && hasVideo
+                ? 'grid grid-cols-1 md:grid-cols-2 gap-6 items-start'
+                : ''
+            }
+          >
+            {hasFrames && <FrameViewer urls={frameUrls} compact={hasVideo} />}
 
-        {hasFrames && (
-          <FrameViewer urls={frameUrls} compact={false} />
+            {hasVideo && (
+              <div className="space-y-2">
+                <h2 className="text-black font-bold text-sm">Your Shot</h2>
+                <video
+                  src={analysis.video_url as string}
+                  controls
+                  playsInline
+                  className="w-full max-w-sm rounded-xl bg-black border border-gray-200"
+                />
+              </div>
+            )}
+          </div>
         )}
 
         <div className="space-y-3">

@@ -410,8 +410,8 @@ export default function VideoUploader({ teamMode }: { teamMode?: TeamMode } = {}
 
         {/* Not logged in overlay */}
         {notLoggedIn && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6">
-            <p className="text-black font-bold text-base text-center leading-snug">
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 bg-white/95 backdrop-blur-sm rounded-2xl">
+            <p className="text-black font-black text-xl sm:text-2xl text-center leading-snug">
               Create a free account to analyze your shot
             </p>
             <div className="flex gap-2">
@@ -433,8 +433,8 @@ export default function VideoUploader({ teamMode }: { teamMode?: TeamMode } = {}
 
         {/* No tokens overlay */}
         {noTokens && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6">
-            <p className="text-black font-bold text-base text-center leading-snug">
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 bg-white/95 backdrop-blur-sm rounded-2xl">
+            <p className="text-black font-black text-xl sm:text-2xl text-center leading-snug">
               Buy a token to analyze your shot
             </p>
             <button

@@ -5,7 +5,7 @@ import { signSession, sessionCookieOptions } from '@/lib/auth'
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, password, nickname, teamInviteToken } = await req.json()
+    const { email, password, nickname, teamInviteToken, claimToken } = await req.json()
     if (!email || !password || password.length < 6) {
       return NextResponse.json({ error: 'Email and password (6+ chars) required' }, { status: 400 })
     }
@@ -38,17 +38,19 @@ export async function POST(req: NextRequest) {
     // Link any existing anonymous submissions for this email
     await db`UPDATE submissions SET user_id = ${user.id} WHERE email = ${emailLower} AND user_id IS NULL`
 
-    // Carry over any analysis tokens that accumulated in email_list (e.g. from a ball purchase before account creation)
-    try {
-      const [emailEntry] = await db`
-        SELECT analysis_tokens FROM email_list WHERE email = ${emailLower}
-      ` as unknown as [{ analysis_tokens: number } | undefined]
-      if (emailEntry?.analysis_tokens && emailEntry.analysis_tokens > 0) {
-        await db`UPDATE users SET analysis_tokens = COALESCE(analysis_tokens, 0) + ${emailEntry.analysis_tokens} WHERE id = ${user.id}`
-        await db`UPDATE email_list SET analysis_tokens = 0 WHERE email = ${emailLower}`
+    // Redeem a one-time claim token from a ball purchase (token is independent of email)
+    if (claimToken) {
+      try {
+        const [claim] = await db`
+          SELECT analysis_tokens FROM email_list WHERE claim_token = ${claimToken}
+        ` as unknown as [{ analysis_tokens: number } | undefined]
+        if (claim?.analysis_tokens && claim.analysis_tokens > 0) {
+          await db`UPDATE users SET analysis_tokens = COALESCE(analysis_tokens, 0) + ${claim.analysis_tokens} WHERE id = ${user.id}`
+          await db`UPDATE email_list SET analysis_tokens = 0, claim_token = NULL WHERE claim_token = ${claimToken}`
+        }
+      } catch {
+        // Non-fatal
       }
-    } catch {
-      // Non-fatal
     }
 
     // If they registered via a coach invite link, claim their pending team spot

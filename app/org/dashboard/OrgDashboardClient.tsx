@@ -11,6 +11,12 @@ interface Member {
   tokens: number
 }
 
+interface Coach {
+  id: string
+  email: string
+  pending: boolean
+}
+
 interface TeamData {
   id: string
   name: string
@@ -19,6 +25,7 @@ interface TeamData {
   adminEmail: string
   credits: number
   members: Member[]
+  coaches: Coach[]
 }
 
 interface Props {
@@ -37,6 +44,7 @@ export default function OrgDashboardClient({ teams, orgName }: Props) {
   const [buying, setBuying] = useState(false)
   const [error, setError] = useState<Record<string, string>>({})
   const [copiedLink, setCopiedLink] = useState<Record<string, boolean>>({})
+  const [removingCoach, setRemovingCoach] = useState<string | null>(null)
 
   const BASE_URL = typeof window !== 'undefined' ? window.location.origin : 'https://learnhoops.com'
 
@@ -61,6 +69,23 @@ export default function OrgDashboardClient({ teams, orgName }: Props) {
       setCopiedLink(prev => ({ ...prev, [teamId]: true }))
       setTimeout(() => setCopiedLink(prev => ({ ...prev, [teamId]: false })), 2000)
     })
+  }
+
+  async function removeCoach(coachId: string, pending: boolean) {
+    if (!confirm(pending ? 'Cancel this coach invite?' : 'Remove this coach from the team?')) return
+    setRemovingCoach(coachId)
+    try {
+      const res = await fetch('/api/org/remove-coach', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ coachId }),
+      })
+      if (!res.ok) throw new Error('Failed')
+      router.refresh()
+    } catch {
+      setRemovingCoach(null)
+      alert('Could not remove that coach. Please try again.')
+    }
   }
 
   async function addTeam(e: React.FormEvent) {
@@ -276,8 +301,30 @@ export default function OrgDashboardClient({ teams, orgName }: Props) {
                   {/* Roster — coach, players, and the player signup link */}
                   <div className="space-y-3">
                     <div>
-                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Coach</p>
-                      <p className="text-sm text-black mt-0.5">{team.adminEmail}</p>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Coaches</p>
+                      <div className="mt-1 border border-gray-100 rounded-xl divide-y divide-gray-100">
+                        <div className="flex items-center justify-between gap-3 px-3 py-2">
+                          <span className="text-sm font-semibold text-black truncate">{team.adminEmail}</span>
+                          <span className="shrink-0 text-xs bg-orange-100 text-orange-700 font-bold px-2 py-0.5 rounded-full">Head coach</span>
+                        </div>
+                        {team.coaches.map(c => (
+                          <div key={c.id} className="flex items-center justify-between gap-3 px-3 py-2">
+                            <span className="text-sm font-semibold text-black truncate">{c.email}</span>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${c.pending ? 'bg-gray-100 text-gray-500' : 'bg-green-100 text-green-700'}`}>
+                                {c.pending ? 'Invite pending' : 'Coach'}
+                              </span>
+                              <button
+                                onClick={() => removeCoach(c.id, c.pending)}
+                                disabled={removingCoach === c.id}
+                                className="text-xs font-semibold text-gray-400 hover:text-red-500 disabled:opacity-50 transition-colors"
+                              >
+                                {removingCoach === c.id ? '…' : c.pending ? 'Cancel' : 'Remove'}
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">

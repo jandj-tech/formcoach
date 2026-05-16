@@ -37,8 +37,8 @@ export default function TeamLandingPage() {
       </div>
 
       {/* Black CTA band */}
-      <div className="bg-black w-full py-16 flex flex-col items-center gap-6 text-center px-6">
-        <p className="text-white text-xl font-black max-w-md">Ready to take your organization to the next level?</p>
+      <div className="bg-gray-100 w-full py-16 flex flex-col items-center gap-6 text-center px-6">
+        <p className="text-black text-xl font-black max-w-md">Ready to take your organization to the next level?</p>
         <div className="flex flex-col sm:flex-row gap-4">
           <Link
             href="/org/signup"
@@ -48,7 +48,7 @@ export default function TeamLandingPage() {
           </Link>
           <Link
             href="/login"
-            className="bg-white hover:bg-gray-100 text-black font-bold px-8 py-3 rounded-xl transition-colors"
+            className="bg-white border border-gray-300 hover:border-orange-400 text-black font-bold px-8 py-3 rounded-xl transition-colors"
           >
             Log In
           </Link>

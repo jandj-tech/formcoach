@@ -77,6 +77,7 @@ export default function MobileNav({
         className={`md:hidden fixed top-0 right-0 z-50 h-dvh w-72 max-w-[85vw] bg-black border-l border-zinc-800 transform transition-transform duration-200 ease-out flex flex-col ${
           open ? 'translate-x-0' : 'translate-x-full'
         }`}
+
       >
         <div className="flex items-center justify-between h-16 px-4 border-b border-zinc-800">
           <span className="text-white text-sm font-semibold">Menu</span>

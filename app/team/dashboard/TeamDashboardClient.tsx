@@ -95,11 +95,14 @@ export default function TeamDashboardClient({
   const [quantity, setQuantity] = useState(10)
   const [loggingOut, setLoggingOut] = useState(false)
   const [showLeaderboard, setShowLeaderboard] = useState(false)
-  const [showInvite, setShowInvite] = useState(true)
-  const [showCoaches, setShowCoaches] = useState(true)
-  const [showPlayers, setShowPlayers] = useState(true)
-  const [showLeaderboardSection, setShowLeaderboardSection] = useState(true)
+  const [showInvite, setShowInvite] = useState(false)
+  const [showCoaches, setShowCoaches] = useState(false)
+  const [showPlayers, setShowPlayers] = useState(false)
+  const [showLeaderboardSection, setShowLeaderboardSection] = useState(false)
+  const [showTeamInfo, setShowTeamInfo] = useState(false)
+  const [showMyUploads, setShowMyUploads] = useState(false)
   const [kicking, setKicking] = useState<string | null>(null)
+  const [cancelling, setCancelling] = useState<string | null>(null)
 
   // Add player form
   const [addOpen, setAddOpen] = useState(false)
@@ -153,6 +156,23 @@ export default function TeamDashboardClient({
     } catch {
       setKicking(null)
       alert('Could not remove that player. Please try again.')
+    }
+  }
+
+  async function cancelPendingPlayer(playerId: string) {
+    if (!confirm('Cancel this player? They were added by name and haven’t joined yet.')) return
+    setCancelling(playerId)
+    try {
+      const res = await fetch('/api/team/remove-pending-player', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playerId }),
+      })
+      if (!res.ok) throw new Error('Failed')
+      router.refresh()
+    } catch {
+      setCancelling(null)
+      alert('Could not cancel that player. Please try again.')
     }
   }
 
@@ -277,11 +297,26 @@ export default function TeamDashboardClient({
         <button
           onClick={logout}
           disabled={loggingOut}
-          className="text-gray-400 hover:text-gray-600 text-sm transition-colors shrink-0"
+          className="bg-orange-500 hover:bg-red-500 disabled:opacity-60 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors shrink-0"
         >
           {loggingOut ? 'Logging out...' : 'Log out'}
         </button>
       </div>
+
+      {/* Team Information — one collapsible section wrapping everything but My Uploads */}
+      <div className="border border-gray-200 rounded-2xl overflow-hidden">
+        <button
+          onClick={() => setShowTeamInfo(o => !o)}
+          className="w-full flex items-center justify-between gap-4 px-5 py-4 bg-gray-50 hover:bg-orange-50 transition-colors text-left"
+        >
+          <div>
+            <p className="font-bold text-black">Team Information</p>
+            <p className="text-xs text-gray-500 mt-0.5">Credits, players, coaches &amp; leaderboard</p>
+          </div>
+          <span className="text-gray-400 text-lg">{showTeamInfo ? '−' : '+'}</span>
+        </button>
+        {showTeamInfo && (
+          <div className="p-4 space-y-6">
 
       {/* Credits & Pool */}
       <div className="bg-gray-50 rounded-2xl p-5 space-y-4">
@@ -405,26 +440,6 @@ export default function TeamDashboardClient({
         <CoachUploadForm accessCode={team.accessCode} members={uploadableMembers} />
       </div>
 
-      {/* My Uploads — your own analyzed shots (upload happens on the Analyze page) */}
-      <div className="bg-gray-50 rounded-2xl p-5 space-y-3">
-        <div className="flex items-center justify-between gap-4">
-          <h2 className="text-base font-black text-black">My Uploads</h2>
-          <Link
-            href="/analyze"
-            className="shrink-0 bg-orange-500 hover:bg-orange-400 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors"
-          >
-            Analyze a shot →
-          </Link>
-        </div>
-        {myUploads.length > 0 ? (
-          <PlayerShotList shots={myUploads} />
-        ) : (
-          <p className="text-sm text-gray-400">
-            You haven&apos;t analyzed any of your own shots yet — use the Analyze page to start.
-          </p>
-        )}
-      </div>
-
       {/* Players */}
       <div className="bg-gray-50 rounded-2xl p-5 space-y-3">
         <div className="flex items-center justify-between gap-4">
@@ -540,6 +555,13 @@ export default function TeamDashboardClient({
                       {copiedId === p.id ? 'Copied!' : 'Copy invite link'}
                     </button>
                   )}
+                  <button
+                    onClick={() => cancelPendingPlayer(p.id)}
+                    disabled={cancelling === p.id}
+                    className="text-xs font-semibold text-gray-400 hover:text-red-500 disabled:opacity-50 transition-colors shrink-0"
+                  >
+                    {cancelling === p.id ? 'Cancelling…' : 'Cancel'}
+                  </button>
                 </div>
               )
             })}
@@ -607,6 +629,45 @@ export default function TeamDashboardClient({
           </div>
         </div>
       )}
+
+          </div>
+        )}
+      </div>
+
+      {/* My Uploads — separate collapsible section */}
+      <div className="border border-gray-200 rounded-2xl overflow-hidden">
+        <button
+          onClick={() => setShowMyUploads(o => !o)}
+          className="w-full flex items-center justify-between gap-4 px-5 py-4 bg-gray-50 hover:bg-orange-50 transition-colors text-left"
+        >
+          <div>
+            <p className="font-bold text-black">My Uploads</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {myUploads.length} of your own analyzed shot{myUploads.length !== 1 ? 's' : ''}
+            </p>
+          </div>
+          <span className="text-gray-400 text-lg">{showMyUploads ? '−' : '+'}</span>
+        </button>
+        {showMyUploads && (
+          <div className="p-4 space-y-3">
+            <div className="flex justify-end">
+              <Link
+                href="/analyze"
+                className="shrink-0 bg-orange-500 hover:bg-orange-400 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors"
+              >
+                Analyze a shot →
+              </Link>
+            </div>
+            {myUploads.length > 0 ? (
+              <PlayerShotList shots={myUploads} />
+            ) : (
+              <p className="text-sm text-gray-400">
+                You haven&apos;t analyzed any of your own shots yet — use the Analyze page to start.
+              </p>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Full-screen leaderboard popup with print — portaled to <body> so the
           printout isn't preceded by blank pages of (hidden) dashboard content. */}

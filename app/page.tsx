@@ -75,18 +75,18 @@ export default async function HomePage() {
       </section>
 
       {/* Teams using the software */}
-      <section className="px-4 py-6 max-w-3xl mx-auto w-full">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider text-center mb-4">Used by teams &amp; academies</p>
-        <div className="flex flex-wrap justify-center gap-3">
+      <section className="px-4 py-10 max-w-3xl mx-auto w-full">
+        <p className="text-sm font-semibold text-gray-400 uppercase tracking-wider text-center mb-6">Used by teams &amp; academies</p>
+        <div className="flex flex-wrap justify-center gap-4">
           {[
-            { name: 'Maple Basketball', location: 'Toronto, ON' },
+            { name: 'Maple Basketball', location: 'Vaughan, ON', logo: '/maple-basketball-logo.png' },
           ].map((org) => (
-            <div key={org.name} className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-full px-4 py-2">
-              <div className="w-5 h-5 rounded-full bg-orange-500 flex items-center justify-center text-white text-xs font-black shrink-0">
-                {org.name.charAt(0)}
+            <div key={org.name} className="flex items-center gap-4 bg-white border border-gray-200 rounded-2xl px-6 py-4 shadow-sm">
+              <img src={org.logo} alt={org.name + ' logo'} className="w-14 h-14 object-contain rounded-xl" />
+              <div>
+                <p className="text-black text-base font-black leading-tight">{org.name}</p>
+                <p className="text-gray-400 text-sm">{org.location}</p>
               </div>
-              <span className="text-black text-sm font-semibold">{org.name}</span>
-              <span className="text-gray-400 text-xs">{org.location}</span>
             </div>
           ))}
         </div>

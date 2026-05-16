@@ -9,7 +9,7 @@ const organizations = [
   {
     name: 'Maple Basketball',
     type: 'Training Academy',
-    location: 'Toronto, ON',
+    location: 'Vaughan, ON',
     description: 'Uses LearnHoops.com to give every player in their development program instant AI shot feedback after each session.',
   },
 ]

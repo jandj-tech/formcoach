@@ -36,14 +36,14 @@ interface TeamData {
 
 export default async function OrgDashboardPage() {
   const session = await getOrgSession()
-  if (!session) redirect('/org/login')
+  if (!session) redirect('/login')
 
   const [org] = await db`
     SELECT id, name, access_code
     FROM organizations WHERE id = ${session.orgId}
   ` as unknown as [{ id: string; name: string; access_code: string } | undefined]
 
-  if (!org) redirect('/org/login')
+  if (!org) redirect('/login')
 
   let teams: TeamData[] = []
 

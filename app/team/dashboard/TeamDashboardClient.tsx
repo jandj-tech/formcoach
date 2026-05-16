@@ -118,7 +118,7 @@ export default function TeamDashboardClient({
   async function logout() {
     setLoggingOut(true)
     await fetch('/api/team/logout', { method: 'POST' })
-    router.push('/team/login')
+    router.push('/login')
   }
 
   async function kickMember(userId: string) {

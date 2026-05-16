@@ -6,14 +6,14 @@ import TeamDashboardClient from './TeamDashboardClient'
 
 export default async function TeamDashboardPage() {
   const session = await getTeamSession()
-  if (!session) redirect('/team/login')
+  if (!session) redirect('/login')
 
   const [team] = await db`
     SELECT id, name, access_code, admin_email, credits
     FROM teams WHERE id = ${session.teamId}
   ` as unknown as [{ id: string; name: string; access_code: string; admin_email: string; credits: number } | undefined]
 
-  if (!team) redirect('/team/login')
+  if (!team) redirect('/login')
 
   const allTeams = await db`
     SELECT id, name FROM teams WHERE admin_email = ${session.adminEmail} AND password_hash IS NOT NULL ORDER BY name ASC

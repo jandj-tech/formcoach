@@ -97,7 +97,7 @@ export default function OrgSignupPage() {
 
           <p className="text-center text-sm text-gray-500">
             Already registered?{' '}
-            <a href="/org/login" className="text-orange-500 hover:underline font-medium">Log in</a>
+            <a href="/login" className="text-orange-500 hover:underline font-medium">Log in</a>
           </p>
         </div>
       </div>

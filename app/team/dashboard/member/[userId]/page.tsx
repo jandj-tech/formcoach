@@ -8,7 +8,7 @@ import PlayerShotList from '@/components/PlayerShotList'
 // Coach view of a roster player's analyzed shots.
 export default async function TeamMemberShotsPage({ params }: { params: Promise<{ userId: string }> }) {
   const session = await getTeamSession()
-  if (!session) redirect('/team/login')
+  if (!session) redirect('/login')
 
   const { userId } = await params
 

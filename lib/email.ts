@@ -461,7 +461,7 @@ export async function sendPromoEmail(to: string) {
 }
 
 export async function sendCoachAddedEmail(to: string, orgName: string, teamName: string) {
-  const link = `${BASE_URL}/team/login`
+  const link = `${BASE_URL}/login`
   await getResend().emails.send({
     from: FROM,
     to,

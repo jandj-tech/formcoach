@@ -18,14 +18,14 @@ export async function proxy(req: NextRequest) {
   if (pathname.startsWith('/team/dashboard')) {
     const session = await getTeamSessionFromRequest(req)
     if (!session) {
-      return NextResponse.redirect(new URL('/team/login', req.url))
+      return NextResponse.redirect(new URL('/login', req.url))
     }
   }
 
   if (pathname.startsWith('/org/dashboard')) {
     const session = await getOrgSessionFromRequest(req)
     if (!session) {
-      return NextResponse.redirect(new URL('/org/login', req.url))
+      return NextResponse.redirect(new URL('/login', req.url))
     }
   }
 

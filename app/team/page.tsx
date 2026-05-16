@@ -64,16 +64,10 @@ export default function TeamLandingPage() {
             Register Organization
           </Link>
           <Link
-            href="/org/login"
+            href="/login"
             className="bg-white border border-gray-300 hover:border-orange-400 text-black font-bold px-8 py-3 rounded-xl transition-colors"
           >
-            Organization Login
-          </Link>
-          <Link
-            href="/team/login"
-            className="bg-white border border-gray-300 hover:border-gray-400 text-black font-bold px-8 py-3 rounded-xl transition-colors"
-          >
-            Coach Login
+            Log In
           </Link>
         </div>
 

@@ -7,7 +7,7 @@ import TopNav from '@/components/TopNav'
 // Coach/team-admin view of a single player's analyzed shots and scores.
 export default async function TeamPlayerPage({ params }: { params: Promise<{ playerId: string }> }) {
   const session = await getTeamSession()
-  if (!session) redirect('/team/login')
+  if (!session) redirect('/login')
 
   const { playerId } = await params
 

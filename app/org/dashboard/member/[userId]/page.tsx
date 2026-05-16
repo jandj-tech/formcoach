@@ -8,7 +8,7 @@ import PlayerShotList from '@/components/PlayerShotList'
 // Org-admin view of a player's analyzed shots — the player must be on a team in the org.
 export default async function OrgMemberShotsPage({ params }: { params: Promise<{ userId: string }> }) {
   const session = await getOrgSession()
-  if (!session) redirect('/org/login')
+  if (!session) redirect('/login')
 
   const { userId } = await params
 

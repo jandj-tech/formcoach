@@ -58,6 +58,13 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
   return (
     <main className="min-h-screen bg-white">
       <div className="max-w-3xl mx-auto w-full px-6 py-10 space-y-8">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-orange-500 hover:text-orange-400 transition-colors"
+        >
+          <span aria-hidden>←</span> Back to LearnHoops
+        </Link>
+
         {/* Shop CTA — moved to the top so it's the first thing players see after opening their analysis. */}
         <div className="bg-orange-50 border border-orange-200 rounded-2xl p-6 sm:p-8 text-center">
           <h2 className="text-black font-black text-xl sm:text-2xl mb-2">

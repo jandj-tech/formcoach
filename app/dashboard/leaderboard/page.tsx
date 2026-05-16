@@ -3,11 +3,12 @@ import Link from 'next/link'
 import { getSession } from '@/lib/auth'
 import { db } from '@/lib/db'
 import TopNav from '@/components/TopNav'
+import PrintButton from '@/components/PrintButton'
 
 type LeaderboardEntry = {
   id: string
   first_name: string
-  last_name_initial: string
+  last_name_initial: string | null
   best_score: number | string
   upload_count: number
 }
@@ -47,17 +48,44 @@ export default async function TeamLeaderboardPage() {
   // Not on a team — nothing to rank, send them back to the dashboard.
   if (!team) redirect('/dashboard')
 
+  // The leaderboard combines two kinds of shots: players who joined with an
+  // account (matched by submissions.user_id) and players a coach uploaded for
+  // by name (matched by submissions.team_player_id).
   let leaderboard: LeaderboardEntry[] = []
   try {
     leaderboard = (await db`
-      SELECT tp.id, tp.first_name, tp.last_name_initial,
-        MAX(a.overall_score) AS best_score,
-        COUNT(s.id)::int AS upload_count
-      FROM team_players tp
-      JOIN submissions s ON s.team_player_id = tp.id AND s.team_id = tp.team_id
-      JOIN analyses a ON a.submission_id = s.id
-      WHERE tp.team_id = ${team.id} AND s.status = 'complete'
-      GROUP BY tp.id, tp.first_name, tp.last_name_initial
+      WITH shots AS (
+        SELECT
+          u.id::text AS player_id,
+          COALESCE(NULLIF(tm.first_name, ''), u.email) AS name,
+          tm.last_name_initial,
+          a.overall_score,
+          s.id AS sid
+        FROM team_memberships tm
+        JOIN users u ON u.id = tm.user_id
+        JOIN submissions s ON s.user_id = u.id
+        JOIN analyses a ON a.submission_id = s.id
+        WHERE tm.team_id = ${team.id} AND s.status = 'complete'
+        UNION ALL
+        SELECT
+          tp.id::text AS player_id,
+          tp.first_name AS name,
+          tp.last_name_initial,
+          a.overall_score,
+          s.id AS sid
+        FROM team_players tp
+        JOIN submissions s ON s.team_player_id = tp.id AND s.team_id = tp.team_id
+        JOIN analyses a ON a.submission_id = s.id
+        WHERE tp.team_id = ${team.id} AND s.status = 'complete'
+      )
+      SELECT
+        player_id AS id,
+        name AS first_name,
+        last_name_initial,
+        MAX(overall_score) AS best_score,
+        COUNT(sid)::int AS upload_count
+      FROM shots
+      GROUP BY player_id, name, last_name_initial
       ORDER BY best_score DESC
     `) as unknown as LeaderboardEntry[]
   } catch (err) {
@@ -66,14 +94,19 @@ export default async function TeamLeaderboardPage() {
 
   return (
     <main className="min-h-screen bg-white flex flex-col">
-      <TopNav />
+      <div className="print:hidden">
+        <TopNav />
+      </div>
       <div className="max-w-3xl mx-auto w-full px-6 py-10 space-y-6">
-        <div>
-          <Link href="/dashboard" className="text-sm text-orange-500 hover:underline font-medium">
-            ← Back to dashboard
-          </Link>
-          <h1 className="text-2xl font-black text-black mt-2">{team.name} Leaderboard</h1>
-          <p className="text-gray-500 text-sm mt-1">Best shot score for each player on your team</p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <Link href="/dashboard" className="text-sm text-orange-500 hover:underline font-medium print:hidden">
+              ← Back to dashboard
+            </Link>
+            <h1 className="text-2xl font-black text-black mt-2">{team.name} Leaderboard</h1>
+            <p className="text-gray-500 text-sm mt-1">Best shot score for each player on your team</p>
+          </div>
+          {leaderboard.length > 0 && <PrintButton label="Print" />}
         </div>
 
         {leaderboard.length === 0 ? (

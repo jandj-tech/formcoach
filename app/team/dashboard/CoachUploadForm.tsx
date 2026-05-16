@@ -115,7 +115,7 @@ export default function CoachUploadForm({ accessCode, members }: Props) {
             teamMode={{
               code: accessCode,
               firstName: (selected.first_name ?? selected.email.split('@')[0]).trim(),
-              lastInitial: (selected.last_name_initial ?? '?').charAt(0).toUpperCase(),
+              lastName: selected.last_name_initial ?? '?',
               onSuccess: handleSuccess,
             }}
           />

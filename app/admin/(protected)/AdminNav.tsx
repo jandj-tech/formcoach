@@ -9,6 +9,7 @@ const ADMIN_TABS = [
   { href: '/admin', label: 'Dashboard' },
   { href: '/admin/submissions', label: 'Submissions' },
   { href: '/admin/accounts', label: 'Accounts' },
+  { href: '/admin/organizations', label: 'Organizations' },
   { href: '/admin/criteria', label: 'Criteria' },
   { href: '/admin/learn', label: 'Learn Mode' },
   { href: '/admin/emails', label: 'Emails' },

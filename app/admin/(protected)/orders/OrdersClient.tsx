@@ -169,7 +169,7 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
               <th className="text-left px-4 py-3">Shipping address</th>
               <th className="text-left px-4 py-3">Status</th>
               <th className="text-left px-4 py-3">Date</th>
-              <th className="px-4 py-3"></th>
+              <th className="text-left px-4 py-3">Label</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-800/50">
@@ -285,6 +285,57 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
           </tbody>
         </table>
       </div>
+
+      {/* Labels section */}
+      {ballOrders.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-lg font-black text-white">Labels</h2>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {ballOrders.map(o => {
+              const cityLine = [o.shipping_city, o.shipping_state, o.shipping_postal_code].filter(Boolean).join(', ')
+              const isPending = o.status !== 'shipped'
+              return (
+                <div
+                  key={o.id}
+                  className={`bg-zinc-900 border rounded-xl p-4 space-y-3 ${isPending ? 'border-zinc-700' : 'border-zinc-800 opacity-60'}`}
+                >
+                  {/* Address block */}
+                  <div className="space-y-0.5">
+                    <div className="text-white font-bold text-sm">{o.shipping_name || o.customer_name || '—'}</div>
+                    {o.shipping_line1 && <div className="text-zinc-300 text-xs">{o.shipping_line1}</div>}
+                    {o.shipping_line2 && <div className="text-zinc-400 text-xs">{o.shipping_line2}</div>}
+                    {cityLine && <div className="text-zinc-300 text-xs">{cityLine}</div>}
+                    {o.shipping_country && <div className="text-zinc-400 text-xs">{o.shipping_country}</div>}
+                  </div>
+
+                  {/* Order details */}
+                  <div className="flex gap-3 text-xs text-zinc-400">
+                    <span className="text-orange-400 font-semibold">
+                      {o.variant === 'left' ? 'Left-handed' : 'Right-handed'}
+                      {o.size ? ` · Size ${o.size}` : ''}
+                    </span>
+                    {isPending ? (
+                      <span className="text-yellow-400">Pending</span>
+                    ) : (
+                      <span className="text-green-400">Shipped</span>
+                    )}
+                  </div>
+
+                  {/* Print label link */}
+                  <Link
+                    href={`/admin/label/${o.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
+                  >
+                    Print Label →
+                  </Link>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

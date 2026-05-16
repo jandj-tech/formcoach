@@ -28,7 +28,7 @@ export default function CoachUploadForm({ accessCode, members }: Props) {
   const filtered = members.filter(m => {
     const q = search.toLowerCase()
     const name = `${m.first_name ?? ''} ${m.last_name_initial ?? ''}`.toLowerCase()
-    return name.includes(q) || m.email.toLowerCase().includes(q)
+    return name.includes(q)
   })
 
   function selectMember(m: Member) {
@@ -78,7 +78,7 @@ export default function CoachUploadForm({ accessCode, members }: Props) {
         <div className="space-y-3">
           <input
             type="text"
-            placeholder="Search by name or email..."
+            placeholder="Search by name..."
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2.5 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors text-sm"

@@ -16,6 +16,7 @@ interface TeamData {
   name: string
   ageGroup: string | null
   accessCode: string
+  adminEmail: string
   credits: number
   members: Member[]
 }
@@ -35,6 +36,9 @@ export default function OrgDashboardClient({ teams, orgName }: Props) {
   const [quantity, setQuantity] = useState<Record<string, number>>({})
   const [buying, setBuying] = useState(false)
   const [error, setError] = useState<Record<string, string>>({})
+  const [copiedLink, setCopiedLink] = useState<Record<string, boolean>>({})
+
+  const BASE_URL = typeof window !== 'undefined' ? window.location.origin : 'https://learnhoops.com'
 
   const [addOpen, setAddOpen] = useState(false)
   const [newName, setNewName] = useState('')
@@ -50,6 +54,13 @@ export default function OrgDashboardClient({ teams, orgName }: Props) {
 
   function getQty(teamId: string): number {
     return quantity[teamId] ?? 1
+  }
+
+  function copyLink(teamId: string, accessCode: string) {
+    navigator.clipboard.writeText(`${BASE_URL}/signup?teamCode=${accessCode}`).then(() => {
+      setCopiedLink(prev => ({ ...prev, [teamId]: true }))
+      setTimeout(() => setCopiedLink(prev => ({ ...prev, [teamId]: false })), 2000)
+    })
   }
 
   async function addTeam(e: React.FormEvent) {
@@ -262,6 +273,48 @@ export default function OrgDashboardClient({ teams, orgName }: Props) {
 
               {isOpen && (
                 <div className="px-5 py-4 space-y-4">
+                  {/* Roster — coach, players, and the player signup link */}
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Coach</p>
+                      <p className="text-sm text-black mt-0.5">{team.adminEmail}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                        Players ({team.members.length})
+                      </p>
+                      {team.members.length === 0 ? (
+                        <p className="text-sm text-gray-400 mt-0.5">No players have joined yet.</p>
+                      ) : (
+                        <div className="mt-1 border border-gray-100 rounded-xl divide-y divide-gray-100">
+                          {team.members.map(m => (
+                            <div key={m.id} className="flex items-center justify-between gap-3 px-3 py-2">
+                              <span className="text-sm font-semibold text-black">{memberDisplayName(m)}</span>
+                              <span className="text-xs text-gray-400 truncate">{m.email}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Player signup link</p>
+                      <div className="flex items-center gap-2 bg-gray-50 border border-gray-300 rounded-xl p-2.5">
+                        <span className="flex-1 text-xs font-mono text-gray-600 truncate">
+                          {BASE_URL}/signup?teamCode={team.accessCode}
+                        </span>
+                        <button
+                          onClick={() => copyLink(team.id, team.accessCode)}
+                          className="shrink-0 text-sm font-semibold text-orange-500 hover:text-orange-400 transition-colors"
+                        >
+                          {copiedLink[team.id] ? 'Copied!' : 'Copy'}
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1">
+                        Players open this link, sign up with the code pre-filled, then enter their name to join.
+                      </p>
+                    </div>
+                  </div>
+
                   {/* Destination mode picker */}
                   <div className="space-y-1">
                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Send tokens to</p>

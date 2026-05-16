@@ -23,6 +23,7 @@ export default async function TeamDashboardPage() {
     id: string
     first_name: string
     last_name_initial: string
+    kind: 'member' | 'player'
     best_score: number
     upload_count: number
   }> = []
@@ -52,7 +53,7 @@ export default async function TeamDashboardPage() {
           u.id::text AS player_id,
           COALESCE(NULLIF(tm.first_name, ''), u.email) AS first_name,
           COALESCE(tm.last_name_initial, '') AS last_name_initial,
-          a.overall_score, s.id AS sid
+          a.overall_score, s.id AS sid, 'member' AS kind
         FROM team_memberships tm
         JOIN users u ON u.id = tm.user_id
         JOIN submissions s ON s.user_id = u.id
@@ -61,18 +62,18 @@ export default async function TeamDashboardPage() {
         UNION ALL
         SELECT
           tp.id::text AS player_id, tp.first_name, tp.last_name_initial,
-          a.overall_score, s.id AS sid
+          a.overall_score, s.id AS sid, 'player' AS kind
         FROM team_players tp
         JOIN submissions s ON s.team_player_id = tp.id AND s.team_id = tp.team_id
         JOIN analyses a ON a.submission_id = s.id
         WHERE tp.team_id = ${team.id} AND s.status = 'complete'
       )
       SELECT
-        player_id AS id, first_name, last_name_initial,
+        player_id AS id, first_name, last_name_initial, kind,
         MAX(overall_score) AS best_score,
         COUNT(sid)::int AS upload_count
       FROM shots
-      GROUP BY player_id, first_name, last_name_initial
+      GROUP BY player_id, first_name, last_name_initial, kind
       ORDER BY best_score DESC
     `) as unknown as typeof leaderboard
 

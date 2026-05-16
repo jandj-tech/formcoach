@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
+import PasswordInput from '@/components/PasswordInput'
 
 export default function AdminLoginPage() {
   const [password, setPassword] = useState('')
@@ -42,13 +43,12 @@ export default function AdminLoginPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            type="password"
+          <PasswordInput
             placeholder="Admin password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 text-white placeholder-white focus:outline-none focus:border-orange-500 transition-colors"
+            className="w-full bg-zinc-900 border border-zinc-700 rounded-xl pl-4 pr-11 py-3 text-white placeholder-white focus:outline-none focus:border-orange-500 transition-colors"
           />
           {error && <p className="text-red-500 text-sm">{error}</p>}
           <button

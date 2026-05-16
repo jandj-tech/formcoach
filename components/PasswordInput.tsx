@@ -3,7 +3,9 @@
 import { useState } from 'react'
 
 // A password input with an eye icon inside the field to show/hide the value.
-export default function PasswordInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
+// Pass `className` to override the default (light) field styling — keep `pr-11`
+// so the text never runs under the eye icon.
+export default function PasswordInput({ className, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
   const [show, setShow] = useState(false)
 
   return (
@@ -11,7 +13,7 @@ export default function PasswordInput(props: React.InputHTMLAttributes<HTMLInput
       <input
         {...props}
         type={show ? 'text' : 'password'}
-        className="w-full bg-white border border-gray-300 rounded-xl pl-4 pr-11 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
+        className={className ?? 'w-full bg-white border border-gray-300 rounded-xl pl-4 pr-11 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors'}
       />
       <button
         type="button"

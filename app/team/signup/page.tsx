@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import TopNav from '@/components/TopNav'
+import PasswordInput from '@/components/PasswordInput'
 
 export default function TeamSignupPage() {
   const router = useRouter()
@@ -81,22 +82,18 @@ export default function TeamSignupPage() {
               onChange={e => setEmail(e.target.value)}
               className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
             />
-            <input
-              type="password"
+            <PasswordInput
               required
               minLength={6}
               placeholder="Password (6+ characters)"
               value={password}
               onChange={e => setPassword(e.target.value)}
-              className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
             />
-            <input
-              type="password"
+            <PasswordInput
               required
               placeholder="Confirm password"
               value={confirm}
               onChange={e => setConfirm(e.target.value)}
-              className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
             />
             <input
               type="text"

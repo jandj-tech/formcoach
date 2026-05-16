@@ -15,7 +15,7 @@ export default function SupportPage() {
     <main className="min-h-screen bg-gray-50 flex flex-col">
       <TopNav />
       <div className="flex-1 flex items-center justify-center px-6 py-20">
-        <div className="w-full max-w-md text-center space-y-6">
+        <div className="w-full max-w-2xl text-center space-y-6">
           {/* Logo — on a dark panel so it stays visible on the white page */}
           <div className="inline-flex items-center justify-center bg-black rounded-2xl px-8 py-6">
             <Image

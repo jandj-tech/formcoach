@@ -10,11 +10,13 @@ interface Props {
 }
 
 type Stage = 'name' | 'upload' | 'done'
+type NameFormat = 'initial' | 'full'
 
 export default function TeamUploadClient({ teamName, teamCode, initialCredits }: Props) {
   const [stage, setStage] = useState<Stage>(initialCredits > 0 ? 'name' : 'no-credits' as Stage)
   const [firstName, setFirstName] = useState('')
-  const [lastInitial, setLastInitial] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [nameFormat, setNameFormat] = useState<NameFormat>('initial')
   const [nameError, setNameError] = useState('')
   const [submissionId, setSubmissionId] = useState<string | null>(null)
 
@@ -44,7 +46,7 @@ export default function TeamUploadClient({ teamName, teamCode, initialCredits }:
             onClick={() => {
               setStage('name')
               setFirstName('')
-              setLastInitial('')
+              setLastName('')
               setSubmissionId(null)
             }}
             className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-6 py-3 rounded-xl transition-colors"
@@ -62,14 +64,16 @@ export default function TeamUploadClient({ teamName, teamCode, initialCredits }:
         <div className="text-center space-y-1">
           <h2 className="text-xl font-black text-black">{teamName}</h2>
           <p className="text-gray-500 text-sm">
-            Uploading for <span className="font-semibold text-black">{firstName} {lastInitial}.</span>
+            Uploading for <span className="font-semibold text-black">
+              {firstName} {nameFormat === 'initial' ? `${lastName}.` : lastName}
+            </span>
           </p>
         </div>
         <VideoUploader
           teamMode={{
             code: teamCode,
             firstName,
-            lastInitial,
+            lastName,
             onSuccess: (id) => {
               setSubmissionId(id)
               setStage('done')
@@ -84,10 +88,15 @@ export default function TeamUploadClient({ teamName, teamCode, initialCredits }:
   function handleNameSubmit(e: React.FormEvent) {
     e.preventDefault()
     const fn = firstName.trim()
-    const li = lastInitial.trim().toUpperCase()
+    const ln = lastName.trim()
     if (!fn) { setNameError('First name is required'); return }
-    if (!li || !/^[A-Z]$/.test(li)) { setNameError('Last initial must be a single letter'); return }
+    if (!ln) { setNameError('Last name is required'); return }
+    if (nameFormat === 'initial' && !/^[A-Za-z]$/.test(ln)) {
+      setNameError('Last initial must be a single letter')
+      return
+    }
     setNameError('')
+    setLastName(nameFormat === 'initial' ? ln.toUpperCase() : ln)
     setStage('upload')
   }
 
@@ -109,15 +118,39 @@ export default function TeamUploadClient({ teamName, teamCode, initialCredits }:
             onChange={e => setFirstName(e.target.value)}
             className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
           />
-          <input
-            type="text"
-            required
-            maxLength={1}
-            placeholder="Last name initial (e.g. J)"
-            value={lastInitial}
-            onChange={e => setLastInitial(e.target.value.toUpperCase())}
-            className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
-          />
+
+          <select
+            value={nameFormat}
+            onChange={e => { setNameFormat(e.target.value as NameFormat); setLastName(''); setNameError('') }}
+            className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-black focus:outline-none focus:border-orange-500 transition-colors"
+          >
+            <option value="initial">Show last initial only (e.g. John S.)</option>
+            <option value="full">Show full last name (e.g. John Smith)</option>
+          </select>
+
+          {nameFormat === 'initial' ? (
+            <input
+              key="initial"
+              type="text"
+              required
+              maxLength={1}
+              placeholder="Last initial (e.g. S)"
+              value={lastName}
+              onChange={e => setLastName(e.target.value.toUpperCase())}
+              className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
+            />
+          ) : (
+            <input
+              key="full"
+              type="text"
+              required
+              placeholder="Last name (e.g. Smith)"
+              value={lastName}
+              onChange={e => setLastName(e.target.value)}
+              className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
+            />
+          )}
+
           {nameError && <p className="text-red-500 text-sm">{nameError}</p>}
           <button
             type="submit"

@@ -7,6 +7,7 @@ import LogoutButton from './LogoutButton'
 import BuyTokenButton from './BuyTokenButton'
 import DeleteSubmissionButton from './DeleteSubmissionButton'
 import JoinTeamForm from './JoinTeamForm'
+import LeaveTeamButton from './LeaveTeamButton'
 
 type UserRow = {
   id: string
@@ -172,6 +173,7 @@ export default async function DashboardPage() {
                 <span className="font-mono font-semibold text-gray-700">{team.access_code}</span>
               </p>
               <p className="text-gray-400 text-xs mt-1">Share this code with your teammates so they can join.</p>
+              <LeaveTeamButton teamName={team.name} />
             </div>
           ) : (
             <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">

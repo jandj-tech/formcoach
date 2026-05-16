@@ -9,6 +9,7 @@ function SignupForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
+  const [nickname, setNickname] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
@@ -38,6 +39,7 @@ function SignupForm() {
 
     try {
       const body: Record<string, string> = { email, password }
+      if (nickname.trim()) body.nickname = nickname.trim()
       if (teamInviteToken) body.teamInviteToken = teamInviteToken
 
       const res = await fetch('/api/auth/signup', {
@@ -85,6 +87,14 @@ function SignupForm() {
               placeholder="Email"
               value={email}
               onChange={e => setEmail(e.target.value)}
+              className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
+            />
+            <input
+              type="text"
+              placeholder="Nickname (e.g. Buckets, KD, Air)"
+              maxLength={50}
+              value={nickname}
+              onChange={e => setNickname(e.target.value)}
               className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
             />
             <input

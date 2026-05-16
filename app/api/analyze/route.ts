@@ -23,8 +23,8 @@ export async function POST(req: NextRequest) {
     // Team upload fields (optional)
     const teamCode = (formData.get('teamCode') as string | null) || null
     const playerFirstName = (formData.get('playerFirstName') as string | null) || null
-    const playerLastInitial = (formData.get('playerLastInitial') as string | null) || null
-    const isTeamUpload = !!(teamCode && playerFirstName && playerLastInitial)
+    const playerLastName = (formData.get('playerLastName') as string | null) || null
+    const isTeamUpload = !!(teamCode && playerFirstName && playerLastName)
 
     // Require login for non-team uploads
     if (!isTeamUpload && !session) {
@@ -69,16 +69,17 @@ export async function POST(req: NextRequest) {
 
       teamId = team.id
 
+      const lastNameClean = playerLastName!.trim()
       await db`
         INSERT INTO team_players (team_id, first_name, last_name_initial)
-        VALUES (${teamId}, ${playerFirstName!.trim()}, ${playerLastInitial!.toUpperCase().charAt(0)})
+        VALUES (${teamId}, ${playerFirstName!.trim()}, ${lastNameClean})
         ON CONFLICT (team_id, first_name, last_name_initial) DO NOTHING
       `
       const [player] = await db`
         SELECT id FROM team_players
         WHERE team_id = ${teamId}
           AND first_name = ${playerFirstName!.trim()}
-          AND last_name_initial = ${playerLastInitial!.toUpperCase().charAt(0)}
+          AND last_name_initial = ${lastNameClean}
       ` as unknown as [{ id: string }]
 
       teamPlayerId = player.id

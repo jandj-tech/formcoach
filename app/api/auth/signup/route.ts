@@ -5,7 +5,7 @@ import { signSession, sessionCookieOptions } from '@/lib/auth'
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, password, teamInviteToken } = await req.json()
+    const { email, password, nickname, teamInviteToken } = await req.json()
     if (!email || !password || password.length < 6) {
       return NextResponse.json({ error: 'Email and password (6+ chars) required' }, { status: 400 })
     }
@@ -27,9 +27,11 @@ export async function POST(req: NextRequest) {
 
     const hash = await bcrypt.hash(password, 10)
 
+    const nicknameTrimmed = nickname?.trim() || null
+
     const [user] = await db`
-      INSERT INTO users (email, password_hash, subscription_type, subscription_expires_at)
-      VALUES (${emailLower}, ${hash}, ${sub?.subscription_type ?? null}, ${sub?.subscription_expires_at ?? null})
+      INSERT INTO users (email, password_hash, subscription_type, subscription_expires_at, nickname)
+      VALUES (${emailLower}, ${hash}, ${sub?.subscription_type ?? null}, ${sub?.subscription_expires_at ?? null}, ${nicknameTrimmed})
       RETURNING id, email
     ` as unknown as [{ id: string; email: string }]
 

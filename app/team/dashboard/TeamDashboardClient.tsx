@@ -109,6 +109,12 @@ export default function TeamDashboardClient({
     return 'text-red-500'
   }
 
+  function formatPlayerName(firstName: string, lastNameInitial: string | null) {
+    if (!lastNameInitial) return firstName
+    if (lastNameInitial.length === 1) return `${firstName} ${lastNameInitial}.`
+    return `${firstName} ${lastNameInitial}`
+  }
+
   async function addPlayer(e: React.FormEvent) {
     e.preventDefault()
     setAddStatus('loading')
@@ -313,7 +319,7 @@ export default function TeamDashboardClient({
             {members.map(m => (
               <div key={m.id} className="flex items-center gap-3 py-2 px-3 bg-gray-50 rounded-xl">
                 <span className="flex-1 text-sm font-semibold text-black">
-                  {m.first_name ? `${m.first_name}${m.last_name_initial ? ' ' + m.last_name_initial + '.' : ''}` : m.email}
+                  {m.first_name ? formatPlayerName(m.first_name, m.last_name_initial) : m.email}
                 </span>
                 <span className="text-xs text-gray-400">{m.tokens} token{m.tokens !== 1 ? 's' : ''}</span>
               </div>
@@ -330,7 +336,7 @@ export default function TeamDashboardClient({
               return (
                 <div key={p.id} className="flex items-center gap-3 py-2 px-3 bg-gray-50 rounded-xl">
                   <span className="flex-1 text-sm font-semibold text-black">
-                    {p.first_name}{p.last_name_initial ? ' ' + p.last_name_initial + '.' : ''}
+                    {formatPlayerName(p.first_name, p.last_name_initial)}
                   </span>
                   {inviteUrl && (
                     <button
@@ -377,7 +383,7 @@ export default function TeamDashboardClient({
                       {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}
                     </td>
                     <td className="px-4 py-3 font-semibold text-black">
-                      {entry.first_name} {entry.last_name_initial}.
+                      {formatPlayerName(entry.first_name, entry.last_name_initial)}
                     </td>
                     <td className={`px-4 py-3 text-right font-black text-lg ${scoreColor(entry.best_score)}`}>
                       {Number(entry.best_score).toFixed(1)}
@@ -403,7 +409,7 @@ export default function TeamDashboardClient({
               return (
                 <div key={entry.player_id} className="border border-gray-200 rounded-2xl p-4 space-y-1">
                   <p className="font-bold text-black">
-                    {entry.first_name} {entry.last_name_initial}.
+                    {formatPlayerName(entry.first_name, entry.last_name_initial)}
                   </p>
                   <div className="flex items-center gap-2 text-sm">
                     <span className="text-gray-400">{Number(entry.first_score).toFixed(1)}</span>

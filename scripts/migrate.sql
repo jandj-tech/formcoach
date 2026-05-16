@@ -80,6 +80,7 @@ ALTER TABLE analyses ADD COLUMN IF NOT EXISTS video_url TEXT;
 -- Pay-per-use analysis tokens (replaces monthly subscription model)
 ALTER TABLE email_list ADD COLUMN IF NOT EXISTS analysis_tokens INTEGER DEFAULT 0;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS analysis_tokens INTEGER DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS nickname VARCHAR(50);
 
 -- Seed custom criteria (only if table is empty)
 INSERT INTO criteria (name, description, weight, order_index)

@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
           quantity: totalTokens,
           price_data: {
             currency: 'usd',
-            unit_amount: 499,
+            unit_amount: 250, // $2.50 per analysis token (team/coach rate)
             product_data: {
               name: `${qty} Analysis Token${qty > 1 ? 's' : ''} × ${ids.length} Player${ids.length > 1 ? 's' : ''}`,
             },

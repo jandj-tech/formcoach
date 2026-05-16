@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import OrgAddCoach from './OrgAddCoach'
 import InitiationPanel from '@/components/InitiationPanel'
 import PoolAssignPanel from '@/components/PoolAssignPanel'
@@ -418,7 +419,12 @@ export default function OrgDashboardClient({ teams, orgName }: Props) {
                         <div className="mt-1 border border-gray-100 rounded-xl divide-y divide-gray-100">
                           {team.members.map(m => (
                             <div key={m.id} className="flex items-center justify-between gap-3 px-3 py-2">
-                              <span className="text-sm font-semibold text-black truncate">{memberDisplayName(m)}</span>
+                              <Link
+                                href={`/org/dashboard/member/${m.id}`}
+                                className="text-sm font-semibold text-black truncate hover:text-orange-600 hover:underline transition-colors"
+                              >
+                                {memberDisplayName(m)}
+                              </Link>
                               <div className="flex items-center gap-2 shrink-0">
                                 <span className="text-xs text-gray-400 truncate max-w-[9rem]">{m.email}</span>
                                 <button

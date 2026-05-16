@@ -429,9 +429,12 @@ export default function TeamDashboardClient({
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Joined with account</p>
             {members.map(m => (
               <div key={m.id} className="flex items-center gap-3 py-2 px-3 bg-gray-50 rounded-xl">
-                <span className="flex-1 text-sm font-semibold text-black">
+                <Link
+                  href={`/team/dashboard/member/${m.id}`}
+                  className="flex-1 text-sm font-semibold text-black hover:text-orange-600 hover:underline transition-colors"
+                >
                   {m.first_name ? formatPlayerName(m.first_name, m.last_name_initial) : m.email}
-                </span>
+                </Link>
                 <span className="text-xs text-gray-400">{m.tokens} token{m.tokens !== 1 ? 's' : ''}</span>
                 <button
                   onClick={() => kickMember(m.id)}

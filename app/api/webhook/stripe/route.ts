@@ -252,20 +252,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // If the buyer didn't have an account at checkout (no user: recipient),
-    // check if one exists now. If not, generate a one-time claim token and
-    // email them a signup link — they can register with any email they want.
-    if (tokensToGrant > 0 && !recipient.startsWith('user:')) {
+    // For guest purchases, the claim token was generated at checkout and is in the
+    // metadata. Send a backup email so they can still claim credits if they closed
+    // the browser before finishing signup.
+    const claimToken = session.metadata?.claim_token
+    if (tokensToGrant > 0 && claimToken && !recipient.startsWith('user:') && !recipient.startsWith('team:')) {
       try {
-        const existing = await db`SELECT id FROM users WHERE email = ${emailLower} LIMIT 1`
-        if (existing.length === 0) {
-          const claimToken = crypto.randomUUID()
-          await db`
-            UPDATE email_list SET claim_token = ${claimToken}
-            WHERE email = ${emailLower}
-          `
-          await sendClaimCreditsEmail(emailLower, name || null, tokensToGrant, claimToken)
-        }
+        await sendClaimCreditsEmail(emailLower, name || null, tokensToGrant, claimToken)
       } catch (err) {
         console.error('Failed to send claim credits email:', err)
       }

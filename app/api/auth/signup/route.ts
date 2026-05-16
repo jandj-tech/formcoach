@@ -42,11 +42,12 @@ export async function POST(req: NextRequest) {
     if (claimToken) {
       try {
         const [claim] = await db`
-          SELECT analysis_tokens FROM email_list WHERE claim_token = ${claimToken}
-        ` as unknown as [{ analysis_tokens: number } | undefined]
-        if (claim?.analysis_tokens && claim.analysis_tokens > 0) {
-          await db`UPDATE users SET analysis_tokens = COALESCE(analysis_tokens, 0) + ${claim.analysis_tokens} WHERE id = ${user.id}`
-          await db`UPDATE email_list SET analysis_tokens = 0, claim_token = NULL WHERE claim_token = ${claimToken}`
+          SELECT tokens_to_grant FROM pending_credit_claims
+          WHERE claim_token = ${claimToken} AND redeemed_at IS NULL
+        ` as unknown as [{ tokens_to_grant: number } | undefined]
+        if (claim?.tokens_to_grant && claim.tokens_to_grant > 0) {
+          await db`UPDATE users SET analysis_tokens = COALESCE(analysis_tokens, 0) + ${claim.tokens_to_grant} WHERE id = ${user.id}`
+          await db`UPDATE pending_credit_claims SET redeemed_at = NOW() WHERE claim_token = ${claimToken}`
         }
       } catch {
         // Non-fatal

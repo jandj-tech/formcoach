@@ -11,6 +11,7 @@ const tabs = [
   { href: '/', label: 'Home' },
   { href: '/analyze', label: 'Analyze' },
   { href: '/shop', label: 'Shop' },
+  { href: '/support', label: 'Support' },
 ]
 
 export default function TopNav() {

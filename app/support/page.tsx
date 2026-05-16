@@ -45,6 +45,20 @@ export default function SupportPage() {
             </a>
           </div>
 
+          {/* FAQ */}
+          <div className="w-full text-left space-y-3">
+            <h2 className="text-xl font-black text-black">Frequently Asked Questions</h2>
+            <details className="bg-gray-50 border border-gray-200 rounded-2xl group" open>
+              <summary className="flex items-center justify-between gap-3 px-5 py-4 cursor-pointer list-none font-bold text-black">
+                What angle should I film from to get the best results?
+                <span className="text-gray-400 text-lg group-open:rotate-180 transition-transform">›</span>
+              </summary>
+              <div className="px-5 pb-5 text-sm text-gray-600 leading-relaxed">
+                Film from directly in front of the shooter, centered on their body. Stand at roughly chest height, keep the camera steady, and make sure the shooter&apos;s full body — from feet to fingertips at the top of the release — is in frame. Avoid filming from the side or at an angle, as the AI evaluates form criteria that are most visible head-on.
+              </div>
+            </details>
+          </div>
+
           <Link href="/" className="inline-block text-sm font-semibold text-orange-500 hover:underline">
             ← Back to home
           </Link>

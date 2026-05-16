@@ -20,15 +20,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 401 })
     }
 
-    const { name, ageGroup, coachEmail } = await req.json()
+    const { name, ageGroup, coachEmail, coachName } = await req.json()
     if (!name || typeof name !== 'string' || !name.trim()) {
       return NextResponse.json({ error: 'Team name is required' }, { status: 400 })
     }
-    if (!coachEmail || typeof coachEmail !== 'string' || !coachEmail.trim()) {
-      return NextResponse.json({ error: 'Coach email is required' }, { status: 400 })
-    }
 
-    const emailLower = coachEmail.toLowerCase().trim()
+    // Coach email is optional — if blank, the org owner coaches the team itself.
+    const emailLower = typeof coachEmail === 'string' ? coachEmail.toLowerCase().trim() : ''
 
     const [org] = await db`
       SELECT id, name FROM organizations WHERE id = ${session.orgId}
@@ -46,6 +44,18 @@ export async function POST(req: NextRequest) {
       const collision = await db`SELECT id FROM teams WHERE access_code = ${accessCode}`
       if (collision.length === 0) break
       accessCode = generateAccessCode()
+    }
+
+    // --- Self-coached: the org owner is the coach. No invite, no separate
+    // account — the org opens this team from the org dashboard. ---
+    if (!emailLower) {
+      const nickname =
+        typeof coachName === 'string' && coachName.trim() ? coachName.trim().slice(0, 100) : null
+      await db`
+        INSERT INTO teams (name, admin_email, password_hash, access_code, organization_id, age_group, coach_nickname)
+        VALUES (${name.trim()}, ${session.adminEmail}, ${null}, ${accessCode}, ${org.id}, ${ageGroupValue}, ${nickname})
+      `
+      return NextResponse.json({ success: true, teamCode: accessCode, selfCoached: true })
     }
 
     // If this coach already has a set-up account (a team with a password),

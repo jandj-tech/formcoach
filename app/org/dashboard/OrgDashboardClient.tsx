@@ -110,6 +110,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages }: Pr
   const [newName, setNewName] = useState('')
   const [newAgeGroup, setNewAgeGroup] = useState('')
   const [newCoachEmail, setNewCoachEmail] = useState('')
+  const [newCoachName, setNewCoachName] = useState('')
   const [addStatus, setAddStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [addError, setAddError] = useState('')
   const [addSuccessEmail, setAddSuccessEmail] = useState('')
@@ -193,7 +194,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages }: Pr
       const res = await fetch('/api/org/add-team', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newName, ageGroup: newAgeGroup, coachEmail: newCoachEmail }),
+        body: JSON.stringify({ name: newName, ageGroup: newAgeGroup, coachEmail: newCoachEmail, coachName: newCoachName }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -206,10 +207,28 @@ export default function OrgDashboardClient({ teams, orgName, classPackages }: Pr
       setNewName('')
       setNewAgeGroup('')
       setNewCoachEmail('')
+      setNewCoachName('')
       setTimeout(() => router.refresh(), 2000)
     } catch {
       setAddError('Something went wrong. Please try again.')
       setAddStatus('error')
+    }
+  }
+
+  async function openTeam(teamId: string) {
+    try {
+      const res = await fetch('/api/org/open-team', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teamId }),
+      })
+      if (!res.ok) {
+        alert('Could not open that team. Please try again.')
+        return
+      }
+      router.push('/team/dashboard')
+    } catch {
+      alert('Something went wrong. Please try again.')
     }
   }
 
@@ -692,16 +711,28 @@ export default function OrgDashboardClient({ teams, orgName, classPackages }: Pr
           />
           <input
             type="email"
-            required
-            placeholder="Coach email"
+            placeholder="Coach email — leave blank to coach it yourself"
             value={newCoachEmail}
             onChange={e => setNewCoachEmail(e.target.value)}
             className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
           />
+          <input
+            type="text"
+            placeholder="Coach name (shown as the coach)"
+            value={newCoachName}
+            onChange={e => setNewCoachName(e.target.value)}
+            className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
+          />
+          <p className="text-xs text-gray-400">
+            With an email, the coach is invited to set up their own account. Leave it blank to
+            coach the team yourself — open it any time from the team list.
+          </p>
           {addError && <p className="text-red-500 text-sm">{addError}</p>}
           {addStatus === 'success' && (
             <p className="text-green-600 text-sm font-medium">
-              Team added! Invite sent to {addSuccessEmail}.
+              {addSuccessEmail
+                ? `Team added! Invite sent to ${addSuccessEmail}.`
+                : 'Team added! Open it from the team list below.'}
             </p>
           )}
           <button
@@ -709,7 +740,9 @@ export default function OrgDashboardClient({ teams, orgName, classPackages }: Pr
             disabled={addStatus === 'loading' || addStatus === 'success'}
             className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
           >
-            {addStatus === 'loading' ? 'Adding team...' : 'Add Team & Send Invite'}
+            {addStatus === 'loading'
+              ? 'Adding team...'
+              : newCoachEmail.trim() ? 'Add Team & Send Invite' : 'Add Team'}
           </button>
         </form>
       )}
@@ -804,6 +837,14 @@ export default function OrgDashboardClient({ teams, orgName, classPackages }: Pr
 
               {isOpen && (
                 <div className="px-5 py-4 space-y-4">
+                  {/* Open this team's coach dashboard */}
+                  <button
+                    onClick={() => openTeam(team.id)}
+                    className="text-sm font-bold text-orange-500 hover:text-orange-400 transition-colors"
+                  >
+                    Open team dashboard →
+                  </button>
+
                   {/* Age group — editable by the org */}
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Age group</span>

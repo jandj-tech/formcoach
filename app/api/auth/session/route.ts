@@ -43,8 +43,19 @@ export async function GET() {
       const tokens = user.analysis_tokens ?? 0
       const subscribed = isSubscribed || tokens > 0
 
+      // Whether the player is on a team — drives the "ask your coach" option.
+      let onTeam = false
+      try {
+        const rows = (await db`
+          SELECT 1 FROM team_memberships WHERE user_id = ${user.id} LIMIT 1
+        `) as unknown as unknown[]
+        onTeam = rows.length > 0
+      } catch {
+        // team_memberships table may not exist yet
+      }
+
       return NextResponse.json({
-        user: { id: user.id, email: user.email, subscribed, tokens },
+        user: { id: user.id, email: user.email, subscribed, tokens, onTeam },
         account: { type: 'player', dashboard: '/dashboard' },
       })
     }

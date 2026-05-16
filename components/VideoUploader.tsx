@@ -11,7 +11,7 @@ const REGION_PAD = 0.40     // ±40% of video around rough center
 const REGION_MIN_S = 5.0    // minimum dense region width — covers full short videos
 const SEEK_TIMEOUT_MS = 4000  // max ms to wait for a seek before skipping
 
-interface SessionUser { id: string; email: string; tokens: number; subscribed: boolean }
+interface SessionUser { id: string; email: string; tokens: number; subscribed: boolean; onTeam: boolean }
 
 interface TeamMode {
   code: string
@@ -446,11 +446,17 @@ export default function VideoUploader({ teamMode }: { teamMode?: TeamMode } = {}
               >
                 Buy Analysis — $4.99
               </button>
-              <p className="text-gray-400 text-xs text-center">
-                Or{' '}
-                <a href="/shop" className="underline hover:text-gray-600">buy the training ball</a>
-                {' '}and get 5 free analyses
-              </p>
+              {sessionUser?.onTeam ? (
+                <p className="text-gray-500 text-xs text-center">
+                  Or ask your coach to send you tokens from your team.
+                </p>
+              ) : (
+                <p className="text-gray-400 text-xs text-center">
+                  Or{' '}
+                  <a href="/shop" className="underline hover:text-gray-600">buy the training ball</a>
+                  {' '}and get 5 free analyses
+                </p>
+              )}
             </div>
           </div>
         )}

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import BuyPlayerTokensButton from './BuyPlayerTokensButton'
+import CoachUploadForm from './CoachUploadForm'
 
 interface Team {
   id: string
@@ -200,6 +201,16 @@ export default function TeamDashboardClient({
           </button>
         </div>
         <p className="text-xs text-gray-400">Share this link with your players — no login required to upload.</p>
+      </div>
+
+      {/* Coach Upload */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-black text-black">Upload a Shot for a Player</h2>
+        <p className="text-sm text-gray-500">Record a player&apos;s shot and upload it directly — uses your team credits.</p>
+        <CoachUploadForm
+          accessCode={team.accessCode}
+          knownPlayers={leaderboard.map(e => ({ id: e.id, first_name: e.first_name, last_name_initial: e.last_name_initial }))}
+        />
       </div>
 
       {/* Leaderboard */}

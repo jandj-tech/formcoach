@@ -389,7 +389,7 @@ export default function VideoUploader({ teamMode }: { teamMode?: TeamMode } = {}
         <div
           className={`border-2 border-dashed rounded-2xl p-8 sm:p-12 text-center transition-all duration-200
             ${isLocked
-              ? 'border-gray-200 opacity-40 pointer-events-none select-none'
+              ? 'border-gray-300 pointer-events-none select-none'
               : isDragging
                 ? 'border-orange-500 bg-orange-500/5 cursor-pointer'
                 : 'border-gray-300 hover:border-orange-400 hover:bg-orange-50/50 cursor-pointer'

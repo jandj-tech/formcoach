@@ -41,18 +41,21 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   if (!(await isAdminAuthed())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { code, maxRedemptions } = await req.json() as {
+  const { code, maxRedemptions, percentOff } = await req.json() as {
     code?: string
     maxRedemptions?: number
+    percentOff?: number
   }
+
+  const discountPercent = Math.min(100, Math.max(1, Math.round(percentOff ?? 100)))
 
   const stripe = getStripe()
 
-  // Create a 100% off coupon
+  const couponName = discountPercent === 100 ? 'LearnHoops Free Access' : `LearnHoops ${discountPercent}% Off`
   const coupon = await stripe.coupons.create({
-    percent_off: 100,
+    percent_off: discountPercent,
     duration: 'forever',
-    name: 'FormCoach Free Access',
+    name: couponName,
   })
 
   // Create a promotion code for the coupon

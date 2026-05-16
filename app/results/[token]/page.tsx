@@ -49,6 +49,11 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
   const frameUrls = (analysis.frame_urls as string[] | null) ?? []
   const hasFrames = frameUrls.length > 0
   const hasVideo = !!analysis.video_url
+  // A frame image used as the video's poster, so the player shows a real
+  // preview instead of a blank black box before it's played.
+  const videoPoster = hasFrames
+    ? frameUrls[Math.floor(frameUrls.length / 2)]
+    : undefined
 
   return (
     <main className="min-h-screen bg-white">
@@ -74,8 +79,18 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
           <OverallBadge score={Number(analysis.overall_score)} />
         </div>
 
-        {/* Your shot video beside the analyzed frames — kept near the top so
-            the player sees their shot right after the score. */}
+        <div className="space-y-3">
+          {scores.map((s) => (
+            <ScoreCard
+              key={s.id}
+              name={s.name}
+              score={s.ai_score !== null ? Number(s.ai_score) : null}
+              reasoning={s.ai_reasoning}
+              videoId={videoMap[s.name]}
+            />
+          ))}
+        </div>
+
         {(hasFrames || hasVideo) && (
           <div
             className={
@@ -91,26 +106,16 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
                 <h2 className="text-black font-bold text-sm">Your Shot</h2>
                 <video
                   src={analysis.video_url as string}
+                  poster={videoPoster}
                   controls
                   playsInline
+                  preload="metadata"
                   className="w-full max-w-sm rounded-xl bg-black border border-gray-200"
                 />
               </div>
             )}
           </div>
         )}
-
-        <div className="space-y-3">
-          {scores.map((s) => (
-            <ScoreCard
-              key={s.id}
-              name={s.name}
-              score={s.ai_score !== null ? Number(s.ai_score) : null}
-              reasoning={s.ai_reasoning}
-              videoId={videoMap[s.name]}
-            />
-          ))}
-        </div>
       </div>
     </main>
   )

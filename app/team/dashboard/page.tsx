@@ -43,33 +43,67 @@ export default async function TeamDashboardPage() {
   let teamTokenPool = 0
 
   try {
+    // Shots come from two sources: players who joined with an account
+    // (submissions.user_id) and players a coach uploaded for by name
+    // (submissions.team_player_id). The leaderboard combines both.
     leaderboard = (await db`
-      SELECT tp.id, tp.first_name, tp.last_name_initial,
-        MAX(a.overall_score) AS best_score,
-        COUNT(s.id)::int AS upload_count
-      FROM team_players tp
-      JOIN submissions s ON s.team_player_id = tp.id AND s.team_id = tp.team_id
-      JOIN analyses a ON a.submission_id = s.id
-      WHERE tp.team_id = ${team.id} AND s.status = 'complete'
-      GROUP BY tp.id, tp.first_name, tp.last_name_initial
-      ORDER BY best_score DESC
-    `) as unknown as typeof leaderboard
-
-    improved = (await db`
-      WITH ranked AS (
+      WITH shots AS (
         SELECT
-          tp.id AS player_id,
-          tp.first_name,
-          tp.last_name_initial,
-          a.overall_score,
-          s.created_at,
-          COUNT(s.id) OVER (PARTITION BY tp.id) AS upload_count,
-          ROW_NUMBER() OVER (PARTITION BY tp.id ORDER BY s.created_at ASC) AS rn_first,
-          ROW_NUMBER() OVER (PARTITION BY tp.id ORDER BY s.created_at DESC) AS rn_last
+          u.id::text AS player_id,
+          COALESCE(NULLIF(tm.first_name, ''), u.email) AS first_name,
+          COALESCE(tm.last_name_initial, '') AS last_name_initial,
+          a.overall_score, s.id AS sid
+        FROM team_memberships tm
+        JOIN users u ON u.id = tm.user_id
+        JOIN submissions s ON s.user_id = u.id
+        JOIN analyses a ON a.submission_id = s.id
+        WHERE tm.team_id = ${team.id} AND s.status = 'complete'
+        UNION ALL
+        SELECT
+          tp.id::text AS player_id, tp.first_name, tp.last_name_initial,
+          a.overall_score, s.id AS sid
         FROM team_players tp
         JOIN submissions s ON s.team_player_id = tp.id AND s.team_id = tp.team_id
         JOIN analyses a ON a.submission_id = s.id
         WHERE tp.team_id = ${team.id} AND s.status = 'complete'
+      )
+      SELECT
+        player_id AS id, first_name, last_name_initial,
+        MAX(overall_score) AS best_score,
+        COUNT(sid)::int AS upload_count
+      FROM shots
+      GROUP BY player_id, first_name, last_name_initial
+      ORDER BY best_score DESC
+    `) as unknown as typeof leaderboard
+
+    improved = (await db`
+      WITH shots AS (
+        SELECT
+          u.id::text AS player_id,
+          COALESCE(NULLIF(tm.first_name, ''), u.email) AS first_name,
+          COALESCE(tm.last_name_initial, '') AS last_name_initial,
+          a.overall_score, s.id AS sid, s.created_at
+        FROM team_memberships tm
+        JOIN users u ON u.id = tm.user_id
+        JOIN submissions s ON s.user_id = u.id
+        JOIN analyses a ON a.submission_id = s.id
+        WHERE tm.team_id = ${team.id} AND s.status = 'complete'
+        UNION ALL
+        SELECT
+          tp.id::text AS player_id, tp.first_name, tp.last_name_initial,
+          a.overall_score, s.id AS sid, s.created_at
+        FROM team_players tp
+        JOIN submissions s ON s.team_player_id = tp.id AND s.team_id = tp.team_id
+        JOIN analyses a ON a.submission_id = s.id
+        WHERE tp.team_id = ${team.id} AND s.status = 'complete'
+      ),
+      ranked AS (
+        SELECT
+          player_id, first_name, last_name_initial, overall_score, created_at,
+          COUNT(sid) OVER (PARTITION BY player_id) AS upload_count,
+          ROW_NUMBER() OVER (PARTITION BY player_id ORDER BY created_at ASC) AS rn_first,
+          ROW_NUMBER() OVER (PARTITION BY player_id ORDER BY created_at DESC) AS rn_last
+        FROM shots
       )
       SELECT DISTINCT
         player_id,

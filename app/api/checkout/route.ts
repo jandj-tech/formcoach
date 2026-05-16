@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getStripe, PRODUCT, BUNDLE, BALL_ANALYSES_GRANTED } from '@/lib/stripe'
 import { getSessionFromRequest } from '@/lib/auth'
+import { getTeamSessionFromRequest } from '@/lib/team-auth'
+import { getOrgSessionFromRequest } from '@/lib/org-auth'
+import { db } from '@/lib/db'
 
 const BALL_DESCRIPTION = 'Training basketball with hand-placement guide lines that build consistent shooting form.'
 
@@ -51,9 +54,11 @@ function validateSize(s: unknown): asserts s is '5' | '6' | '7' {
 
 export async function POST(req: NextRequest) {
   try {
-    // An account is required to buy a ball — the free analyses are credited to it.
-    const userSession = await getSessionFromRequest(req)
-    if (!userSession) {
+    // An account is required to buy a ball — players, coaches, and orgs can all buy.
+    const playerSession = await getSessionFromRequest(req)
+    const teamSession = playerSession ? null : await getTeamSessionFromRequest(req)
+    const orgSession = playerSession || teamSession ? null : await getOrgSessionFromRequest(req)
+    if (!playerSession && !teamSession && !orgSession) {
       return NextResponse.json(
         { error: 'You need an account to buy a ball. Please log in or sign up.' },
         { status: 401 },
@@ -65,6 +70,31 @@ export async function POST(req: NextRequest) {
 
     if (region !== 'US' && region !== 'CA') {
       return NextResponse.json({ error: 'Invalid region' }, { status: 400 })
+    }
+
+    // Where the free analysis tokens land: a player's own account, or a team's pool.
+    let tokenRecipient: string
+    let customerEmail: string
+    if (playerSession) {
+      tokenRecipient = `user:${playerSession.userId}`
+      customerEmail = playerSession.email
+    } else if (teamSession) {
+      tokenRecipient = `team:${teamSession.teamId}`
+      customerEmail = teamSession.adminEmail
+    } else {
+      // Organization — must pick which team's pool receives the free analyses.
+      const teamId = typeof body?.teamId === 'string' ? body.teamId : ''
+      const [team] = (await db`
+        SELECT id FROM teams WHERE id = ${teamId} AND organization_id = ${orgSession!.orgId}
+      `) as unknown as [{ id: string } | undefined]
+      if (!team) {
+        return NextResponse.json(
+          { error: 'Select which team should receive the free analyses' },
+          { status: 400 },
+        )
+      }
+      tokenRecipient = `team:${team.id}`
+      customerEmail = orgSession!.adminEmail
     }
 
     const rawItems: IncomingItem[] = Array.isArray(body?.items)
@@ -166,6 +196,7 @@ export async function POST(req: NextRequest) {
     }
 
     metadata.analysis_tokens = String(analysisTokens)
+    metadata.token_recipient = tokenRecipient
 
     const cartJson = JSON.stringify(
       rawItems.map((it) =>
@@ -182,7 +213,7 @@ export async function POST(req: NextRequest) {
       mode: 'payment',
       payment_method_types: ['card'],
       line_items,
-      customer_email: userSession.email,
+      customer_email: customerEmail,
       shipping_address_collection: { allowed_countries: ['US', 'CA'] },
       phone_number_collection: { enabled: true },
       metadata,

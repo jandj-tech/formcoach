@@ -16,6 +16,8 @@ const SIZES: { value: Size; inches: string; label: string }[] = [
 const PRICE = 49.99
 // Bundle: ball 1 full price + ball 2 at 50% off = $49.99 + $25.00 = $74.99
 const BUNDLE_PRICE = PRICE + Math.round(PRICE * 50) / 100
+// Free shot analyses granted per single training ball.
+const FREE_ANALYSES_PER_BALL = 5
 
 function formatPrice(amount: number): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)
@@ -74,7 +76,8 @@ export default function ShopProduct() {
                 <span className="text-green-500 text-xs font-semibold tracking-wider uppercase">In Stock</span>
               </div>
               <span className="inline-flex items-center bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-semibold px-3 py-1.5 rounded-full">
-                5 Shot Analyses Included Free
+                {FREE_ANALYSES_PER_BALL * quantity} Shot Analyses Included Free
+                {quantity > 1 ? ` (${FREE_ANALYSES_PER_BALL} per ball)` : ''}
               </span>
             </div>
 

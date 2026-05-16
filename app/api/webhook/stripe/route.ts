@@ -164,20 +164,44 @@ export async function POST(req: NextRequest) {
 
     // Free shot analyses for this order, computed at checkout:
     // 5 per single training ball, 10 for the 2-ball bundle.
+    // token_recipient routes them: a player's own account ("user:<id>")
+    // or a team's shared pool ("team:<id>") for coach/org purchases.
     const tokensToGrant = parseInt(session.metadata?.analysis_tokens ?? '0', 10)
+    const recipient = session.metadata?.token_recipient ?? ''
     const emailLower = email.toLowerCase()
     if (tokensToGrant > 0) {
       try {
-        await db`
-          INSERT INTO email_list (email, analysis_tokens)
-          VALUES (${emailLower}, ${tokensToGrant})
-          ON CONFLICT (email) DO UPDATE
-          SET analysis_tokens = COALESCE(email_list.analysis_tokens, 0) + ${tokensToGrant}
-        `
-        await db`
-          UPDATE users SET analysis_tokens = COALESCE(analysis_tokens, 0) + ${tokensToGrant}
-          WHERE email = ${emailLower}
-        `
+        if (recipient.startsWith('team:')) {
+          const teamId = recipient.slice(5)
+          await db`
+            UPDATE teams SET token_pool = COALESCE(token_pool, 0) + ${tokensToGrant}
+            WHERE id = ${teamId}
+          `
+        } else if (recipient.startsWith('user:')) {
+          const userId = recipient.slice(5)
+          await db`
+            UPDATE users SET analysis_tokens = COALESCE(analysis_tokens, 0) + ${tokensToGrant}
+            WHERE id = ${userId}
+          `
+          await db`
+            INSERT INTO email_list (email, analysis_tokens)
+            VALUES (${emailLower}, ${tokensToGrant})
+            ON CONFLICT (email) DO UPDATE
+            SET analysis_tokens = COALESCE(email_list.analysis_tokens, 0) + ${tokensToGrant}
+          `
+        } else {
+          // Legacy orders with no recipient — credit by email.
+          await db`
+            INSERT INTO email_list (email, analysis_tokens)
+            VALUES (${emailLower}, ${tokensToGrant})
+            ON CONFLICT (email) DO UPDATE
+            SET analysis_tokens = COALESCE(email_list.analysis_tokens, 0) + ${tokensToGrant}
+          `
+          await db`
+            UPDATE users SET analysis_tokens = COALESCE(analysis_tokens, 0) + ${tokensToGrant}
+            WHERE email = ${emailLower}
+          `
+        }
       } catch (err) {
         console.error('Failed to grant tokens:', err)
         // Non-fatal — order is saved, tokens can be credited manually

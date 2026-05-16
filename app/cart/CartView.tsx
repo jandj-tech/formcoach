@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Trash2Icon } from 'lucide-react'
 import { useCart } from '@/lib/cart'
@@ -10,6 +10,8 @@ import QuantityStepper from '@/components/QuantityStepper'
 const PRICE = 49.99
 // Bundle: ball 1 full price + ball 2 at 50% off = $49.99 + $25.00 = $74.99
 const BUNDLE_PRICE = PRICE + Math.round(PRICE * 50) / 100
+// Free shot analyses granted per single training ball.
+const FREE_ANALYSES_PER_BALL = 5
 
 const SIZE_INCHES: Record<Size, string> = {
   '5': '27.5"',
@@ -29,6 +31,28 @@ export default function CartView() {
   const { items, hydrated, setQuantity, removeItem } = useCart()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  // Logged-in account type, plus the org's teams for the free-analysis picker.
+  const [account, setAccount] = useState<{ type: string } | null>(null)
+  const [orgTeams, setOrgTeams] = useState<Array<{ id: string; name: string }>>([])
+  const [teamId, setTeamId] = useState('')
+
+  useEffect(() => {
+    fetch('/api/auth/session')
+      .then(r => r.json())
+      .then(({ account }) => {
+        setAccount(account ?? null)
+        if (account?.type === 'org') {
+          fetch('/api/org/teams')
+            .then(r => r.json())
+            .then(({ teams }) => {
+              setOrgTeams(teams ?? [])
+              if (teams?.length) setTeamId(teams[0].id)
+            })
+            .catch(() => {})
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   const subtotal = items.reduce<number>((sum, it) => {
     if (it.productSlug === 'bundle') return sum + BUNDLE_PRICE
@@ -38,6 +62,10 @@ export default function CartView() {
 
   async function handleCheckout() {
     if (items.length === 0) return
+    if (account?.type === 'org' && !teamId) {
+      setError('Choose which team should receive the free analyses.')
+      return
+    }
     setLoading(true)
     setError('')
     try {
@@ -46,6 +74,7 @@ export default function CartView() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           region: 'US',
+          ...(account?.type === 'org' ? { teamId } : {}),
           items: items.map((it) => {
             if (it.productSlug === 'bundle') {
               return {
@@ -141,6 +170,29 @@ export default function CartView() {
           </span>
         </div>
 
+        {account?.type === 'org' && (
+          <div className="flex flex-col gap-2">
+            <label className="text-white text-sm font-semibold">
+              Free analyses go to this team&apos;s pool
+            </label>
+            {orgTeams.length === 0 ? (
+              <p className="text-zinc-400 text-sm">
+                Your organization has no teams yet — add a team to receive the free analyses.
+              </p>
+            ) : (
+              <select
+                value={teamId}
+                onChange={(e) => setTeamId(e.target.value)}
+                className="bg-zinc-950 border border-zinc-800 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-orange-500"
+              >
+                {orgTeams.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            )}
+          </div>
+        )}
+
         <button
           onClick={handleCheckout}
           disabled={loading}
@@ -179,7 +231,7 @@ function BallCartLine({
         <div className="flex items-center gap-2 flex-wrap mb-1">
           <div className="text-white font-bold text-base">The LearnHoops.com Training Ball</div>
           <span className="text-xs font-semibold text-blue-400 bg-blue-500/10 border border-blue-500/30 px-2 py-0.5 rounded-full">
-            + 5 Shot Analyses Free
+            + {FREE_ANALYSES_PER_BALL * item.quantity} Shot Analyses Free
           </span>
         </div>
         <div className="text-white text-sm">

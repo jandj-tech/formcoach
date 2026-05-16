@@ -92,6 +92,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   const [removingCoach, setRemovingCoach] = useState<string | null>(null)
   const [removingPlayer, setRemovingPlayer] = useState<string | null>(null)
   const [deletingTeam, setDeletingTeam] = useState<string | null>(null)
+  const [showMyUploads, setShowMyUploads] = useState(false)
   // Team id whose leaderboard popup is open (for the full view + print).
   const [teamLbModal, setTeamLbModal] = useState<string | null>(null)
 
@@ -1150,23 +1151,38 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
         })}
       </div>
 
-      {/* My Uploads — the org owner's own analyzed shots */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between gap-4">
-          <h2 className="text-xl font-black text-black">My Uploads</h2>
-          <Link
-            href="/analyze"
-            className="shrink-0 bg-orange-500 hover:bg-orange-400 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors"
-          >
-            Analyze a shot →
-          </Link>
-        </div>
-        {myUploads.length > 0 ? (
-          <PlayerShotList shots={myUploads} />
-        ) : (
-          <p className="text-sm text-gray-400">
-            You haven&apos;t analyzed any of your own shots yet — use the Analyze page to start.
-          </p>
+      {/* My Uploads — the org owner's own analyzed shots, collapsible */}
+      <div className="border border-gray-200 rounded-2xl overflow-hidden">
+        <button
+          onClick={() => setShowMyUploads(o => !o)}
+          className="w-full flex items-center justify-between gap-4 px-5 py-4 bg-gray-50 hover:bg-orange-50 transition-colors text-left"
+        >
+          <div>
+            <p className="font-bold text-black">My Uploads</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {myUploads.length} of your own analyzed shot{myUploads.length !== 1 ? 's' : ''}
+            </p>
+          </div>
+          <span className="text-gray-400 text-lg">{showMyUploads ? '−' : '+'}</span>
+        </button>
+        {showMyUploads && (
+          <div className="p-4 space-y-3">
+            <div className="flex justify-end">
+              <Link
+                href="/analyze"
+                className="shrink-0 bg-orange-500 hover:bg-orange-400 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors"
+              >
+                Analyze a shot →
+              </Link>
+            </div>
+            {myUploads.length > 0 ? (
+              <PlayerShotList shots={myUploads} />
+            ) : (
+              <p className="text-sm text-gray-400">
+                You haven&apos;t analyzed any of your own shots yet — use the Analyze page to start.
+              </p>
+            )}
+          </div>
         )}
       </div>
 

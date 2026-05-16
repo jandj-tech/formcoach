@@ -4,8 +4,9 @@ import { db } from '@/lib/db'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { sendCoachSignupEmail } from '@/lib/email'
 
-// Lets an org admin add a coach to one of their teams. Always returns an
-// invite token (for a shareable link); optionally emails the signup link too.
+// Adds a coach to one of the org's teams. Two modes:
+//  - email invite: returns an invite token (and optionally emails it)
+//  - self: the org owner adds themselves as a coach, no separate account
 export async function POST(req: NextRequest) {
   const session = await getOrgSessionFromRequest(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -14,18 +15,54 @@ export async function POST(req: NextRequest) {
     teamId?: string
     email?: string
     sendEmail?: boolean
+    self?: boolean
+    name?: string
   }
-  const email = body.email?.toLowerCase().trim()
-  if (!body.teamId || !email) {
-    return NextResponse.json({ error: 'Team and coach email are required' }, { status: 400 })
+  if (!body.teamId) {
+    return NextResponse.json({ error: 'Team is required' }, { status: 400 })
   }
 
   try {
     // Verify the team belongs to this organization.
     const [team] = (await db`
-      SELECT id, name FROM teams WHERE id = ${body.teamId} AND organization_id = ${session.orgId}
-    `) as unknown as [{ id: string; name: string } | undefined]
+      SELECT id, name, admin_email FROM teams
+      WHERE id = ${body.teamId} AND organization_id = ${session.orgId}
+    `) as unknown as [{ id: string; name: string; admin_email: string } | undefined]
     if (!team) return NextResponse.json({ error: 'Team not found' }, { status: 404 })
+
+    // --- Self: the org owner adds themselves as a coach (no invite) ---
+    if (body.self) {
+      const selfEmail = session.adminEmail.toLowerCase().trim()
+
+      if (team.admin_email.toLowerCase() === selfEmail) {
+        return NextResponse.json({ error: "You're already this team's head coach." }, { status: 409 })
+      }
+      const [dup] = (await db`
+        SELECT id FROM team_coaches WHERE team_id = ${team.id} AND email = ${selfEmail}
+      `) as unknown as [{ id: string } | undefined]
+      if (dup) {
+        return NextResponse.json({ error: "You're already a coach of this team." }, { status: 409 })
+      }
+
+      const nickname =
+        typeof body.name === 'string' && body.name.trim() ? body.name.trim().slice(0, 100) : null
+      // Reuse the org's password so the entry isn't flagged "invite pending".
+      const [org] = (await db`
+        SELECT password_hash FROM organizations WHERE id = ${session.orgId}
+      `) as unknown as [{ password_hash: string } | undefined]
+
+      await db`
+        INSERT INTO team_coaches (team_id, email, password_hash, nickname)
+        VALUES (${team.id}, ${selfEmail}, ${org?.password_hash ?? null}, ${nickname})
+      `
+      return NextResponse.json({ self: true })
+    }
+
+    // --- Email invite flow ---
+    const email = body.email?.toLowerCase().trim()
+    if (!email) {
+      return NextResponse.json({ error: 'Coach email is required' }, { status: 400 })
+    }
 
     const [existing] = (await db`
       SELECT id FROM team_coaches WHERE email = ${email}

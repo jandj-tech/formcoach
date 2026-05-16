@@ -13,6 +13,7 @@ export default function OrgAddCoach({ teamId }: { teamId: string }) {
   const [inviteUrl, setInviteUrl] = useState('')
   const [emailedTo, setEmailedTo] = useState('')
   const [copied, setCopied] = useState(false)
+  const [selfName, setSelfName] = useState('')
 
   const BASE_URL = typeof window !== 'undefined' ? window.location.origin : 'https://learnhoops.com'
 
@@ -47,6 +48,32 @@ export default function OrgAddCoach({ teamId }: { teamId: string }) {
       if (data.emailed) setEmailedTo(value)
       setEmail('')
       setLoading(false)
+      router.refresh()
+    } catch {
+      setError('Something went wrong. Please try again.')
+      setLoading(false)
+    }
+  }
+
+  // The org owner adds themselves as a coach — no email, no separate account.
+  async function addSelf() {
+    setLoading(true)
+    reset()
+    try {
+      const res = await fetch('/api/org/add-coach', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teamId, self: true, name: selfName.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error || 'Could not add you as a coach')
+        setLoading(false)
+        return
+      }
+      setSelfName('')
+      setLoading(false)
+      setOpen(false)
       router.refresh()
     } catch {
       setError('Something went wrong. Please try again.')
@@ -106,6 +133,28 @@ export default function OrgAddCoach({ teamId }: { teamId: string }) {
           Cancel
         </button>
       </div>
+
+      <div className="flex items-center gap-2">
+        <div className="flex-1 h-px bg-gray-200" />
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">or</span>
+        <div className="flex-1 h-px bg-gray-200" />
+      </div>
+      <input
+        type="text"
+        placeholder="Your name"
+        value={selfName}
+        onChange={e => setSelfName(e.target.value)}
+        className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-black text-sm placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
+      />
+      <button
+        type="button"
+        onClick={addSelf}
+        disabled={loading}
+        className="w-full bg-gray-100 hover:bg-gray-200 disabled:opacity-50 text-black font-bold px-3 py-2 rounded-lg text-xs transition-colors"
+      >
+        {loading ? 'Working…' : 'Add myself as a coach'}
+      </button>
+
       {error && <p className="text-red-500 text-xs">{error}</p>}
       {inviteUrl && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-3 space-y-1">

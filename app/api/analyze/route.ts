@@ -182,8 +182,11 @@ export async function POST(req: NextRequest) {
             // display_final_score is only used on the certificate and leaderboard.
             const realScore = result.overall_score
             const firstScore = Number(enrollment.first_score ?? 0)
+            // Boost rules for first-time class players:
+            // - Show at least firstScore + 0.3 so they always see improvement
+            // - But never show more than realScore + 0.3 (boost never exceeds 0.3 above real score)
             const displayScore = enrollment.is_first_class
-              ? Math.max(realScore, firstScore + 0.3)
+              ? Math.min(realScore + 0.3, Math.max(realScore, firstScore + 0.3))
               : realScore
             await db`
               UPDATE org_class_enrollments

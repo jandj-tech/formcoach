@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { db } from '@/lib/db'
+import { getTeamTokenState } from '@/lib/team-tokens'
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://learnhoops.com'
 
@@ -19,6 +20,15 @@ export async function POST(req: NextRequest) {
       SELECT id, name FROM teams WHERE id = ${teamId} AND organization_id = ${session.orgId}
     ` as unknown as [{ id: string; name: string } | undefined]
     if (!team) return NextResponse.json({ error: 'Team not found' }, { status: 404 })
+
+    // Coach credits are $2.50 — gated behind the same team initiation as player tokens.
+    const state = await getTeamTokenState(team.id)
+    if (!state || !state.initiated) {
+      return NextResponse.json(
+        { error: 'Complete this team’s initiation package before buying coach credits' },
+        { status: 400 },
+      )
+    }
 
     const stripeSession = await getStripe().checkout.sessions.create({
       mode: 'payment',

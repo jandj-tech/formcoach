@@ -39,6 +39,8 @@ export default async function TeamDashboardPage() {
   let pendingMembers: Array<{ id: string; first_name: string; last_name_initial: string | null; invite_token: string | null }> = []
   let coaches: Array<{ id: string; email: string; pending: boolean; nickname: string | null }> = []
   let headCoachNickname: string | null = null
+  let teamInitiated = false
+  let teamTokenPool = 0
 
   try {
     leaderboard = (await db`
@@ -122,11 +124,16 @@ export default async function TeamDashboardPage() {
   // (pre-migration) can't break the whole dashboard.
   try {
     const [row] = (await db`
-      SELECT coach_nickname FROM teams WHERE id = ${team.id}
-    `) as unknown as [{ coach_nickname: string | null } | undefined]
+      SELECT coach_nickname,
+             COALESCE(token_pool, 0)::int AS token_pool,
+             (initiated_at IS NOT NULL) AS initiated
+      FROM teams WHERE id = ${team.id}
+    `) as unknown as [{ coach_nickname: string | null; token_pool: number; initiated: boolean } | undefined]
     headCoachNickname = row?.coach_nickname ?? null
+    teamTokenPool = row?.token_pool ?? 0
+    teamInitiated = row?.initiated ?? false
   } catch (err) {
-    console.error('[team/dashboard] coach nickname query failed:', err)
+    console.error('[team/dashboard] team meta query failed:', err)
   }
 
   // The display name of whichever coach is currently logged in.
@@ -139,7 +146,7 @@ export default async function TeamDashboardPage() {
     <main className="min-h-screen bg-white flex flex-col">
       <TopNav />
       <TeamDashboardClient
-        team={{ id: team.id, name: team.name, accessCode: team.access_code, credits: team.credits }}
+        team={{ id: team.id, name: team.name, accessCode: team.access_code, credits: team.credits, initiated: teamInitiated, tokenPool: teamTokenPool }}
         leaderboard={leaderboard}
         improved={improved}
         members={members}

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getTeamSessionFromRequest } from '@/lib/team-auth'
 import { getStripe } from '@/lib/stripe'
+import { getTeamTokenState } from '@/lib/team-tokens'
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL && process.env.NEXT_PUBLIC_BASE_URL !== 'http://localhost:3000'
   ? process.env.NEXT_PUBLIC_BASE_URL
@@ -19,6 +20,15 @@ export async function POST(req: NextRequest) {
     const qty = typeof quantity === 'number' ? Math.floor(quantity) : 1
     if (qty < 1 || qty > 500) {
       return NextResponse.json({ error: 'Invalid quantity' }, { status: 400 })
+    }
+
+    // Coach credits are $2.50 — gated behind team initiation, like player tokens.
+    const state = await getTeamTokenState(session.teamId)
+    if (!state || !state.initiated) {
+      return NextResponse.json(
+        { error: 'Complete your team’s initiation package before buying credits' },
+        { status: 400 },
+      )
     }
 
     const checkout = await getStripe().checkout.sessions.create({

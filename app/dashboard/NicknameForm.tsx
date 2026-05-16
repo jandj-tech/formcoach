@@ -27,7 +27,7 @@ export default function NicknameForm({ current }: { current: string | null }) {
   }
 
   return (
-    <form onSubmit={handleSave} className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
+    <form onSubmit={handleSave} className="space-y-3">
       <p className="text-sm text-gray-600">
         {current
           ? <>You currently appear as <span className="font-semibold text-black">{current}</span>.</>

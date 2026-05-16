@@ -129,7 +129,7 @@ export default async function DashboardPage() {
       <TopNav />
       <JoinTeamPopup hasTeam={!!team} />
 
-      <div className="max-w-3xl mx-auto w-full px-6 py-10 space-y-8">
+      <div className="max-w-3xl mx-auto w-full px-6 py-10 space-y-4">
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -153,11 +153,19 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* Nickname */}
-        <div className="space-y-2">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Nickname</h2>
-          <NicknameForm current={user.nickname ?? null} />
-        </div>
+        {/* Nickname — collapsible to keep the shot history in view */}
+        <details className="group border border-gray-200 rounded-lg">
+          <summary className="flex items-center justify-between gap-2 px-3 py-2 cursor-pointer select-none list-none">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Nickname</span>
+            <span className="flex items-center gap-2 text-sm text-gray-700">
+              <span className="truncate max-w-[10rem]">{user.nickname || 'Not set'}</span>
+              <span className="text-gray-400 text-xs transition-transform group-open:rotate-180">▾</span>
+            </span>
+          </summary>
+          <div className="px-3 pb-3">
+            <NicknameForm current={user.nickname ?? null} />
+          </div>
+        </details>
 
         {/* Token balance / buy CTA */}
         {!isSubscribed && (
@@ -174,28 +182,32 @@ export default async function DashboardPage() {
           </div>
         )}
 
-        {/* Your Team */}
-        <div className="space-y-2">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Your Team</h2>
-          {team ? (
-            <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
-              <p className="font-semibold text-black">{team.name}</p>
-              <p className="text-gray-500 text-sm mt-0.5">
-                Team code:{' '}
-                <span className="font-mono font-semibold text-gray-700">{team.access_code}</span>
-              </p>
-              <p className="text-gray-400 text-xs mt-1">Share this code with your teammates so they can join.</p>
-              <LeaveTeamButton teamName={team.name} />
-            </div>
-          ) : (
-            <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
-              <p className="text-sm text-gray-600">
-                Have a team code? Enter it to join your team.
-              </p>
-              <JoinTeamForm />
-            </div>
-          )}
-        </div>
+        {/* Your Team — collapsible to keep the shot history in view */}
+        <details className="group border border-gray-200 rounded-lg">
+          <summary className="flex items-center justify-between gap-2 px-3 py-2 cursor-pointer select-none list-none">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Team</span>
+            <span className="flex items-center gap-2 text-sm text-gray-700">
+              <span className="truncate max-w-[10rem]">{team ? team.name : 'Not on a team'}</span>
+              <span className="text-gray-400 text-xs transition-transform group-open:rotate-180">▾</span>
+            </span>
+          </summary>
+          <div className="px-3 pb-3">
+            {team ? (
+              <div className="space-y-1">
+                <p className="text-gray-500 text-sm">
+                  Team code:{' '}
+                  <span className="font-mono font-semibold text-gray-700">{team.access_code}</span>
+                </p>
+                <LeaveTeamButton teamName={team.name} />
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-gray-600">Have a team code? Enter it to join your team.</p>
+                <JoinTeamForm />
+              </div>
+            )}
+          </div>
+        </details>
 
         {/* Shots list */}
         {submissions.length === 0 ? (

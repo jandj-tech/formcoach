@@ -212,7 +212,10 @@ export default function TeamDashboardClient({
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black text-black">{team.name}</h1>
-          <p className="text-gray-500 text-sm mt-1">Team Dashboard</p>
+          <p className="text-gray-500 text-sm mt-1">
+            Team Dashboard · Logged in as{' '}
+            <span className="font-semibold text-gray-700">{myNickname || adminEmail}</span>
+          </p>
           {allTeams.length > 1 && (
             <div className="flex flex-wrap gap-2 mt-2">
               {allTeams.map(t => (

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import OrgAddCoach from './OrgAddCoach'
@@ -9,6 +10,7 @@ import PoolAssignPanel from '@/components/PoolAssignPanel'
 import TokenBalances from '@/components/TokenBalances'
 import InlineEdit from '@/components/InlineEdit'
 import LeaderboardTable, { type LeaderboardRow } from '@/components/LeaderboardTable'
+import PrintButton from '@/components/PrintButton'
 import { CLASS_MIN_PLAYERS, CLASS_BULK_THRESHOLD, classPriceCents } from '@/lib/org-class-pricing'
 
 interface Member {
@@ -87,6 +89,8 @@ export default function OrgDashboardClient({ teams, orgName, classPackages }: Pr
   const [copiedLink, setCopiedLink] = useState<Record<string, boolean>>({})
   const [removingCoach, setRemovingCoach] = useState<string | null>(null)
   const [removingPlayer, setRemovingPlayer] = useState<string | null>(null)
+  // Team id whose leaderboard popup is open (for the full view + print).
+  const [teamLbModal, setTeamLbModal] = useState<string | null>(null)
 
   const BASE_URL = typeof window !== 'undefined' ? window.location.origin : 'https://learnhoops.com'
 
@@ -984,7 +988,17 @@ export default function OrgDashboardClient({ teams, orgName, classPackages }: Pr
 
                   {/* Team leaderboard */}
                   <div className="space-y-2">
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Team leaderboard</p>
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Team leaderboard</p>
+                      {team.leaderboard.length > 0 && (
+                        <button
+                          onClick={() => setTeamLbModal(team.id)}
+                          className="shrink-0 text-xs font-bold text-orange-500 hover:text-orange-400 transition-colors"
+                        >
+                          View full &amp; print
+                        </button>
+                      )}
+                    </div>
                     {team.leaderboard.length === 0 ? (
                       <p className="text-sm text-gray-400">No shots analyzed yet.</p>
                     ) : (
@@ -1092,6 +1106,38 @@ export default function OrgDashboardClient({ teams, orgName, classPackages }: Pr
           )
         })}
       </div>
+
+      {/* Team leaderboard popup with print — portaled to <body> for a clean printout */}
+      {teamLbModal && (() => {
+        const t = teams.find(tm => tm.id === teamLbModal)
+        if (!t) return null
+        return createPortal(
+          <div
+            className="leaderboard-modal-backdrop fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+            onClick={() => setTeamLbModal(null)}
+          >
+            <div
+              className="leaderboard-modal bg-white rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-auto p-6 space-y-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between gap-4">
+                <h2 className="text-xl font-black text-black">{t.name} Leaderboard</h2>
+                <div className="flex items-center gap-2 print:hidden">
+                  <PrintButton label="Print" />
+                  <button
+                    onClick={() => setTeamLbModal(null)}
+                    className="shrink-0 text-sm font-semibold text-gray-400 hover:text-red-500 transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+              <LeaderboardTable entries={t.leaderboard} context="org" />
+            </div>
+          </div>,
+          document.body,
+        )
+      })()}
     </div>
   )
 }

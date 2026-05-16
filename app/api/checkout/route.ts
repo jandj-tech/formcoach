@@ -54,16 +54,10 @@ function validateSize(s: unknown): asserts s is '5' | '6' | '7' {
 
 export async function POST(req: NextRequest) {
   try {
-    // An account is required to buy a ball — players, coaches, and orgs can all buy.
     const playerSession = await getSessionFromRequest(req)
     const teamSession = playerSession ? null : await getTeamSessionFromRequest(req)
     const orgSession = playerSession || teamSession ? null : await getOrgSessionFromRequest(req)
-    if (!playerSession && !teamSession && !orgSession) {
-      return NextResponse.json(
-        { error: 'You need an account to buy a ball. Please log in or sign up.' },
-        { status: 401 },
-      )
-    }
+    const isGuest = !playerSession && !teamSession && !orgSession
 
     const body = await req.json()
     const region = body?.region
@@ -72,10 +66,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid region' }, { status: 400 })
     }
 
-    // Where the free analysis tokens land: a player's own account, or a team's pool.
-    let tokenRecipient: string
-    let customerEmail: string
-    if (playerSession) {
+    // Where the free analysis tokens land: a player's own account, a team's pool,
+    // or via a one-time claim link for guest (not-logged-in) purchases.
+    let tokenRecipient = ''
+    let customerEmail: string | undefined
+    let guestClaimToken: string | undefined
+
+    if (isGuest) {
+      // Guest purchase — generate claim token now so it can go in the success URL.
+      // Tokens are held in pending_credit_claims until they sign up.
+      guestClaimToken = crypto.randomUUID()
+    } else if (playerSession) {
       tokenRecipient = `user:${playerSession.userId}`
       customerEmail = playerSession.email
     } else if (teamSession) {
@@ -197,6 +198,7 @@ export async function POST(req: NextRequest) {
 
     metadata.analysis_tokens = String(analysisTokens)
     metadata.token_recipient = tokenRecipient
+    if (guestClaimToken) metadata.claim_token = guestClaimToken
 
     const cartJson = JSON.stringify(
       rawItems.map((it) =>
@@ -209,15 +211,29 @@ export async function POST(req: NextRequest) {
       metadata.cart = cartJson
     }
 
+    // Guest buyers: insert the claim record now so the signup page can redeem it
+    // immediately after the Stripe redirect, before the webhook fires.
+    if (guestClaimToken && analysisTokens > 0) {
+      await db`
+        INSERT INTO pending_credit_claims (claim_token, tokens_to_grant)
+        VALUES (${guestClaimToken}, ${analysisTokens})
+        ON CONFLICT (claim_token) DO NOTHING
+      `
+    }
+
+    const successUrl = guestClaimToken
+      ? `${BASE_URL}/signup?claimToken=${guestClaimToken}&credits=${analysisTokens}`
+      : `${BASE_URL}/shop/success?session_id={CHECKOUT_SESSION_ID}`
+
     const session = await getStripe().checkout.sessions.create({
       mode: 'payment',
       payment_method_types: ['card'],
       line_items,
-      customer_email: customerEmail,
+      ...(customerEmail ? { customer_email: customerEmail } : {}),
       shipping_address_collection: { allowed_countries: ['US', 'CA'] },
       phone_number_collection: { enabled: true },
       metadata,
-      success_url: `${BASE_URL}/shop/success?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: successUrl,
       cancel_url: `${BASE_URL}/cart`,
     })
 

@@ -18,9 +18,11 @@ function SignupForm() {
   const [error, setError] = useState('')
 
   const teamInviteToken = searchParams.get('teamInvite') || ''
+  const claimToken = searchParams.get('claimToken') || ''
+  const pendingCredits = parseInt(searchParams.get('credits') || '0', 10)
 
   useEffect(() => {
-    // Pre-fill email from Stripe checkout redirect
+    // Pre-fill email from Stripe checkout redirect (subscription flow only)
     const sessionId = searchParams.get('session_id')
     if (sessionId) {
       fetch(`/api/subscribe/session-email?session_id=${sessionId}`)
@@ -43,6 +45,7 @@ function SignupForm() {
       const body: Record<string, string> = { email, password }
       if (nickname.trim()) body.nickname = nickname.trim()
       if (teamInviteToken) body.teamInviteToken = teamInviteToken
+      if (claimToken) body.claimToken = claimToken
 
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
@@ -80,7 +83,11 @@ function SignupForm() {
           <div className="text-center space-y-2">
             <div className="text-4xl">🎉</div>
             <h1 className="text-2xl font-black text-black">Create your account</h1>
-            {teamInviteToken ? (
+            {pendingCredits > 0 ? (
+              <p className="text-sm font-semibold text-orange-600 bg-orange-50 border border-orange-200 rounded-xl px-4 py-2">
+                Your ball order includes {pendingCredits} free shot {pendingCredits === 1 ? 'analysis' : 'analyses'} — they&apos;ll be added to your account automatically.
+              </p>
+            ) : teamInviteToken ? (
               <p className="text-sm font-semibold text-orange-600 bg-orange-50 border border-orange-200 rounded-xl px-4 py-2">
                 Your coach added you to the team — sign up to join.
               </p>

@@ -5,7 +5,7 @@ import { signSession, sessionCookieOptions } from '@/lib/auth'
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, password, nickname, teamInviteToken } = await req.json()
+    const { email, password, nickname, teamInviteToken, claimToken } = await req.json()
     if (!email || !password || password.length < 6) {
       return NextResponse.json({ error: 'Email and password (6+ chars) required' }, { status: 400 })
     }
@@ -37,6 +37,22 @@ export async function POST(req: NextRequest) {
 
     // Link any existing anonymous submissions for this email
     await db`UPDATE submissions SET user_id = ${user.id} WHERE email = ${emailLower} AND user_id IS NULL`
+
+    // Redeem a one-time claim token from a ball purchase (token is independent of email)
+    if (claimToken) {
+      try {
+        const [claim] = await db`
+          SELECT tokens_to_grant FROM pending_credit_claims
+          WHERE claim_token = ${claimToken} AND redeemed_at IS NULL
+        ` as unknown as [{ tokens_to_grant: number } | undefined]
+        if (claim?.tokens_to_grant && claim.tokens_to_grant > 0) {
+          await db`UPDATE users SET analysis_tokens = COALESCE(analysis_tokens, 0) + ${claim.tokens_to_grant} WHERE id = ${user.id}`
+          await db`UPDATE pending_credit_claims SET redeemed_at = NOW() WHERE claim_token = ${claimToken}`
+        }
+      } catch {
+        // Non-fatal
+      }
+    }
 
     // If they registered via a coach invite link, claim their pending team spot
     if (teamInviteToken) {

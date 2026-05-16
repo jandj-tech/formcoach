@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import type Stripe from 'stripe'
 import { getStripe } from '@/lib/stripe'
 import { db } from '@/lib/db'
+import { sendClaimCreditsEmail } from '@/lib/email'
 
 export async function POST(req: NextRequest) {
   const sig = req.headers.get('stripe-signature')
@@ -248,6 +249,18 @@ export async function POST(req: NextRequest) {
       } catch (err) {
         console.error('Failed to grant tokens:', err)
         // Non-fatal — order is saved, tokens can be credited manually
+      }
+    }
+
+    // For guest purchases, the claim token was generated at checkout and is in the
+    // metadata. Send a backup email so they can still claim credits if they closed
+    // the browser before finishing signup.
+    const claimToken = session.metadata?.claim_token
+    if (tokensToGrant > 0 && claimToken && !recipient.startsWith('user:') && !recipient.startsWith('team:')) {
+      try {
+        await sendClaimCreditsEmail(emailLower, name || null, tokensToGrant, claimToken)
+      } catch (err) {
+        console.error('Failed to send claim credits email:', err)
       }
     }
   }

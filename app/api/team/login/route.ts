@@ -17,6 +17,24 @@ export async function POST(req: NextRequest) {
     ` as unknown as Array<{ id: string; admin_email: string; password_hash: string; name: string }>
 
     if (teams.length === 0) {
+      // Not a founding coach — check additional coaches (team_coaches).
+      try {
+        const [coach] = (await db`
+          SELECT team_id, email, password_hash
+          FROM team_coaches
+          WHERE email = ${emailLower} AND password_hash IS NOT NULL
+        `) as unknown as [{ team_id: string; email: string; password_hash: string } | undefined]
+
+        if (coach && (await bcrypt.compare(password, coach.password_hash))) {
+          const coachToken = await signTeamSession({ teamId: coach.team_id, adminEmail: coach.email })
+          const coachRes = NextResponse.json({ success: true })
+          coachRes.cookies.set(teamSessionCookieOptions(coachToken))
+          return coachRes
+        }
+      } catch (err) {
+        console.warn('team_coaches lookup failed (table may not exist yet):', err instanceof Error ? err.message : err)
+      }
+
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
     }
 

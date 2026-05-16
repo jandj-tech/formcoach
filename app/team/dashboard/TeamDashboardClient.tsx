@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import CoachUploadForm from './CoachUploadForm'
+import TeamCoaches from './TeamCoaches'
 
 interface Team {
   id: string
@@ -49,6 +50,8 @@ interface Props {
   improved: ImprovedEntry[]
   members: Member[]
   pendingMembers: PendingMember[]
+  coaches: Array<{ id: string; email: string; pending: boolean }>
+  foundingCoachEmail: string
   allTeams: Array<{ id: string; name: string }>
   currentTeamId: string
   adminEmail: string
@@ -60,6 +63,8 @@ export default function TeamDashboardClient({
   improved,
   members,
   pendingMembers,
+  coaches,
+  foundingCoachEmail,
   allTeams,
   currentTeamId,
   adminEmail,
@@ -296,6 +301,9 @@ export default function TeamDashboardClient({
           </div>
         </div>
       </div>
+
+      {/* Coaches */}
+      <TeamCoaches foundingCoachEmail={foundingCoachEmail} coaches={coaches} />
 
       {/* Upload a Shot for a Player */}
       <div className="space-y-3">

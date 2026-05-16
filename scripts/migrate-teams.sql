@@ -23,3 +23,13 @@ CREATE TABLE IF NOT EXISTS team_players (
 
 ALTER TABLE submissions ADD COLUMN IF NOT EXISTS team_id UUID REFERENCES teams(id);
 ALTER TABLE submissions ADD COLUMN IF NOT EXISTS team_player_id UUID REFERENCES team_players(id);
+
+-- Additional coaches for a team (beyond the founding coach in teams.admin_email).
+CREATE TABLE IF NOT EXISTS team_coaches (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  password_hash VARCHAR(255),
+  invite_token VARCHAR(64),
+  created_at TIMESTAMP DEFAULT NOW()
+);

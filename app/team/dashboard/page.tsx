@@ -9,9 +9,9 @@ export default async function TeamDashboardPage() {
   if (!session) redirect('/team/login')
 
   const [team] = await db`
-    SELECT id, name, access_code, credits
+    SELECT id, name, access_code, admin_email, credits
     FROM teams WHERE id = ${session.teamId}
-  ` as unknown as [{ id: string; name: string; access_code: string; credits: number } | undefined]
+  ` as unknown as [{ id: string; name: string; access_code: string; admin_email: string; credits: number } | undefined]
 
   if (!team) redirect('/team/login')
 
@@ -37,6 +37,7 @@ export default async function TeamDashboardPage() {
 
   let members: Array<{ id: string; email: string; tokens: number; first_name: string | null; last_name_initial: string | null }> = []
   let pendingMembers: Array<{ id: string; first_name: string; last_name_initial: string | null; invite_token: string | null }> = []
+  let coaches: Array<{ id: string; email: string; pending: boolean }> = []
 
   try {
     leaderboard = (await db`
@@ -105,6 +106,17 @@ export default async function TeamDashboardPage() {
     console.error('[team/dashboard] pending members query failed:', err)
   }
 
+  try {
+    coaches = (await db`
+      SELECT id, email, (password_hash IS NULL) AS pending
+      FROM team_coaches
+      WHERE team_id = ${team.id}
+      ORDER BY created_at ASC
+    `) as unknown as typeof coaches
+  } catch (err) {
+    console.error('[team/dashboard] coaches query failed:', err)
+  }
+
   return (
     <main className="min-h-screen bg-white flex flex-col">
       <TopNav />
@@ -114,6 +126,8 @@ export default async function TeamDashboardPage() {
         improved={improved}
         members={members}
         pendingMembers={pendingMembers}
+        coaches={coaches}
+        foundingCoachEmail={team.admin_email}
         allTeams={allTeams}
         currentTeamId={team.id}
         adminEmail={session.adminEmail}

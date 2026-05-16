@@ -215,7 +215,8 @@ export default function TeamDashboardClient({
   ]
 
   return (
-    <div className="max-w-3xl mx-auto w-full px-6 py-10 space-y-10">
+    <div className="max-w-3xl mx-auto w-full px-6 py-10 space-y-6">
+
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -259,79 +260,80 @@ export default function TeamDashboardClient({
         <button
           onClick={logout}
           disabled={loggingOut}
-          className="text-gray-400 hover:text-gray-600 text-sm transition-colors"
+          className="text-gray-400 hover:text-gray-600 text-sm transition-colors shrink-0"
         >
           {loggingOut ? 'Logging out...' : 'Log out'}
         </button>
       </div>
 
-      {/* Initiation gate / token pool */}
-      {team.initiated ? (
-        <PoolAssignPanel
-          endpoint="/api/team/assign-tokens"
-          tokenPool={team.tokenPool}
-          players={members.map(m => ({
-            id: m.id,
-            label: m.first_name
-              ? `${m.first_name}${m.last_name_initial ? ' ' + m.last_name_initial + '.' : ''}`
-              : m.email,
-          }))}
-        />
-      ) : (
-        <InitiationPanel
-          endpoint="/api/team/buy-initiation"
-          playerCount={members.length}
-        />
-      )}
+      {/* Credits & Pool */}
+      <div className="bg-gray-50 rounded-2xl p-5 space-y-4">
+        <h2 className="text-base font-black text-black">Credits &amp; Pool</h2>
+        {team.initiated ? (
+          <PoolAssignPanel
+            endpoint="/api/team/assign-tokens"
+            tokenPool={team.tokenPool}
+            players={members.map(m => ({
+              id: m.id,
+              label: m.first_name
+                ? `${m.first_name}${m.last_name_initial ? ' ' + m.last_name_initial + '.' : ''}`
+                : m.email,
+            }))}
+          />
+        ) : (
+          <InitiationPanel
+            endpoint="/api/team/buy-initiation"
+            playerCount={members.length}
+          />
+        )}
 
-      {/* Credits + Buy — available once the team is initiated */}
-      {team.initiated && (
-        <div className="bg-orange-50 border border-orange-200 rounded-2xl p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Upload credits remaining</p>
-              <p className="text-4xl font-black text-black">{team.credits}</p>
-            </div>
-            <div className="text-right space-y-2">
-              <div className="flex items-center gap-2 justify-end">
-                <span className="text-sm text-gray-600">Buy</span>
-                <input
-                  type="number"
-                  min={1}
-                  max={500}
-                  value={quantity}
-                  onChange={e => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="w-16 border border-gray-300 rounded-lg px-2 py-1 text-center text-black text-sm focus:outline-none focus:border-orange-500"
-                />
-                <span className="text-sm text-gray-600">credits</span>
+        {team.initiated && (
+          <div className="bg-orange-50 border border-orange-200 rounded-2xl p-5">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div>
+                <p className="text-sm text-gray-500">Upload credits remaining</p>
+                <p className="text-4xl font-black text-black">{team.credits}</p>
               </div>
-              <p className="text-xs text-gray-400 text-right">${(quantity * 2.5).toFixed(2)} total @ $2.50 each</p>
-              <button
-                onClick={buyCredits}
-                disabled={buying}
-                className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
-              >
-                {buying ? 'Redirecting...' : 'Buy Credits'}
-              </button>
+              <div className="text-right space-y-2">
+                <div className="flex items-center gap-2 justify-end">
+                  <span className="text-sm text-gray-600">Buy</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={500}
+                    value={quantity}
+                    onChange={e => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-16 border border-gray-300 rounded-lg px-2 py-1 text-center text-black text-sm focus:outline-none focus:border-orange-500"
+                  />
+                  <span className="text-sm text-gray-600">credits</span>
+                </div>
+                <p className="text-xs text-gray-400 text-right">${(quantity * 2.5).toFixed(2)} total @ $2.50 each</p>
+                <button
+                  onClick={buyCredits}
+                  disabled={buying}
+                  className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+                >
+                  {buying ? 'Redirecting...' : 'Buy Credits'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Token balances */}
-      <TokenBalances
-        players={members.map(m => ({
-          id: m.id,
-          label: m.first_name ? formatPlayerName(m.first_name, m.last_name_initial) : m.email,
-          tokens: m.tokens,
-        }))}
-        coachCredits={team.credits}
-        tokenPool={team.tokenPool}
-      />
+        <TokenBalances
+          players={members.map(m => ({
+            id: m.id,
+            label: m.first_name ? formatPlayerName(m.first_name, m.last_name_initial) : m.email,
+            tokens: m.tokens,
+          }))}
+          coachCredits={team.credits}
+          tokenPool={team.tokenPool}
+        />
+      </div>
 
       {/* Invite Players */}
       <div className="space-y-3">
-        <h2 className="text-xl font-black text-black">Invite Players</h2>
+        <h2 className="text-base font-black text-black">Invite Players</h2>
         <div className="bg-orange-50 border border-orange-200 rounded-2xl p-5 space-y-4">
           <div>
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Team code</p>
@@ -356,23 +358,25 @@ export default function TeamDashboardClient({
       </div>
 
       {/* Coaches */}
-      <TeamCoaches
-        foundingCoachEmail={foundingCoachEmail}
-        foundingCoachNickname={foundingCoachNickname}
-        coaches={coaches}
-        myNickname={myNickname}
-      />
+      <div className="bg-gray-50 rounded-2xl p-5">
+        <TeamCoaches
+          foundingCoachEmail={foundingCoachEmail}
+          foundingCoachNickname={foundingCoachNickname}
+          coaches={coaches}
+          myNickname={myNickname}
+        />
+      </div>
 
       {/* Upload a Shot for a Player */}
-      <div className="space-y-3">
-        <h2 className="text-xl font-black text-black">Upload a Shot for a Player</h2>
+      <div className="bg-gray-50 rounded-2xl p-5 space-y-3">
+        <h2 className="text-base font-black text-black">Upload a Shot for a Player</h2>
         <CoachUploadForm accessCode={team.accessCode} members={uploadableMembers} />
       </div>
 
-      {/* Add Player */}
-      <div className="space-y-3">
+      {/* Players */}
+      <div className="bg-gray-50 rounded-2xl p-5 space-y-3">
         <div className="flex items-center justify-between gap-4">
-          <h2 className="text-xl font-black text-black">Players</h2>
+          <h2 className="text-base font-black text-black">Players</h2>
           <button
             onClick={() => { setAddOpen(o => !o); setAddStatus('idle'); setAddError(''); setNewInviteUrl('') }}
             className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
@@ -382,7 +386,7 @@ export default function TeamDashboardClient({
         </div>
 
         {addOpen && (
-          <div className="border border-gray-200 rounded-2xl p-5 space-y-3">
+          <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-3">
             <p className="text-sm text-gray-500">
               Add a player by name. You can optionally send them a link to create their account — once they sign up, they&apos;ll be automatically added to the team under this name.
             </p>
@@ -432,12 +436,11 @@ export default function TeamDashboardClient({
           </div>
         )}
 
-        {/* Joined players (real accounts) */}
         {members.length > 0 && (
           <div className="space-y-1">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Joined with account</p>
             {members.map(m => (
-              <div key={m.id} className="flex items-center gap-3 py-2 px-3 bg-gray-50 rounded-xl">
+              <div key={m.id} className="flex items-center gap-3 py-2 px-3 bg-white rounded-xl border border-gray-100">
                 <div className="flex-1 min-w-0">
                   <Link
                     href={`/team/dashboard/member/${m.id}`}
@@ -460,14 +463,13 @@ export default function TeamDashboardClient({
           </div>
         )}
 
-        {/* Pending players (manually added, no account yet) */}
         {pendingMembers.length > 0 && (
           <div className="space-y-1">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Added by coach (no account yet)</p>
             {pendingMembers.map(p => {
               const inviteUrl = p.invite_token ? `${BASE_URL}/signup?teamInvite=${p.invite_token}` : null
               return (
-                <div key={p.id} className="flex items-center gap-3 py-2 px-3 bg-gray-50 rounded-xl">
+                <div key={p.id} className="flex items-center gap-3 py-2 px-3 bg-white rounded-xl border border-gray-100">
                   <span className="flex-1 text-sm font-semibold text-black">
                     {formatPlayerName(p.first_name, p.last_name_initial)}
                   </span>
@@ -491,9 +493,9 @@ export default function TeamDashboardClient({
       </div>
 
       {/* Leaderboard */}
-      <div className="space-y-4">
+      <div className="bg-gray-50 rounded-2xl p-5 space-y-4">
         <div className="flex items-center justify-between gap-4">
-          <h2 className="text-xl font-black text-black">Team Leaderboard</h2>
+          <h2 className="text-base font-black text-black">Team Leaderboard</h2>
           {leaderboard.length > 0 && (
             <button
               onClick={() => setShowLeaderboard(true)}
@@ -504,7 +506,7 @@ export default function TeamDashboardClient({
           )}
         </div>
         {leaderboard.length === 0 ? (
-          <div className="text-center py-12 text-gray-400 border-2 border-dashed border-gray-200 rounded-2xl">
+          <div className="text-center py-10 text-gray-400 border-2 border-dashed border-gray-200 rounded-2xl bg-white">
             <p className="font-semibold">No shots analyzed yet</p>
             <p className="text-sm mt-1">Upload a shot above to get started.</p>
           </div>
@@ -515,13 +517,13 @@ export default function TeamDashboardClient({
 
       {/* Most Improved */}
       {improved.length > 0 && (
-        <div className="space-y-4">
-          <h2 className="text-xl font-black text-black">Most Improved</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="bg-gray-50 rounded-2xl p-5 space-y-4">
+          <h2 className="text-base font-black text-black">Most Improved</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {improved.map((entry) => {
               const gain = Number(entry.latest_score) - Number(entry.first_score)
               return (
-                <div key={entry.player_id} className="border border-gray-200 rounded-2xl p-4 space-y-1">
+                <div key={entry.player_id} className="bg-white border border-gray-100 rounded-2xl p-4 space-y-1">
                   <p className="font-bold text-black">
                     {formatPlayerName(entry.first_name, entry.last_name_initial)}
                   </p>

@@ -410,44 +410,48 @@ export default function VideoUploader({ teamMode }: { teamMode?: TeamMode } = {}
 
         {/* Not logged in overlay */}
         {notLoggedIn && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 bg-white/95 backdrop-blur-sm rounded-2xl">
-            <p className="text-black font-black text-xl sm:text-2xl text-center leading-snug">
-              Create a free account to analyze your shot
-            </p>
-            <div className="flex gap-2">
-              <a
-                href="/signup"
-                className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-colors"
-              >
-                Sign Up Free
-              </a>
-              <a
-                href="/login"
-                className="bg-gray-100 hover:bg-gray-200 text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-colors"
-              >
-                Log In
-              </a>
+          <div className="absolute inset-0 flex flex-col items-center justify-center px-6">
+            <div className="flex flex-col items-center gap-3 bg-white/85 backdrop-blur-sm border border-gray-200 shadow-xl rounded-2xl px-6 py-5">
+              <p className="text-black font-black text-xl sm:text-2xl text-center leading-snug">
+                Create a free account to analyze your shot
+              </p>
+              <div className="flex gap-2">
+                <a
+                  href="/signup"
+                  className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-colors"
+                >
+                  Sign Up Free
+                </a>
+                <a
+                  href="/login"
+                  className="bg-gray-100 hover:bg-gray-200 text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-colors"
+                >
+                  Log In
+                </a>
+              </div>
             </div>
           </div>
         )}
 
         {/* No tokens overlay */}
         {noTokens && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 bg-white/95 backdrop-blur-sm rounded-2xl">
-            <p className="text-black font-black text-xl sm:text-2xl text-center leading-snug">
-              Buy a token to analyze your shot
-            </p>
-            <button
-              onClick={handleBuyToken}
-              className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors"
-            >
-              Buy Analysis — $4.99
-            </button>
-            <p className="text-gray-400 text-xs text-center">
-              Or{' '}
-              <a href="/shop" className="underline hover:text-gray-600">buy the training ball</a>
-              {' '}and get 10 free analyses
-            </p>
+          <div className="absolute inset-0 flex flex-col items-center justify-center px-6">
+            <div className="flex flex-col items-center gap-3 bg-white/85 backdrop-blur-sm border border-gray-200 shadow-xl rounded-2xl px-6 py-5">
+              <p className="text-black font-black text-xl sm:text-2xl text-center leading-snug">
+                Buy a token to analyze your shot
+              </p>
+              <button
+                onClick={handleBuyToken}
+                className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors"
+              >
+                Buy Analysis — $4.99
+              </button>
+              <p className="text-gray-400 text-xs text-center">
+                Or{' '}
+                <a href="/shop" className="underline hover:text-gray-600">buy the training ball</a>
+                {' '}and get 5 free analyses
+              </p>
+            </div>
           </div>
         )}
       </div>

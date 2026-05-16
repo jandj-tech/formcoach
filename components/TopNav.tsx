@@ -15,22 +15,24 @@ const tabs = [
 
 export default function TopNav() {
   const pathname = usePathname()
-  const [loggedIn, setLoggedIn] = useState(false)
+  const [account, setAccount] = useState<{ type: string; dashboard: string } | null>(null)
 
   useEffect(() => {
     fetch('/api/auth/session')
       .then(r => r.json())
-      .then(({ user }) => setLoggedIn(!!user))
+      .then(({ account }) => setAccount(account ?? null))
       .catch(() => {})
   }, [])
 
-  // Signed in → "Account" (shot history at /dashboard); signed out → "Login".
-  const accountHref = loggedIn ? '/dashboard' : '/login'
-  const accountLabel = loggedIn ? 'Account' : 'Login'
+  // Signed in → "Account" (the player, coach, or org dashboard); signed out → "Login".
+  const accountHref = account ? account.dashboard : '/login'
+  const accountLabel = account ? 'Account' : 'Login'
   const accountActive =
     pathname.startsWith('/login') ||
     pathname.startsWith('/signup') ||
-    pathname.startsWith('/dashboard')
+    pathname.startsWith('/dashboard') ||
+    pathname.startsWith('/team/dashboard') ||
+    pathname.startsWith('/org/dashboard')
   const mobileTabs = [
     ...tabs,
     { href: '/team', label: 'Organizations' },

@@ -20,7 +20,11 @@ function LoginForm() {
   useEffect(() => {
     fetch('/api/auth/session')
       .then(r => r.json())
-      .then(({ user }) => { if (user) router.replace(next) })
+      .then(({ account }) => {
+        // Already logged in — send players to `next`, coaches/orgs to their dashboard.
+        if (!account) return
+        router.replace(account.type === 'player' ? next : account.dashboard)
+      })
       .catch(() => {})
   }, [router, next])
 

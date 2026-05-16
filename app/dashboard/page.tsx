@@ -4,6 +4,7 @@ import { db } from '@/lib/db'
 import TopNav from '@/components/TopNav'
 import Link from 'next/link'
 import LogoutButton from './LogoutButton'
+import BuyTokenButton from './BuyTokenButton'
 
 export default async function DashboardPage() {
   const session = await getSession()
@@ -81,18 +82,7 @@ export default async function DashboardPage() {
                 {tokens > 0 ? 'Each token gives you one full shot analysis' : 'Buy a token to analyze your next shot'}
               </p>
             </div>
-            <a
-              href="#"
-              onClick={async (e) => {
-                e.preventDefault()
-                const res = await fetch('/api/buy-token', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: user.email }) })
-                const { url } = await res.json()
-                if (url) window.location.href = url
-              }}
-              className="shrink-0 bg-orange-500 hover:bg-orange-400 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors"
-            >
-              Buy Token — $4.99
-            </a>
+            <BuyTokenButton />
           </div>
         )}
 

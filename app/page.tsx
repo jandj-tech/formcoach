@@ -9,6 +9,19 @@ import { getSession } from '@/lib/auth'
 export default async function HomePage() {
   const session = await getSession()
 
+  // The welcome banner shows the user's nickname, falling back to their email.
+  let welcomeName = session?.email ?? ''
+  if (session) {
+    try {
+      const [u] = (await db`
+        SELECT nickname FROM users WHERE id = ${session.userId}
+      `) as unknown as [{ nickname: string | null } | undefined]
+      if (u?.nickname) welcomeName = u.nickname
+    } catch {
+      // nickname column may not exist yet — keep the email fallback
+    }
+  }
+
   const criteria = (await db`
     SELECT id, name, description
     FROM criteria
@@ -24,7 +37,7 @@ export default async function HomePage() {
 
       {session && (
         <div className="bg-orange-500 text-white text-center text-sm font-semibold py-2 px-4">
-          Welcome: {session.email}
+          Welcome: {welcomeName}
         </div>
       )}
 

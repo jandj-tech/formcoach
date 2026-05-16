@@ -377,8 +377,9 @@ export default function OrgDashboardClient({ teams, orgName, classPackages }: Pr
 
   const classProgramSection = (
     <div className="space-y-4">
-      {/* Program summary card */}
-      <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-6 text-white">
+      {/* Program summary + buy form — all one card */}
+      <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-6 text-white space-y-5">
+        {/* Header */}
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="space-y-1">
             <p className="text-orange-100 text-xs font-bold uppercase tracking-widest">New</p>
@@ -396,7 +397,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages }: Pr
         </div>
 
         {/* Perks row */}
-        <div className="grid grid-cols-3 gap-2 mt-5">
+        <div className="grid grid-cols-3 gap-2">
           {[
             { icon: '🏀', label: '1 Training Ball', sub: 'per player' },
             { icon: '🎯', label: '2 Shot Analyses', sub: 'start & end' },
@@ -411,7 +412,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages }: Pr
         </div>
 
         {/* 10-week outline */}
-        <details className="mt-4 group">
+        <details className="group">
           <summary className="cursor-pointer text-sm font-semibold text-orange-100 hover:text-white list-none flex items-center gap-1">
             <span className="group-open:hidden">▶ View 10-week session outline</span>
             <span className="hidden group-open:inline">▼ Hide session outline</span>
@@ -433,55 +434,58 @@ export default function OrgDashboardClient({ teams, orgName, classPackages }: Pr
             ))}
           </div>
         </details>
-      </div>
 
-      {/* Buy package form */}
-      <div className="border border-gray-200 rounded-2xl p-5 space-y-4">
-        <h3 className="font-black text-black text-lg">Purchase a Class Package</h3>
-        <p className="text-sm text-gray-500">Minimum {CLASS_MIN_PLAYERS} players. Each player gets 2 analysis tokens + a certificate when they complete both evaluations.</p>
+        {/* Divider */}
+        <div className="border-t border-white/20" />
 
-        <div className="space-y-2">
-          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Number of players</label>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setClassPlayerCount(c => Math.max(CLASS_MIN_PLAYERS, c - 5))}
-              className="w-9 h-9 rounded-full border border-gray-300 text-black font-bold hover:border-orange-400 transition-colors flex items-center justify-center"
-            >−</button>
-            <span className="text-2xl font-black text-black w-12 text-center">{classPlayerCount}</span>
-            <button
-              onClick={() => setClassPlayerCount(c => c + 5)}
-              className="w-9 h-9 rounded-full border border-gray-300 text-black font-bold hover:border-orange-400 transition-colors flex items-center justify-center"
-            >+</button>
-            <input
-              type="number"
-              min={CLASS_MIN_PLAYERS}
-              value={classPlayerCount}
-              onChange={e => setClassPlayerCount(Math.max(CLASS_MIN_PLAYERS, parseInt(e.target.value) || CLASS_MIN_PLAYERS))}
-              className="w-20 border border-gray-300 rounded-xl px-3 py-2 text-black text-sm focus:outline-none focus:border-orange-500"
-            />
+        {/* Buy form — inside the same card */}
+        <div className="space-y-3">
+          <p className="font-black text-white text-base">Purchase a Class Package</p>
+          <p className="text-orange-100 text-xs">Minimum {CLASS_MIN_PLAYERS} players. Each player gets 2 analysis tokens + a certificate when they complete both evaluations.</p>
+
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-orange-200 uppercase tracking-wide">Number of players</label>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setClassPlayerCount(c => Math.max(CLASS_MIN_PLAYERS, c - 1))}
+                className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 text-white font-bold transition-colors flex items-center justify-center"
+              >−</button>
+              <span className="text-2xl font-black text-white w-12 text-center">{classPlayerCount}</span>
+              <button
+                onClick={() => setClassPlayerCount(c => c + 1)}
+                className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 text-white font-bold transition-colors flex items-center justify-center"
+              >+</button>
+              <input
+                type="number"
+                min={CLASS_MIN_PLAYERS}
+                value={classPlayerCount}
+                onChange={e => setClassPlayerCount(Math.max(CLASS_MIN_PLAYERS, parseInt(e.target.value) || CLASS_MIN_PLAYERS))}
+                className="w-20 bg-white/20 border border-white/30 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-white placeholder-orange-200"
+              />
+            </div>
+            {classPlayerCount >= CLASS_BULK_THRESHOLD && (
+              <p className="text-xs text-green-300 font-semibold">Bulk rate unlocked — $45/player</p>
+            )}
           </div>
-          {classPlayerCount >= CLASS_BULK_THRESHOLD && (
-            <p className="text-xs text-green-600 font-semibold">Bulk rate unlocked — $45/player</p>
-          )}
-        </div>
 
-        <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 flex items-center justify-between">
-          <div>
-            <p className="text-sm text-gray-600">{classPlayerCount} players × ${classPricePerPlayer}</p>
-            <p className="text-xs text-gray-400 mt-0.5">{classPlayerCount * 2} total analyses + {classPlayerCount} certificates</p>
+          <div className="bg-white/15 rounded-xl px-4 py-3 flex items-center justify-between">
+            <div>
+              <p className="text-sm text-orange-100">{classPlayerCount} players × ${classPricePerPlayer}</p>
+              <p className="text-xs text-orange-200 mt-0.5">{classPlayerCount * 2} total analyses + {classPlayerCount} certificates</p>
+            </div>
+            <p className="text-2xl font-black text-white">${classTotal.toLocaleString()}</p>
           </div>
-          <p className="text-2xl font-black text-black">${classTotal.toLocaleString()}</p>
+
+          {classError && <p className="text-red-200 text-sm">{classError}</p>}
+
+          <button
+            onClick={handleBuyClass}
+            disabled={buyingClass}
+            className="w-full bg-white hover:bg-orange-50 disabled:bg-white/60 text-orange-600 font-black py-3 rounded-xl transition-colors"
+          >
+            {buyingClass ? 'Redirecting to checkout...' : `Buy Class Package — $${classTotal.toLocaleString()}`}
+          </button>
         </div>
-
-        {classError && <p className="text-red-500 text-sm">{classError}</p>}
-
-        <button
-          onClick={handleBuyClass}
-          disabled={buyingClass}
-          className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-black py-3 rounded-xl transition-colors"
-        >
-          {buyingClass ? 'Redirecting to checkout...' : `Buy Class Package — $${classTotal.toLocaleString()}`}
-        </button>
       </div>
 
       {/* Active class packages */}

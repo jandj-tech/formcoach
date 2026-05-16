@@ -35,6 +35,21 @@ export default function TeamLandingPage() {
           </div>
         </div>
 
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Link
+            href="/org/signup"
+            className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-8 py-3 rounded-xl transition-colors"
+          >
+            Register Organization
+          </Link>
+          <Link
+            href="/login"
+            className="bg-white border border-gray-300 hover:border-orange-400 text-black font-bold px-8 py-3 rounded-xl transition-colors"
+          >
+            Log In
+          </Link>
+        </div>
+
         <div className="max-w-3xl w-full space-y-4 text-left">
           <h2 className="text-2xl font-black text-black text-center">How it works</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -56,19 +71,12 @@ export default function TeamLandingPage() {
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3">
-          <Link
-            href="/org/signup"
-            className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-8 py-3 rounded-xl transition-colors"
-          >
-            Register Organization
-          </Link>
-          <Link
-            href="/login"
-            className="bg-white border border-gray-300 hover:border-orange-400 text-black font-bold px-8 py-3 rounded-xl transition-colors"
-          >
-            Log In
-          </Link>
+        <div className="max-w-2xl w-full bg-orange-500 rounded-2xl px-6 py-4 flex items-center gap-4 text-white">
+          <span className="text-3xl shrink-0">🎓</span>
+          <div className="text-left">
+            <p className="font-black text-base leading-tight">10-Week Shooting Class — for organizations</p>
+            <p className="text-orange-100 text-sm mt-0.5">Each player gets a ball, 2 shot analyses, and a certificate of completion that shows their improvement. Starting at $50/player.</p>
+          </div>
         </div>
 
       </div>

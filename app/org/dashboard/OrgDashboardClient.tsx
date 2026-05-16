@@ -8,6 +8,7 @@ import InitiationPanel from '@/components/InitiationPanel'
 import PoolAssignPanel from '@/components/PoolAssignPanel'
 import TokenBalances from '@/components/TokenBalances'
 import InlineEdit from '@/components/InlineEdit'
+import LeaderboardTable, { type LeaderboardRow } from '@/components/LeaderboardTable'
 import { CLASS_MIN_PLAYERS, CLASS_BULK_THRESHOLD, classPriceCents } from '@/lib/org-class-pricing'
 
 interface Member {
@@ -37,6 +38,7 @@ interface TeamData {
   coachNickname: string | null
   initiated: boolean
   tokenPool: number
+  leaderboard: LeaderboardRow[]
 }
 
 export interface ClassEnrollment {
@@ -934,6 +936,16 @@ export default function OrgDashboardClient({ teams, orgName, classPackages }: Pr
                     coachCredits={team.credits}
                     tokenPool={team.tokenPool}
                   />
+
+                  {/* Team leaderboard */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Team leaderboard</p>
+                    {team.leaderboard.length === 0 ? (
+                      <p className="text-sm text-gray-400">No shots analyzed yet.</p>
+                    ) : (
+                      <LeaderboardTable entries={team.leaderboard} context="org" />
+                    )}
+                  </div>
 
                   {/* Buy-tokens section — only after the team is initiated */}
                   {team.initiated && (

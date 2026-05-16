@@ -21,9 +21,26 @@ function scoreColor(score: number) {
   return 'text-red-500'
 }
 
-// Team leaderboard table. A player name links to the right detail page —
-// the member page for account players, the player page for coach-added ones.
-export default function LeaderboardTable({ entries }: { entries: LeaderboardRow[] }) {
+// Player name links to the analyses detail page. `context` picks the routes:
+// 'team' for the coach dashboard, 'org' for the organization dashboard.
+function detailHref(entry: LeaderboardRow, context: 'team' | 'org'): string | null {
+  if (entry.kind === 'member') {
+    return context === 'org'
+      ? `/org/dashboard/member/${entry.id}`
+      : `/team/dashboard/member/${entry.id}`
+  }
+  // Coach-added players only have a detail page in the team dashboard.
+  return context === 'org' ? null : `/team/dashboard/player/${entry.id}`
+}
+
+// Team leaderboard table.
+export default function LeaderboardTable({
+  entries,
+  context = 'team',
+}: {
+  entries: LeaderboardRow[]
+  context?: 'team' | 'org'
+}) {
   return (
     <div className="border border-gray-200 rounded-2xl overflow-hidden">
       <table className="w-full">
@@ -38,20 +55,21 @@ export default function LeaderboardTable({ entries }: { entries: LeaderboardRow[
         <tbody className="divide-y divide-gray-100">
           {entries.map((entry, i) => {
             const score = Number(entry.best_score)
+            const name = formatPlayerName(entry.first_name, entry.last_name_initial)
+            const href = detailHref(entry, context)
             return (
               <tr key={entry.id} className={i === 0 ? 'bg-orange-50/50' : 'bg-white'}>
                 <td className="px-4 py-3 text-sm font-bold text-gray-400">
                   {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}
                 </td>
                 <td className="px-4 py-3 font-semibold">
-                  <Link
-                    href={entry.kind === 'member'
-                      ? `/team/dashboard/member/${entry.id}`
-                      : `/team/dashboard/player/${entry.id}`}
-                    className="text-black hover:text-orange-600 hover:underline transition-colors"
-                  >
-                    {formatPlayerName(entry.first_name, entry.last_name_initial)}
-                  </Link>
+                  {href ? (
+                    <Link href={href} className="text-black hover:text-orange-600 hover:underline transition-colors">
+                      {name}
+                    </Link>
+                  ) : (
+                    <span className="text-black">{name}</span>
+                  )}
                 </td>
                 <td className={`px-4 py-3 text-right font-black text-lg ${scoreColor(score)}`}>
                   {score.toFixed(1)}

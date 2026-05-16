@@ -6,6 +6,7 @@ import InlineEdit from '@/components/InlineEdit'
 import OrgDashboardClient from './OrgDashboardClient'
 import LogoutButton from './LogoutButton'
 import type { ClassPackage } from './OrgDashboardClient'
+import type { LeaderboardRow } from '@/components/LeaderboardTable'
 
 interface Member {
   id: string
@@ -34,6 +35,7 @@ interface TeamData {
   coachNickname: string | null
   initiated: boolean
   tokenPool: number
+  leaderboard: LeaderboardRow[]
 }
 
 export default async function OrgDashboardPage() {
@@ -133,6 +135,38 @@ export default async function OrgDashboardPage() {
           // coach_nickname / token_pool / initiated_at columns may not exist yet
         }
 
+        // Leaderboard: account players (by user_id) + coach-added players (by team_player_id).
+        let leaderboard: LeaderboardRow[] = []
+        try {
+          leaderboard = (await db`
+            WITH shots AS (
+              SELECT u.id::text AS player_id,
+                     COALESCE(NULLIF(tm.first_name, ''), u.email) AS first_name,
+                     COALESCE(tm.last_name_initial, '') AS last_name_initial,
+                     a.overall_score, s.id AS sid, 'member' AS kind
+              FROM team_memberships tm
+              JOIN users u ON u.id = tm.user_id
+              JOIN submissions s ON s.user_id = u.id
+              JOIN analyses a ON a.submission_id = s.id
+              WHERE tm.team_id = ${t.id} AND s.status = 'complete'
+              UNION ALL
+              SELECT tp.id::text AS player_id, tp.first_name, tp.last_name_initial,
+                     a.overall_score, s.id AS sid, 'player' AS kind
+              FROM team_players tp
+              JOIN submissions s ON s.team_player_id = tp.id AND s.team_id = tp.team_id
+              JOIN analyses a ON a.submission_id = s.id
+              WHERE tp.team_id = ${t.id} AND s.status = 'complete'
+            )
+            SELECT player_id AS id, first_name, last_name_initial, kind,
+                   MAX(overall_score) AS best_score, COUNT(sid)::int AS upload_count
+            FROM shots
+            GROUP BY player_id, first_name, last_name_initial, kind
+            ORDER BY best_score DESC
+          `) as unknown as LeaderboardRow[]
+        } catch (err) {
+          console.error('[org/dashboard] leaderboard query failed:', err)
+        }
+
         return {
           id: t.id,
           name: t.name,
@@ -145,6 +179,7 @@ export default async function OrgDashboardPage() {
           coachNickname,
           initiated,
           tokenPool,
+          leaderboard,
         }
       })
     )

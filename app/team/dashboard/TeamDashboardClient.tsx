@@ -12,9 +12,7 @@ import TokenBalances from '@/components/TokenBalances'
 import LeaderboardTable from '@/components/LeaderboardTable'
 import PrintButton from '@/components/PrintButton'
 import InlineEdit from '@/components/InlineEdit'
-import VideoUploader from '@/components/VideoUploader'
 import PlayerShotList, { type Shot } from '@/components/PlayerShotList'
-import BuySelfCreditsButton from './BuySelfCreditsButton'
 import { useCart } from '@/lib/cart'
 
 interface Team {
@@ -72,7 +70,6 @@ interface Props {
   currentTeamId: string
   adminEmail: string
   fromOrg: boolean
-  selfCredits: number
   myUploads: Shot[]
 }
 
@@ -90,7 +87,6 @@ export default function TeamDashboardClient({
   currentTeamId,
   adminEmail,
   fromOrg,
-  selfCredits,
   myUploads,
 }: Props) {
   const router = useRouter()
@@ -409,29 +405,23 @@ export default function TeamDashboardClient({
         <CoachUploadForm accessCode={team.accessCode} members={uploadableMembers} />
       </div>
 
-      {/* My Uploads — the coach analyzes their own shot */}
+      {/* My Uploads — your own analyzed shots (upload happens on the Analyze page) */}
       <div className="bg-gray-50 rounded-2xl p-5 space-y-3">
         <div className="flex items-center justify-between gap-4">
           <h2 className="text-base font-black text-black">My Uploads</h2>
-          <span className="shrink-0 bg-orange-100 text-orange-700 text-xs font-bold px-3 py-1 rounded-full">
-            {selfCredits} credit{selfCredits !== 1 ? 's' : ''}
-          </span>
+          <Link
+            href="/analyze"
+            className="shrink-0 bg-orange-500 hover:bg-orange-400 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors"
+          >
+            Analyze a shot →
+          </Link>
         </div>
-        <p className="text-sm text-gray-500">
-          Analyze your own shot — each upload uses one of your credits
-          {team.initiated ? ' ($2.50 each).' : ' ($4.99 each until the team is initiated).'}
-        </p>
-        <BuySelfCreditsButton initiated={team.initiated} />
-        {selfCredits > 0 ? (
-          <VideoUploader coachSelf />
+        {myUploads.length > 0 ? (
+          <PlayerShotList shots={myUploads} />
         ) : (
-          <p className="text-sm text-gray-400">Buy a credit above to analyze your shot.</p>
-        )}
-        {myUploads.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Your analyses</p>
-            <PlayerShotList shots={myUploads} />
-          </div>
+          <p className="text-sm text-gray-400">
+            You haven&apos;t analyzed any of your own shots yet — use the Analyze page to start.
+          </p>
         )}
       </div>
 

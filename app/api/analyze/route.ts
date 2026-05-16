@@ -4,6 +4,7 @@ import { db } from '@/lib/db'
 import { analyzeShot } from '@/lib/analyze'
 import { getSessionFromRequest } from '@/lib/auth'
 import { getTeamSessionFromRequest } from '@/lib/team-auth'
+import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import crypto from 'crypto'
 
 export const maxDuration = 300
@@ -32,10 +33,12 @@ export async function POST(req: NextRequest) {
     let coachEmail: string | null = null
     if (isCoachSelf) {
       const teamSession = await getTeamSessionFromRequest(req)
-      if (!teamSession) {
+      const orgSession = teamSession ? null : await getOrgSessionFromRequest(req)
+      const cEmail = teamSession?.adminEmail ?? orgSession?.adminEmail
+      if (!cEmail) {
         return NextResponse.json({ error: 'Login required' }, { status: 401 })
       }
-      coachEmail = teamSession.adminEmail.toLowerCase()
+      coachEmail = cEmail.toLowerCase()
       const [cc] = (await db`
         SELECT credits FROM coach_credits WHERE email = ${coachEmail}
       `) as unknown as [{ credits: number } | undefined]

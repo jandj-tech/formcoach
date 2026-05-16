@@ -12,11 +12,12 @@ const SUPPORT_EMAIL = 'learnhoops8@gmail.com'
 
 export default function SupportPage() {
   return (
-    <main className="min-h-screen bg-gray-50 flex flex-col">
+    <main className="min-h-screen bg-white flex flex-col">
       <TopNav />
-      <div className="flex-1 flex flex-col items-center px-6 py-20 space-y-6">
+
+      {/* White top section */}
+      <div className="flex flex-col items-center px-6 pt-20 pb-16 space-y-6">
         <div className="w-full max-w-md text-center space-y-6">
-          {/* Logo — on a dark panel so it stays visible on the white page */}
           <div className="inline-flex items-center justify-center bg-black rounded-2xl px-8 py-6">
             <Image
               src="/learnhoops-logo.png"
@@ -45,24 +46,28 @@ export default function SupportPage() {
             </a>
           </div>
         </div>
+      </div>
 
-        {/* FAQ */}
-        <div className="w-full max-w-3xl text-left bg-white border border-gray-200 rounded-2xl p-6 space-y-3">
-          <h2 className="text-xl font-black text-black">Frequently Asked Questions</h2>
-          <details className="bg-gray-50 border border-gray-200 rounded-2xl group" open>
-            <summary className="flex items-center justify-between gap-3 px-5 py-4 cursor-pointer list-none font-bold text-black">
-              What angle should I film from to get the best results?
-              <span className="text-gray-400 text-lg group-open:rotate-180 transition-transform">›</span>
-            </summary>
-            <div className="px-5 pb-5 text-sm text-gray-600 leading-relaxed">
-              For the most accurate analysis, film from under or near the net — either directly behind the basket or slightly to the side at an angle where the shooter&apos;s elbow, arms, and hands are all clearly visible throughout the shot. This gives the AI a clear view of arm mechanics, elbow alignment, and release. If you also want arc to be evaluated, choose an angle where the ball&apos;s flight path is visible. Avoid filming directly face-on, as key form details are hidden from that perspective. Video examples for each angle are coming soon.
-            </div>
-          </details>
+      {/* Grey FAQ section — fills the rest of the page */}
+      <div className="flex-1 bg-gray-50 border-t border-gray-200">
+        <div className="flex flex-col items-center px-6 py-12 space-y-6">
+          <div className="w-full max-w-3xl space-y-4">
+            <h2 className="text-xl font-black text-black text-center">Frequently Asked Questions</h2>
+            <details className="bg-white border border-gray-200 rounded-2xl group" open>
+              <summary className="flex items-center justify-between gap-3 px-5 py-4 cursor-pointer list-none font-bold text-black">
+                What angle should I film from to get the best results?
+                <span className="text-gray-400 text-lg group-open:rotate-180 transition-transform">›</span>
+              </summary>
+              <div className="px-5 pb-5 text-sm text-gray-600 leading-relaxed">
+                For the most accurate analysis, film from under or near the net — either directly behind the basket or slightly to the side at an angle where the shooter&apos;s elbow, arms, and hands are all clearly visible throughout the shot. This gives the AI a clear view of arm mechanics, elbow alignment, and release. If you also want arc to be evaluated, choose an angle where the ball&apos;s flight path is visible. Avoid filming directly face-on, as key form details are hidden from that perspective. Video examples for each angle are coming soon.
+              </div>
+            </details>
+          </div>
+
+          <Link href="/" className="text-sm font-semibold text-orange-500 hover:underline">
+            ← Back to home
+          </Link>
         </div>
-
-        <Link href="/" className="text-sm font-semibold text-orange-500 hover:underline">
-          ← Back to home
-        </Link>
       </div>
     </main>
   )

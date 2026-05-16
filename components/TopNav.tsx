@@ -34,7 +34,7 @@ export default function TopNav() {
     pathname.startsWith('/dashboard')
   const mobileTabs = [
     ...tabs,
-    { href: '/team', label: 'Register Team' },
+    { href: '/team', label: 'Organizations' },
     { href: accountHref, label: accountLabel },
   ]
 
@@ -76,7 +76,7 @@ export default function TopNav() {
                 : 'border-orange-500 text-orange-400 hover:bg-orange-500 hover:text-white'
             }`}
           >
-            Register Team
+            Organizations
           </Link>
           <Link
             href={accountHref}

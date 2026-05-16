@@ -8,68 +8,51 @@ export default function TeamLandingPage() {
 
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-20 text-center space-y-10">
         <div className="space-y-4 max-w-xl">
-          <div className="text-5xl">🏀</div>
           <h1 className="text-4xl font-black text-black leading-tight">
-            LearnHoops Team Plan
+            LearnHoops for Organizations
           </h1>
           <p className="text-gray-500 text-lg">
-            Get your whole team analyzed. Coaches upload shots, AI grades the form — see who&apos;s improving.
+            Register your organization, add your teams, and invite your coaches. AI grades every player&apos;s form — track who&apos;s improving across every team.
           </p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-2xl w-full text-left">
           <div className="bg-orange-50 border border-orange-100 rounded-2xl p-5 space-y-2">
-            <div className="text-2xl font-black text-orange-500">$2.50</div>
-            <div className="font-semibold text-black">Per upload</div>
-            <div className="text-gray-500 text-sm">No monthly fee. Buy credits and use them when you need them.</div>
+            <div className="text-2xl font-black text-orange-500">Step 1</div>
+            <div className="font-semibold text-black">Register your organization</div>
+            <div className="text-gray-500 text-sm">Create your org account and get your organization code.</div>
           </div>
           <div className="bg-orange-50 border border-orange-100 rounded-2xl p-5 space-y-2">
-            <div className="text-2xl">📊</div>
-            <div className="font-semibold text-black">Team leaderboard</div>
-            <div className="text-gray-500 text-sm">See every player ranked by their best shot score.</div>
+            <div className="text-2xl font-black text-orange-500">Step 2</div>
+            <div className="font-semibold text-black">Add your teams</div>
+            <div className="text-gray-500 text-sm">Add each team with its age group and coach email — your coaches get an invite link automatically.</div>
           </div>
           <div className="bg-orange-50 border border-orange-100 rounded-2xl p-5 space-y-2">
-            <div className="text-2xl">📈</div>
-            <div className="font-semibold text-black">Most improved</div>
-            <div className="text-gray-500 text-sm">Track who&apos;s putting in the work with automatic improvement tracking.</div>
+            <div className="text-2xl font-black text-orange-500">Step 3</div>
+            <div className="font-semibold text-black">Buy tokens for players</div>
+            <div className="text-gray-500 text-sm">Purchase analysis tokens for any player or entire teams. Coaches manage uploads, you manage the budget.</div>
           </div>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3">
           <Link
-            href="/team/signup"
+            href="/org/signup"
             className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-8 py-3 rounded-xl transition-colors"
           >
-            Create Team Account
+            Register Organization
+          </Link>
+          <Link
+            href="/org/login"
+            className="bg-white border border-gray-300 hover:border-orange-400 text-black font-bold px-8 py-3 rounded-xl transition-colors"
+          >
+            Organization Login
           </Link>
           <Link
             href="/team/login"
-            className="bg-white border border-gray-300 hover:border-orange-400 text-black font-bold px-8 py-3 rounded-xl transition-colors"
+            className="bg-white border border-gray-300 hover:border-gray-400 text-black font-bold px-8 py-3 rounded-xl transition-colors"
           >
             Coach Login
           </Link>
-        </div>
-
-        <div className="bg-orange-50 border border-orange-100 rounded-2xl p-6 max-w-xl w-full space-y-3 text-left">
-          <h2 className="text-lg font-black text-black">Register an Organization</h2>
-          <p className="text-gray-500 text-sm">
-            Managing multiple teams? Register your organization to manage all teams in one place —
-            buy analysis tokens for any player across every age group.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 pt-1">
-            <Link
-              href="/org/signup"
-              className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-6 py-3 rounded-xl transition-colors text-center"
-            >
-              Register Organization
-            </Link>
-            <Link
-              href="/org/login"
-              className="bg-white border border-gray-300 hover:border-orange-400 text-black font-bold px-6 py-3 rounded-xl transition-colors text-center"
-            >
-              Organization Login
-            </Link>
-          </div>
         </div>
       </div>
     </main>

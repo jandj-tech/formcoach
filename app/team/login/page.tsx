@@ -127,11 +127,6 @@ export default function TeamLoginPage() {
             </button>
           </form>
           )}
-
-          <p className="text-center text-sm text-gray-500">
-            New team?{' '}
-            <a href="/team/signup" className="text-orange-500 hover:underline font-medium">Create a team account</a>
-          </p>
         </div>
       </div>
     </main>

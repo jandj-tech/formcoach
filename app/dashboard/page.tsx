@@ -112,14 +112,25 @@ export default async function DashboardPage() {
     console.error('[dashboard] team membership query failed:', err)
   }
 
-  // Coaches for the player's team: the founding coach plus any added coaches.
+  // Coaches for the player's team, shown by nickname (falling back to email):
+  // the founding coach plus any added coaches.
   if (team) {
-    coaches = [team.admin_email]
+    let headCoachNickname: string | null = null
+    try {
+      const [r] = (await db`
+        SELECT coach_nickname FROM teams WHERE id = ${team.id}
+      `) as unknown as [{ coach_nickname: string | null } | undefined]
+      headCoachNickname = r?.coach_nickname ?? null
+    } catch (err) {
+      // coach_nickname column may not exist on older DBs.
+      console.error('[dashboard] head coach nickname query failed:', err)
+    }
+    coaches = [headCoachNickname || team.admin_email]
     try {
       const extra = (await db`
-        SELECT email FROM team_coaches WHERE team_id = ${team.id} ORDER BY created_at ASC
-      `) as unknown as Array<{ email: string }>
-      coaches.push(...extra.map(c => c.email))
+        SELECT email, nickname FROM team_coaches WHERE team_id = ${team.id} ORDER BY created_at ASC
+      `) as unknown as Array<{ email: string; nickname: string | null }>
+      coaches.push(...extra.map(c => c.nickname || c.email))
     } catch (err) {
       // team_coaches may not exist on older DBs — just show the founding coach.
       console.error('[dashboard] team coaches query failed:', err)
@@ -219,18 +230,20 @@ export default async function DashboardPage() {
                       {coaches.length === 1 ? 'Coach' : 'Coaches'}
                     </p>
                     <ul className="mt-1 space-y-0.5">
-                      {coaches.map(c => (
-                        <li key={c} className="text-sm text-gray-700">{c}</li>
+                      {coaches.map((c, i) => (
+                        <li key={i} className="text-sm text-gray-700">{c}</li>
                       ))}
                     </ul>
                   </div>
                 )}
-                <Link
-                  href="/dashboard/leaderboard"
-                  className="inline-block bg-orange-500 hover:bg-orange-400 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors"
-                >
-                  View Team Leaderboard
-                </Link>
+                <div>
+                  <Link
+                    href="/dashboard/leaderboard"
+                    className="inline-block bg-orange-500 hover:bg-orange-400 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors"
+                  >
+                    View Team Leaderboard
+                  </Link>
+                </div>
                 <LeaveTeamButton teamName={team.name} />
               </div>
             ) : (

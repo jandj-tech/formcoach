@@ -471,6 +471,79 @@ export async function sendCoachAddedEmail(to: string, orgName: string, teamName:
   })
 }
 
+export async function sendShippingEmail(
+  to: string,
+  customerName: string | null,
+  shippingLink: string,
+) {
+  const name = customerName?.split(' ')[0] || 'there'
+  const { data, error } = await getResend().emails.send({
+    from: FROM,
+    to,
+    replyTo: 'noreply@learnhoops.com',
+    subject: 'Your LearnHoops order has shipped!',
+    text: [
+      `Hey ${name},`,
+      ``,
+      `Your LearnHoops order is on its way!`,
+      ``,
+      `Track your package here:`,
+      shippingLink,
+      ``,
+      `LearnHoops.com`,
+    ].join('\n'),
+    html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /></head>
+<body style="margin:0;padding:0;background:#F4F4F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#111111;">
+  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background:#F4F4F5;">
+    <tr><td align="center" style="padding:32px 16px;">
+      <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:560px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #E4E4E7;">
+
+        <tr><td style="background:#000000;padding:22px 32px;">
+          <div style="color:#F97316;font-size:20px;font-weight:800;letter-spacing:-0.3px;line-height:1;">LearnHoops<span style="color:#71717A;">.com</span></div>
+          <div style="color:#A1A1AA;font-size:12px;margin-top:5px;">Your shot. Perfected by AI.</div>
+        </td></tr>
+
+        <tr><td style="padding:36px 32px 8px;">
+          <h1 style="margin:0 0 10px;color:#111111;font-size:24px;line-height:1.25;font-weight:800;">Your order is on its way!</h1>
+          <p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;">
+            Hey ${name}, great news — your LearnHoops basketball has shipped and is headed your way.
+            Click the button below to track your package.
+          </p>
+        </td></tr>
+
+        <tr><td style="padding:24px 32px 32px;">
+          <a href="${shippingLink}" style="display:inline-block;background:#F97316;color:#ffffff;padding:13px 26px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">
+            Track my package
+          </a>
+          <p style="margin:12px 0 0;color:#A1A1AA;font-size:12px;word-break:break-all;">
+            <a href="${shippingLink}" style="color:#A1A1AA;text-decoration:underline;">${shippingLink}</a>
+          </p>
+        </td></tr>
+
+        <tr><td style="padding:18px 32px;background:#FAFAFA;border-top:1px solid #E4E4E7;">
+          <p style="margin:0;color:#A1A1AA;font-size:11px;line-height:1.6;">
+            Questions? Reply to this email or visit <a href="${BASE_URL}" style="color:#71717A;text-decoration:none;font-weight:600;">LearnHoops.com</a>.
+          </p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
+    `.trim(),
+  })
+
+  if (error) {
+    console.error('[email] shipping email failed:', error)
+    throw new Error(`Shipping email failed: ${error.message}`)
+  }
+  console.log('[email] shipping email sent:', data?.id, 'to:', to)
+}
+
 export async function sendNextMarketingEmail(
   to: string,
   emailsSentSoFar: number

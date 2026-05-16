@@ -91,6 +91,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   const [copiedLink, setCopiedLink] = useState<Record<string, boolean>>({})
   const [removingCoach, setRemovingCoach] = useState<string | null>(null)
   const [removingPlayer, setRemovingPlayer] = useState<string | null>(null)
+  const [deletingTeam, setDeletingTeam] = useState<string | null>(null)
   // Team id whose leaderboard popup is open (for the full view + print).
   const [teamLbModal, setTeamLbModal] = useState<string | null>(null)
 
@@ -189,6 +190,28 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
     } catch {
       setRemovingPlayer(null)
       alert('Could not remove that player. Please try again.')
+    }
+  }
+
+  async function deleteTeam(team: TeamData) {
+    const leftover = team.tokenPool > 0 || team.credits > 0
+      ? `\n\nHeads up: this team still has ${team.tokenPool} pool token${team.tokenPool !== 1 ? 's' : ''} and ${team.credits} coach credit${team.credits !== 1 ? 's' : ''} — these will be lost.`
+      : ''
+    if (!confirm(
+      `Delete "${team.name}"? This permanently removes the team, its ${team.members.length} player${team.members.length !== 1 ? 's' : ''}, and its coaches. Players keep their own shot history.${leftover}`,
+    )) return
+    setDeletingTeam(team.id)
+    try {
+      const res = await fetch('/api/org/delete-team', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teamId: team.id }),
+      })
+      if (!res.ok) throw new Error('Failed')
+      router.refresh()
+    } catch {
+      setDeletingTeam(null)
+      alert('Could not delete that team. Please try again.')
     }
   }
 
@@ -1102,6 +1125,24 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                   </button>
                   </>
                   )}
+
+                  {/* Danger zone — delete this team */}
+                  <div className="border-t border-gray-100 pt-4">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Danger zone</p>
+                    <div className="mt-2 flex items-center justify-between gap-3 flex-wrap">
+                      <p className="text-xs text-gray-400 max-w-sm">
+                        Permanently delete this team, its roster, and its coaches.
+                        Players keep their own shot history. This can&apos;t be undone.
+                      </p>
+                      <button
+                        onClick={() => deleteTeam(team)}
+                        disabled={deletingTeam === team.id}
+                        className="shrink-0 bg-white border border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-50 font-bold px-3 py-1.5 rounded-xl text-sm transition-colors"
+                      >
+                        {deletingTeam === team.id ? 'Deleting…' : 'Delete team'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

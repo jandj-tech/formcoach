@@ -5,9 +5,6 @@ import { signSession, sessionCookieOptions } from '@/lib/auth'
 import { signTeamSession, teamSessionCookieOptions } from '@/lib/team-auth'
 import { signOrgSession, orgSessionCookieOptions } from '@/lib/org-auth'
 
-// Unified login: one form for players, coaches, and organizations.
-// The email + password is matched against each account type — organization,
-// team coach, then player — and logs the person into whichever they are.
 export async function POST(req: NextRequest) {
   try {
     const { email, password } = await req.json()
@@ -28,7 +25,7 @@ export async function POST(req: NextRequest) {
       return res
     }
 
-    // 2. Team founding coach — all of a coach's teams share one password.
+    // 2. Team founding coach
     const teams = (await db`
       SELECT id, admin_email, password_hash, name FROM teams
       WHERE admin_email = ${emailLower} AND password_hash IS NOT NULL
@@ -69,7 +66,7 @@ export async function POST(req: NextRequest) {
     `) as unknown as [{ id: string; email: string; password_hash: string } | undefined]
     if (user && (await bcrypt.compare(password, user.password_hash))) {
       const token = await signSession({ userId: user.id, email: user.email })
-      const res = NextResponse.json({ success: true })
+      const res = NextResponse.json({ success: true, token })
       res.cookies.set(sessionCookieOptions(token))
       return res
     }

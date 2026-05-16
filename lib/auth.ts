@@ -38,9 +38,14 @@ export async function getSession(): Promise<SessionPayload | null> {
 }
 
 export async function getSessionFromRequest(req: NextRequest): Promise<SessionPayload | null> {
-  const token = req.cookies.get(COOKIE)?.value
-  if (!token) return null
-  return verifySession(token)
+  const cookieToken = req.cookies.get(COOKIE)?.value
+  if (cookieToken) return verifySession(cookieToken)
+
+  // Mobile app sends JWT as Bearer token instead of cookie
+  const auth = req.headers.get('Authorization')
+  if (auth?.startsWith('Bearer ')) return verifySession(auth.slice(7))
+
+  return null
 }
 
 export function sessionCookieOptions(token: string) {

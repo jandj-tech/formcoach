@@ -54,7 +54,7 @@ export default function TeamLandingPage() {
           <span className="text-3xl shrink-0">🎓</span>
           <div className="text-left">
             <p className="font-black text-base leading-tight">10-Week Shooting Class — for organizations</p>
-            <p className="text-orange-100 text-sm mt-0.5">Each player gets a ball, 2 shot analyses, and a completion certificate. Starting at $50/player.</p>
+            <p className="text-orange-100 text-sm mt-0.5">Each player gets a ball, 2 shot analyses, and a certificate of completion that shows their improvement. Starting at $50/player.</p>
           </div>
         </div>
 

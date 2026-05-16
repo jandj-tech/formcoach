@@ -151,8 +151,10 @@ export async function POST(req: NextRequest) {
       UPDATE submissions SET status = 'complete' WHERE id = ${submission.id}
     `
 
-    // Class enrollment tracking — NO changes to scoring, just recording real scores
-    // and applying a display adjustment (display_final_score) for first-time class players
+    // Class enrollment tracking — NO changes to scoring.
+    // For first-time class players: every shot after the first gets a display score of
+    // max(actual_score, first_score + 0.3). Boost lasts while the player is enrolled
+    // in an active class. Once the package is inactive or they leave, no more boost.
     if (userId) {
       try {
         const activeEnrollment = await db`
@@ -161,39 +163,39 @@ export async function POST(req: NextRequest) {
           JOIN org_class_packages p ON p.id = e.package_id
           WHERE e.user_id = ${userId}
             AND p.status = 'active'
-            AND e.final_submission_id IS NULL
           ORDER BY e.created_at ASC
           LIMIT 1
-        ` as unknown as [{ id: string; first_submission_id: string | null; first_score: number | null; is_first_class: boolean } | undefined]
+        ` as unknown as { id: string; first_submission_id: string | null; first_score: number | null; is_first_class: boolean }[]
 
         const enrollment = activeEnrollment[0]
         if (enrollment) {
           if (!enrollment.first_submission_id) {
-            // This is their first class shot — record it
+            // First class shot — record baseline, no boost here
             await db`
               UPDATE org_class_enrollments
               SET first_submission_id = ${submission.id}, first_score = ${result.overall_score}
               WHERE id = ${enrollment.id}
             `
           } else {
-            // This is their final class shot — real score saved as-is, display score adjusted for first-timers
-            const realFinalScore = result.overall_score
+            // Any subsequent shot while still enrolled — boost applies for first-timers only.
+            // Real score in analyses table is always the true AI score, unchanged.
+            // display_final_score is only used on the certificate and leaderboard.
+            const realScore = result.overall_score
             const firstScore = Number(enrollment.first_score ?? 0)
-            // For first-time class takers only: displayed score must be at least 0.3 above first score
-            const displayFinalScore = enrollment.is_first_class
-              ? Math.max(realFinalScore, firstScore + 0.3)
-              : realFinalScore
+            const displayScore = enrollment.is_first_class
+              ? Math.max(realScore, firstScore + 0.3)
+              : realScore
             await db`
               UPDATE org_class_enrollments
               SET final_submission_id = ${submission.id},
-                  final_score = ${realFinalScore},
-                  display_final_score = ${displayFinalScore}
+                  final_score = ${realScore},
+                  display_final_score = ${displayScore}
               WHERE id = ${enrollment.id}
             `
           }
         }
       } catch {
-        // Non-fatal — class tracking errors never block the analysis result
+        // Non-fatal — class tracking never blocks the analysis result
       }
     }
 

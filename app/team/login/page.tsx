@@ -10,6 +10,7 @@ export default function TeamLoginPage() {
   const [password, setPassword] = useState('')
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [error, setError] = useState('')
+  const [teams, setTeams] = useState<Array<{ id: string; name: string }> | null>(null)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -26,6 +27,39 @@ export default function TeamLoginPage() {
 
       if (!res.ok) {
         setError(data.error || 'Login failed')
+        setStatus('error')
+        return
+      }
+
+      if (data.multipleTeams === true) {
+        setTeams(data.teams)
+        setStatus('idle')
+        return
+      }
+
+      if (data.success) {
+        router.push('/team/dashboard')
+      }
+    } catch {
+      setError('Something went wrong. Please try again.')
+      setStatus('error')
+    }
+  }
+
+  async function selectTeam(teamId: string) {
+    setStatus('loading')
+    setError('')
+
+    try {
+      const res = await fetch('/api/team/select', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teamId, email: email.toLowerCase().trim() }),
+      })
+      const data = await res.json()
+
+      if (!res.ok || !data.success) {
+        setError(data.error || 'Could not select team')
         setStatus('error')
         return
       }
@@ -48,6 +82,24 @@ export default function TeamLoginPage() {
             <p className="text-gray-500 text-sm">Access your team dashboard</p>
           </div>
 
+          {teams ? (
+            <div className="space-y-3">
+              <h2 className="text-lg font-black text-black text-center">Select your team</h2>
+              {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+              <div className="space-y-2">
+                {teams.map(t => (
+                  <button
+                    key={t.id}
+                    onClick={() => selectTeam(t.id)}
+                    disabled={status === 'loading'}
+                    className="w-full border border-gray-200 hover:border-orange-500 rounded-xl p-4 text-left transition-colors disabled:opacity-60"
+                  >
+                    <span className="font-semibold text-black">{t.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
           <form onSubmit={handleSubmit} className="space-y-3">
             <input
               type="email"
@@ -74,6 +126,7 @@ export default function TeamLoginPage() {
               {status === 'loading' ? 'Logging in...' : 'Log In'}
             </button>
           </form>
+          )}
 
           <p className="text-center text-sm text-gray-500">
             New team?{' '}

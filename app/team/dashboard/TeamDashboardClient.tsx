@@ -38,14 +38,46 @@ interface Props {
   leaderboard: LeaderboardEntry[]
   improved: ImprovedEntry[]
   members: Member[]
+  allTeams: Array<{ id: string; name: string }>
+  currentTeamId: string
+  adminEmail: string
 }
 
-export default function TeamDashboardClient({ team, leaderboard, improved, members }: Props) {
+export default function TeamDashboardClient({
+  team,
+  leaderboard,
+  improved,
+  members,
+  allTeams,
+  currentTeamId,
+  adminEmail,
+}: Props) {
   const router = useRouter()
   const [copied, setCopied] = useState(false)
   const [buying, setBuying] = useState(false)
   const [quantity, setQuantity] = useState(10)
   const [loggingOut, setLoggingOut] = useState(false)
+  const [switching, setSwitching] = useState(false)
+
+  async function switchTeam(teamId: string) {
+    if (teamId === currentTeamId || switching) return
+    setSwitching(true)
+    try {
+      const res = await fetch('/api/team/select', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teamId, email: adminEmail }),
+      })
+      if (!res.ok) {
+        setSwitching(false)
+        return
+      }
+      router.push('/team/dashboard')
+      router.refresh()
+    } catch {
+      setSwitching(false)
+    }
+  }
 
   const uploadUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/team/${team.accessCode}/upload`
 
@@ -85,6 +117,29 @@ export default function TeamDashboardClient({ team, leaderboard, improved, membe
 
   return (
     <div className="max-w-3xl mx-auto w-full px-6 py-10 space-y-10">
+      {/* Team switcher */}
+      {allTeams.length > 1 && (
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-gray-500">Your teams:</span>
+          <div className="flex flex-wrap gap-2">
+            {allTeams.map(t => (
+              <button
+                key={t.id}
+                onClick={() => switchTeam(t.id)}
+                disabled={switching}
+                className={`text-sm font-semibold rounded-lg px-3 py-1.5 border transition-colors disabled:opacity-60 ${
+                  t.id === currentTeamId
+                    ? 'border-orange-500 bg-orange-50 text-orange-600'
+                    : 'border-gray-200 text-gray-600 hover:border-orange-500'
+                }`}
+              >
+                {t.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>

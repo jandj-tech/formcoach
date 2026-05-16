@@ -15,6 +15,10 @@ export default async function TeamDashboardPage() {
 
   if (!team) redirect('/team/login')
 
+  const allTeams = await db`
+    SELECT id, name FROM teams WHERE admin_email = ${session.adminEmail} AND password_hash IS NOT NULL ORDER BY name ASC
+  ` as unknown as Array<{ id: string; name: string }>
+
   // Leaderboard and improved queries join team_players/submissions/analyses.
   // These tables may not exist yet if the schema migration hasn't run, so we
   // fall back to empty arrays on any DB error rather than crashing the page.
@@ -102,6 +106,9 @@ export default async function TeamDashboardPage() {
         leaderboard={leaderboard}
         improved={improved}
         members={members}
+        allTeams={allTeams}
+        currentTeamId={team.id}
+        adminEmail={session.adminEmail}
       />
     </main>
   )

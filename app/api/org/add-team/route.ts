@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { db } from '@/lib/db'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
-import { sendCoachInviteEmail } from '@/lib/email'
+import { sendCoachInviteEmail, sendCoachAddedEmail } from '@/lib/email'
 
 function generateAccessCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -37,11 +37,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Organization not found' }, { status: 404 })
     }
 
-    const existing = await db`SELECT id FROM teams WHERE admin_email = ${emailLower}`
-    if (existing.length > 0) {
-      return NextResponse.json({ error: 'A team already exists for this coach email.' }, { status: 409 })
-    }
-
     const ageGroupValue =
       typeof ageGroup === 'string' && ageGroup.trim() ? ageGroup.trim() : null
 
@@ -51,6 +46,23 @@ export async function POST(req: NextRequest) {
       const collision = await db`SELECT id FROM teams WHERE access_code = ${accessCode}`
       if (collision.length === 0) break
       accessCode = generateAccessCode()
+    }
+
+    // If this coach already has a set-up account (a team with a password),
+    // add the new team using that same password — no invite needed.
+    const [existingCoach] = await db`
+      SELECT password_hash FROM teams
+      WHERE admin_email = ${emailLower} AND password_hash IS NOT NULL
+      LIMIT 1
+    ` as unknown as [{ password_hash: string } | undefined]
+
+    if (existingCoach) {
+      await db`
+        INSERT INTO teams (name, admin_email, password_hash, access_code, organization_id, age_group)
+        VALUES (${name.trim()}, ${emailLower}, ${existingCoach.password_hash}, ${accessCode}, ${org.id}, ${ageGroupValue})
+      `
+      await sendCoachAddedEmail(emailLower, org.name, name.trim())
+      return NextResponse.json({ success: true, teamCode: accessCode })
     }
 
     const inviteToken = crypto.randomBytes(32).toString('hex')

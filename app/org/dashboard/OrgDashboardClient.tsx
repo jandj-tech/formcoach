@@ -45,6 +45,7 @@ export default function OrgDashboardClient({ teams, orgName }: Props) {
   const [error, setError] = useState<Record<string, string>>({})
   const [copiedLink, setCopiedLink] = useState<Record<string, boolean>>({})
   const [removingCoach, setRemovingCoach] = useState<string | null>(null)
+  const [removingPlayer, setRemovingPlayer] = useState<string | null>(null)
 
   const BASE_URL = typeof window !== 'undefined' ? window.location.origin : 'https://learnhoops.com'
 
@@ -85,6 +86,23 @@ export default function OrgDashboardClient({ teams, orgName }: Props) {
     } catch {
       setRemovingCoach(null)
       alert('Could not remove that coach. Please try again.')
+    }
+  }
+
+  async function removePlayer(teamId: string, userId: string) {
+    if (!confirm('Remove this player from the team?')) return
+    setRemovingPlayer(userId)
+    try {
+      const res = await fetch('/api/org/remove-player', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teamId, userId }),
+      })
+      if (!res.ok) throw new Error('Failed')
+      router.refresh()
+    } catch {
+      setRemovingPlayer(null)
+      alert('Could not remove that player. Please try again.')
     }
   }
 
@@ -336,8 +354,17 @@ export default function OrgDashboardClient({ teams, orgName }: Props) {
                         <div className="mt-1 border border-gray-100 rounded-xl divide-y divide-gray-100">
                           {team.members.map(m => (
                             <div key={m.id} className="flex items-center justify-between gap-3 px-3 py-2">
-                              <span className="text-sm font-semibold text-black">{memberDisplayName(m)}</span>
-                              <span className="text-xs text-gray-400 truncate">{m.email}</span>
+                              <span className="text-sm font-semibold text-black truncate">{memberDisplayName(m)}</span>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className="text-xs text-gray-400 truncate max-w-[9rem]">{m.email}</span>
+                                <button
+                                  onClick={() => removePlayer(team.id, m.id)}
+                                  disabled={removingPlayer === m.id}
+                                  className="text-xs font-semibold text-gray-400 hover:text-red-500 disabled:opacity-50 transition-colors"
+                                >
+                                  {removingPlayer === m.id ? '…' : 'Remove'}
+                                </button>
+                              </div>
                             </div>
                           ))}
                         </div>

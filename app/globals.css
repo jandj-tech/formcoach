@@ -165,20 +165,17 @@ body {
   }
 }
 
-/* When the leaderboard popup is open, print only its contents. */
+/* When the leaderboard popup is open, print only it — the popup is portaled
+   to <body>, so hiding body's other children leaves just the leaderboard. */
 @media print {
-  body:has(.leaderboard-modal) * {
-    visibility: hidden;
+  body:has(.leaderboard-modal) > *:not(.leaderboard-modal-backdrop) {
+    display: none !important;
   }
-  body:has(.leaderboard-modal) .leaderboard-modal,
-  body:has(.leaderboard-modal) .leaderboard-modal * {
-    visibility: visible;
-  }
-  /* Drop the overlay's fixed positioning so the popup prints in normal flow. */
   body:has(.leaderboard-modal) .leaderboard-modal-backdrop {
     position: static;
     display: block;
     padding: 0;
+    background: transparent;
   }
   body:has(.leaderboard-modal) .leaderboard-modal {
     position: static;

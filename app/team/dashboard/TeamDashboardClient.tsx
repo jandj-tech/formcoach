@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import CoachUploadForm from './CoachUploadForm'
@@ -539,8 +540,9 @@ export default function TeamDashboardClient({
         </div>
       )}
 
-      {/* Full-screen leaderboard popup with print */}
-      {showLeaderboard && (
+      {/* Full-screen leaderboard popup with print — portaled to <body> so the
+          printout isn't preceded by blank pages of (hidden) dashboard content. */}
+      {showLeaderboard && createPortal(
         <div
           className="leaderboard-modal-backdrop fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
           onClick={() => setShowLeaderboard(false)}
@@ -563,7 +565,8 @@ export default function TeamDashboardClient({
             </div>
             <LeaderboardTable entries={leaderboard} />
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )

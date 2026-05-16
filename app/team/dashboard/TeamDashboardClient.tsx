@@ -8,6 +8,8 @@ import TeamCoaches from './TeamCoaches'
 import InitiationPanel from '@/components/InitiationPanel'
 import PoolAssignPanel from '@/components/PoolAssignPanel'
 import TokenBalances from '@/components/TokenBalances'
+import LeaderboardTable from '@/components/LeaderboardTable'
+import PrintButton from '@/components/PrintButton'
 import { useCart } from '@/lib/cart'
 
 interface Team {
@@ -85,6 +87,7 @@ export default function TeamDashboardClient({
   const [buying, setBuying] = useState(false)
   const [quantity, setQuantity] = useState(10)
   const [loggingOut, setLoggingOut] = useState(false)
+  const [showLeaderboard, setShowLeaderboard] = useState(false)
   const [kicking, setKicking] = useState<string | null>(null)
 
   // Add player form
@@ -140,12 +143,6 @@ export default function TeamDashboardClient({
       setKicking(null)
       alert('Could not remove that player. Please try again.')
     }
-  }
-
-  function scoreColor(score: number) {
-    if (score >= 8) return 'text-green-600'
-    if (score >= 6) return 'text-orange-500'
-    return 'text-red-500'
   }
 
   function formatPlayerName(firstName: string, lastNameInitial: string | null) {
@@ -487,50 +484,24 @@ export default function TeamDashboardClient({
 
       {/* Leaderboard */}
       <div className="space-y-4">
-        <h2 className="text-xl font-black text-black">Team Leaderboard</h2>
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="text-xl font-black text-black">Team Leaderboard</h2>
+          {leaderboard.length > 0 && (
+            <button
+              onClick={() => setShowLeaderboard(true)}
+              className="shrink-0 bg-white border border-gray-300 hover:border-orange-400 text-black font-bold text-sm px-4 py-2 rounded-xl transition-colors"
+            >
+              View full
+            </button>
+          )}
+        </div>
         {leaderboard.length === 0 ? (
           <div className="text-center py-12 text-gray-400 border-2 border-dashed border-gray-200 rounded-2xl">
             <p className="font-semibold">No shots analyzed yet</p>
             <p className="text-sm mt-1">Upload a shot above to get started.</p>
           </div>
         ) : (
-          <div className="border border-gray-200 rounded-2xl overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Rank</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Player</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Best Score</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Uploads</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {leaderboard.map((entry, i) => (
-                  <tr key={entry.id} className={i === 0 ? 'bg-orange-50/50' : 'bg-white'}>
-                    <td className="px-4 py-3 text-sm font-bold text-gray-400">
-                      {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}
-                    </td>
-                    <td className="px-4 py-3 font-semibold">
-                      <Link
-                        href={entry.kind === 'member'
-                          ? `/team/dashboard/member/${entry.id}`
-                          : `/team/dashboard/player/${entry.id}`}
-                        className="text-black hover:text-orange-600 hover:underline transition-colors"
-                      >
-                        {formatPlayerName(entry.first_name, entry.last_name_initial)}
-                      </Link>
-                    </td>
-                    <td className={`px-4 py-3 text-right font-black text-lg ${scoreColor(entry.best_score)}`}>
-                      {Number(entry.best_score).toFixed(1)}
-                    </td>
-                    <td className="px-4 py-3 text-right text-sm text-gray-400">
-                      {entry.upload_count}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <LeaderboardTable entries={leaderboard} />
         )}
       </div>
 
@@ -557,6 +528,33 @@ export default function TeamDashboardClient({
                 </div>
               )
             })}
+          </div>
+        </div>
+      )}
+
+      {/* Full-screen leaderboard popup with print */}
+      {showLeaderboard && (
+        <div
+          className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 print:hidden"
+          onClick={() => setShowLeaderboard(false)}
+        >
+          <div
+            className="leaderboard-modal bg-white rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-auto p-6 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-4">
+              <h2 className="text-xl font-black text-black">{team.name} Leaderboard</h2>
+              <div className="flex items-center gap-2 print:hidden">
+                <PrintButton label="Print" />
+                <button
+                  onClick={() => setShowLeaderboard(false)}
+                  className="shrink-0 text-sm font-semibold text-gray-400 hover:text-red-500 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+            <LeaderboardTable entries={leaderboard} />
           </div>
         </div>
       )}

@@ -164,3 +164,22 @@ body {
     animation-delay: 0s !important;
   }
 }
+
+/* When the leaderboard popup is open, print only its contents. */
+@media print {
+  body:has(.leaderboard-modal) * {
+    visibility: hidden;
+  }
+  body:has(.leaderboard-modal) .leaderboard-modal,
+  body:has(.leaderboard-modal) .leaderboard-modal * {
+    visibility: visible;
+  }
+  body:has(.leaderboard-modal) .leaderboard-modal {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    max-height: none;
+    overflow: visible;
+  }
+}

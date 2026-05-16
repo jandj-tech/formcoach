@@ -21,7 +21,7 @@ export default function TeamLandingPage() {
           <div className="bg-orange-50 border border-orange-100 rounded-2xl p-5 space-y-2">
             <div className="text-2xl font-black text-orange-500">$2.50</div>
             <div className="font-semibold text-black">Per upload</div>
-            <div className="text-gray-500 text-sm">No monthly fee. Buy credits and use them when you need them.</div>
+            <div className="text-gray-500 text-sm">Buy credits and use them when you need them.</div>
           </div>
           <div className="bg-orange-50 border border-orange-100 rounded-2xl p-5 space-y-2">
             <div className="text-2xl">🏆</div>

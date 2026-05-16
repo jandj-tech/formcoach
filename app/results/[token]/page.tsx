@@ -64,8 +64,8 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
             Fix your form — faster.
           </h2>
           <p className="text-zinc-700 text-sm sm:text-base leading-relaxed mb-5 max-w-md mx-auto">
-            The LearnHoops basketball has finger guides printed on the leather, game weight,
-            and comes right- or left-handed. The fastest way to drill in the form your analysis is about to expose.
+            The LearnHoops basketball has finger placement guides on the surface and comes in
+            right- and left-handed versions. The fastest way to drill in the form your analysis is about to expose.
           </p>
           <Link
             href="/shop"

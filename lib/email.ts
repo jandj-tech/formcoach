@@ -406,7 +406,7 @@ export async function sendPromoEmail(to: string) {
       `Upload a video at LearnHoops.com and get your shooting form scored across 17 coaching criteria.`,
       `Analyze your shot: ${BASE_URL}/analyze`,
       ``,
-      `Train the right way with the right ball — the LearnHoops basketball has finger guides printed on the leather, game weight, and comes right- or left-handed.`,
+      `Train the right way with the right ball — the LearnHoops basketball has finger placement guides on the surface and comes in right- and left-handed versions, so you groove the correct hand position on every rep.`,
       `Shop the ball: ${BASE_URL}/shop`,
       ``,
       `LearnHoops.com`,
@@ -435,7 +435,7 @@ export async function sendPromoEmail(to: string) {
       <tr><td style="padding:24px 32px 8px;">
         <p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;">
           Train the right way with the right ball — the <strong>LearnHoops basketball</strong> has finger
-          guides printed on the leather, game weight, and comes right- or left-handed.
+          placement guides on the surface and comes in right- and left-handed versions.
         </p>
       </td></tr>
       <tr><td style="padding:14px 32px 32px;">

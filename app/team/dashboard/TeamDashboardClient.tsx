@@ -34,19 +34,9 @@ interface Props {
 
 export default function TeamDashboardClient({ team, leaderboard, improved }: Props) {
   const router = useRouter()
-  const [copied, setCopied] = useState(false)
   const [buying, setBuying] = useState(false)
   const [quantity, setQuantity] = useState(10)
   const [loggingOut, setLoggingOut] = useState(false)
-
-  const uploadUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/team/${team.accessCode}/upload`
-
-  function copyLink() {
-    navigator.clipboard.writeText(uploadUrl).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    })
-  }
 
   async function buyCredits() {
     setBuying(true)
@@ -122,21 +112,6 @@ export default function TeamDashboardClient({ team, leaderboard, improved }: Pro
             </button>
           </div>
         </div>
-      </div>
-
-      {/* Share link */}
-      <div className="space-y-2">
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Player upload link</h2>
-        <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl p-3">
-          <span className="flex-1 text-sm text-gray-700 font-mono truncate">{uploadUrl}</span>
-          <button
-            onClick={copyLink}
-            className="shrink-0 text-sm font-semibold text-orange-500 hover:text-orange-400 transition-colors"
-          >
-            {copied ? 'Copied!' : 'Copy'}
-          </button>
-        </div>
-        <p className="text-xs text-gray-400">Share this link with your players — no login required to upload.</p>
       </div>
 
       {/* Leaderboard */}

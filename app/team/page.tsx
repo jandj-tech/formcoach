@@ -35,6 +35,27 @@ export default function TeamLandingPage() {
           </div>
         </div>
 
+        <div className="max-w-3xl w-full space-y-4 text-left">
+          <h2 className="text-2xl font-black text-black text-center">How it works</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="border border-gray-200 rounded-2xl p-5 space-y-2">
+              <div className="text-orange-500 font-black text-lg">Step 1</div>
+              <div className="font-semibold text-black">Register your organization</div>
+              <div className="text-gray-500 text-sm">Create your org account. Get your organization code to link all your teams together.</div>
+            </div>
+            <div className="border border-gray-200 rounded-2xl p-5 space-y-2">
+              <div className="text-orange-500 font-black text-lg">Step 2</div>
+              <div className="font-semibold text-black">Add teams & invite coaches</div>
+              <div className="text-gray-500 text-sm">Add each team with its age group and coach email. Coaches get a setup link automatically.</div>
+            </div>
+            <div className="border border-gray-200 rounded-2xl p-5 space-y-2">
+              <div className="text-orange-500 font-black text-lg">Step 3</div>
+              <div className="font-semibold text-black">Players upload, you track everything</div>
+              <div className="text-gray-500 text-sm">Buy credits for players, watch the leaderboard fill up, and see who&apos;s improving across every team.</div>
+            </div>
+          </div>
+        </div>
+
         <div className="flex flex-col sm:flex-row gap-3">
           <Link
             href="/org/signup"

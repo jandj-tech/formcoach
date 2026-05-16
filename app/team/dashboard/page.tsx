@@ -19,9 +19,6 @@ export default async function TeamDashboardPage() {
     SELECT id, name FROM teams WHERE admin_email = ${session.adminEmail} AND password_hash IS NOT NULL ORDER BY name ASC
   ` as unknown as Array<{ id: string; name: string }>
 
-  // Leaderboard and improved queries join team_players/submissions/analyses.
-  // These tables may not exist yet if the schema migration hasn't run, so we
-  // fall back to empty arrays on any DB error rather than crashing the page.
   let leaderboard: Array<{
     id: string
     first_name: string
@@ -39,6 +36,7 @@ export default async function TeamDashboardPage() {
   }> = []
 
   let members: Array<{ id: string; email: string; tokens: number; first_name: string | null; last_name_initial: string | null }> = []
+  let pendingMembers: Array<{ id: string; first_name: string; last_name_initial: string | null; invite_token: string | null }> = []
 
   try {
     leaderboard = (await db`
@@ -81,11 +79,8 @@ export default async function TeamDashboardPage() {
     `) as unknown as typeof improved
   } catch (err) {
     console.error('[team/dashboard] leaderboard query failed:', err)
-    // Fall through with empty arrays — the page still renders without stats.
   }
 
-  // Team members (registered user accounts that joined via team code).
-  // Falls back to an empty array if the team_memberships table doesn't exist yet.
   try {
     members = (await db`
       SELECT u.id, u.email, COALESCE(u.analysis_tokens, 0)::int AS tokens,
@@ -99,6 +94,17 @@ export default async function TeamDashboardPage() {
     console.error('[team/dashboard] members query failed:', err)
   }
 
+  try {
+    pendingMembers = (await db`
+      SELECT id, first_name, last_name_initial, invite_token
+      FROM pending_team_members
+      WHERE team_id = ${team.id}
+      ORDER BY created_at ASC
+    `) as unknown as typeof pendingMembers
+  } catch (err) {
+    console.error('[team/dashboard] pending members query failed:', err)
+  }
+
   return (
     <main className="min-h-screen bg-white flex flex-col">
       <TopNav />
@@ -107,6 +113,7 @@ export default async function TeamDashboardPage() {
         leaderboard={leaderboard}
         improved={improved}
         members={members}
+        pendingMembers={pendingMembers}
         allTeams={allTeams}
         currentTeamId={team.id}
         adminEmail={session.adminEmail}

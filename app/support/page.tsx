@@ -46,7 +46,7 @@ export default function SupportPage() {
           </div>
 
           {/* FAQ */}
-          <div className="w-full text-left space-y-3">
+          <div className="w-full text-left bg-gray-50 border border-gray-200 rounded-2xl p-5 space-y-3">
             <h2 className="text-xl font-black text-black">Frequently Asked Questions</h2>
             <details className="bg-gray-50 border border-gray-200 rounded-2xl group" open>
               <summary className="flex items-center justify-between gap-3 px-5 py-4 cursor-pointer list-none font-bold text-black">

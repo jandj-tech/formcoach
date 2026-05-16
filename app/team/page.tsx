@@ -50,14 +50,6 @@ export default function TeamLandingPage() {
           </Link>
         </div>
 
-        <div className="max-w-2xl w-full bg-orange-500 rounded-2xl px-6 py-4 flex items-center gap-4 text-white">
-          <span className="text-3xl shrink-0">🎓</span>
-          <div className="text-left">
-            <p className="font-black text-base leading-tight">10-Week Shooting Class — for organizations</p>
-            <p className="text-orange-100 text-sm mt-0.5">Each player gets a ball, 2 shot analyses, and a certificate of completion that shows their improvement. Starting at $50/player.</p>
-          </div>
-        </div>
-
         <div className="max-w-3xl w-full space-y-4 text-left">
           <h2 className="text-2xl font-black text-black text-center">How it works</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -76,6 +68,14 @@ export default function TeamLandingPage() {
               <div className="font-semibold text-black">Players upload, you track everything</div>
               <div className="text-gray-500 text-sm">Buy credits for players, watch the leaderboard fill up, and see who&apos;s improving across every team.</div>
             </div>
+          </div>
+        </div>
+
+        <div className="max-w-2xl w-full bg-orange-500 rounded-2xl px-6 py-4 flex items-center gap-4 text-white">
+          <span className="text-3xl shrink-0">🎓</span>
+          <div className="text-left">
+            <p className="font-black text-base leading-tight">10-Week Shooting Class — for organizations</p>
+            <p className="text-orange-100 text-sm mt-0.5">Each player gets a ball, 2 shot analyses, and a certificate of completion that shows their improvement. Starting at $50/player.</p>
           </div>
         </div>
 

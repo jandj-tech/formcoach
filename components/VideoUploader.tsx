@@ -31,6 +31,8 @@ export default function VideoUploader({ teamMode }: { teamMode?: TeamMode } = {}
   >({ state: 'idle' })
   const [sessionUser, setSessionUser] = useState<SessionUser | null | undefined>(undefined)
   const inputRef = useRef<HTMLInputElement>(null)
+  const cancelledRef = useRef(false)
+  const abortRef = useRef<AbortController | null>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -160,6 +162,7 @@ export default function VideoUploader({ teamMode }: { teamMode?: TeamMode } = {}
         )
 
         for (let i = 0; i < timestamps.length; i++) {
+          if (cancelledRef.current) { URL.revokeObjectURL(url); resolve(blobs); return }
           await seekTo(video, timestamps[i])
           mainCanvas.width = video.videoWidth
           mainCanvas.height = video.videoHeight
@@ -206,9 +209,13 @@ export default function VideoUploader({ teamMode }: { teamMode?: TeamMode } = {}
       setErrorMsg('')
       setStatus('extracting')
       setProgress(0)
+      cancelledRef.current = false
+      const controller = new AbortController()
+      abortRef.current = controller
 
       try {
         const frames = await extractFrames(file)
+        if (cancelledRef.current) return
 
         setStatus('uploading')
         setProgress(60)
@@ -224,6 +231,7 @@ export default function VideoUploader({ teamMode }: { teamMode?: TeamMode } = {}
           const blob = await upload(pathname, file, {
             access: 'public',
             handleUploadUrl: '/api/upload-video',
+            abortSignal: controller.signal,
           })
           videoUrl = blob.url
           console.log('[VideoUploader] video uploaded:', videoUrl)
@@ -235,6 +243,7 @@ export default function VideoUploader({ teamMode }: { teamMode?: TeamMode } = {}
           setVideoUploadStatus({ state: 'failed', error: errMsg })
         }
         setProgress(75)
+        if (cancelledRef.current) return
 
         const formData = new FormData()
         frames.forEach((blob, i) => formData.append('frames', blob, `frame-${i}.jpg`))
@@ -246,7 +255,7 @@ export default function VideoUploader({ teamMode }: { teamMode?: TeamMode } = {}
           formData.append('playerLastName', teamMode.lastName)
         }
 
-        const res = await fetch('/api/analyze', { method: 'POST', body: formData })
+        const res = await fetch('/api/analyze', { method: 'POST', body: formData, signal: controller.signal })
         setProgress(90)
 
         if (!res.ok) {
@@ -263,6 +272,7 @@ export default function VideoUploader({ teamMode }: { teamMode?: TeamMode } = {}
           router.push(`/results/${data.token}`)
         }
       } catch (err) {
+        if (cancelledRef.current) return // user cancelled — state already reset
         console.error(err)
         setStatus('error')
         setErrorMsg('Something went wrong. Please try again.')
@@ -284,6 +294,19 @@ export default function VideoUploader({ teamMode }: { teamMode?: TeamMode } = {}
   const onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) handleFile(file)
+  }
+
+  // Cancel an in-progress analysis (e.g. wrong video) and return to the start.
+  function cancelAnalysis() {
+    cancelledRef.current = true
+    abortRef.current?.abort()
+    abortRef.current = null
+    if (inputRef.current) inputRef.current.value = ''
+    setStatus('idle')
+    setProgress(0)
+    setPreviews([])
+    setVideoUploadStatus({ state: 'idle' })
+    setErrorMsg('')
   }
 
   if (status === 'extracting' || status === 'uploading') {
@@ -313,6 +336,14 @@ export default function VideoUploader({ teamMode }: { teamMode?: TeamMode } = {}
           />
         </div>
         <p className="text-black text-xs">{progress}%</p>
+
+        <button
+          type="button"
+          onClick={cancelAnalysis}
+          className="text-sm font-semibold text-gray-400 hover:text-red-500 transition-colors"
+        >
+          Cancel
+        </button>
 
         {videoUploadStatus.state !== 'idle' && (
           <div

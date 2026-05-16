@@ -50,6 +50,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ received: true })
     }
 
+    // --- Coach self-upload credits ---
+    if (metaType === 'coach_self_credits') {
+      const coachEmail = session.metadata?.coachEmail?.toLowerCase()
+      const quantity = parseInt(session.metadata?.quantity || '0', 10)
+      if (coachEmail && quantity > 0) {
+        try {
+          await db`
+            INSERT INTO coach_credits (email, credits)
+            VALUES (${coachEmail}, ${quantity})
+            ON CONFLICT (email) DO UPDATE
+            SET credits = coach_credits.credits + ${quantity}
+          `
+        } catch (err) {
+          console.error('Failed to grant coach self-credits:', err)
+          return NextResponse.json({ error: 'DB error' }, { status: 500 })
+        }
+      }
+      return NextResponse.json({ received: true })
+    }
+
     // --- Token grant for team/org players ---
     if (metaType === 'team_token_grant') {
       const recipientIds = (session.metadata?.recipientUserIds || '').split(',').filter(Boolean)

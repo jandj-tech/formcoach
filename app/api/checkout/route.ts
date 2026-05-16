@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getStripe, PRODUCT, BUNDLE } from '@/lib/stripe'
+import { getStripe, PRODUCT, BUNDLE, BALL_ANALYSES_GRANTED } from '@/lib/stripe'
+import { getSessionFromRequest } from '@/lib/auth'
+
+const BALL_DESCRIPTION = 'Training basketball with hand-placement guide lines that build consistent shooting form.'
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL && process.env.NEXT_PUBLIC_BASE_URL !== 'http://localhost:3000'
   ? process.env.NEXT_PUBLIC_BASE_URL
@@ -48,6 +51,15 @@ function validateSize(s: unknown): asserts s is '5' | '6' | '7' {
 
 export async function POST(req: NextRequest) {
   try {
+    // An account is required to buy a ball — the free analyses are credited to it.
+    const userSession = await getSessionFromRequest(req)
+    if (!userSession) {
+      return NextResponse.json(
+        { error: 'You need an account to buy a ball. Please log in or sign up.' },
+        { status: 401 },
+      )
+    }
+
     const body = await req.json()
     const region = body?.region
 
@@ -77,7 +89,8 @@ export async function POST(req: NextRequest) {
       }
     }[] = []
 
-    let hasBundles = false
+    // Free shot analyses earned: 5 per single ball, 10 for a 2-ball bundle.
+    let analysisTokens = 0
     let firstBallVariant: string | undefined
     let firstBallSize: string | undefined
 
@@ -94,7 +107,7 @@ export async function POST(req: NextRequest) {
           firstBallSize = bundleItem.size1
         }
 
-        hasBundles = true
+        analysisTokens += BUNDLE.uploadsGranted
         line_items.push({
           quantity: 1,
           price_data: {
@@ -102,7 +115,7 @@ export async function POST(req: NextRequest) {
             unit_amount: ball1Amount,
             product_data: {
               name: `${PRODUCT.name} — ${variantLabel(bundleItem.variant1)}, ${sizeLabel(bundleItem.size1)} (Bundle Ball 1)`,
-              description: 'Co-designed with Maple Basketball.',
+              description: BALL_DESCRIPTION,
             },
           },
         })
@@ -113,7 +126,7 @@ export async function POST(req: NextRequest) {
             unit_amount: ball2Amount,
             product_data: {
               name: `${PRODUCT.name} — ${variantLabel(bundleItem.variant2)}, ${sizeLabel(bundleItem.size2)} (Bundle Ball 2 — 50% off)`,
-              description: 'Co-designed with Maple Basketball.',
+              description: BALL_DESCRIPTION,
             },
           },
         })
@@ -123,6 +136,8 @@ export async function POST(req: NextRequest) {
         validateSize(ballItem.size)
         const qty = typeof ballItem.quantity === 'number' ? Math.floor(ballItem.quantity) : 1
         if (qty < 1 || qty > 99) throw new Error('Invalid quantity')
+
+        analysisTokens += BALL_ANALYSES_GRANTED * qty
 
         if (!firstBallVariant) {
           firstBallVariant = ballItem.variant
@@ -136,7 +151,7 @@ export async function POST(req: NextRequest) {
             unit_amount: unitAmount,
             product_data: {
               name: `${PRODUCT.name} — ${variantLabel(ballItem.variant)}, ${sizeLabel(ballItem.size)}`,
-              description: 'Co-designed with Maple Basketball.',
+              description: BALL_DESCRIPTION,
             },
           },
         })
@@ -150,9 +165,7 @@ export async function POST(req: NextRequest) {
       items_count: String(rawItems.length),
     }
 
-    if (hasBundles) {
-      metadata.bundle_uploads = String(BUNDLE.uploadsGranted)
-    }
+    metadata.analysis_tokens = String(analysisTokens)
 
     const cartJson = JSON.stringify(
       rawItems.map((it) =>
@@ -169,6 +182,7 @@ export async function POST(req: NextRequest) {
       mode: 'payment',
       payment_method_types: ['card'],
       line_items,
+      customer_email: userSession.email,
       shipping_address_collection: { allowed_countries: ['US', 'CA'] },
       phone_number_collection: { enabled: true },
       metadata,

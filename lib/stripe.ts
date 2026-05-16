@@ -17,9 +17,12 @@ export const PRODUCT = {
   currency: 'usd',
 }
 
-// 2-Ball Bundle: full price + 50% off second ball + 15 upload credits
+// 2-Ball Bundle: full price + 50% off second ball + free shot analyses
 export const BUNDLE = {
   ball1PriceCents: 4999,
   ball2PriceCents: 2500,  // Math.round(4999 * 0.5) = 2500
-  uploadsGranted: 15,
+  uploadsGranted: 10,     // free shot analyses for the whole bundle
 }
+
+// Free shot analyses granted per single training ball purchased.
+export const BALL_ANALYSES_GRANTED = 5

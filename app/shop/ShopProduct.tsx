@@ -74,7 +74,7 @@ export default function ShopProduct() {
                 <span className="text-green-500 text-xs font-semibold tracking-wider uppercase">In Stock</span>
               </div>
               <span className="inline-flex items-center bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-semibold px-3 py-1.5 rounded-full">
-                10 Shot Analyses Included Free
+                5 Shot Analyses Included Free
               </span>
             </div>
 
@@ -83,8 +83,9 @@ export default function ShopProduct() {
             </h1>
 
             <p className="text-white text-base leading-relaxed">
-              Built with Maple Basketball for serious shooters. Choose the edition that matches your shooting hand
-              so the grip lines guide your form.
+              A training ball built to fix your shooting form. Pick the edition for your shooting hand —
+              the grip lines mark exactly where your fingers belong, so every rep grooves proper hand
+              placement and release.
             </p>
 
             <div className="text-3xl font-black text-white">
@@ -221,14 +222,14 @@ function BundleCard() {
               Best Value
             </span>
             <span className="inline-flex items-center bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-semibold px-3 py-1 rounded-full">
-              15 Shot Analyses Included Free
+              10 Shot Analyses Included Free
             </span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-black text-white mt-2">
             2-Ball Bundle
           </h2>
           <p className="text-zinc-400 text-sm">
-            Get 2 training balls + 15 free AI shot analyses. Second ball 50% off.
+            Get 2 training balls + 10 free AI shot analyses. Second ball 50% off.
           </p>
         </div>
         <div className="text-right">
@@ -287,7 +288,7 @@ function BundleCard() {
       </div>
 
       <p className="text-zinc-500 text-xs">
-        15 shot analysis credits will be added to your account automatically after purchase.
+        10 shot analysis credits will be added to your account automatically after purchase.
       </p>
     </div>
   )

@@ -162,24 +162,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'DB error' }, { status: 500 })
     }
 
-    // Grant tokens: 15 for the 2-ball bundle, 10 for a single ball purchase
-    const bundleUploads = parseInt(session.metadata?.bundle_uploads ?? '0', 10)
-    const tokensToGrant = bundleUploads > 0 ? bundleUploads : 10
+    // Free shot analyses for this order, computed at checkout:
+    // 5 per single training ball, 10 for the 2-ball bundle.
+    const tokensToGrant = parseInt(session.metadata?.analysis_tokens ?? '0', 10)
     const emailLower = email.toLowerCase()
-    try {
-      await db`
-        INSERT INTO email_list (email, analysis_tokens)
-        VALUES (${emailLower}, ${tokensToGrant})
-        ON CONFLICT (email) DO UPDATE
-        SET analysis_tokens = COALESCE(email_list.analysis_tokens, 0) + ${tokensToGrant}
-      `
-      await db`
-        UPDATE users SET analysis_tokens = COALESCE(analysis_tokens, 0) + ${tokensToGrant}
-        WHERE email = ${emailLower}
-      `
-    } catch (err) {
-      console.error('Failed to grant tokens:', err)
-      // Non-fatal — order is saved, tokens can be credited manually
+    if (tokensToGrant > 0) {
+      try {
+        await db`
+          INSERT INTO email_list (email, analysis_tokens)
+          VALUES (${emailLower}, ${tokensToGrant})
+          ON CONFLICT (email) DO UPDATE
+          SET analysis_tokens = COALESCE(email_list.analysis_tokens, 0) + ${tokensToGrant}
+        `
+        await db`
+          UPDATE users SET analysis_tokens = COALESCE(analysis_tokens, 0) + ${tokensToGrant}
+          WHERE email = ${emailLower}
+        `
+      } catch (err) {
+        console.error('Failed to grant tokens:', err)
+        // Non-fatal — order is saved, tokens can be credited manually
+      }
     }
   }
 

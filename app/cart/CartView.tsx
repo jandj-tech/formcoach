@@ -65,6 +65,11 @@ export default function CartView() {
           }),
         }),
       })
+      if (res.status === 401) {
+        // An account is required to buy a ball — send them to log in, then back to the cart.
+        window.location.href = `/login?next=${encodeURIComponent('/cart')}`
+        return
+      }
       const data = await res.json()
       if (!res.ok || !data.url) throw new Error(data.error || 'Checkout failed')
       window.location.href = data.url
@@ -174,7 +179,7 @@ function BallCartLine({
         <div className="flex items-center gap-2 flex-wrap mb-1">
           <div className="text-white font-bold text-base">The LearnHoops.com Training Ball</div>
           <span className="text-xs font-semibold text-blue-400 bg-blue-500/10 border border-blue-500/30 px-2 py-0.5 rounded-full">
-            + 10 Shot Analyses Free
+            + 5 Shot Analyses Free
           </span>
         </div>
         <div className="text-white text-sm">
@@ -222,7 +227,7 @@ function BundleCartLine({
         <div className="flex items-center gap-2 flex-wrap mb-1">
           <div className="text-white font-bold text-base">2-Ball Bundle</div>
           <span className="text-xs font-semibold text-blue-400 bg-blue-500/10 border border-blue-500/30 px-2 py-0.5 rounded-full">
-            + 15 Shot Analyses Free
+            + 10 Shot Analyses Free
           </span>
         </div>
         <div className="text-zinc-400 text-sm">

@@ -279,7 +279,7 @@ export default function TeamDashboardClient({
         <button
           onClick={logout}
           disabled={loggingOut}
-          className="text-gray-400 hover:text-gray-600 text-sm transition-colors shrink-0"
+          className="bg-orange-500 hover:bg-red-500 disabled:opacity-60 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors shrink-0"
         >
           {loggingOut ? 'Logging out...' : 'Log out'}
         </button>

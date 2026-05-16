@@ -10,7 +10,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL && process.env.NEXT_PUBLIC_BAS
     : 'http://localhost:3000'
 
 // A coach buys analysis credits for their own shot uploads ("My Uploads").
-// $2.50 each once their team is initiated, $5.00 otherwise.
+// $2.50 each once their team is initiated, $4.99 otherwise.
 export async function POST(req: NextRequest) {
   const session = await getTeamSessionFromRequest(req)
   if (!session) {
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
 
     const state = await getTeamTokenState(session.teamId)
     const initiated = !!state?.initiated
-    const unitAmount = initiated ? 250 : 500
+    const unitAmount = initiated ? 250 : 499
 
     const checkout = await getStripe().checkout.sessions.create({
       mode: 'payment',

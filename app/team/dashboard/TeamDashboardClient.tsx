@@ -400,7 +400,7 @@ export default function TeamDashboardClient({
         </div>
         <p className="text-sm text-gray-500">
           Analyze your own shot — each upload uses one of your credits
-          {team.initiated ? ' ($2.50 each).' : ' ($5.00 each until the team is initiated).'}
+          {team.initiated ? ' ($2.50 each).' : ' ($4.99 each until the team is initiated).'}
         </p>
         <BuySelfCreditsButton initiated={team.initiated} />
         {selfCredits > 0 ? (

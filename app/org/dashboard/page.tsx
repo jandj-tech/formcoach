@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { getOrgSession } from '@/lib/org-auth'
 import { db } from '@/lib/db'
 import TopNav from '@/components/TopNav'
+import InlineEdit from '@/components/InlineEdit'
 import OrgDashboardClient from './OrgDashboardClient'
 import LogoutButton from './LogoutButton'
 
@@ -119,7 +120,13 @@ export default async function OrgDashboardPage() {
       <div className="max-w-3xl mx-auto w-full px-6 py-10 space-y-8">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-black text-black">{org.name}</h1>
+            <InlineEdit
+              value={org.name}
+              endpoint="/api/org/rename"
+              bodyKey="name"
+              placeholder="Organization name"
+              textClassName="text-2xl font-black text-black"
+            />
             <p className="text-gray-500 text-sm mt-1">Organization Dashboard</p>
           </div>
           <LogoutButton />

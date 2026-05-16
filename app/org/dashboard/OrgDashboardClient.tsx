@@ -7,6 +7,7 @@ import OrgAddCoach from './OrgAddCoach'
 import InitiationPanel from '@/components/InitiationPanel'
 import PoolAssignPanel from '@/components/PoolAssignPanel'
 import TokenBalances from '@/components/TokenBalances'
+import InlineEdit from '@/components/InlineEdit'
 
 interface Member {
   id: string
@@ -377,6 +378,20 @@ export default function OrgDashboardClient({ teams, orgName }: Props) {
 
               {isOpen && (
                 <div className="px-5 py-4 space-y-4">
+                  {/* Age group — editable by the org */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Age group</span>
+                    <InlineEdit
+                      value={team.ageGroup ?? ''}
+                      endpoint="/api/org/update-team"
+                      bodyKey="ageGroup"
+                      extra={{ teamId: team.id }}
+                      placeholder="e.g. U15, Varsity"
+                      textClassName="text-sm font-semibold text-black"
+                      emptyLabel="Not set"
+                    />
+                  </div>
+
                   {/* Initiation / token pool — shown first, before anything can be bought */}
                   {team.initiated ? (
                     <PoolAssignPanel

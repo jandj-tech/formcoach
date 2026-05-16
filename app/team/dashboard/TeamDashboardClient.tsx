@@ -10,6 +10,7 @@ import PoolAssignPanel from '@/components/PoolAssignPanel'
 import TokenBalances from '@/components/TokenBalances'
 import LeaderboardTable from '@/components/LeaderboardTable'
 import PrintButton from '@/components/PrintButton'
+import InlineEdit from '@/components/InlineEdit'
 import { useCart } from '@/lib/cart'
 
 interface Team {
@@ -217,7 +218,13 @@ export default function TeamDashboardClient({
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-black">{team.name}</h1>
+          <InlineEdit
+            value={team.name}
+            endpoint="/api/team/rename"
+            bodyKey="name"
+            placeholder="Team name"
+            textClassName="text-2xl font-black text-black"
+          />
           <p className="text-gray-500 text-sm mt-1">
             Team Dashboard · Logged in as{' '}
             <span className="font-semibold text-gray-700">{myNickname || adminEmail}</span>

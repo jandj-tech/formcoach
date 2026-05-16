@@ -5,7 +5,7 @@ import { signSession, sessionCookieOptions } from '@/lib/auth'
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, password } = await req.json()
+    const { email, password, teamInviteToken } = await req.json()
     if (!email || !password || password.length < 6) {
       return NextResponse.json({ error: 'Email and password (6+ chars) required' }, { status: 400 })
     }
@@ -35,6 +35,27 @@ export async function POST(req: NextRequest) {
 
     // Link any existing anonymous submissions for this email
     await db`UPDATE submissions SET user_id = ${user.id} WHERE email = ${emailLower} AND user_id IS NULL`
+
+    // If they registered via a coach invite link, claim their pending team spot
+    if (teamInviteToken) {
+      try {
+        const [pending] = await db`
+          SELECT id, team_id, first_name, last_name_initial
+          FROM pending_team_members WHERE invite_token = ${teamInviteToken}
+        ` as unknown as [{ id: string; team_id: string; first_name: string; last_name_initial: string | null } | undefined]
+        if (pending) {
+          await db`
+            INSERT INTO team_memberships (user_id, team_id, first_name, last_name_initial)
+            VALUES (${user.id}, ${pending.team_id}, ${pending.first_name}, ${pending.last_name_initial})
+            ON CONFLICT (user_id, team_id) DO UPDATE
+              SET first_name = EXCLUDED.first_name, last_name_initial = EXCLUDED.last_name_initial
+          `
+          await db`DELETE FROM pending_team_members WHERE id = ${pending.id}`
+        }
+      } catch {
+        // Non-fatal: still create the account even if invite claim fails
+      }
+    }
 
     const token = await signSession({ userId: user.id, email: user.email })
     const res = NextResponse.json({ success: true })

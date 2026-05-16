@@ -14,11 +14,12 @@ function SignupForm() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [error, setError] = useState('')
 
+  const teamInviteToken = searchParams.get('teamInvite') || ''
+
   useEffect(() => {
     // Pre-fill email from Stripe checkout redirect
     const sessionId = searchParams.get('session_id')
     if (sessionId) {
-      // Fetch email from session via a simple lookup
       fetch(`/api/subscribe/session-email?session_id=${sessionId}`)
         .then(r => r.json())
         .then(({ email: e }) => { if (e) setEmail(e) })
@@ -36,10 +37,13 @@ function SignupForm() {
     setError('')
 
     try {
+      const body: Record<string, string> = { email, password }
+      if (teamInviteToken) body.teamInviteToken = teamInviteToken
+
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify(body),
       })
       const data = await res.json()
 
@@ -65,7 +69,13 @@ function SignupForm() {
           <div className="text-center space-y-2">
             <div className="text-4xl">🎉</div>
             <h1 className="text-2xl font-black text-black">Create your account</h1>
-            <p className="text-gray-500 text-sm">Track your shot progress over time</p>
+            {teamInviteToken ? (
+              <p className="text-sm font-semibold text-orange-600 bg-orange-50 border border-orange-200 rounded-xl px-4 py-2">
+                Your coach added you to the team — sign up to join.
+              </p>
+            ) : (
+              <p className="text-gray-500 text-sm">Track your shot progress over time</p>
+            )}
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-3">

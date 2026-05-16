@@ -3,8 +3,9 @@
 import VideoUploader from './VideoUploader'
 import BuySelfCreditsButton from './BuySelfCreditsButton'
 
-// The analyze-page uploader for coaches and org owners — uses their own
-// analysis credits ($2.50 once their team is initiated, $5.00 before).
+// The analyze-page uploader for coaches and org owners. The upload zone is
+// always shown — with a transparent "0 credits" overlay when empty — and the
+// credit-purchase panel sits below it.
 export default function CoachSelfUploader({
   credits,
   initiated,
@@ -14,10 +15,13 @@ export default function CoachSelfUploader({
 }) {
   return (
     <div className="w-full max-w-lg mx-auto space-y-4 px-2">
-      <div className="flex items-center justify-between gap-3 bg-orange-50 border border-orange-200 rounded-xl px-4 py-3">
+      <VideoUploader coachSelf coachCredits={credits} />
+
+      {/* Analysis credit purchase */}
+      <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-black">
-            {credits} analysis credit{credits !== 1 ? 's' : ''}
+            {credits} analysis credit{credits !== 1 ? 's' : ''} remaining
           </p>
           <p className="text-xs text-gray-500 mt-0.5">
             {initiated ? '$2.50 per analysis.' : '$4.99 per analysis until your team is initiated.'}
@@ -25,14 +29,6 @@ export default function CoachSelfUploader({
         </div>
         <BuySelfCreditsButton initiated={initiated} />
       </div>
-
-      {credits > 0 ? (
-        <VideoUploader coachSelf />
-      ) : (
-        <p className="text-center text-sm text-gray-400">
-          Buy a credit above, then upload your shot to analyze it.
-        </p>
-      )}
     </div>
   )
 }

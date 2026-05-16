@@ -20,7 +20,7 @@ interface TeamMode {
   onSuccess: (submissionId: string) => void
 }
 
-export default function VideoUploader({ teamMode, coachSelf }: { teamMode?: TeamMode; coachSelf?: boolean } = {}) {
+export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { teamMode?: TeamMode; coachSelf?: boolean; coachCredits?: number } = {}) {
   const [isDragging, setIsDragging] = useState(false)
   const [status, setStatus] = useState<'idle' | 'extracting' | 'uploading' | 'error'>('idle')
   const [progress, setProgress] = useState(0)
@@ -388,7 +388,8 @@ export default function VideoUploader({ teamMode, coachSelf }: { teamMode?: Team
   const sessionLoading = !teamMode && !coachSelf && sessionUser === undefined
   const notLoggedIn = !teamMode && !coachSelf && sessionUser === null
   const noTokens = !teamMode && !coachSelf && !!sessionUser && !sessionUser.subscribed && sessionUser.tokens === 0
-  const isLocked = sessionLoading || notLoggedIn || noTokens
+  const noCredits = !!coachSelf && (coachCredits ?? 0) === 0
+  const isLocked = sessionLoading || notLoggedIn || noTokens || noCredits
 
   async function handleBuyToken() {
     try {
@@ -489,6 +490,20 @@ export default function VideoUploader({ teamMode, coachSelf }: { teamMode?: Team
                   {' '}and get 5 free analyses
                 </p>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* No coach credits overlay */}
+        {noCredits && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center px-6">
+            <div className="flex flex-col items-center gap-2.5 bg-white/85 backdrop-blur-sm border border-gray-200 shadow-xl rounded-2xl px-5 py-4">
+              <p className="text-black font-black text-base sm:text-lg text-center leading-snug">
+                0 analysis credits remaining
+              </p>
+              <p className="text-gray-500 text-sm text-center">
+                Buy a credit below to analyze your shot.
+              </p>
             </div>
           </div>
         )}

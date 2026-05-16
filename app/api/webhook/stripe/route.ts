@@ -253,13 +253,18 @@ export async function POST(req: NextRequest) {
     }
 
     // If the buyer didn't have an account at checkout (no user: recipient),
-    // check if one exists now. If not, email them a claim link so they can
-    // create an account and the credits transfer automatically.
+    // check if one exists now. If not, generate a one-time claim token and
+    // email them a signup link — they can register with any email they want.
     if (tokensToGrant > 0 && !recipient.startsWith('user:')) {
       try {
         const existing = await db`SELECT id FROM users WHERE email = ${emailLower} LIMIT 1`
         if (existing.length === 0) {
-          await sendClaimCreditsEmail(emailLower, name || null, tokensToGrant)
+          const claimToken = crypto.randomUUID()
+          await db`
+            UPDATE email_list SET claim_token = ${claimToken}
+            WHERE email = ${emailLower}
+          `
+          await sendClaimCreditsEmail(emailLower, name || null, tokensToGrant, claimToken)
         }
       } catch (err) {
         console.error('Failed to send claim credits email:', err)

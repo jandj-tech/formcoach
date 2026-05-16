@@ -18,16 +18,11 @@ function SignupForm() {
   const [error, setError] = useState('')
 
   const teamInviteToken = searchParams.get('teamInvite') || ''
+  const claimToken = searchParams.get('claimToken') || ''
   const pendingCredits = parseInt(searchParams.get('credits') || '0', 10)
 
   useEffect(() => {
-    // Pre-fill email from ball purchase claim link
-    const emailParam = searchParams.get('email')
-    if (emailParam) {
-      setEmail(emailParam)
-      return
-    }
-    // Pre-fill email from Stripe checkout redirect
+    // Pre-fill email from Stripe checkout redirect (subscription flow only)
     const sessionId = searchParams.get('session_id')
     if (sessionId) {
       fetch(`/api/subscribe/session-email?session_id=${sessionId}`)
@@ -50,6 +45,7 @@ function SignupForm() {
       const body: Record<string, string> = { email, password }
       if (nickname.trim()) body.nickname = nickname.trim()
       if (teamInviteToken) body.teamInviteToken = teamInviteToken
+      if (claimToken) body.claimToken = claimToken
 
       const res = await fetch('/api/auth/signup', {
         method: 'POST',

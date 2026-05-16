@@ -475,9 +475,10 @@ export async function sendClaimCreditsEmail(
   to: string,
   customerName: string | null,
   tokensToGrant: number,
+  claimToken: string,
 ) {
   const name = customerName?.split(' ')[0] || 'there'
-  const signupLink = `${BASE_URL}/signup?email=${encodeURIComponent(to)}&credits=${tokensToGrant}`
+  const signupLink = `${BASE_URL}/signup?claimToken=${claimToken}&credits=${tokensToGrant}`
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,

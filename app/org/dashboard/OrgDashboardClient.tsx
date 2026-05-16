@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import OrgAddCoach from './OrgAddCoach'
 
 interface Member {
   id: string
@@ -373,6 +374,9 @@ export default function OrgDashboardClient({ teams, orgName }: Props) {
                             </div>
                           </div>
                         ))}
+                      </div>
+                      <div className="mt-2">
+                        <OrgAddCoach teamId={team.id} />
                       </div>
                     </div>
                     <div>

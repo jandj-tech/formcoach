@@ -18,7 +18,8 @@ type SubmissionRow = {
   id: string
   created_at: string
   token: string
-  overall_score: number | null
+  // Postgres returns DECIMAL columns as strings, so this can be either.
+  overall_score: string | number | null
   frame_urls: string[] | null
 }
 
@@ -160,6 +161,8 @@ export default async function DashboardPage() {
               const date = new Date(sub.created_at).toLocaleDateString('en-US', {
                 month: 'short', day: 'numeric', year: 'numeric',
               })
+              // Postgres returns DECIMAL as a string — coerce before formatting.
+              const score = sub.overall_score == null ? null : Number(sub.overall_score)
               return (
                 <Link
                   key={sub.id}
@@ -181,9 +184,9 @@ export default async function DashboardPage() {
                       View Shot Breakdown →
                     </p>
                   </div>
-                  {sub.overall_score !== null ? (
-                    <div className={`text-2xl font-black shrink-0 ${scoreColor(sub.overall_score)}`}>
-                      {sub.overall_score.toFixed(1)}
+                  {score !== null && !Number.isNaN(score) ? (
+                    <div className={`text-2xl font-black shrink-0 ${scoreColor(score)}`}>
+                      {score.toFixed(1)}
                     </div>
                   ) : (
                     <div className="text-gray-300 text-sm shrink-0">—</div>

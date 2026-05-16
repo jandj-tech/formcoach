@@ -6,8 +6,8 @@ export default function TeamLandingPage() {
     <main className="min-h-screen bg-white flex flex-col">
       <TopNav />
 
-      <div className="flex-1 flex flex-col items-center justify-center px-6 py-20 text-center space-y-10">
-
+      {/* Hero */}
+      <div className="flex flex-col items-center text-center px-6 pt-16 pb-12 space-y-10">
         <div className="space-y-4 max-w-xl">
           <h1 className="text-4xl font-black text-black leading-tight">
             LearnHoops Team Plan
@@ -34,8 +34,12 @@ export default function TeamLandingPage() {
             <div className="text-gray-500 text-sm">Track who&apos;s putting in the work with automatic improvement tracking.</div>
           </div>
         </div>
+      </div>
 
-        <div className="flex flex-col sm:flex-row gap-3">
+      {/* Black CTA band */}
+      <div className="bg-gray-100 w-full py-16 flex flex-col items-center gap-6 text-center px-6">
+        <p className="text-black text-xl font-black max-w-md">Ready to take your organization to the next level?</p>
+        <div className="flex flex-col sm:flex-row gap-4">
           <Link
             href="/org/signup"
             className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-8 py-3 rounded-xl transition-colors"
@@ -49,25 +53,26 @@ export default function TeamLandingPage() {
             Log In
           </Link>
         </div>
+      </div>
 
-        <div className="max-w-3xl w-full space-y-4 text-left">
-          <h2 className="text-2xl font-black text-black text-center">How it works</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="border border-gray-200 rounded-2xl p-5 space-y-2">
-              <div className="text-orange-500 font-black text-lg">Step 1</div>
-              <div className="font-semibold text-black">Register your organization</div>
-              <div className="text-gray-500 text-sm">Create your org account. Get your organization code to link all your teams together.</div>
-            </div>
-            <div className="border border-gray-200 rounded-2xl p-5 space-y-2">
-              <div className="text-orange-500 font-black text-lg">Step 2</div>
-              <div className="font-semibold text-black">Add teams & invite coaches</div>
-              <div className="text-gray-500 text-sm">Add each team with its age group and coach email. Coaches get a setup link automatically.</div>
-            </div>
-            <div className="border border-gray-200 rounded-2xl p-5 space-y-2">
-              <div className="text-orange-500 font-black text-lg">Step 3</div>
-              <div className="font-semibold text-black">Players upload, you track everything</div>
-              <div className="text-gray-500 text-sm">Buy credits for players, watch the leaderboard fill up, and see who&apos;s improving across every team.</div>
-            </div>
+      {/* How it works */}
+      <div className="flex flex-col items-center px-6 py-16 space-y-8 text-center">
+        <h2 className="text-2xl font-black text-black">How it works</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl w-full text-left">
+          <div className="border border-gray-200 rounded-2xl p-5 space-y-2">
+            <div className="text-orange-500 font-black text-lg">Step 1</div>
+            <div className="font-semibold text-black">Register your organization</div>
+            <div className="text-gray-500 text-sm">Create your org account. Get your organization code to link all your teams together.</div>
+          </div>
+          <div className="border border-gray-200 rounded-2xl p-5 space-y-2">
+            <div className="text-orange-500 font-black text-lg">Step 2</div>
+            <div className="font-semibold text-black">Add teams &amp; invite coaches</div>
+            <div className="text-gray-500 text-sm">Add each team with its age group and coach email. Coaches get a setup link automatically.</div>
+          </div>
+          <div className="border border-gray-200 rounded-2xl p-5 space-y-2">
+            <div className="text-orange-500 font-black text-lg">Step 3</div>
+            <div className="font-semibold text-black">Players upload, you track everything</div>
+            <div className="text-gray-500 text-sm">Buy credits for players, watch the leaderboard fill up, and see who&apos;s improving across every team.</div>
           </div>
         </div>
 
@@ -78,8 +83,8 @@ export default function TeamLandingPage() {
             <p className="text-orange-100 text-sm mt-0.5">Each player gets a ball, 2 shot analyses, and a certificate of completion that shows their improvement. Starting at $50/player.</p>
           </div>
         </div>
-
       </div>
+
     </main>
   )
 }

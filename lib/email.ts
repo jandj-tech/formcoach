@@ -471,6 +471,93 @@ export async function sendCoachAddedEmail(to: string, orgName: string, teamName:
   })
 }
 
+export async function sendClaimCreditsEmail(
+  to: string,
+  customerName: string | null,
+  tokensToGrant: number,
+) {
+  const name = customerName?.split(' ')[0] || 'there'
+  const signupLink = `${BASE_URL}/signup?email=${encodeURIComponent(to)}&credits=${tokensToGrant}`
+  const { data, error } = await getResend().emails.send({
+    from: FROM,
+    to,
+    replyTo: 'noreply@learnhoops.com',
+    subject: `Your LearnHoops ball ships soon — claim your ${tokensToGrant} free shot ${tokensToGrant === 1 ? 'analysis' : 'analyses'}`,
+    text: [
+      `Hey ${name},`,
+      ``,
+      `Your LearnHoops basketball order is confirmed and will ship shortly.`,
+      ``,
+      `Your order includes ${tokensToGrant} free shot ${tokensToGrant === 1 ? 'analysis' : 'analyses'} — but you need a LearnHoops account to use them.`,
+      ``,
+      `Create your free account here and the credits will be added automatically:`,
+      signupLink,
+      ``,
+      `LearnHoops.com`,
+    ].join('\n'),
+    html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /></head>
+<body style="margin:0;padding:0;background:#F4F4F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#111111;">
+  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background:#F4F4F5;">
+    <tr><td align="center" style="padding:32px 16px;">
+      <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:560px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #E4E4E7;">
+
+        <tr><td style="background:#000000;padding:22px 32px;">
+          <div style="color:#F97316;font-size:20px;font-weight:800;letter-spacing:-0.3px;line-height:1;">LearnHoops<span style="color:#71717A;">.com</span></div>
+          <div style="color:#A1A1AA;font-size:12px;margin-top:5px;">Your shot. Perfected by AI.</div>
+        </td></tr>
+
+        <tr><td style="padding:36px 32px 8px;">
+          <h1 style="margin:0 0 10px;color:#111111;font-size:24px;line-height:1.25;font-weight:800;">Your order is confirmed — and you have free credits waiting.</h1>
+          <p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;">
+            Hey ${name}, your LearnHoops basketball is on its way. Your order also includes
+            <strong>${tokensToGrant} free shot ${tokensToGrant === 1 ? 'analysis' : 'analyses'}</strong> — create a free account and they'll be added instantly.
+          </p>
+        </td></tr>
+
+        <tr><td style="padding:20px 32px 4px;">
+          <div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:10px;padding:14px 18px;display:inline-block;">
+            <div style="color:#C2410C;font-size:13px;font-weight:600;margin-bottom:2px;">Waiting for you</div>
+            <div style="color:#9A3412;font-size:28px;font-weight:900;line-height:1;">${tokensToGrant} free shot ${tokensToGrant === 1 ? 'analysis' : 'analyses'}</div>
+          </div>
+        </td></tr>
+
+        <tr><td style="padding:20px 32px 8px;">
+          <a href="${signupLink}" style="display:inline-block;background:#F97316;color:#ffffff;padding:13px 26px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">
+            Create my account &amp; claim credits
+          </a>
+        </td></tr>
+
+        <tr><td style="padding:4px 32px 32px;">
+          <p style="margin:0;color:#A1A1AA;font-size:12px;line-height:1.5;">
+            Sign up with this email address and your credits will be applied automatically.<br/>
+            <a href="${signupLink}" style="color:#A1A1AA;word-break:break-all;text-decoration:underline;">${signupLink}</a>
+          </p>
+        </td></tr>
+
+        <tr><td style="padding:18px 32px;background:#FAFAFA;border-top:1px solid #E4E4E7;">
+          <p style="margin:0;color:#A1A1AA;font-size:11px;line-height:1.6;">
+            Questions? Reply to this email or visit <a href="${BASE_URL}" style="color:#71717A;text-decoration:none;font-weight:600;">LearnHoops.com</a>.
+          </p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
+    `.trim(),
+  })
+
+  if (error) {
+    console.error('[email] claim credits email failed:', error)
+    throw new Error(`Claim credits email failed: ${error.message}`)
+  }
+  console.log('[email] claim credits email sent:', data?.id, 'to:', to)
+}
+
 export async function sendShippingEmail(
   to: string,
   customerName: string | null,

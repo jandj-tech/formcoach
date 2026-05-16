@@ -38,6 +38,19 @@ export async function POST(req: NextRequest) {
     // Link any existing anonymous submissions for this email
     await db`UPDATE submissions SET user_id = ${user.id} WHERE email = ${emailLower} AND user_id IS NULL`
 
+    // Carry over any analysis tokens that accumulated in email_list (e.g. from a ball purchase before account creation)
+    try {
+      const [emailEntry] = await db`
+        SELECT analysis_tokens FROM email_list WHERE email = ${emailLower}
+      ` as unknown as [{ analysis_tokens: number } | undefined]
+      if (emailEntry?.analysis_tokens && emailEntry.analysis_tokens > 0) {
+        await db`UPDATE users SET analysis_tokens = COALESCE(analysis_tokens, 0) + ${emailEntry.analysis_tokens} WHERE id = ${user.id}`
+        await db`UPDATE email_list SET analysis_tokens = 0 WHERE email = ${emailLower}`
+      }
+    } catch {
+      // Non-fatal
+    }
+
     // If they registered via a coach invite link, claim their pending team spot
     if (teamInviteToken) {
       try {

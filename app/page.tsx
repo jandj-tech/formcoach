@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import TopNav from '@/components/TopNav'
 import CriteriaShowcase, { type Criterion } from '@/components/CriteriaShowcase'
 import { db } from '@/lib/db'
@@ -82,7 +83,7 @@ export default async function HomePage() {
             { name: 'Maple Basketball', location: 'Vaughan, ON', logo: '/maple-basketball-logo.png' },
           ].map((org) => (
             <div key={org.name} className="flex items-center gap-4 bg-white border border-gray-200 rounded-2xl px-6 py-4 shadow-sm">
-              <img src={org.logo} alt={org.name + ' logo'} className="w-14 h-14 object-contain rounded-xl" />
+              <Image src={org.logo} alt={org.name + ' logo'} width={56} height={56} className="object-contain rounded-xl" />
               <div>
                 <p className="text-black text-base font-black leading-tight">{org.name}</p>
                 <p className="text-gray-400 text-sm">{org.location}</p>

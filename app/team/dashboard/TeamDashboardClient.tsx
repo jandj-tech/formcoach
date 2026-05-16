@@ -99,6 +99,8 @@ export default function TeamDashboardClient({
   const [showCoaches, setShowCoaches] = useState(true)
   const [showPlayers, setShowPlayers] = useState(true)
   const [showLeaderboardSection, setShowLeaderboardSection] = useState(true)
+  const [showTeamInfo, setShowTeamInfo] = useState(true)
+  const [showMyUploads, setShowMyUploads] = useState(true)
   const [kicking, setKicking] = useState<string | null>(null)
 
   // Add player form
@@ -283,6 +285,21 @@ export default function TeamDashboardClient({
         </button>
       </div>
 
+      {/* Team Information — one collapsible section wrapping everything but My Uploads */}
+      <div className="border border-gray-200 rounded-2xl overflow-hidden">
+        <button
+          onClick={() => setShowTeamInfo(o => !o)}
+          className="w-full flex items-center justify-between gap-4 px-5 py-4 bg-gray-50 hover:bg-orange-50 transition-colors text-left"
+        >
+          <div>
+            <p className="font-bold text-black">Team Information</p>
+            <p className="text-xs text-gray-500 mt-0.5">Credits, players, coaches &amp; leaderboard</p>
+          </div>
+          <span className="text-gray-400 text-lg">{showTeamInfo ? '−' : '+'}</span>
+        </button>
+        {showTeamInfo && (
+          <div className="p-4 space-y-6">
+
       {/* Credits & Pool */}
       <div className="bg-gray-50 rounded-2xl p-5 space-y-4">
         <h2 className="text-base font-black text-black">Credits &amp; Pool</h2>
@@ -403,26 +420,6 @@ export default function TeamDashboardClient({
       <div className="bg-gray-50 rounded-2xl p-5 space-y-3">
         <h2 className="text-base font-black text-black">Upload a Shot for a Player</h2>
         <CoachUploadForm accessCode={team.accessCode} members={uploadableMembers} />
-      </div>
-
-      {/* My Uploads — your own analyzed shots (upload happens on the Analyze page) */}
-      <div className="bg-gray-50 rounded-2xl p-5 space-y-3">
-        <div className="flex items-center justify-between gap-4">
-          <h2 className="text-base font-black text-black">My Uploads</h2>
-          <Link
-            href="/analyze"
-            className="shrink-0 bg-orange-500 hover:bg-orange-400 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors"
-          >
-            Analyze a shot →
-          </Link>
-        </div>
-        {myUploads.length > 0 ? (
-          <PlayerShotList shots={myUploads} />
-        ) : (
-          <p className="text-sm text-gray-400">
-            You haven&apos;t analyzed any of your own shots yet — use the Analyze page to start.
-          </p>
-        )}
       </div>
 
       {/* Players */}
@@ -607,6 +604,45 @@ export default function TeamDashboardClient({
           </div>
         </div>
       )}
+
+          </div>
+        )}
+      </div>
+
+      {/* My Uploads — separate collapsible section */}
+      <div className="border border-gray-200 rounded-2xl overflow-hidden">
+        <button
+          onClick={() => setShowMyUploads(o => !o)}
+          className="w-full flex items-center justify-between gap-4 px-5 py-4 bg-gray-50 hover:bg-orange-50 transition-colors text-left"
+        >
+          <div>
+            <p className="font-bold text-black">My Uploads</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {myUploads.length} of your own analyzed shot{myUploads.length !== 1 ? 's' : ''}
+            </p>
+          </div>
+          <span className="text-gray-400 text-lg">{showMyUploads ? '−' : '+'}</span>
+        </button>
+        {showMyUploads && (
+          <div className="p-4 space-y-3">
+            <div className="flex justify-end">
+              <Link
+                href="/analyze"
+                className="shrink-0 bg-orange-500 hover:bg-orange-400 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors"
+              >
+                Analyze a shot →
+              </Link>
+            </div>
+            {myUploads.length > 0 ? (
+              <PlayerShotList shots={myUploads} />
+            ) : (
+              <p className="text-sm text-gray-400">
+                You haven&apos;t analyzed any of your own shots yet — use the Analyze page to start.
+              </p>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Full-screen leaderboard popup with print — portaled to <body> so the
           printout isn't preceded by blank pages of (hidden) dashboard content. */}

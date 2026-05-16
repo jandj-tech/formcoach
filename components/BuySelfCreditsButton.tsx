@@ -2,8 +2,8 @@
 
 import { useState } from 'react'
 
-// Buys one analysis credit for the coach's own uploads — $2.50 if the team
-// is initiated, $5.00 otherwise.
+// Buys one analysis credit for a coach / org owner's own uploads —
+// $2.50 if their team is initiated, $5.00 otherwise.
 export default function BuySelfCreditsButton({ initiated }: { initiated: boolean }) {
   const [loading, setLoading] = useState(false)
   const price = initiated ? '2.50' : '5.00'
@@ -31,9 +31,9 @@ export default function BuySelfCreditsButton({ initiated }: { initiated: boolean
     <button
       onClick={buy}
       disabled={loading}
-      className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors"
+      className="shrink-0 bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors"
     >
-      {loading ? 'Redirecting…' : `Buy analysis credit — $${price}`}
+      {loading ? 'Redirecting…' : `Buy credit — $${price}`}
     </button>
   )
 }

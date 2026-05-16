@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getTeamSessionFromRequest } from '@/lib/team-auth'
+import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { getStripe } from '@/lib/stripe'
 import { getTeamTokenState } from '@/lib/team-tokens'
+import { db } from '@/lib/db'
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL && process.env.NEXT_PUBLIC_BASE_URL !== 'http://localhost:3000'
   ? process.env.NEXT_PUBLIC_BASE_URL
@@ -9,11 +11,12 @@ const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL && process.env.NEXT_PUBLIC_BAS
     ? `https://${process.env.VERCEL_URL}`
     : 'http://localhost:3000'
 
-// A coach buys analysis credits for their own shot uploads ("My Uploads").
+// A coach or org owner buys analysis credits for their own shot uploads.
 // $2.50 each once their team is initiated, $5.00 otherwise.
 export async function POST(req: NextRequest) {
-  const session = await getTeamSessionFromRequest(req)
-  if (!session) {
+  const teamSession = await getTeamSessionFromRequest(req)
+  const orgSession = teamSession ? null : await getOrgSessionFromRequest(req)
+  if (!teamSession && !orgSession) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
   }
 
@@ -24,8 +27,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid quantity' }, { status: 400 })
     }
 
-    const state = await getTeamTokenState(session.teamId)
-    const initiated = !!state?.initiated
+    // $2.50 if their team is initiated, $5.00 otherwise.
+    let initiated = false
+    if (teamSession) {
+      const state = await getTeamTokenState(teamSession.teamId)
+      initiated = !!state?.initiated
+    } else {
+      const rows = (await db`
+        SELECT 1 FROM teams
+        WHERE organization_id = ${orgSession!.orgId} AND initiated_at IS NOT NULL
+        LIMIT 1
+      `) as unknown as unknown[]
+      initiated = rows.length > 0
+    }
+
+    const coachEmail = teamSession?.adminEmail ?? orgSession!.adminEmail
     const unitAmount = initiated ? 250 : 500
 
     const checkout = await getStripe().checkout.sessions.create({
@@ -38,19 +54,19 @@ export async function POST(req: NextRequest) {
             currency: 'usd',
             unit_amount: unitAmount,
             product_data: {
-              name: `${qty} Shot Analysis Credit${qty > 1 ? 's' : ''} — coach`,
-              description: 'For analyzing your own shots in the My Uploads section.',
+              name: `${qty} Shot Analysis Credit${qty > 1 ? 's' : ''}`,
+              description: 'For analyzing your own shots on the Analyze page.',
             },
           },
         },
       ],
       metadata: {
         type: 'coach_self_credits',
-        coachEmail: session.adminEmail,
+        coachEmail,
         quantity: String(qty),
       },
-      success_url: `${BASE_URL}/team/dashboard?self_credits=1`,
-      cancel_url: `${BASE_URL}/team/dashboard`,
+      success_url: `${BASE_URL}/analyze?credits=1`,
+      cancel_url: `${BASE_URL}/analyze`,
     })
 
     return NextResponse.json({ url: checkout.url })

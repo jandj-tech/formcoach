@@ -187,6 +187,21 @@ export default async function OrgDashboardPage() {
     console.error('[org/dashboard] load error:', err)
   }
 
+  // The org owner's own shot uploads, shown as a list in "My Uploads".
+  let myUploads: Array<{ id: string; token: string; created_at: string; overall_score: string | number | null }> = []
+  try {
+    myUploads = (await db`
+      SELECT s.id, s.token, s.created_at, a.overall_score
+      FROM submissions s
+      LEFT JOIN analyses a ON a.submission_id = s.id
+      WHERE s.email = ${session.adminEmail}
+      ORDER BY s.created_at DESC
+      LIMIT 50
+    `) as unknown as typeof myUploads
+  } catch (err) {
+    console.error('[org/dashboard] my uploads query failed:', err)
+  }
+
   return (
     <main className="min-h-screen bg-white flex flex-col">
       <TopNav />
@@ -213,7 +228,7 @@ export default async function OrgDashboardPage() {
           </p>
         </div>
 
-        <OrgDashboardClient teams={teams} orgName={org.name} classPackages={classPackages} />
+        <OrgDashboardClient teams={teams} orgName={org.name} classPackages={classPackages} myUploads={myUploads} />
       </div>
     </main>
   )

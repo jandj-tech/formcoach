@@ -10,6 +10,7 @@ import PoolAssignPanel from '@/components/PoolAssignPanel'
 import TokenBalances from '@/components/TokenBalances'
 import InlineEdit from '@/components/InlineEdit'
 import LeaderboardTable, { type LeaderboardRow } from '@/components/LeaderboardTable'
+import PlayerShotList, { type Shot } from '@/components/PlayerShotList'
 import PrintButton from '@/components/PrintButton'
 import { CLASS_MIN_PLAYERS, CLASS_BULK_THRESHOLD, classPriceCents } from '@/lib/org-class-pricing'
 
@@ -74,11 +75,12 @@ interface Props {
   teams: TeamData[]
   orgName: string
   classPackages: ClassPackage[]
+  myUploads: Shot[]
 }
 
 type DestMode = 'all' | 'specific' | 'coach'
 
-export default function OrgDashboardClient({ teams, orgName, classPackages }: Props) {
+export default function OrgDashboardClient({ teams, orgName, classPackages, myUploads }: Props) {
   const router = useRouter()
   const [expanded, setExpanded] = useState<string | null>(teams[0]?.id ?? null)
   const [destMode, setDestMode] = useState<Record<string, DestMode>>({})
@@ -1105,6 +1107,26 @@ export default function OrgDashboardClient({ teams, orgName, classPackages }: Pr
             </div>
           )
         })}
+      </div>
+
+      {/* My Uploads — the org owner's own analyzed shots */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="text-xl font-black text-black">My Uploads</h2>
+          <Link
+            href="/analyze"
+            className="shrink-0 bg-orange-500 hover:bg-orange-400 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors"
+          >
+            Analyze a shot →
+          </Link>
+        </div>
+        {myUploads.length > 0 ? (
+          <PlayerShotList shots={myUploads} />
+        ) : (
+          <p className="text-sm text-gray-400">
+            You haven&apos;t analyzed any of your own shots yet — use the Analyze page to start.
+          </p>
+        )}
       </div>
 
       {/* Team leaderboard popup with print — portaled to <body> for a clean printout */}

@@ -82,6 +82,10 @@ ALTER TABLE email_list ADD COLUMN IF NOT EXISTS analysis_tokens INTEGER DEFAULT 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS analysis_tokens INTEGER DEFAULT 0;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS nickname VARCHAR(50);
 
+-- Password reset tokens
+ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token VARCHAR(64);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires TIMESTAMP;
+
 -- Seed custom criteria (only if table is empty)
 INSERT INTO criteria (name, description, weight, order_index)
 SELECT * FROM (VALUES

@@ -85,6 +85,9 @@ function LoginForm() {
           </form>
 
           <p className="text-center text-sm text-gray-500">
+            <a href="/forgot-password" className="text-orange-500 hover:underline font-medium">Forgot your password?</a>
+          </p>
+          <p className="text-center text-sm text-gray-500">
             Don&apos;t have an account?{' '}
             <a href={`/signup?next=${encodeURIComponent(next)}`} className="text-orange-500 hover:underline font-medium">Sign up</a>
           </p>

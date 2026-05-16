@@ -333,6 +333,61 @@ export async function sendCoachSignupEmail(to: string, teamName: string, inviteT
   console.log('[email] coach signup invite sent:', data?.id, 'to:', to)
 }
 
+// Sends a user a link to reset their account password.
+export async function sendPasswordResetEmail(to: string, token: string) {
+  const link = `${BASE_URL}/reset-password?token=${token}`
+  const { data, error } = await getResend().emails.send({
+    from: FROM,
+    to,
+    replyTo: 'noreply@learnhoops.com',
+    subject: 'Reset your LearnHoops password',
+    text: [
+      `Someone asked to reset the password for your LearnHoops account.`,
+      ``,
+      `Reset it here (the link expires in 1 hour):`,
+      link,
+      ``,
+      `If you didn't request this, you can safely ignore this email — your password won't change.`,
+      ``,
+      `LearnHoops.com`,
+    ].join('\n'),
+    html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"/></head>
+<body style="margin:0;padding:0;background:#F4F4F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table role="presentation" width="100%" style="background:#F4F4F5;"><tr><td align="center" style="padding:32px 16px;">
+    <table role="presentation" width="100%" style="max-width:560px;background:#fff;border-radius:14px;border:1px solid #E4E4E7;">
+      <tr><td style="background:#000;padding:22px 32px;">
+        <div style="color:#F97316;font-size:20px;font-weight:800;">LearnHoops<span style="color:#71717A;">.com</span></div>
+      </td></tr>
+      <tr><td style="padding:36px 32px 8px;">
+        <h1 style="margin:0 0 10px;color:#111;font-size:22px;font-weight:800;">Reset your password</h1>
+        <p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;">
+          Someone asked to reset the password for your LearnHoops account. Click below to set a new one.
+          This link expires in 1 hour.
+        </p>
+      </td></tr>
+      <tr><td style="padding:24px 32px 8px;">
+        <a href="${link}" style="display:inline-block;background:#F97316;color:#fff;padding:13px 26px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">Reset my password</a>
+      </td></tr>
+      <tr><td style="padding:6px 32px 32px;">
+        <p style="margin:0;color:#A1A1AA;font-size:12px;line-height:1.5;">
+          If you didn't request this, ignore this email — your password won't change.
+        </p>
+      </td></tr>
+    </table>
+  </td></tr></table>
+</body>
+</html>`.trim(),
+  })
+  if (error) {
+    console.error('[email] password reset failed:', error)
+    throw new Error(`Password reset email failed: ${error.message}`)
+  }
+  console.log('[email] password reset sent:', data?.id, 'to:', to)
+}
+
 export async function sendCoachAddedEmail(to: string, orgName: string, teamName: string) {
   const link = `${BASE_URL}/team/login`
   await getResend().emails.send({

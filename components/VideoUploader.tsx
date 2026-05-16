@@ -494,15 +494,15 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
           </div>
         )}
 
-        {/* No coach credits overlay */}
+        {/* No coach credits overlay — semi-transparent wash signals the zone is locked */}
         {noCredits && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center px-6">
-            <div className="flex flex-col items-center gap-2.5 bg-white/85 backdrop-blur-sm border border-gray-200 shadow-xl rounded-2xl px-5 py-4">
-              <p className="text-black font-black text-base sm:text-lg text-center leading-snug">
+          <div className="absolute inset-0 flex flex-col items-center justify-center px-6 bg-white/60 backdrop-blur-[1px] rounded-2xl">
+            <div className="flex flex-col items-center gap-2 bg-white border-2 border-red-400 shadow-xl rounded-2xl px-5 py-4">
+              <p className="text-red-600 font-black text-lg sm:text-xl text-center leading-snug">
                 0 analysis credits remaining
               </p>
-              <p className="text-gray-500 text-sm text-center">
-                Buy a credit below to analyze your shot.
+              <p className="text-gray-600 text-sm text-center">
+                Buy a credit below before you can analyze your shot.
               </p>
             </div>
           </div>

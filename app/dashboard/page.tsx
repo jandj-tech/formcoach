@@ -164,10 +164,11 @@ export default async function DashboardPage() {
               {user.nickname ? `${user.nickname} · ${user.email}` : user.email}
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
             <span className="bg-orange-100 text-orange-700 text-xs font-bold px-3 py-1 rounded-full">
-              {isSubscribed ? 'Unlimited' : `${tokens} token${tokens !== 1 ? 's' : ''}`}
+              {isSubscribed ? 'Unlimited analyses' : `${tokens} analysis token${tokens !== 1 ? 's' : ''}`}
             </span>
+            {!isSubscribed && <BuyTokenButton />}
             <LogoutButton />
           </div>
         </div>
@@ -185,27 +186,6 @@ export default async function DashboardPage() {
             <NicknameForm current={user.nickname ?? null} />
           </div>
         </details>
-
-        {/* Token balance */}
-        <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-center justify-between gap-4">
-          <div>
-            <p className="font-semibold text-black text-sm">
-              {isSubscribed
-                ? 'Unlimited analyses'
-                : tokens > 0
-                  ? `${tokens} analysis token${tokens !== 1 ? 's' : ''} remaining`
-                  : 'No analysis tokens'}
-            </p>
-            <p className="text-gray-500 text-xs mt-0.5">
-              {isSubscribed
-                ? 'Your account has unlimited shot analyses'
-                : tokens > 0
-                  ? 'Each token gives you one full shot analysis'
-                  : 'Buy a token to analyze your next shot'}
-            </p>
-          </div>
-          {!isSubscribed && <BuyTokenButton />}
-        </div>
 
         {/* Your Team — collapsible to keep the shot history in view */}
         <details className="group border border-gray-200 rounded-lg">

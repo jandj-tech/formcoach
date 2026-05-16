@@ -5,6 +5,7 @@ import TopNav from '@/components/TopNav'
 import Link from 'next/link'
 import LogoutButton from './LogoutButton'
 import BuyTokenButton from './BuyTokenButton'
+import DeleteSubmissionButton from './DeleteSubmissionButton'
 
 type UserRow = {
   id: string
@@ -164,34 +165,36 @@ export default async function DashboardPage() {
               // Postgres returns DECIMAL as a string — coerce before formatting.
               const score = sub.overall_score == null ? null : Number(sub.overall_score)
               return (
-                <Link
-                  key={sub.id}
-                  href={`/results/${sub.token}`}
-                  className="flex items-center gap-4 bg-gray-50 hover:bg-orange-50 border border-gray-200 hover:border-orange-200 rounded-xl p-4 transition-colors group"
-                >
-                  {thumb ? (
-                    <img
-                      src={thumb}
-                      alt="Shot frame"
-                      className="w-16 h-16 object-cover rounded-lg shrink-0 bg-gray-200"
-                    />
-                  ) : (
-                    <div className="w-16 h-16 bg-gray-200 rounded-lg shrink-0 flex items-center justify-center text-2xl">🏀</div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-500">{date}</p>
-                    <p className="text-black font-semibold text-sm mt-0.5 group-hover:text-orange-600 transition-colors">
-                      View Shot Breakdown →
-                    </p>
-                  </div>
-                  {score !== null && !Number.isNaN(score) ? (
-                    <div className={`text-2xl font-black shrink-0 ${scoreColor(score)}`}>
-                      {score.toFixed(1)}
+                <div key={sub.id} className="flex items-center gap-2">
+                  <Link
+                    href={`/results/${sub.token}`}
+                    className="flex-1 min-w-0 flex items-center gap-4 bg-gray-50 hover:bg-orange-50 border border-gray-200 hover:border-orange-200 rounded-xl p-4 transition-colors group"
+                  >
+                    {thumb ? (
+                      <img
+                        src={thumb}
+                        alt="Shot frame"
+                        className="w-16 h-16 object-cover rounded-lg shrink-0 bg-gray-200"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 bg-gray-200 rounded-lg shrink-0 flex items-center justify-center text-2xl">🏀</div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-500">{date}</p>
+                      <p className="text-black font-semibold text-sm mt-0.5 group-hover:text-orange-600 transition-colors">
+                        View Shot Breakdown →
+                      </p>
                     </div>
-                  ) : (
-                    <div className="text-gray-300 text-sm shrink-0">—</div>
-                  )}
-                </Link>
+                    {score !== null && !Number.isNaN(score) ? (
+                      <div className={`text-2xl font-black shrink-0 ${scoreColor(score)}`}>
+                        {score.toFixed(1)}
+                      </div>
+                    ) : (
+                      <div className="text-gray-300 text-sm shrink-0">—</div>
+                    )}
+                  </Link>
+                  <DeleteSubmissionButton id={sub.id} />
+                </div>
               )
             })}
           </div>

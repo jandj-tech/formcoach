@@ -74,6 +74,12 @@ export default async function AnalyzePage() {
         <p className="text-black text-xs mt-3 text-center max-w-sm px-4">
           Your video is never stored long-term. Frames are analyzed and then used only to generate your report.
         </p>
+        <a
+          href="/support"
+          className="mt-6 text-sm text-gray-500 hover:text-black underline underline-offset-2 transition-colors"
+        >
+          How to take a video to get most accurate results
+        </a>
       </section>
 
       <footer className="py-5 border-t border-gray-200 text-center text-black text-xs">

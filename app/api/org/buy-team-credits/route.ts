@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
       }],
       metadata: { plan: 'team-credits', teamId: team.id, quantity: String(quantity) },
       success_url: `${BASE_URL}/org/dashboard?credits_purchased=1`,
+      allow_promotion_codes: true,
       cancel_url: `${BASE_URL}/org/dashboard`,
     })
 

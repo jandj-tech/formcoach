@@ -74,6 +74,7 @@ export async function POST(req: NextRequest) {
         orgId: session.orgId,
       },
       success_url: `${BASE_URL}/org/dashboard?tokens_purchased=1`,
+      allow_promotion_codes: true,
       cancel_url: `${BASE_URL}/org/dashboard`,
     })
 

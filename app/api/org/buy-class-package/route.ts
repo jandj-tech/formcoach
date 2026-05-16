@@ -56,6 +56,7 @@ export async function POST(req: NextRequest) {
       totalCents: String(totalCents),
     },
     success_url: `${baseUrl}/org/dashboard?class_success=1`,
+    allow_promotion_codes: true,
     cancel_url: `${baseUrl}/org/dashboard`,
   })
 

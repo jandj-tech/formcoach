@@ -67,6 +67,7 @@ export async function POST(req: NextRequest) {
         tokens: String(qty),
       },
       success_url: `${BASE_URL}/team/dashboard?initiated=1`,
+      allow_promotion_codes: true,
       cancel_url: `${BASE_URL}/team/dashboard`,
     })
 

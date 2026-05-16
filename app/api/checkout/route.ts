@@ -234,6 +234,7 @@ export async function POST(req: NextRequest) {
       phone_number_collection: { enabled: true },
       metadata,
       success_url: successUrl,
+      allow_promotion_codes: true,
       cancel_url: `${BASE_URL}/cart`,
     })
 

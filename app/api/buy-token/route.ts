@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
         userId: session.userId,
       },
       success_url: `${BASE_URL}/analyze?token_purchased=1`,
+      allow_promotion_codes: true,
       cancel_url: `${BASE_URL}/analyze`,
     })
 

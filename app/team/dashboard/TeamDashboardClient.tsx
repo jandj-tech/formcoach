@@ -8,6 +8,7 @@ import TeamCoaches from './TeamCoaches'
 import InitiationPanel from '@/components/InitiationPanel'
 import PoolAssignPanel from '@/components/PoolAssignPanel'
 import TokenBalances from '@/components/TokenBalances'
+import { useCart } from '@/lib/cart'
 
 interface Team {
   id: string
@@ -79,6 +80,7 @@ export default function TeamDashboardClient({
   adminEmail,
 }: Props) {
   const router = useRouter()
+  const { clear: clearCart } = useCart()
   const [buying, setBuying] = useState(false)
   const [quantity, setQuantity] = useState(10)
   const [loggingOut, setLoggingOut] = useState(false)
@@ -118,6 +120,7 @@ export default function TeamDashboardClient({
   async function logout() {
     setLoggingOut(true)
     await fetch('/api/team/logout', { method: 'POST' })
+    clearCart() // The cart is per-session — empty it on logout.
     router.push('/login')
   }
 

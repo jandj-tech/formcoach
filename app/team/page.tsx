@@ -37,7 +37,7 @@ export default function TeamLandingPage() {
       </div>
 
       {/* Black CTA band */}
-      <div className="bg-gray-100 w-full py-16 flex flex-col items-center gap-6 text-center px-6">
+      <div className="bg-gray-100 w-full py-8 flex flex-col items-center gap-6 text-center px-6">
         <p className="text-black text-xl font-black max-w-md">Ready to take your organization to the next level?</p>
         <div className="flex flex-col sm:flex-row gap-4">
           <Link
@@ -56,7 +56,7 @@ export default function TeamLandingPage() {
       </div>
 
       {/* How it works */}
-      <div className="flex flex-col items-center px-6 py-16 space-y-8 text-center">
+      <div className="flex flex-col items-center px-6 pt-8 pb-16 space-y-8 text-center">
         <h2 className="text-2xl font-black text-black">How it works</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl w-full text-left">
           <div className="border border-gray-200 rounded-2xl p-5 space-y-2">

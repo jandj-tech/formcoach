@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { signTeamSession, teamSessionCookieOptions } from '@/lib/team-auth'
+import { clearOtherSessions, TEAM_COOKIE } from '@/lib/sessions'
 
 export async function POST(req: NextRequest) {
   try {
@@ -21,6 +22,7 @@ export async function POST(req: NextRequest) {
     const token = await signTeamSession({ teamId: team.id, adminEmail: team.admin_email })
     const res = NextResponse.json({ success: true })
     res.cookies.set(teamSessionCookieOptions(token))
+    clearOtherSessions(res, TEAM_COOKIE)
     return res
   } catch (err) {
     console.error('Team select error:', err)

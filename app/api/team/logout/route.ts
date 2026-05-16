@@ -1,13 +1,8 @@
 import { NextResponse } from 'next/server'
+import { clearAllSessions } from '@/lib/sessions'
 
 export async function POST() {
   const res = NextResponse.json({ success: true })
-  res.cookies.set({
-    name: 'fc_team_session',
-    value: '',
-    httpOnly: true,
-    path: '/',
-    maxAge: 0,
-  })
+  clearAllSessions(res)
   return res
 }

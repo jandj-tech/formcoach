@@ -4,6 +4,7 @@ import { db } from '@/lib/db'
 import { signSession, sessionCookieOptions } from '@/lib/auth'
 import { signTeamSession, teamSessionCookieOptions } from '@/lib/team-auth'
 import { signOrgSession, orgSessionCookieOptions } from '@/lib/org-auth'
+import { clearOtherSessions, PLAYER_COOKIE, TEAM_COOKIE, ORG_COOKIE } from '@/lib/sessions'
 
 export async function POST(req: NextRequest) {
   try {
@@ -22,6 +23,7 @@ export async function POST(req: NextRequest) {
       const token = await signOrgSession({ orgId: org.id, adminEmail: org.admin_email })
       const res = NextResponse.json({ success: true, redirect: '/org/dashboard' })
       res.cookies.set(orgSessionCookieOptions(token))
+      clearOtherSessions(res, ORG_COOKIE)
       return res
     }
 
@@ -41,6 +43,7 @@ export async function POST(req: NextRequest) {
       const token = await signTeamSession({ teamId: team.id, adminEmail: team.admin_email })
       const res = NextResponse.json({ success: true, redirect: '/team/dashboard' })
       res.cookies.set(teamSessionCookieOptions(token))
+      clearOtherSessions(res, TEAM_COOKIE)
       return res
     }
 
@@ -54,6 +57,7 @@ export async function POST(req: NextRequest) {
         const token = await signTeamSession({ teamId: coach.team_id, adminEmail: coach.email })
         const res = NextResponse.json({ success: true, redirect: '/team/dashboard' })
         res.cookies.set(teamSessionCookieOptions(token))
+        clearOtherSessions(res, TEAM_COOKIE)
         return res
       }
     } catch (err) {
@@ -68,6 +72,7 @@ export async function POST(req: NextRequest) {
       const token = await signSession({ userId: user.id, email: user.email })
       const res = NextResponse.json({ success: true, token })
       res.cookies.set(sessionCookieOptions(token))
+      clearOtherSessions(res, PLAYER_COOKIE)
       return res
     }
 

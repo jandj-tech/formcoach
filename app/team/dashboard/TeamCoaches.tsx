@@ -2,19 +2,25 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import CoachNicknameForm from './CoachNicknameForm'
 
 interface Coach {
   id: string
   email: string
   pending: boolean
+  nickname: string | null
 }
 
 export default function TeamCoaches({
   foundingCoachEmail,
+  foundingCoachNickname,
   coaches,
+  myNickname,
 }: {
   foundingCoachEmail: string
+  foundingCoachNickname: string | null
   coaches: Coach[]
+  myNickname: string | null
 }) {
   const router = useRouter()
   const [addOpen, setAddOpen] = useState(false)
@@ -54,7 +60,6 @@ export default function TeamCoaches({
         setLoading(false)
         return
       }
-      // Always keep the link available; flag if it was also emailed.
       setInviteUrl(`${BASE_URL}/team/coach-signup?token=${data.inviteToken}`)
       if (data.emailed) setEmailedTo(value)
       setEmail('')
@@ -84,6 +89,9 @@ export default function TeamCoaches({
           {addOpen ? 'Cancel' : 'Add Coach'}
         </button>
       </div>
+
+      {/* The logged-in coach's own display name */}
+      <CoachNicknameForm current={myNickname} />
 
       {addOpen && (
         <div className="border border-gray-200 rounded-2xl p-5 space-y-3">
@@ -141,12 +149,22 @@ export default function TeamCoaches({
 
       <div className="border border-gray-200 rounded-2xl divide-y divide-gray-100">
         <div className="flex items-center justify-between gap-3 px-4 py-3">
-          <span className="text-sm font-semibold text-black truncate">{foundingCoachEmail}</span>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-black truncate">
+              {foundingCoachNickname || foundingCoachEmail}
+            </p>
+            {foundingCoachNickname && (
+              <p className="text-xs text-gray-400 truncate">{foundingCoachEmail}</p>
+            )}
+          </div>
           <span className="shrink-0 text-xs bg-orange-100 text-orange-700 font-bold px-2 py-0.5 rounded-full">Head coach</span>
         </div>
         {coaches.map(c => (
           <div key={c.id} className="flex items-center justify-between gap-3 px-4 py-3">
-            <span className="text-sm font-semibold text-black truncate">{c.email}</span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-black truncate">{c.nickname || c.email}</p>
+              {c.nickname && <p className="text-xs text-gray-400 truncate">{c.email}</p>}
+            </div>
             <span
               className={`shrink-0 text-xs font-bold px-2 py-0.5 rounded-full ${
                 c.pending ? 'bg-gray-100 text-gray-500' : 'bg-green-100 text-green-700'

@@ -50,8 +50,10 @@ interface Props {
   improved: ImprovedEntry[]
   members: Member[]
   pendingMembers: PendingMember[]
-  coaches: Array<{ id: string; email: string; pending: boolean }>
+  coaches: Array<{ id: string; email: string; pending: boolean; nickname: string | null }>
   foundingCoachEmail: string
+  foundingCoachNickname: string | null
+  myNickname: string | null
   allTeams: Array<{ id: string; name: string }>
   currentTeamId: string
   adminEmail: string
@@ -65,6 +67,8 @@ export default function TeamDashboardClient({
   pendingMembers,
   coaches,
   foundingCoachEmail,
+  foundingCoachNickname,
+  myNickname,
   allTeams,
   currentTeamId,
   adminEmail,
@@ -303,7 +307,12 @@ export default function TeamDashboardClient({
       </div>
 
       {/* Coaches */}
-      <TeamCoaches foundingCoachEmail={foundingCoachEmail} coaches={coaches} />
+      <TeamCoaches
+        foundingCoachEmail={foundingCoachEmail}
+        foundingCoachNickname={foundingCoachNickname}
+        coaches={coaches}
+        myNickname={myNickname}
+      />
 
       {/* Upload a Shot for a Player */}
       <div className="space-y-3">

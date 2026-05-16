@@ -17,6 +17,7 @@ interface Coach {
   id: string
   email: string
   pending: boolean
+  nickname: string | null
 }
 
 interface TeamData {
@@ -28,6 +29,7 @@ interface TeamData {
   credits: number
   members: Member[]
   coaches: Coach[]
+  coachNickname: string | null
 }
 
 export default async function OrgDashboardPage() {
@@ -64,13 +66,23 @@ export default async function OrgDashboardPage() {
         let coaches: Coach[] = []
         try {
           coaches = (await db`
-            SELECT id, email, (password_hash IS NULL) AS pending
+            SELECT id, email, nickname, (password_hash IS NULL) AS pending
             FROM team_coaches
             WHERE team_id = ${t.id}
             ORDER BY created_at ASC
           `) as unknown as Coach[]
         } catch {
           // team_coaches table may not exist yet — leave coaches empty
+        }
+
+        let coachNickname: string | null = null
+        try {
+          const [r] = (await db`
+            SELECT coach_nickname FROM teams WHERE id = ${t.id}
+          `) as unknown as [{ coach_nickname: string | null } | undefined]
+          coachNickname = r?.coach_nickname ?? null
+        } catch {
+          // coach_nickname column may not exist yet
         }
 
         return {
@@ -82,6 +94,7 @@ export default async function OrgDashboardPage() {
           credits: t.credits,
           members,
           coaches,
+          coachNickname,
         }
       })
     )

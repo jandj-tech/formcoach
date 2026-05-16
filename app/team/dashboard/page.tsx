@@ -37,7 +37,8 @@ export default async function TeamDashboardPage() {
 
   let members: Array<{ id: string; email: string; tokens: number; first_name: string | null; last_name_initial: string | null }> = []
   let pendingMembers: Array<{ id: string; first_name: string; last_name_initial: string | null; invite_token: string | null }> = []
-  let coaches: Array<{ id: string; email: string; pending: boolean }> = []
+  let coaches: Array<{ id: string; email: string; pending: boolean; nickname: string | null }> = []
+  let headCoachNickname: string | null = null
 
   try {
     leaderboard = (await db`
@@ -108,7 +109,7 @@ export default async function TeamDashboardPage() {
 
   try {
     coaches = (await db`
-      SELECT id, email, (password_hash IS NULL) AS pending
+      SELECT id, email, nickname, (password_hash IS NULL) AS pending
       FROM team_coaches
       WHERE team_id = ${team.id}
       ORDER BY created_at ASC
@@ -116,6 +117,23 @@ export default async function TeamDashboardPage() {
   } catch (err) {
     console.error('[team/dashboard] coaches query failed:', err)
   }
+
+  // Head coach's display name — queried separately so a missing column
+  // (pre-migration) can't break the whole dashboard.
+  try {
+    const [row] = (await db`
+      SELECT coach_nickname FROM teams WHERE id = ${team.id}
+    `) as unknown as [{ coach_nickname: string | null } | undefined]
+    headCoachNickname = row?.coach_nickname ?? null
+  } catch (err) {
+    console.error('[team/dashboard] coach nickname query failed:', err)
+  }
+
+  // The display name of whichever coach is currently logged in.
+  const myNickname =
+    session.adminEmail === team.admin_email
+      ? headCoachNickname
+      : (coaches.find(c => c.email === session.adminEmail)?.nickname ?? null)
 
   return (
     <main className="min-h-screen bg-white flex flex-col">
@@ -128,6 +146,8 @@ export default async function TeamDashboardPage() {
         pendingMembers={pendingMembers}
         coaches={coaches}
         foundingCoachEmail={team.admin_email}
+        foundingCoachNickname={headCoachNickname}
+        myNickname={myNickname}
         allTeams={allTeams}
         currentTeamId={team.id}
         adminEmail={session.adminEmail}

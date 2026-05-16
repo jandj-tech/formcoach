@@ -33,3 +33,7 @@ CREATE TABLE IF NOT EXISTS team_coaches (
   invite_token VARCHAR(64),
   created_at TIMESTAMP DEFAULT NOW()
 );
+
+-- Coach display names, so players and orgs can tell who the coach is.
+ALTER TABLE team_coaches ADD COLUMN IF NOT EXISTS nickname VARCHAR(100);
+ALTER TABLE teams ADD COLUMN IF NOT EXISTS coach_nickname VARCHAR(100);

@@ -12,6 +12,7 @@ function SignupForm() {
   const [nickname, setNickname] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [teamCode, setTeamCode] = useState(searchParams.get('teamCode') || '')
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [error, setError] = useState('')
@@ -106,7 +107,7 @@ function SignupForm() {
               className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
             />
             <input
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               required
               minLength={6}
               placeholder="Password (6+ characters)"
@@ -115,13 +116,20 @@ function SignupForm() {
               className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
             />
             <input
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               required
               placeholder="Confirm password"
               value={confirm}
               onChange={e => setConfirm(e.target.value)}
               className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(s => !s)}
+              className="text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors self-start"
+            >
+              {showPassword ? 'Hide password' : 'View password'}
+            </button>
             <div>
               <input
                 type="text"

@@ -37,6 +37,7 @@ export default function AccessPage() {
   const [codeError, setCodeError] = useState('')
   const [newCode, setNewCode] = useState('')
   const [copied, setCopied] = useState('')
+  const [percentOff, setPercentOff] = useState('100')
 
   const loadAccounts = useCallback(async () => {
     const res = await fetch('/api/admin/free-account')
@@ -108,6 +109,7 @@ export default function AccessPage() {
         body: JSON.stringify({
           code: codeInput.trim() || undefined,
           maxRedemptions: maxRedemptions ? parseInt(maxRedemptions) : undefined,
+          percentOff: percentOff ? Math.min(100, Math.max(1, parseInt(percentOff) || 100)) : 100,
         }),
       })
       if (!res.ok) {
@@ -233,24 +235,36 @@ export default function AccessPage() {
           <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-6 space-y-4">
             <h2 className="text-white font-bold">Generate Promo Code</h2>
             <p className="text-zinc-400 text-sm">
-              Creates a 100% off code usable at Stripe checkout. Leave code blank to auto-generate.
+              Creates a Stripe promo code. Leave code blank to auto-generate.
             </p>
             <form onSubmit={handleCreateCode} className="space-y-3">
               <div className="flex gap-3">
                 <input
                   type="text"
-                  placeholder="e.g. FREEMONTH (optional)"
+                  placeholder="e.g. SAVE20 (optional)"
                   value={codeInput}
                   onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
                   className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-white placeholder-zinc-500 focus:outline-none focus:border-orange-500 text-sm font-mono uppercase"
                 />
+                <div className="flex items-center gap-1.5 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2.5 w-32">
+                  <input
+                    type="number"
+                    placeholder="100"
+                    value={percentOff}
+                    onChange={(e) => setPercentOff(e.target.value)}
+                    min={1}
+                    max={100}
+                    className="w-full bg-transparent text-white text-sm focus:outline-none text-right"
+                  />
+                  <span className="text-zinc-400 text-sm shrink-0">% off</span>
+                </div>
                 <input
                   type="number"
-                  placeholder="Max uses (optional)"
+                  placeholder="Max uses"
                   value={maxRedemptions}
                   onChange={(e) => setMaxRedemptions(e.target.value)}
                   min={1}
-                  className="w-40 bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-white placeholder-zinc-500 focus:outline-none focus:border-orange-500 text-sm"
+                  className="w-32 bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-white placeholder-zinc-500 focus:outline-none focus:border-orange-500 text-sm"
                 />
               </div>
               <button
@@ -303,8 +317,8 @@ export default function AccessPage() {
                         {c.times_redeemed} used
                         {c.max_redemptions ? ` / ${c.max_redemptions} max` : ''}
                       </span>
-                      {c.percent_off === 100 && (
-                        <span className="text-xs px-1.5 py-0.5 rounded bg-green-900/40 text-green-400">100% off</span>
+                      {c.percent_off != null && (
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-green-900/40 text-green-400">{c.percent_off}% off</span>
                       )}
                     </div>
                     {c.active && (

@@ -30,6 +30,21 @@ export async function POST(req: NextRequest) {
     const metaType = session.metadata?.type
     const email = session.customer_details?.email
 
+    // --- Token grant for team/org players ---
+    if (metaType === 'team_token_grant') {
+      const recipientIds = (session.metadata?.recipientUserIds || '').split(',').filter(Boolean)
+      const tokensEach = parseInt(session.metadata?.tokensEach || '1', 10)
+      try {
+        for (const uid of recipientIds) {
+          await db`UPDATE users SET analysis_tokens = COALESCE(analysis_tokens, 0) + ${tokensEach} WHERE id = ${uid}`
+        }
+      } catch (err) {
+        console.error('Failed to grant player tokens:', err)
+        return NextResponse.json({ error: 'DB error' }, { status: 500 })
+      }
+      return NextResponse.json({ received: true })
+    }
+
     // --- Team upload credits purchase ---
     if (plan === 'team-credits') {
       const teamId = session.metadata?.teamId

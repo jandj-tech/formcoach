@@ -2,12 +2,19 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import BuyPlayerTokensButton from './BuyPlayerTokensButton'
 
 interface Team {
   id: string
   name: string
   accessCode: string
   credits: number
+}
+
+interface Member {
+  id: string
+  email: string
+  tokens: number
 }
 
 interface LeaderboardEntry {
@@ -30,9 +37,10 @@ interface Props {
   team: Team
   leaderboard: LeaderboardEntry[]
   improved: ImprovedEntry[]
+  members: Member[]
 }
 
-export default function TeamDashboardClient({ team, leaderboard, improved }: Props) {
+export default function TeamDashboardClient({ team, leaderboard, improved, members }: Props) {
   const router = useRouter()
   const [copied, setCopied] = useState(false)
   const [buying, setBuying] = useState(false)
@@ -179,6 +187,41 @@ export default function TeamDashboardClient({ team, leaderboard, improved }: Pro
             </table>
           </div>
         )}
+      </div>
+
+      {/* Team Members */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-black text-black">Team Members</h2>
+        {members.length === 0 ? (
+          <div className="text-center py-8 text-gray-400 border-2 border-dashed border-gray-200 rounded-2xl">
+            <p className="font-semibold">No players have joined yet</p>
+            <p className="text-sm mt-1">
+              Share your team code{' '}
+              <span className="font-mono font-semibold text-gray-600">{team.accessCode}</span>{' '}
+              so players can join from their dashboard.
+            </p>
+          </div>
+        ) : (
+          <div className="border border-gray-200 rounded-2xl divide-y divide-gray-100">
+            {members.map((m) => (
+              <div key={m.id} className="flex items-center justify-between px-4 py-3">
+                <span className="text-sm text-black">{m.email}</span>
+                <span className="text-xs text-gray-400">
+                  {m.tokens} token{m.tokens !== 1 ? 's' : ''}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Buy Tokens for Players */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-black text-black">Buy Tokens for Players</h2>
+        <p className="text-sm text-gray-500">
+          Analysis tokens let players analyze their own shots. $4.99 per token.
+        </p>
+        <BuyPlayerTokensButton players={members} teamCode={team.accessCode} />
       </div>
 
       {/* Most Improved */}

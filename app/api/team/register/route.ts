@@ -14,12 +14,27 @@ function generateAccessCode(): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const { name, email, password } = await req.json()
+    const { name, email, password, orgCode, ageGroup } = await req.json()
     if (!name || !email || !password || password.length < 6) {
       return NextResponse.json({ error: 'Team name, email, and password (6+ chars) required' }, { status: 400 })
     }
 
     const emailLower = email.toLowerCase().trim()
+
+    // Optional organization link
+    let organizationId: string | null = null
+    if (typeof orgCode === 'string' && orgCode.trim()) {
+      const [org] = await db`
+        SELECT id FROM organizations WHERE access_code = ${orgCode.trim().toUpperCase()}
+      ` as unknown as [{ id: string } | undefined]
+      if (!org) {
+        return NextResponse.json({ error: 'Organization code not found' }, { status: 404 })
+      }
+      organizationId = org.id
+    }
+
+    const ageGroupValue =
+      typeof ageGroup === 'string' && ageGroup.trim() ? ageGroup.trim() : null
 
     const existing = await db`SELECT id FROM teams WHERE admin_email = ${emailLower}`
     if (existing.length > 0) {
@@ -37,8 +52,8 @@ export async function POST(req: NextRequest) {
     }
 
     const [team] = await db`
-      INSERT INTO teams (name, admin_email, password_hash, access_code)
-      VALUES (${name.trim()}, ${emailLower}, ${hash}, ${accessCode})
+      INSERT INTO teams (name, admin_email, password_hash, access_code, organization_id, age_group)
+      VALUES (${name.trim()}, ${emailLower}, ${hash}, ${accessCode}, ${organizationId}, ${ageGroupValue})
       RETURNING id, admin_email
     ` as unknown as [{ id: string; admin_email: string }]
 

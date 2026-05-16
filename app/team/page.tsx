@@ -49,6 +49,28 @@ export default function TeamLandingPage() {
             Coach Login
           </Link>
         </div>
+
+        <div className="bg-orange-50 border border-orange-100 rounded-2xl p-6 max-w-xl w-full space-y-3 text-left">
+          <h2 className="text-lg font-black text-black">Register an Organization</h2>
+          <p className="text-gray-500 text-sm">
+            Managing multiple teams? Register your organization to manage all teams in one place —
+            buy analysis tokens for any player across every age group.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 pt-1">
+            <Link
+              href="/org/signup"
+              className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-6 py-3 rounded-xl transition-colors text-center"
+            >
+              Register Organization
+            </Link>
+            <Link
+              href="/org/login"
+              className="bg-white border border-gray-300 hover:border-orange-400 text-black font-bold px-6 py-3 rounded-xl transition-colors text-center"
+            >
+              Organization Login
+            </Link>
+          </div>
+        </div>
       </div>
     </main>
   )

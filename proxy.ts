@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSessionFromRequest } from '@/lib/auth'
 import { getTeamSessionFromRequest } from '@/lib/team-auth'
+import { getOrgSessionFromRequest } from '@/lib/org-auth'
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
 
   if (pathname.startsWith('/dashboard')) {
@@ -21,9 +22,16 @@ export async function middleware(req: NextRequest) {
     }
   }
 
+  if (pathname.startsWith('/org/dashboard')) {
+    const session = await getOrgSessionFromRequest(req)
+    if (!session) {
+      return NextResponse.redirect(new URL('/org/login', req.url))
+    }
+  }
+
   return NextResponse.next()
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/team/dashboard/:path*'],
+  matcher: ['/dashboard/:path*', '/team/dashboard/:path*', '/org/dashboard/:path*'],
 }

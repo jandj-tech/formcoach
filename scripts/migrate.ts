@@ -4,7 +4,7 @@ import path from 'path'
 
 // SQL files are applied in order. Each must be idempotent
 // (CREATE TABLE IF NOT EXISTS / ADD COLUMN IF NOT EXISTS).
-const FILES = ['migrate.sql', 'migrate-teams.sql']
+const FILES = ['migrate.sql', 'migrate-teams.sql', 'migrate-organizations.sql']
 
 async function migrate() {
   if (!process.env.DATABASE_URL) {

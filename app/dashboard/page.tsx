@@ -6,6 +6,7 @@ import Link from 'next/link'
 import LogoutButton from './LogoutButton'
 import BuyTokenButton from './BuyTokenButton'
 import DeleteSubmissionButton from './DeleteSubmissionButton'
+import JoinTeamForm from './JoinTeamForm'
 
 type UserRow = {
   id: string
@@ -89,6 +90,23 @@ export default async function DashboardPage() {
 
   if (!user) redirect('/login')
 
+  // Team the player has joined (if any). Falls back to null if the
+  // team_memberships table doesn't exist yet.
+  let team: { name: string; access_code: string } | null = null
+  try {
+    const [row] = (await db`
+      SELECT t.name, t.access_code
+      FROM team_memberships tm
+      JOIN teams t ON t.id = tm.team_id
+      WHERE tm.user_id = ${user.id}
+      ORDER BY tm.joined_at DESC
+      LIMIT 1
+    `) as unknown as [{ name: string; access_code: string } | undefined]
+    team = row ?? null
+  } catch (err) {
+    console.error('[dashboard] team membership query failed:', err)
+  }
+
   const isSubscribed =
     !!user.subscription_type &&
     !!user.subscription_expires_at &&
@@ -142,6 +160,28 @@ export default async function DashboardPage() {
             <BuyTokenButton />
           </div>
         )}
+
+        {/* Your Team */}
+        <div className="space-y-2">
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Your Team</h2>
+          {team ? (
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+              <p className="font-semibold text-black">{team.name}</p>
+              <p className="text-gray-500 text-sm mt-0.5">
+                Team code:{' '}
+                <span className="font-mono font-semibold text-gray-700">{team.access_code}</span>
+              </p>
+              <p className="text-gray-400 text-xs mt-1">Share this code with your teammates so they can join.</p>
+            </div>
+          ) : (
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
+              <p className="text-sm text-gray-600">
+                Have a team code? Enter it to join your team.
+              </p>
+              <JoinTeamForm />
+            </div>
+          )}
+        </div>
 
         {/* Shots list */}
         {submissions.length === 0 ? (

@@ -34,6 +34,8 @@ export default async function TeamDashboardPage() {
     latest_score: number
   }> = []
 
+  let members: Array<{ id: string; email: string; tokens: number }> = []
+
   try {
     leaderboard = (await db`
       SELECT tp.id, tp.first_name, tp.last_name_initial,
@@ -78,6 +80,20 @@ export default async function TeamDashboardPage() {
     // Fall through with empty arrays — the page still renders without stats.
   }
 
+  // Team members (registered user accounts that joined via team code).
+  // Falls back to an empty array if the team_memberships table doesn't exist yet.
+  try {
+    members = (await db`
+      SELECT u.id, u.email, COALESCE(u.analysis_tokens, 0)::int AS tokens
+      FROM team_memberships tm
+      JOIN users u ON u.id = tm.user_id
+      WHERE tm.team_id = ${team.id}
+      ORDER BY u.email ASC
+    `) as unknown as typeof members
+  } catch (err) {
+    console.error('[team/dashboard] members query failed:', err)
+  }
+
   return (
     <main className="min-h-screen bg-white flex flex-col">
       <TopNav />
@@ -85,6 +101,7 @@ export default async function TeamDashboardPage() {
         team={{ id: team.id, name: team.name, accessCode: team.access_code, credits: team.credits }}
         leaderboard={leaderboard}
         improved={improved}
+        members={members}
       />
     </main>
   )

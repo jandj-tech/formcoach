@@ -127,6 +127,29 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ received: true })
     }
 
+    // --- Org class package purchase ---
+    if (metaType === 'org_class_package') {
+      const orgId = session.metadata?.orgId
+      const playerCount = parseInt(session.metadata?.playerCount || '0', 10)
+      const pricePerPlayerCents = parseInt(session.metadata?.pricePerPlayerCents || '0', 10)
+      const totalCents = parseInt(session.metadata?.totalCents || '0', 10)
+      if (orgId && playerCount > 0) {
+        try {
+          await db`
+            INSERT INTO org_class_packages
+              (org_id, stripe_session_id, player_count, price_per_player_cents, total_cents, token_pool, status)
+            VALUES
+              (${orgId}, ${session.id}, ${playerCount}, ${pricePerPlayerCents}, ${totalCents}, ${playerCount * 2}, 'active')
+            ON CONFLICT (stripe_session_id) DO NOTHING
+          `
+        } catch (err) {
+          console.error('Failed to create org class package:', err)
+          return NextResponse.json({ error: 'DB error' }, { status: 500 })
+        }
+      }
+      return NextResponse.json({ received: true })
+    }
+
     // --- Ball shop order ---
     const name = session.customer_details?.name
     const phone = session.customer_details?.phone

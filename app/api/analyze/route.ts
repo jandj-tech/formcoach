@@ -151,6 +151,57 @@ export async function POST(req: NextRequest) {
       UPDATE submissions SET status = 'complete' WHERE id = ${submission.id}
     `
 
+    // Class enrollment tracking — NO changes to scoring.
+    // For first-time class players: every shot after the first gets a display score of
+    // max(actual_score, first_score + 0.3). Boost lasts while the player is enrolled
+    // in an active class. Once the package is inactive or they leave, no more boost.
+    if (userId) {
+      try {
+        const activeEnrollment = await db`
+          SELECT e.id, e.first_submission_id, e.first_score, e.is_first_class
+          FROM org_class_enrollments e
+          JOIN org_class_packages p ON p.id = e.package_id
+          WHERE e.user_id = ${userId}
+            AND p.status = 'active'
+          ORDER BY e.created_at ASC
+          LIMIT 1
+        ` as unknown as { id: string; first_submission_id: string | null; first_score: number | null; is_first_class: boolean }[]
+
+        const enrollment = activeEnrollment[0]
+        if (enrollment) {
+          if (!enrollment.first_submission_id) {
+            // First class shot — record baseline, no boost here
+            await db`
+              UPDATE org_class_enrollments
+              SET first_submission_id = ${submission.id}, first_score = ${result.overall_score}
+              WHERE id = ${enrollment.id}
+            `
+          } else {
+            // Any subsequent shot while still enrolled — boost applies for first-timers only.
+            // Real score in analyses table is always the true AI score, unchanged.
+            // display_final_score is only used on the certificate and leaderboard.
+            const realScore = result.overall_score
+            const firstScore = Number(enrollment.first_score ?? 0)
+            // Boost rules for first-time class players:
+            // - Show at least firstScore + 0.3 so they always see improvement
+            // - But never show more than realScore + 0.3 (boost never exceeds 0.3 above real score)
+            const displayScore = enrollment.is_first_class
+              ? Math.min(realScore + 0.3, Math.max(realScore, firstScore + 0.3))
+              : realScore
+            await db`
+              UPDATE org_class_enrollments
+              SET final_submission_id = ${submission.id},
+                  final_score = ${realScore},
+                  display_final_score = ${displayScore}
+              WHERE id = ${enrollment.id}
+            `
+          }
+        }
+      } catch {
+        // Non-fatal — class tracking never blocks the analysis result
+      }
+    }
+
     // Deduct token after successful analysis
     if (!isTeamUpload && userId) {
       await db`

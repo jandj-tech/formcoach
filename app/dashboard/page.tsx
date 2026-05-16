@@ -96,19 +96,34 @@ export default async function DashboardPage() {
 
   // Team the player has joined (if any). Falls back to null if the
   // team_memberships table doesn't exist yet.
-  let team: { name: string; access_code: string } | null = null
+  let team: { id: string; name: string; access_code: string; admin_email: string } | null = null
+  let coaches: string[] = []
   try {
     const [row] = (await db`
-      SELECT t.name, t.access_code
+      SELECT t.id, t.name, t.access_code, t.admin_email
       FROM team_memberships tm
       JOIN teams t ON t.id = tm.team_id
       WHERE tm.user_id = ${user.id}
       ORDER BY tm.joined_at DESC
       LIMIT 1
-    `) as unknown as [{ name: string; access_code: string } | undefined]
+    `) as unknown as [{ id: string; name: string; access_code: string; admin_email: string } | undefined]
     team = row ?? null
   } catch (err) {
     console.error('[dashboard] team membership query failed:', err)
+  }
+
+  // Coaches for the player's team: the founding coach plus any added coaches.
+  if (team) {
+    coaches = [team.admin_email]
+    try {
+      const extra = (await db`
+        SELECT email FROM team_coaches WHERE team_id = ${team.id} ORDER BY created_at ASC
+      `) as unknown as Array<{ email: string }>
+      coaches.push(...extra.map(c => c.email))
+    } catch (err) {
+      // team_coaches may not exist on older DBs — just show the founding coach.
+      console.error('[dashboard] team coaches query failed:', err)
+    }
   }
 
   const isSubscribed =
@@ -193,11 +208,29 @@ export default async function DashboardPage() {
           </summary>
           <div className="px-3 pb-3">
             {team ? (
-              <div className="space-y-1">
+              <div className="space-y-3">
                 <p className="text-gray-500 text-sm">
                   Team code:{' '}
                   <span className="font-mono font-semibold text-gray-700">{team.access_code}</span>
                 </p>
+                {coaches.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                      {coaches.length === 1 ? 'Coach' : 'Coaches'}
+                    </p>
+                    <ul className="mt-1 space-y-0.5">
+                      {coaches.map(c => (
+                        <li key={c} className="text-sm text-gray-700">{c}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                <Link
+                  href="/dashboard/leaderboard"
+                  className="inline-block bg-orange-500 hover:bg-orange-400 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors"
+                >
+                  View Team Leaderboard
+                </Link>
                 <LeaveTeamButton teamName={team.name} />
               </div>
             ) : (

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 interface Order {
   id: string
@@ -168,12 +169,13 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
               <th className="text-left px-4 py-3">Shipping address</th>
               <th className="text-left px-4 py-3">Status</th>
               <th className="text-left px-4 py-3">Date</th>
+              <th className="px-4 py-3"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-800/50">
             {orders.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-6 text-zinc-500">No orders yet.</td>
+                <td colSpan={8} className="px-4 py-6 text-zinc-500">No orders yet.</td>
               </tr>
             ) : (
               orders.map((o) => {
@@ -263,6 +265,18 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
                     </td>
                     <td className="px-4 py-3 text-zinc-400 text-xs">
                       {new Date(o.created_at).toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3">
+                      {hasBall && (
+                        <Link
+                          href={`/admin/label/${o.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-zinc-400 hover:text-orange-400 underline whitespace-nowrap transition-colors"
+                        >
+                          Label
+                        </Link>
+                      )}
                     </td>
                   </tr>
                 )

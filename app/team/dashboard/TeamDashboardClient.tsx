@@ -102,6 +102,7 @@ export default function TeamDashboardClient({
   const [showTeamInfo, setShowTeamInfo] = useState(true)
   const [showMyUploads, setShowMyUploads] = useState(true)
   const [kicking, setKicking] = useState<string | null>(null)
+  const [cancelling, setCancelling] = useState<string | null>(null)
 
   // Add player form
   const [addOpen, setAddOpen] = useState(false)
@@ -155,6 +156,23 @@ export default function TeamDashboardClient({
     } catch {
       setKicking(null)
       alert('Could not remove that player. Please try again.')
+    }
+  }
+
+  async function cancelPendingPlayer(playerId: string) {
+    if (!confirm('Cancel this player? They were added by name and haven’t joined yet.')) return
+    setCancelling(playerId)
+    try {
+      const res = await fetch('/api/team/remove-pending-player', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playerId }),
+      })
+      if (!res.ok) throw new Error('Failed')
+      router.refresh()
+    } catch {
+      setCancelling(null)
+      alert('Could not cancel that player. Please try again.')
     }
   }
 
@@ -537,6 +555,13 @@ export default function TeamDashboardClient({
                       {copiedId === p.id ? 'Copied!' : 'Copy invite link'}
                     </button>
                   )}
+                  <button
+                    onClick={() => cancelPendingPlayer(p.id)}
+                    disabled={cancelling === p.id}
+                    className="text-xs font-semibold text-gray-400 hover:text-red-500 disabled:opacity-50 transition-colors shrink-0"
+                  >
+                    {cancelling === p.id ? 'Cancelling…' : 'Cancel'}
+                  </button>
                 </div>
               )
             })}

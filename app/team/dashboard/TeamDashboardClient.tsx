@@ -2,22 +2,12 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import BuyPlayerTokensButton from './BuyPlayerTokensButton'
-import CoachUploadForm from './CoachUploadForm'
 
 interface Team {
   id: string
   name: string
   accessCode: string
   credits: number
-}
-
-interface Member {
-  id: string
-  email: string
-  tokens: number
-  first_name: string | null
-  last_name_initial: string | null
 }
 
 interface LeaderboardEntry {
@@ -40,56 +30,13 @@ interface Props {
   team: Team
   leaderboard: LeaderboardEntry[]
   improved: ImprovedEntry[]
-  members: Member[]
-  allTeams: Array<{ id: string; name: string }>
-  currentTeamId: string
-  adminEmail: string
 }
 
-export default function TeamDashboardClient({
-  team,
-  leaderboard,
-  improved,
-  members,
-  allTeams,
-  currentTeamId,
-  adminEmail,
-}: Props) {
+export default function TeamDashboardClient({ team, leaderboard, improved }: Props) {
   const router = useRouter()
-  const [copied, setCopied] = useState(false)
   const [buying, setBuying] = useState(false)
   const [quantity, setQuantity] = useState(10)
   const [loggingOut, setLoggingOut] = useState(false)
-  const [switching, setSwitching] = useState(false)
-
-  async function switchTeam(teamId: string) {
-    if (teamId === currentTeamId || switching) return
-    setSwitching(true)
-    try {
-      const res = await fetch('/api/team/select', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ teamId, email: adminEmail }),
-      })
-      if (!res.ok) {
-        setSwitching(false)
-        return
-      }
-      router.push('/team/dashboard')
-      router.refresh()
-    } catch {
-      setSwitching(false)
-    }
-  }
-
-  const uploadUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/team/${team.accessCode}/upload`
-
-  function copyLink() {
-    navigator.clipboard.writeText(uploadUrl).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    })
-  }
 
   async function buyCredits() {
     setBuying(true)
@@ -120,29 +67,6 @@ export default function TeamDashboardClient({
 
   return (
     <div className="max-w-3xl mx-auto w-full px-6 py-10 space-y-10">
-      {/* Team switcher */}
-      {allTeams.length > 1 && (
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-gray-500">Your teams:</span>
-          <div className="flex flex-wrap gap-2">
-            {allTeams.map(t => (
-              <button
-                key={t.id}
-                onClick={() => switchTeam(t.id)}
-                disabled={switching}
-                className={`text-sm font-semibold rounded-lg px-3 py-1.5 border transition-colors disabled:opacity-60 ${
-                  t.id === currentTeamId
-                    ? 'border-orange-500 bg-orange-50 text-orange-600'
-                    : 'border-gray-200 text-gray-600 hover:border-orange-500'
-                }`}
-              >
-                {t.name}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -190,31 +114,6 @@ export default function TeamDashboardClient({
         </div>
       </div>
 
-      {/* Share link */}
-      <div className="space-y-2">
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Player upload link</h2>
-        <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl p-3">
-          <span className="flex-1 text-sm text-gray-700 font-mono truncate">{uploadUrl}</span>
-          <button
-            onClick={copyLink}
-            className="shrink-0 text-sm font-semibold text-orange-500 hover:text-orange-400 transition-colors"
-          >
-            {copied ? 'Copied!' : 'Copy'}
-          </button>
-        </div>
-        <p className="text-xs text-gray-400">Share this link with your players — no login required to upload.</p>
-      </div>
-
-      {/* Coach Upload */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-black text-black">Upload a Shot for a Player</h2>
-        <p className="text-sm text-gray-500">Record a player&apos;s shot and upload it directly — uses your team credits.</p>
-        <CoachUploadForm
-          accessCode={team.accessCode}
-          members={members}
-        />
-      </div>
-
       {/* Leaderboard */}
       <div className="space-y-4">
         <h2 className="text-xl font-black text-black">Team Leaderboard</h2>
@@ -255,41 +154,6 @@ export default function TeamDashboardClient({
             </table>
           </div>
         )}
-      </div>
-
-      {/* Team Members */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-black text-black">Team Members</h2>
-        {members.length === 0 ? (
-          <div className="text-center py-8 text-gray-400 border-2 border-dashed border-gray-200 rounded-2xl">
-            <p className="font-semibold">No players have joined yet</p>
-            <p className="text-sm mt-1">
-              Share your team code{' '}
-              <span className="font-mono font-semibold text-gray-600">{team.accessCode}</span>{' '}
-              so players can join from their dashboard.
-            </p>
-          </div>
-        ) : (
-          <div className="border border-gray-200 rounded-2xl divide-y divide-gray-100">
-            {members.map((m) => (
-              <div key={m.id} className="flex items-center justify-between px-4 py-3">
-                <span className="text-sm text-black">{m.email}</span>
-                <span className="text-xs text-gray-400">
-                  {m.tokens} token{m.tokens !== 1 ? 's' : ''}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Buy Tokens for Players */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-black text-black">Buy Tokens for Players</h2>
-        <p className="text-sm text-gray-500">
-          Analysis tokens let players analyze their own shots. $4.99 per token.
-        </p>
-        <BuyPlayerTokensButton players={members} teamCode={team.accessCode} />
       </div>
 
       {/* Most Improved */}

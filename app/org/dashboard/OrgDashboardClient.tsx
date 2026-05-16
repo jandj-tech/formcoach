@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 interface Member {
   id: string
   email: string
+  first_name: string | null
+  last_name_initial: string | null
   tokens: number
 }
 
@@ -14,6 +16,7 @@ interface TeamData {
   name: string
   ageGroup: string | null
   accessCode: string
+  credits: number
   members: Member[]
 }
 
@@ -22,13 +25,16 @@ interface Props {
   orgName: string
 }
 
+type DestMode = 'all' | 'specific' | 'coach'
+
 export default function OrgDashboardClient({ teams, orgName }: Props) {
   const router = useRouter()
   const [expanded, setExpanded] = useState<string | null>(teams[0]?.id ?? null)
+  const [destMode, setDestMode] = useState<Record<string, DestMode>>({})
   const [selected, setSelected] = useState<Record<string, boolean>>({})
-  const [quantity, setQuantity] = useState(1)
+  const [quantity, setQuantity] = useState<Record<string, number>>({})
   const [buying, setBuying] = useState(false)
-  const [error, setError] = useState('')
+  const [error, setError] = useState<Record<string, string>>({})
 
   const [addOpen, setAddOpen] = useState(false)
   const [newName, setNewName] = useState('')
@@ -37,6 +43,14 @@ export default function OrgDashboardClient({ teams, orgName }: Props) {
   const [addStatus, setAddStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [addError, setAddError] = useState('')
   const [addSuccessEmail, setAddSuccessEmail] = useState('')
+
+  function getMode(teamId: string): DestMode {
+    return destMode[teamId] ?? 'all'
+  }
+
+  function getQty(teamId: string): number {
+    return quantity[teamId] ?? 1
+  }
 
   async function addTeam(e: React.FormEvent) {
     e.preventDefault()
@@ -70,30 +84,65 @@ export default function OrgDashboardClient({ teams, orgName }: Props) {
     setSelected(prev => ({ ...prev, [userId]: !prev[userId] }))
   }
 
-  const selectedIds = Object.keys(selected).filter(id => selected[id])
-
-  async function buyTokens(teamId: string, memberIds: string[]) {
-    if (memberIds.length === 0) {
-      setError('Select at least one player')
-      return
+  function memberDisplayName(m: Member) {
+    if (m.first_name) {
+      return `${m.first_name}${m.last_name_initial ? ' ' + m.last_name_initial + '.' : ''}`
     }
+    return m.email
+  }
+
+  async function handleBuy(team: TeamData) {
+    const mode = getMode(team.id)
+    const qty = getQty(team.id)
     setBuying(true)
-    setError('')
+    setError(prev => ({ ...prev, [team.id]: '' }))
+
     try {
-      const res = await fetch('/api/org/buy-player-tokens', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playerUserIds: memberIds, quantity, teamId }),
-      })
-      const data = await res.json()
-      if (!res.ok || !data.url) {
-        setError(data.error || 'Checkout failed')
-        setBuying(false)
-        return
+      if (mode === 'coach') {
+        const res = await fetch('/api/org/buy-team-credits', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ teamId: team.id, quantity: qty }),
+        })
+        const data = await res.json()
+        if (!res.ok || !data.url) {
+          setError(prev => ({ ...prev, [team.id]: data.error || 'Checkout failed' }))
+          setBuying(false)
+          return
+        }
+        window.location.href = data.url
+      } else {
+        let playerUserIds: string[]
+        if (mode === 'all') {
+          playerUserIds = team.members.map(m => m.id)
+          if (playerUserIds.length === 0) {
+            setError(prev => ({ ...prev, [team.id]: 'No players have joined this team yet' }))
+            setBuying(false)
+            return
+          }
+        } else {
+          playerUserIds = team.members.filter(m => selected[m.id]).map(m => m.id)
+          if (playerUserIds.length === 0) {
+            setError(prev => ({ ...prev, [team.id]: 'Select at least one player' }))
+            setBuying(false)
+            return
+          }
+        }
+        const res = await fetch('/api/org/buy-player-tokens', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ playerUserIds, quantity: qty, teamId: team.id }),
+        })
+        const data = await res.json()
+        if (!res.ok || !data.url) {
+          setError(prev => ({ ...prev, [team.id]: data.error || 'Checkout failed' }))
+          setBuying(false)
+          return
+        }
+        window.location.href = data.url
       }
-      window.location.href = data.url
     } catch {
-      setError('Something went wrong. Please try again.')
+      setError(prev => ({ ...prev, [team.id]: 'Something went wrong. Please try again.' }))
       setBuying(false)
     }
   }
@@ -177,29 +226,23 @@ export default function OrgDashboardClient({ teams, orgName }: Props) {
 
       <h2 className="text-xl font-black text-black">Your Teams</h2>
 
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-gray-600">Tokens per player</span>
-        {[1, 5, 10].map(q => (
-          <button
-            key={q}
-            onClick={() => setQuantity(q)}
-            className={`px-3 py-1 rounded-lg text-sm font-bold transition-colors ${
-              quantity === q
-                ? 'bg-orange-500 text-white'
-                : 'bg-white border border-gray-300 text-black hover:border-orange-400'
-            }`}
-          >
-            {q}
-          </button>
-        ))}
-      </div>
-
-      {error && <p className="text-red-500 text-sm">{error}</p>}
-
       <div className="space-y-3">
         {teams.map(team => {
           const isOpen = expanded === team.id
-          const teamSelected = team.members.filter(m => selected[m.id]).map(m => m.id)
+          const mode = getMode(team.id)
+          const qty = getQty(team.id)
+          const teamError = error[team.id]
+
+          let buyLabel = ''
+          if (mode === 'all') {
+            buyLabel = `Buy ${qty} token${qty > 1 ? 's' : ''} for all ${team.members.length} player${team.members.length !== 1 ? 's' : ''}`
+          } else if (mode === 'specific') {
+            const selCount = team.members.filter(m => selected[m.id]).length
+            buyLabel = `Buy ${qty} token${qty > 1 ? 's' : ''} for ${selCount} selected`
+          } else {
+            buyLabel = `Buy ${qty} coach credit${qty > 1 ? 's' : ''} ($${(qty * 2.5).toFixed(2)})`
+          }
+
           return (
             <div key={team.id} className="border border-gray-200 rounded-2xl overflow-hidden">
               <button
@@ -211,71 +254,109 @@ export default function OrgDashboardClient({ teams, orgName }: Props) {
                   <p className="text-xs text-gray-500 mt-0.5">
                     {team.ageGroup ? `${team.ageGroup} · ` : ''}
                     {team.members.length} player{team.members.length !== 1 ? 's' : ''}
+                    {team.credits > 0 ? ` · ${team.credits} coach credit${team.credits !== 1 ? 's' : ''}` : ''}
                   </p>
                 </div>
                 <span className="text-gray-400 text-sm">{isOpen ? '−' : '+'}</span>
               </button>
 
               {isOpen && (
-                <div className="px-5 py-4 space-y-3">
-                  {team.members.length === 0 ? (
-                    <p className="text-sm text-gray-400">
-                      No players have joined this team yet. Team code:{' '}
-                      <span className="font-mono font-semibold text-gray-600">{team.accessCode}</span>
-                    </p>
-                  ) : (
-                    <>
+                <div className="px-5 py-4 space-y-4">
+                  {/* Destination mode picker */}
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Send tokens to</p>
+                    <div className="flex gap-2 flex-wrap">
+                      {(['all', 'specific', 'coach'] as DestMode[]).map(m => (
+                        <button
+                          key={m}
+                          onClick={() => setDestMode(prev => ({ ...prev, [team.id]: m }))}
+                          className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-colors ${
+                            mode === m
+                              ? 'bg-orange-500 text-white'
+                              : 'bg-white border border-gray-300 text-black hover:border-orange-400'
+                          }`}
+                        >
+                          {m === 'all' ? 'All Players' : m === 'specific' ? 'Specific Players' : 'Coach Credits'}
+                        </button>
+                      ))}
+                    </div>
+                    {mode === 'coach' && (
+                      <p className="text-xs text-gray-400 mt-1">
+                        Coach credits let the coach upload shots for players. Current balance: {team.credits} credit{team.credits !== 1 ? 's' : ''}.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Quantity picker */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-600">
+                      {mode === 'coach' ? 'Credits' : 'Tokens per player'}
+                    </span>
+                    {[1, 5, 10].map(q => (
+                      <button
+                        key={q}
+                        onClick={() => setQuantity(prev => ({ ...prev, [team.id]: q }))}
+                        className={`px-3 py-1 rounded-lg text-sm font-bold transition-colors ${
+                          qty === q
+                            ? 'bg-orange-500 text-white'
+                            : 'bg-white border border-gray-300 text-black hover:border-orange-400'
+                        }`}
+                      >
+                        {q}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Player list (specific mode) */}
+                  {mode === 'specific' && (
+                    team.members.length === 0 ? (
+                      <p className="text-sm text-gray-400">
+                        No players have joined yet. Team code:{' '}
+                        <span className="font-mono font-semibold text-gray-600">{team.accessCode}</span>
+                      </p>
+                    ) : (
                       <div className="space-y-1">
                         {team.members.map(m => (
-                          <label
-                            key={m.id}
-                            className="flex items-center gap-3 py-2 cursor-pointer"
-                          >
+                          <label key={m.id} className="flex items-center gap-3 py-2 cursor-pointer">
                             <input
                               type="checkbox"
                               checked={!!selected[m.id]}
                               onChange={() => toggleMember(m.id)}
                               className="w-4 h-4 accent-orange-500"
                             />
-                            <span className="flex-1 text-sm text-black">{m.email}</span>
+                            <span className="flex-1 text-sm text-black">{memberDisplayName(m)}</span>
                             <span className="text-xs text-gray-400">
                               {m.tokens} token{m.tokens !== 1 ? 's' : ''}
                             </span>
                           </label>
                         ))}
                       </div>
-                      <button
-                        onClick={() => buyTokens(team.id, teamSelected)}
-                        disabled={buying || teamSelected.length === 0}
-                        className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
-                      >
-                        {buying
-                          ? 'Redirecting...'
-                          : `Buy ${quantity} token${quantity > 1 ? 's' : ''} for ${teamSelected.length} selected`}
-                      </button>
-                    </>
+                    )
                   )}
+
+                  {/* All Players mode: show member count info */}
+                  {mode === 'all' && team.members.length === 0 && (
+                    <p className="text-sm text-gray-400">
+                      No players have joined yet. Team code:{' '}
+                      <span className="font-mono font-semibold text-gray-600">{team.accessCode}</span>
+                    </p>
+                  )}
+
+                  {teamError && <p className="text-red-500 text-sm">{teamError}</p>}
+
+                  <button
+                    onClick={() => handleBuy(team)}
+                    disabled={buying}
+                    className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+                  >
+                    {buying ? 'Redirecting...' : buyLabel}
+                  </button>
                 </div>
               )}
             </div>
           )
         })}
       </div>
-
-      {selectedIds.length > 1 && (
-        <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 flex items-center justify-between gap-4">
-          <p className="text-sm text-gray-600">
-            {selectedIds.length} players selected across teams
-          </p>
-          <button
-            onClick={() => buyTokens('', selectedIds)}
-            disabled={buying}
-            className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
-          >
-            {buying ? 'Redirecting...' : `Buy for all ${selectedIds.length} selected`}
-          </button>
-        </div>
-      )}
     </div>
   )
 }

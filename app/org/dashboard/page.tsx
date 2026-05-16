@@ -8,6 +8,8 @@ import LogoutButton from './LogoutButton'
 interface Member {
   id: string
   email: string
+  first_name: string | null
+  last_name_initial: string | null
   tokens: number
 }
 
@@ -16,6 +18,7 @@ interface TeamData {
   name: string
   ageGroup: string | null
   accessCode: string
+  credits: number
   members: Member[]
 }
 
@@ -34,25 +37,27 @@ export default async function OrgDashboardPage() {
 
   try {
     const teamRows = (await db`
-      SELECT id, name, age_group, access_code
+      SELECT id, name, age_group, access_code, COALESCE(credits, 0)::int AS credits
       FROM teams WHERE organization_id = ${org.id}
       ORDER BY created_at ASC
-    `) as unknown as Array<{ id: string; name: string; age_group: string | null; access_code: string }>
+    `) as unknown as Array<{ id: string; name: string; age_group: string | null; access_code: string; credits: number }>
 
     teams = await Promise.all(
       teamRows.map(async (t) => {
         const members = (await db`
-          SELECT u.id, u.email, COALESCE(u.analysis_tokens, 0)::int AS tokens
+          SELECT u.id, u.email, tm.first_name, tm.last_name_initial,
+                 COALESCE(u.analysis_tokens, 0)::int AS tokens
           FROM team_memberships tm
           JOIN users u ON u.id = tm.user_id
           WHERE tm.team_id = ${t.id}
-          ORDER BY u.email ASC
+          ORDER BY tm.first_name ASC
         `) as unknown as Member[]
         return {
           id: t.id,
           name: t.name,
           ageGroup: t.age_group,
           accessCode: t.access_code,
+          credits: t.credits,
           members,
         }
       })

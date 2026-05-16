@@ -309,6 +309,36 @@ export default function OrgDashboardClient({ teams, orgName }: Props) {
     <div className="space-y-4">
       {addTeamSection}
 
+      {(() => {
+        const totalPool = teams.reduce((s, t) => s + t.tokenPool, 0)
+        const totalCredits = teams.reduce((s, t) => s + t.credits, 0)
+        const totalPlayerTokens = teams.reduce(
+          (s, t) => s + t.members.reduce((ps, m) => ps + m.tokens, 0), 0,
+        )
+        return (
+          <div className="border border-gray-200 rounded-2xl p-5 space-y-3">
+            <h2 className="text-xl font-black text-black">Token Overview</h2>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="bg-orange-50 border border-orange-200 rounded-xl px-3 py-2">
+                <p className="text-xs text-gray-500">Team pools</p>
+                <p className="text-2xl font-black text-black">{totalPool}</p>
+              </div>
+              <div className="bg-orange-50 border border-orange-200 rounded-xl px-3 py-2">
+                <p className="text-xs text-gray-500">Player tokens</p>
+                <p className="text-2xl font-black text-black">{totalPlayerTokens}</p>
+              </div>
+              <div className="bg-orange-50 border border-orange-200 rounded-xl px-3 py-2">
+                <p className="text-xs text-gray-500">Coach credits</p>
+                <p className="text-2xl font-black text-black">{totalCredits}</p>
+              </div>
+            </div>
+            <p className="text-xs text-gray-400">
+              Across {teams.length} team{teams.length !== 1 ? 's' : ''}. Expand a team for its per-player breakdown.
+            </p>
+          </div>
+        )
+      })()}
+
       <h2 className="text-xl font-black text-black">Your Teams</h2>
 
       <div className="space-y-3">

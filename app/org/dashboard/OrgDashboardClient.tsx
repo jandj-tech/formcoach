@@ -89,6 +89,28 @@ export default function OrgDashboardClient({ teams, orgName }: Props) {
     }
   }
 
+  async function removeHeadCoach(teamId: string) {
+    if (!confirm('Remove the head coach? The next coach in line is promoted to head coach.')) return
+    setRemovingCoach(`head-${teamId}`)
+    try {
+      const res = await fetch('/api/org/remove-head-coach', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teamId }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setRemovingCoach(null)
+        alert(data.error || 'Could not remove the head coach.')
+        return
+      }
+      router.refresh()
+    } catch {
+      setRemovingCoach(null)
+      alert('Something went wrong. Please try again.')
+    }
+  }
+
   async function removePlayer(teamId: string, userId: string) {
     if (!confirm('Remove this player from the team?')) return
     setRemovingPlayer(userId)
@@ -323,7 +345,16 @@ export default function OrgDashboardClient({ teams, orgName }: Props) {
                       <div className="mt-1 border border-gray-100 rounded-xl divide-y divide-gray-100">
                         <div className="flex items-center justify-between gap-3 px-3 py-2">
                           <span className="text-sm font-semibold text-black truncate">{team.adminEmail}</span>
-                          <span className="shrink-0 text-xs bg-orange-100 text-orange-700 font-bold px-2 py-0.5 rounded-full">Head coach</span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-xs bg-orange-100 text-orange-700 font-bold px-2 py-0.5 rounded-full">Head coach</span>
+                            <button
+                              onClick={() => removeHeadCoach(team.id)}
+                              disabled={removingCoach === `head-${team.id}`}
+                              className="text-xs font-semibold text-gray-400 hover:text-red-500 disabled:opacity-50 transition-colors"
+                            >
+                              {removingCoach === `head-${team.id}` ? '…' : 'Remove'}
+                            </button>
+                          </div>
                         </div>
                         {team.coaches.map(c => (
                           <div key={c.id} className="flex items-center justify-between gap-3 px-3 py-2">

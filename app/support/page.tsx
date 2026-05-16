@@ -12,7 +12,7 @@ const SUPPORT_EMAIL = 'learnhoops8@gmail.com'
 
 export default function SupportPage() {
   return (
-    <main className="min-h-screen bg-white flex flex-col">
+    <main className="min-h-screen bg-gray-50 flex flex-col">
       <TopNav />
       <div className="flex-1 flex items-center justify-center px-6 py-20">
         <div className="w-full max-w-md text-center space-y-6">

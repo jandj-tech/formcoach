@@ -20,7 +20,7 @@ interface TeamMode {
   onSuccess: (submissionId: string) => void
 }
 
-export default function VideoUploader({ teamMode }: { teamMode?: TeamMode } = {}) {
+export default function VideoUploader({ teamMode, coachSelf }: { teamMode?: TeamMode; coachSelf?: boolean } = {}) {
   const [isDragging, setIsDragging] = useState(false)
   const [status, setStatus] = useState<'idle' | 'extracting' | 'uploading' | 'error'>('idle')
   const [progress, setProgress] = useState(0)
@@ -36,12 +36,12 @@ export default function VideoUploader({ teamMode }: { teamMode?: TeamMode } = {}
   const router = useRouter()
 
   useEffect(() => {
-    if (teamMode) return
+    if (teamMode || coachSelf) return
     fetch('/api/auth/session')
       .then(r => r.json())
       .then(({ user }) => setSessionUser(user ?? null))
       .catch(() => setSessionUser(null))
-  }, [teamMode])
+  }, [teamMode, coachSelf])
 
   const seekTo = (video: HTMLVideoElement, t: number): Promise<void> =>
     new Promise((res) => {
@@ -248,6 +248,7 @@ export default function VideoUploader({ teamMode }: { teamMode?: TeamMode } = {}
         const formData = new FormData()
         frames.forEach((blob, i) => formData.append('frames', blob, `frame-${i}.jpg`))
         if (videoUrl) formData.append('videoUrl', videoUrl)
+        if (coachSelf) formData.append('coachSelf', 'true')
 
         if (teamMode) {
           formData.append('teamCode', teamMode.code)
@@ -384,9 +385,9 @@ export default function VideoUploader({ teamMode }: { teamMode?: TeamMode } = {}
     )
   }
 
-  const sessionLoading = !teamMode && sessionUser === undefined
-  const notLoggedIn = !teamMode && sessionUser === null
-  const noTokens = !teamMode && !!sessionUser && !sessionUser.subscribed && sessionUser.tokens === 0
+  const sessionLoading = !teamMode && !coachSelf && sessionUser === undefined
+  const notLoggedIn = !teamMode && !coachSelf && sessionUser === null
+  const noTokens = !teamMode && !coachSelf && !!sessionUser && !sessionUser.subscribed && sessionUser.tokens === 0
   const isLocked = sessionLoading || notLoggedIn || noTokens
 
   async function handleBuyToken() {

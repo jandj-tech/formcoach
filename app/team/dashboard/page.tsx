@@ -176,6 +176,30 @@ export default async function TeamDashboardPage() {
     console.error('[team/dashboard] team meta query failed:', err)
   }
 
+  // The coach's own analysis credits + their own shot uploads ("My Uploads").
+  let selfCredits = 0
+  let myUploads: Array<{ id: string; token: string; created_at: string; overall_score: string | number | null }> = []
+  try {
+    const [c] = (await db`
+      SELECT credits FROM coach_credits WHERE email = ${session.adminEmail}
+    `) as unknown as [{ credits: number } | undefined]
+    selfCredits = c?.credits ?? 0
+  } catch (err) {
+    console.error('[team/dashboard] coach credits query failed:', err)
+  }
+  try {
+    myUploads = (await db`
+      SELECT s.id, s.token, s.created_at, a.overall_score
+      FROM submissions s
+      LEFT JOIN analyses a ON a.submission_id = s.id
+      WHERE s.email = ${session.adminEmail}
+      ORDER BY s.created_at DESC
+      LIMIT 50
+    `) as unknown as typeof myUploads
+  } catch (err) {
+    console.error('[team/dashboard] my uploads query failed:', err)
+  }
+
   // The display name of whichever coach is currently logged in.
   const myNickname =
     session.adminEmail === team.admin_email
@@ -199,6 +223,8 @@ export default async function TeamDashboardPage() {
         currentTeamId={team.id}
         adminEmail={session.adminEmail}
         fromOrg={fromOrg}
+        selfCredits={selfCredits}
+        myUploads={myUploads}
       />
     </main>
   )

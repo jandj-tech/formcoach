@@ -3,6 +3,7 @@ import { put } from '@vercel/blob'
 import { db } from '@/lib/db'
 import { analyzeShot } from '@/lib/analyze'
 import { getSessionFromRequest } from '@/lib/auth'
+import { getTeamSessionFromRequest } from '@/lib/team-auth'
 import crypto from 'crypto'
 
 export const maxDuration = 300
@@ -25,9 +26,26 @@ export async function POST(req: NextRequest) {
     const playerFirstName = (formData.get('playerFirstName') as string | null) || null
     const playerLastName = (formData.get('playerLastName') as string | null) || null
     const isTeamUpload = !!(teamCode && playerFirstName && playerLastName)
+    const isCoachSelf = formData.get('coachSelf') === 'true'
 
-    // Require login for non-team uploads
-    if (!isTeamUpload && !session) {
+    // A coach analyzing their own shot — paid from their personal credits.
+    let coachEmail: string | null = null
+    if (isCoachSelf) {
+      const teamSession = await getTeamSessionFromRequest(req)
+      if (!teamSession) {
+        return NextResponse.json({ error: 'Login required' }, { status: 401 })
+      }
+      coachEmail = teamSession.adminEmail.toLowerCase()
+      const [cc] = (await db`
+        SELECT credits FROM coach_credits WHERE email = ${coachEmail}
+      `) as unknown as [{ credits: number } | undefined]
+      if (!cc || cc.credits < 1) {
+        return NextResponse.json({ error: 'No analysis credits' }, { status: 402 })
+      }
+    }
+
+    // Require login for non-team, non-coach-self uploads
+    if (!isTeamUpload && !isCoachSelf && !session) {
       return NextResponse.json({ error: 'Login required' }, { status: 401 })
     }
 
@@ -88,8 +106,8 @@ export async function POST(req: NextRequest) {
     // Create submission record
     const submissionToken = crypto.randomBytes(32).toString('hex')
     const [submission] = await db`
-      INSERT INTO submissions (token, status, user_id, team_id, team_player_id)
-      VALUES (${submissionToken}, 'processing', ${userId}, ${teamId}, ${teamPlayerId})
+      INSERT INTO submissions (token, status, user_id, team_id, team_player_id, email)
+      VALUES (${submissionToken}, 'processing', ${userId}, ${teamId}, ${teamPlayerId}, ${coachEmail})
       RETURNING id
     `
 
@@ -212,6 +230,10 @@ export async function POST(req: NextRequest) {
 
     if (isTeamUpload && teamId) {
       await db`UPDATE teams SET credits = credits - 1 WHERE id = ${teamId} AND credits > 0`
+    }
+
+    if (isCoachSelf && coachEmail) {
+      await db`UPDATE coach_credits SET credits = credits - 1 WHERE email = ${coachEmail} AND credits > 0`
     }
 
     return NextResponse.json({

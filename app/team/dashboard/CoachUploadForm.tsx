@@ -4,32 +4,32 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import VideoUploader from '@/components/VideoUploader'
 
-interface Player {
+interface Member {
   id: string
-  first_name: string
-  last_name_initial: string
+  email: string
+  tokens: number
 }
 
 interface Props {
   accessCode: string
-  knownPlayers: Player[]
+  members: Member[]
 }
 
-export default function CoachUploadForm({ accessCode, knownPlayers }: Props) {
+export default function CoachUploadForm({ accessCode, members }: Props) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
-  const [step, setStep] = useState<'pick' | 'upload' | 'done'>('pick')
+  const [step, setStep] = useState<'pick' | 'name' | 'upload' | 'done'>('pick')
+  const [selectedEmail, setSelectedEmail] = useState('')
   const [firstName, setFirstName] = useState('')
   const [lastInitial, setLastInitial] = useState('')
   const [resultToken, setResultToken] = useState('')
 
-  function selectPlayer(p: Player) {
-    setFirstName(p.first_name)
-    setLastInitial(p.last_name_initial)
-    setStep('upload')
+  function selectMember(email: string) {
+    setSelectedEmail(email)
+    setStep('name')
   }
 
-  function handleManual(e: React.FormEvent) {
+  function handleNameSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!firstName.trim() || !lastInitial.trim()) return
     setStep('upload')
@@ -42,6 +42,7 @@ export default function CoachUploadForm({ accessCode, knownPlayers }: Props) {
 
   function reset() {
     setStep('pick')
+    setSelectedEmail('')
     setFirstName('')
     setLastInitial('')
     setResultToken('')
@@ -52,9 +53,10 @@ export default function CoachUploadForm({ accessCode, knownPlayers }: Props) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="w-full bg-orange-500 hover:bg-orange-400 text-white font-bold py-3 rounded-xl transition-colors"
+        disabled={members.length === 0}
+        className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl transition-colors"
       >
-        Upload Shot for a Player
+        {members.length === 0 ? 'No players have joined yet' : 'Upload Shot for a Player'}
       </button>
     )
   }
@@ -67,29 +69,30 @@ export default function CoachUploadForm({ accessCode, knownPlayers }: Props) {
       </div>
 
       {step === 'pick' && (
-        <div className="space-y-4">
-          {knownPlayers.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-sm font-semibold text-black">Select a player</p>
-              <div className="grid grid-cols-2 gap-2">
-                {knownPlayers.map((p) => (
-                  <button
-                    key={p.id}
-                    onClick={() => selectPlayer(p)}
-                    className="text-left border border-gray-200 hover:border-orange-400 bg-white rounded-xl px-4 py-3 text-sm font-semibold text-black transition-colors"
-                  >
-                    {p.first_name} {p.last_name_initial}.
-                  </button>
-                ))}
-              </div>
-              <p className="text-xs text-gray-400 pt-1">Or enter a new player below</p>
-            </div>
-          )}
+        <div className="space-y-3">
+          <p className="text-sm font-semibold text-black">Select a player</p>
+          <div className="space-y-2">
+            {members.map((m) => (
+              <button
+                key={m.id}
+                onClick={() => selectMember(m.email)}
+                className="w-full text-left border border-gray-200 hover:border-orange-400 bg-white rounded-xl px-4 py-3 text-sm font-semibold text-black transition-colors"
+              >
+                {m.email}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
-          <form onSubmit={handleManual} className="space-y-3">
-            {knownPlayers.length === 0 && (
-              <p className="text-sm font-semibold text-black">Enter player name</p>
-            )}
+      {step === 'name' && (
+        <form onSubmit={handleNameSubmit} className="space-y-4">
+          <div>
+            <p className="text-sm font-semibold text-black mb-1">Uploading for</p>
+            <p className="text-orange-600 font-bold">{selectedEmail}</p>
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-black mb-2">Enter their display name for the leaderboard</p>
             <div className="flex gap-3">
               <input
                 type="text"
@@ -109,21 +112,22 @@ export default function CoachUploadForm({ accessCode, knownPlayers }: Props) {
                 className="w-24 bg-white border border-gray-300 rounded-xl px-4 py-2.5 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors text-sm"
               />
             </div>
-            <button
-              type="submit"
-              className="w-full bg-black hover:bg-zinc-800 text-white font-bold py-2.5 rounded-xl transition-colors text-sm"
-            >
-              Continue to Upload
-            </button>
-          </form>
-        </div>
+          </div>
+          <button
+            type="submit"
+            className="w-full bg-black hover:bg-zinc-800 text-white font-bold py-2.5 rounded-xl transition-colors text-sm"
+          >
+            Continue to Upload
+          </button>
+        </form>
       )}
 
       {step === 'upload' && (
         <div className="space-y-3">
           <p className="text-sm text-gray-600">
-            Uploading for <span className="font-bold text-black">{firstName} {lastInitial}.</span>
-            <button onClick={() => setStep('pick')} className="ml-2 text-orange-500 hover:underline text-xs">Change</button>
+            Uploading for{' '}
+            <span className="font-bold text-black">{firstName} {lastInitial}.</span>
+            <button onClick={() => setStep('name')} className="ml-2 text-orange-500 hover:underline text-xs">Change</button>
           </p>
           <VideoUploader
             teamMode={{

@@ -209,7 +209,7 @@ export default function TeamDashboardClient({
         <p className="text-sm text-gray-500">Record a player&apos;s shot and upload it directly — uses your team credits.</p>
         <CoachUploadForm
           accessCode={team.accessCode}
-          knownPlayers={leaderboard.map(e => ({ id: e.id, first_name: e.first_name, last_name_initial: e.last_name_initial }))}
+          members={members}
         />
       </div>
 

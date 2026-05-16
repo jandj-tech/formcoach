@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { getTeamSession } from '@/lib/team-auth'
+import { getOrgSession } from '@/lib/org-auth'
 import { db } from '@/lib/db'
 import TopNav from '@/components/TopNav'
 import TeamDashboardClient from './TeamDashboardClient'
@@ -9,11 +10,15 @@ export default async function TeamDashboardPage() {
   if (!session) redirect('/login')
 
   const [team] = await db`
-    SELECT id, name, access_code, admin_email, credits
+    SELECT id, name, access_code, admin_email, credits, organization_id
     FROM teams WHERE id = ${session.teamId}
-  ` as unknown as [{ id: string; name: string; access_code: string; admin_email: string; credits: number } | undefined]
+  ` as unknown as [{ id: string; name: string; access_code: string; admin_email: string; credits: number; organization_id: string | null } | undefined]
 
   if (!team) redirect('/login')
+
+  // True when an org owner is viewing one of their own organization's teams.
+  const orgSession = await getOrgSession()
+  const fromOrg = !!orgSession && !!team.organization_id && team.organization_id === orgSession.orgId
 
   const allTeams = await db`
     SELECT id, name FROM teams WHERE admin_email = ${session.adminEmail} AND password_hash IS NOT NULL ORDER BY name ASC
@@ -193,6 +198,7 @@ export default async function TeamDashboardPage() {
         allTeams={allTeams}
         currentTeamId={team.id}
         adminEmail={session.adminEmail}
+        fromOrg={fromOrg}
       />
     </main>
   )

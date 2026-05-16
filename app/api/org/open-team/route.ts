@@ -25,7 +25,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Team not found' }, { status: 404 })
     }
 
-    const token = await signTeamSession({ teamId: team.id, adminEmail: team.admin_email })
+    // Sign with the org owner's email so the team dashboard shows them as the
+    // viewer (resolving to their own coach name), not the team's head coach.
+    const token = await signTeamSession({ teamId: team.id, adminEmail: session.adminEmail })
     const res = NextResponse.json({ success: true })
     res.cookies.set(teamSessionCookieOptions(token))
     return res

@@ -68,6 +68,7 @@ interface Props {
   allTeams: Array<{ id: string; name: string }>
   currentTeamId: string
   adminEmail: string
+  fromOrg: boolean
 }
 
 export default function TeamDashboardClient({
@@ -83,6 +84,7 @@ export default function TeamDashboardClient({
   allTeams,
   currentTeamId,
   adminEmail,
+  fromOrg,
 }: Props) {
   const router = useRouter()
   const { clear: clearCart } = useCart()
@@ -216,6 +218,15 @@ export default function TeamDashboardClient({
 
   return (
     <div className="max-w-3xl mx-auto w-full px-6 py-10 space-y-10">
+      {fromOrg && (
+        <Link
+          href="/org/dashboard"
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-orange-500 hover:text-orange-400 transition-colors"
+        >
+          ← Back to organization dashboard
+        </Link>
+      )}
+
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>

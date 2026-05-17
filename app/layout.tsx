@@ -26,7 +26,10 @@ export const metadata: Metadata = {
     googleBot: { index: true, follow: true, 'max-image-preview': 'large' },
   },
   verification: {
-    google: 'Iok757H3x4dbsU-C1vIkVgSCcTwArojeOPpUoL9fBGo',
+    google: [
+      'Iok757H3x4dbsU-C1vIkVgSCcTwArojeOPpUoL9fBGo',
+      'C8bH1Na1x-sQwjH6YK29dhGv7vdv1kF5rLy3ENh1cAs',
+    ],
   },
 }
 

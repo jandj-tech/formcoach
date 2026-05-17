@@ -33,7 +33,8 @@ function ResetPasswordForm() {
         setStatus('error')
         return
       }
-      router.push('/dashboard')
+      // Coaches and orgs land on their own dashboard; players go to /dashboard.
+      router.push(data.redirect || '/dashboard')
     } catch {
       setError('Something went wrong. Please try again.')
       setStatus('error')

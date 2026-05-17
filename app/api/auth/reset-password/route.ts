@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
-import { db } from '@/lib/db'
+import { consumeResetToken } from '@/lib/password-reset'
 import { signSession, sessionCookieOptions } from '@/lib/auth'
+import { signTeamSession, teamSessionCookieOptions } from '@/lib/team-auth'
+import { signOrgSession, orgSessionCookieOptions } from '@/lib/org-auth'
+import { clearOtherSessions, PLAYER_COOKIE, TEAM_COOKIE, ORG_COOKIE } from '@/lib/sessions'
 
-// Completes a password reset: verifies the token, sets the new password,
-// and logs the user in.
+// Completes a password reset: verifies the token, sets the new password on the
+// matching account (player, coach, or organization), and logs them in.
 export async function POST(req: NextRequest) {
   try {
     const { token, password } = (await req.json().catch(() => ({}))) as {
@@ -18,28 +21,33 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Password (6+ characters) required' }, { status: 400 })
     }
 
-    const [user] = (await db`
-      SELECT id, email FROM users
-      WHERE reset_token = ${token} AND reset_token_expires > NOW()
-    `) as unknown as [{ id: string; email: string } | undefined]
+    const hash = await bcrypt.hash(password, 10)
+    const target = await consumeResetToken(token, hash)
 
-    if (!user) {
+    if (!target) {
       return NextResponse.json(
         { error: 'This reset link is invalid or has expired. Request a new one.' },
         { status: 400 },
       )
     }
 
-    const hash = await bcrypt.hash(password, 10)
-    await db`
-      UPDATE users
-      SET password_hash = ${hash}, reset_token = NULL, reset_token_expires = NULL
-      WHERE id = ${user.id}
-    `
+    const res = NextResponse.json({ success: true, redirect: target.redirect })
 
-    const sessionToken = await signSession({ userId: user.id, email: user.email })
-    const res = NextResponse.json({ success: true })
-    res.cookies.set(sessionCookieOptions(sessionToken))
+    if (target.kind === 'user') {
+      const sessionToken = await signSession({ userId: target.userId!, email: target.email })
+      res.cookies.set(sessionCookieOptions(sessionToken))
+      clearOtherSessions(res, PLAYER_COOKIE)
+    } else if (target.kind === 'org') {
+      const sessionToken = await signOrgSession({ orgId: target.orgId!, adminEmail: target.email })
+      res.cookies.set(orgSessionCookieOptions(sessionToken))
+      clearOtherSessions(res, ORG_COOKIE)
+    } else {
+      // 'team' (founding coach) or 'team_coach' (additional coach)
+      const sessionToken = await signTeamSession({ teamId: target.teamId!, adminEmail: target.email })
+      res.cookies.set(teamSessionCookieOptions(sessionToken))
+      clearOtherSessions(res, TEAM_COOKIE)
+    }
+
     return res
   } catch (err) {
     console.error('reset-password error:', err)

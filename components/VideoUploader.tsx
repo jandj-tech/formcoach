@@ -216,6 +216,18 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
         const blobs: Blob[] = []
         const thumbs: string[] = []
 
+        // Cap frame resolution. Full-res 1080p/4K phone frames produce a
+        // multipart upload that blows past Vercel's 4.5MB request-body limit,
+        // which the user only sees as "something went wrong". 1280px on the
+        // long edge keeps ample detail for the AI while staying well under it.
+        const MAX_FRAME_DIM = 1280
+        const frameScale = Math.min(
+          1,
+          MAX_FRAME_DIM / Math.max(video.videoWidth, video.videoHeight),
+        )
+        mainCanvas.width = Math.round(video.videoWidth * frameScale)
+        mainCanvas.height = Math.round(video.videoHeight * frameScale)
+
         const timestamps = Array.from({ length: FRAME_COUNT }, (_, i) =>
           shotStart + ((shotEnd - shotStart) / (FRAME_COUNT + 1)) * (i + 1)
         )
@@ -223,9 +235,7 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
         for (let i = 0; i < timestamps.length; i++) {
           if (cancelledRef.current) { cleanup(); resolve(blobs); return }
           await seekTo(video, timestamps[i])
-          mainCanvas.width = video.videoWidth
-          mainCanvas.height = video.videoHeight
-          ctx.drawImage(video, 0, 0)
+          ctx.drawImage(video, 0, 0, mainCanvas.width, mainCanvas.height)
           await new Promise<void>((res) => {
             mainCanvas.toBlob(
               (blob) => {
@@ -237,7 +247,7 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
                 res()
               },
               'image/jpeg',
-              0.85
+              0.8
             )
           })
         }
@@ -321,7 +331,8 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
 
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}))
-          throw new Error(errData.error || 'Analysis failed')
+          // Surface the server's real error detail, not just the generic label.
+          throw new Error(errData.detail || errData.error || `Analysis failed (HTTP ${res.status})`)
         }
 
         const data = await res.json()
@@ -334,9 +345,13 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
         }
       } catch (err) {
         if (cancelledRef.current) return // user cancelled — state already reset
-        console.error(err)
+        console.error('[VideoUploader] upload failed:', err)
         setStatus('error')
-        setErrorMsg('Something went wrong. Please try again.')
+        // Show the actual reason so a failed upload is diagnosable, not a mystery.
+        const detail = err instanceof Error && err.message ? err.message : ''
+        setErrorMsg(
+          detail ? `Upload failed: ${detail}` : 'Something went wrong. Please try again.',
+        )
       }
     },
     [extractFrames, router]

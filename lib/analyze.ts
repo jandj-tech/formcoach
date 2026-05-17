@@ -323,12 +323,12 @@ Return ONLY valid JSON, no other text:
   if (pt === 'child') {
     multiplier = 0.9
   } else if (pt === 'college_pro') {
-    multiplier = 1.1
+    multiplier = 1.05
   } else if (pt === 'nba_decent') {
-    multiplier = 1.1
+    multiplier = 1.05
     if (!flagsTriggered) minimumScore = 8.5
   } else if (pt === 'nba_elite') {
-    multiplier = 1.1
+    multiplier = 1.05
     if (!flagsTriggered) minimumScore = 9.5
   }
   // nba_bad_form and recreational: no adjustment
@@ -338,6 +338,19 @@ Return ONLY valid JSON, no other text:
     result.overall_score = Math.max(result.overall_score, minimumScore)
   }
   result.overall_score = Math.min(10, result.overall_score)
+
+  // The overall score can never exceed the player's best individual criterion.
+  // A headline number sitting above every sub-score reads as a bug to users —
+  // this clamps it after every bonus, floor, and cap above has been applied.
+  const scoredCriterionValues = result.criteria
+    .filter((c) => c.score !== null)
+    .map((c) => c.score as number)
+  if (scoredCriterionValues.length > 0) {
+    result.overall_score = Math.min(
+      result.overall_score,
+      Math.max(...scoredCriterionValues),
+    )
+  }
 
   return result
 }

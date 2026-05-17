@@ -15,6 +15,7 @@ type PlayerType = 'child' | 'recreational' | 'college_pro' | 'nba_bad_form' | 'n
 
 interface AnalysisResult {
   overall_score: number
+  shot_detected: boolean
   player_assessment: {
     player_type: PlayerType
     player_name: string | null
@@ -177,8 +178,11 @@ NOTE: These flags are the most important flaws to detect. Missing them is a bigg
 
 For overall_score: average only scored criteria (exclude nulls).
 
+SHOT DETECTION — is there even an analyzable shot? Before scoring, decide whether these frames actually contain an analyzable basketball shot by a single, identifiable shooter. Set "shot_detected" to false ONLY when there is clearly nothing to analyze — for example: a wide game or TV broadcast showing many players with no single shooter to isolate, footage with no shooting motion at all, or no identifiable person taking a shot. If you can see one person shooting — even partially or with poor form — set "shot_detected" to true and score normally. When in doubt, set it to true.
+
 Return ONLY valid JSON, no other text:
 {
+  "shot_detected": <true|false — false ONLY if there is clearly no analyzable shot>,
   "overall_score": <average of scored criteria, 1-10, one decimal>,
   "player_assessment": {
     "player_type": "<child|recreational|college_pro|nba_bad_form|nba_decent|nba_elite>",
@@ -234,6 +238,13 @@ Return ONLY valid JSON, no other text:
   if (!jsonMatch) throw new Error('No JSON in Claude response')
 
   const result = JSON.parse(jsonMatch[0]) as AnalysisResult
+
+  // Default to true so a malformed response never wrongly rejects a real shot.
+  result.shot_detected = result.shot_detected ?? true
+  // No analyzable shot — return now; the caller discards it without charging.
+  if (result.shot_detected === false) {
+    return result
+  }
 
   // Ensure new flag fields default to false if missing from response
   result.critical_flags.arc_too_flat = result.critical_flags.arc_too_flat ?? false

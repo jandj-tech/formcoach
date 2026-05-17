@@ -37,6 +37,8 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
   const [progress, setProgress] = useState(0)
   const [previews, setPreviews] = useState<string[]>([])
   const [errorMsg, setErrorMsg] = useState('')
+  // Set when the server reports the video contained no analyzable shot.
+  const [noShot, setNoShot] = useState(false)
   const [videoUploadStatus, setVideoUploadStatus] = useState<
     { state: 'idle' } | { state: 'uploading' } | { state: 'ok'; url: string } | { state: 'failed'; error: string }
   >({ state: 'idle' })
@@ -286,6 +288,7 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
       }
 
       setErrorMsg('')
+      setNoShot(false)
       setStatus('extracting')
       setProgress(0)
       cancelledRef.current = false
@@ -340,6 +343,14 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
 
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}))
+          if (errData.error === 'no_shot') {
+            // No analyzable shot — not a failure, and nothing was charged.
+            setNoShot(true)
+            setStatus('idle')
+            setProgress(0)
+            setPreviews([])
+            return
+          }
           // Surface the server's real error detail, not just the generic label.
           throw new Error(errData.detail || errData.error || `Analysis failed (HTTP ${res.status})`)
         }
@@ -592,6 +603,24 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
           </div>
         )}
       </div>
+
+      {noShot && (
+        <div className="bg-amber-50 border border-amber-300 rounded-xl p-4 text-center space-y-1.5">
+          <p className="text-amber-900 font-bold text-sm">
+            We couldn&apos;t find a basketball shot in this video.
+          </p>
+          <p className="text-amber-800 text-xs leading-relaxed">
+            It wasn&apos;t analyzed and you were <strong>not charged</strong>. Make sure your video
+            clearly shows one person taking a shot — not a game clip with many players.
+          </p>
+          <a
+            href="/support#filming"
+            className="inline-block pt-1 text-orange-600 hover:text-orange-500 font-bold text-sm underline underline-offset-2"
+          >
+            How to take a proper video →
+          </a>
+        </div>
+      )}
 
       {errorMsg && (
         <p className="text-red-500 text-sm text-center">{errorMsg}</p>

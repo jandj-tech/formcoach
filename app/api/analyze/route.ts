@@ -140,6 +140,21 @@ export async function POST(req: NextRequest) {
     // Run Claude Vision analysis
     const result = await analyzeShot(frameBase64Array, frameMimeTypes)
 
+    // No analyzable shot in the video — discard the submission and don't charge
+    // the user. Tokens/credits are only deducted further below, so returning
+    // here guarantees nothing was spent.
+    if (result.shot_detected === false) {
+      await db`DELETE FROM submissions WHERE id = ${submission.id}`
+      return NextResponse.json(
+        {
+          error: 'no_shot',
+          message:
+            'We could not find a basketball shot in this video, so it was not analyzed and you were not charged.',
+        },
+        { status: 422 },
+      )
+    }
+
     // Store analysis
     let analysis: { id: number }
     try {

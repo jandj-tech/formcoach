@@ -11,6 +11,17 @@ const REGION_PAD = 0.40     // ±40% of video around rough center
 const REGION_MIN_S = 5.0    // minimum dense region width — covers full short videos
 const SEEK_TIMEOUT_MS = 4000  // max ms to wait for a seek before skipping
 
+// True if the canvas holds an essentially solid-black image — the signature of
+// a frame the browser handed back before its video decoder was ready (common
+// on iOS/Android until the <video> has been played once).
+function isBlackFrame(ctx: CanvasRenderingContext2D, w: number, h: number): boolean {
+  const { data } = ctx.getImageData(0, 0, w, h)
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i] > 14 || data[i + 1] > 14 || data[i + 2] > 14) return false
+  }
+  return true
+}
+
 interface SessionUser { id: string; email: string; tokens: number; subscribed: boolean; onTeam: boolean }
 
 interface TeamMode {
@@ -62,17 +73,65 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
       const video = document.createElement('video')
       video.preload = 'auto'
       video.muted = true
+      video.defaultMuted = true
+      video.playsInline = true
+      // iOS Safari only decodes frames into a <canvas> when the <video> is
+      // attached to the DOM and carries these attributes — otherwise every
+      // drawImage() returns solid black. Keep it on the page but invisible.
+      video.setAttribute('playsinline', '')
+      video.setAttribute('webkit-playsinline', '')
+      video.setAttribute('muted', '')
+      video.style.cssText =
+        'position:fixed;left:-10000px;top:0;width:1px;height:1px;opacity:0;pointer-events:none;'
+      document.body.appendChild(video)
+
       const url = URL.createObjectURL(file)
-      video.src = url
+
+      const cleanup = () => {
+        URL.revokeObjectURL(url)
+        video.removeAttribute('src')
+        try { video.load() } catch {}
+        video.remove()
+      }
+
+      video.onerror = () => {
+        cleanup()
+        reject(new Error('Failed to load video'))
+      }
 
       video.onloadedmetadata = async () => {
+       try {
         const duration = video.duration
+        if (!duration || !isFinite(duration) || !video.videoWidth || !video.videoHeight) {
+          cleanup()
+          reject(new Error('Could not read this video. Please try a different file.'))
+          return
+        }
 
         // --- Phase 1a: Extract tiny rough frames for shot location ---
         const roughCanvas = document.createElement('canvas')
         roughCanvas.width = 160
         roughCanvas.height = 90
-        const roughCtx = roughCanvas.getContext('2d')!
+        const roughCtx = roughCanvas.getContext('2d', { willReadFrequently: true })!
+
+        // Wake the video decoder. Mobile browsers (iOS especially) won't paint
+        // frames to a canvas until the video has actually played; muted
+        // playback is allowed without a user gesture. Play a beat, pause, and
+        // verify a real frame comes back — retry the nudge if it's still black.
+        let decoderReady = false
+        const probeTime = Math.min(duration * 0.5, Math.max(0, duration - 0.1))
+        for (let attempt = 0; attempt < 3 && !decoderReady; attempt++) {
+          try {
+            await video.play()
+            await new Promise<void>(r => setTimeout(r, 140))
+            video.pause()
+          } catch {
+            // play() can be refused; extraction may still work on desktop.
+          }
+          await seekTo(video, probeTime)
+          roughCtx.drawImage(video, 0, 0, 160, 90)
+          decoderReady = !isBlackFrame(roughCtx, 160, 90)
+        }
 
         const roughTimestamps = Array.from({ length: ROUGH_COUNT }, (_, i) =>
           (duration / (ROUGH_COUNT + 1)) * (i + 1)
@@ -162,7 +221,7 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
         )
 
         for (let i = 0; i < timestamps.length; i++) {
-          if (cancelledRef.current) { URL.revokeObjectURL(url); resolve(blobs); return }
+          if (cancelledRef.current) { cleanup(); resolve(blobs); return }
           await seekTo(video, timestamps[i])
           mainCanvas.width = video.videoWidth
           mainCanvas.height = video.videoHeight
@@ -184,14 +243,15 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
         }
 
         setPreviews(thumbs)
-        URL.revokeObjectURL(url)
+        cleanup()
         resolve(blobs)
+       } catch (err) {
+        cleanup()
+        reject(err instanceof Error ? err : new Error('Frame extraction failed'))
+       }
       }
 
-      video.onerror = () => {
-        URL.revokeObjectURL(url)
-        reject(new Error('Failed to load video'))
-      }
+      video.src = url
     })
   }, [])
 

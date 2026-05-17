@@ -109,9 +109,15 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
         }
 
         // --- Phase 1a: Extract tiny rough frames for shot location ---
+        // Size the detection canvas to the video's true aspect ratio. Forcing
+        // a portrait or square clip into a fixed 16:9 canvas squashes the
+        // player and wrecks the AI's ability to locate the shot.
         const roughCanvas = document.createElement('canvas')
-        roughCanvas.width = 160
-        roughCanvas.height = 90
+        const roughScale = Math.min(1, 160 / Math.max(video.videoWidth, video.videoHeight))
+        const roughW = Math.max(1, Math.round(video.videoWidth * roughScale))
+        const roughH = Math.max(1, Math.round(video.videoHeight * roughScale))
+        roughCanvas.width = roughW
+        roughCanvas.height = roughH
         const roughCtx = roughCanvas.getContext('2d', { willReadFrequently: true })!
 
         // Wake the video decoder. Mobile browsers (iOS especially) won't paint
@@ -129,8 +135,8 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
             // play() can be refused; extraction may still work on desktop.
           }
           await seekTo(video, probeTime)
-          roughCtx.drawImage(video, 0, 0, 160, 90)
-          decoderReady = !isBlackFrame(roughCtx, 160, 90)
+          roughCtx.drawImage(video, 0, 0, roughW, roughH)
+          decoderReady = !isBlackFrame(roughCtx, roughW, roughH)
         }
 
         const roughTimestamps = Array.from({ length: ROUGH_COUNT }, (_, i) =>
@@ -140,7 +146,7 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
         const roughBase64: string[] = []
         for (let i = 0; i < ROUGH_COUNT; i++) {
           await seekTo(video, roughTimestamps[i])
-          roughCtx.drawImage(video, 0, 0, 160, 90)
+          roughCtx.drawImage(video, 0, 0, roughW, roughH)
           roughBase64.push(roughCanvas.toDataURL('image/jpeg', 0.6).split(',')[1])
           setProgress(Math.round(((i + 1) / ROUGH_COUNT) * 10))
         }
@@ -163,8 +169,11 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
 
         // --- Phase 1c: Extract dense probe frames around rough region ---
         const probeCanvas = document.createElement('canvas')
-        probeCanvas.width = 320
-        probeCanvas.height = 180
+        const probeScale = Math.min(1, 320 / Math.max(video.videoWidth, video.videoHeight))
+        const probeW = Math.max(1, Math.round(video.videoWidth * probeScale))
+        const probeH = Math.max(1, Math.round(video.videoHeight * probeScale))
+        probeCanvas.width = probeW
+        probeCanvas.height = probeH
         const probeCtx = probeCanvas.getContext('2d')!
 
         // Dense region: roughCenter ± 40%, minimum 5s total
@@ -181,7 +190,7 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
         const probeBase64: string[] = []
         for (let i = 0; i < PROBE_COUNT; i++) {
           await seekTo(video, probeTimestamps[i])
-          probeCtx.drawImage(video, 0, 0, 320, 180)
+          probeCtx.drawImage(video, 0, 0, probeW, probeH)
           probeBase64.push(probeCanvas.toDataURL('image/jpeg', 0.7).split(',')[1])
           setProgress(Math.round(20 + ((i + 1) / PROBE_COUNT) * 15))
         }

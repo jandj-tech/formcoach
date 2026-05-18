@@ -20,6 +20,8 @@ export interface OrgTeamOpt {
   name: string
   coachName: string
   ageGroup: string | null
+  initiated: boolean
+  memberCount: number
 }
 
 export default function OrgTokenPanel({
@@ -45,13 +47,36 @@ export default function OrgTokenPanel({
   const [buyQty, setBuyQty] = useState(10)
 
   const [assignTeamId, setAssignTeamId] = useState(teams[0]?.id ?? '')
-  const [assignRecipient, setAssignRecipient] = useState('all')
+  const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(new Set())
   const [assignEach, setAssignEach] = useState(1)
 
   const [coachEmail, setCoachEmail] = useState(coaches[0]?.email ?? '')
   const [giveQty, setGiveQty] = useState(1)
 
+  const anyInitiated = teams.some(t => t.initiated)
+  const pricePerToken = anyInitiated ? 1.49 : 2.79
+  const buyTotal = (buyQty * pricePerToken).toFixed(2)
+
   const teamPlayers = players.filter(p => p.teamId === assignTeamId)
+  const needed = selectedPlayerIds.size * assignEach
+  const balanceTooLow = selectedPlayerIds.size > 0 && balance < needed
+
+  function togglePlayer(id: string) {
+    setSelectedPlayerIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function toggleAllPlayers() {
+    if (selectedPlayerIds.size === teamPlayers.length) {
+      setSelectedPlayerIds(new Set())
+    } else {
+      setSelectedPlayerIds(new Set(teamPlayers.map(p => p.id)))
+    }
+  }
 
   async function buyTokens() {
     setBusy(true)
@@ -87,16 +112,15 @@ export default function OrgTokenPanel({
   }
 
   function assignToPlayers() {
-    const ids = assignRecipient === 'all'
-      ? teamPlayers.map(p => p.id)
-      : [assignRecipient]
-    if (ids.length === 0) { setMsg('No players on this team yet'); return }
+    const ids = [...selectedPlayerIds]
+    if (ids.length === 0) { setMsg('Select at least one player'); return }
+    if (balanceTooLow) { setMsg(`Balance too low — need ${needed} tokens, have ${balance}`); return }
     post(
       '/api/org/assign-balance-tokens',
       { playerUserIds: ids, tokensEach: assignEach },
       `Assigned ${assignEach} token${assignEach !== 1 ? 's' : ''} to ${ids.length} player${ids.length !== 1 ? 's' : ''}.`,
     )
-    setAssignRecipient('all')
+    setSelectedPlayerIds(new Set())
   }
 
   function giveToCoach() {
@@ -116,7 +140,7 @@ export default function OrgTokenPanel({
       >
         <div>
           <h2 className="text-xl font-black text-black">Your Tokens</h2>
-          <p className="text-sm text-gray-500 mt-0.5">Org token balance & distribution</p>
+          <p className="text-sm text-gray-500 mt-0.5">Org token balance &amp; distribution</p>
         </div>
         <div className="flex items-center gap-3 shrink-0">
           <div className="bg-orange-50 border border-orange-200 rounded-xl px-3 py-1.5 text-right">
@@ -146,49 +170,129 @@ export default function OrgTokenPanel({
 
           {msg && <p className="text-sm text-orange-600 font-semibold">{msg}</p>}
 
-          <div className="space-y-2">
+          {/* Buy tokens */}
+          <div className="space-y-3">
             <p className="text-sm font-bold text-black">Buy tokens</p>
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                min={1}
-                max={1000}
-                value={buyQty}
-                onChange={e => setBuyQty(Math.max(1, parseInt(e.target.value) || 1))}
-                className="w-20 border border-gray-300 rounded-xl px-2 py-2 text-center text-black text-sm focus:outline-none focus:border-orange-500"
-              />
-              <button type="button" onClick={buyTokens} disabled={busy}
-                className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors">
-                Buy tokens
-              </button>
+
+            {/* Pricing notice when no team has reached 8 players */}
+            {!anyInitiated && teams.length > 0 && (
+              <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-4 space-y-3">
+                <p className="text-sm font-black text-orange-900">Tokens drop to $1.49 once a team reaches 8 players</p>
+                <p className="text-xs text-orange-700">Currently $2.79 each — get more players to unlock the lower price.</p>
+                <div className="space-y-2 pt-1">
+                  {teams.map(t => {
+                    const pct = Math.min(100, (t.memberCount / 8) * 100)
+                    const left = Math.max(0, 8 - t.memberCount)
+                    return (
+                      <div key={t.id} className="space-y-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-xs font-semibold text-orange-800">{t.name}</p>
+                          <p className="text-xs text-orange-700 shrink-0">{t.memberCount}/8</p>
+                        </div>
+                        <div className="w-full bg-orange-200 rounded-full h-1.5">
+                          <div className="bg-orange-500 h-1.5 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                        </div>
+                        {left > 0 && (
+                          <p className="text-xs text-orange-600">{left} more player{left !== 1 ? 's' : ''} to unlock $1.49</p>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Quantity selector */}
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">How many tokens?</p>
+              <div className="flex gap-2">
+                {[1, 5, 10].map(q => (
+                  <button
+                    key={q}
+                    type="button"
+                    onClick={() => setBuyQty(q)}
+                    className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-colors ${
+                      buyQty === q
+                        ? 'bg-orange-500 text-white border-orange-500'
+                        : 'bg-white text-black border-gray-300 hover:border-orange-400'
+                    }`}
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
             </div>
+
+            <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 flex items-center justify-between">
+              <p className="text-sm text-gray-600">
+                {buyQty} token{buyQty !== 1 ? 's' : ''} × ${pricePerToken}
+                {anyInitiated && <span className="ml-1.5 text-xs text-green-600 font-semibold">$1.49 rate unlocked</span>}
+              </p>
+              <p className="text-lg font-black text-black">${buyTotal}</p>
+            </div>
+
+            <button
+              type="button"
+              onClick={buyTokens}
+              disabled={busy}
+              className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-black py-3 rounded-xl transition-colors"
+            >
+              {busy ? 'Redirecting to checkout...' : `Buy ${buyQty} Token${buyQty !== 1 ? 's' : ''} — $${buyTotal}`}
+            </button>
           </div>
 
+          {/* Assign tokens to players */}
           <div className="space-y-2">
             <p className="text-sm font-bold text-black">Assign tokens to players</p>
             {teams.length === 0 ? (
               <p className="text-xs text-gray-400">No teams yet.</p>
             ) : (
-              <div className="space-y-2">
-                <select
-                  value={assignTeamId}
-                  onChange={e => { setAssignTeamId(e.target.value); setAssignRecipient('all') }}
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-black bg-white focus:outline-none focus:border-orange-500"
-                >
-                  {teams.map(t => (
-                    <option key={t.id} value={t.id}>
-                      {t.name} ({t.coachName}{t.ageGroup ? ' ' + t.ageGroup : ''})
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={assignRecipient}
-                  onChange={e => setAssignRecipient(e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-black bg-white focus:outline-none focus:border-orange-500"
-                >
-                  <option value="all">All Players ({teamPlayers.length})</option>
-                  {teamPlayers.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
-                </select>
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Select team</label>
+                  <select
+                    value={assignTeamId}
+                    onChange={e => { setAssignTeamId(e.target.value); setSelectedPlayerIds(new Set()) }}
+                    className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-black bg-white focus:outline-none focus:border-orange-500"
+                  >
+                    {teams.map(t => (
+                      <option key={t.id} value={t.id}>
+                        {t.name} ({t.coachName}{t.ageGroup ? ' ' + t.ageGroup : ''})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {teamPlayers.length === 0 ? (
+                  <p className="text-xs text-gray-400">No players on this team yet.</p>
+                ) : (
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Select players</label>
+                      <button
+                        type="button"
+                        onClick={toggleAllPlayers}
+                        className="text-xs font-semibold text-orange-500 hover:text-orange-400"
+                      >
+                        {selectedPlayerIds.size === teamPlayers.length ? 'Deselect all' : 'Select all'}
+                      </button>
+                    </div>
+                    <div className="border border-gray-200 rounded-xl divide-y divide-gray-100 max-h-48 overflow-y-auto">
+                      {teamPlayers.map(p => (
+                        <label key={p.id} className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-gray-50">
+                          <input
+                            type="checkbox"
+                            checked={selectedPlayerIds.has(p.id)}
+                            onChange={() => togglePlayer(p.id)}
+                            className="w-4 h-4 accent-orange-500 shrink-0"
+                          />
+                          <span className="text-sm text-black">{p.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-gray-600">Tokens each</span>
                   <input
@@ -198,15 +302,30 @@ export default function OrgTokenPanel({
                     onChange={e => setAssignEach(Math.max(1, parseInt(e.target.value) || 1))}
                     className="w-16 border border-gray-300 rounded-xl px-2 py-2 text-center text-black text-sm focus:outline-none focus:border-orange-500"
                   />
-                  <button type="button" onClick={assignToPlayers} disabled={busy}
-                    className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors">
-                    Assign tokens
-                  </button>
+                  {selectedPlayerIds.size > 0 && (
+                    <span className="text-xs text-gray-500">= {needed} total from balance</span>
+                  )}
                 </div>
+
+                {balanceTooLow && (
+                  <p className="text-sm font-semibold text-red-500">
+                    Balance too low — purchase more tokens (need {needed}, have {balance})
+                  </p>
+                )}
+
+                <button
+                  type="button"
+                  onClick={assignToPlayers}
+                  disabled={busy || selectedPlayerIds.size === 0 || balanceTooLow}
+                  className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+                >
+                  Assign tokens
+                </button>
               </div>
             )}
           </div>
 
+          {/* Give credits to coach */}
           <div className="space-y-2">
             <p className="text-sm font-bold text-black">Give credits to a coach</p>
             {coaches.length === 0 ? (

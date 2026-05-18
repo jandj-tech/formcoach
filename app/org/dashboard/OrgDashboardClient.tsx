@@ -109,7 +109,6 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   const [emailSelected, setEmailSelected] = useState<Record<string, boolean>>({})
   const [emailDraftTeam, setEmailDraftTeam] = useState<string | null>(null)
   const [emailCopied, setEmailCopied] = useState<'emails' | 'body' | null>(null)
-  const [tokenOverviewOpen, setTokenOverviewOpen] = useState(true)
 
   const BASE_URL = typeof window !== 'undefined' ? window.location.origin : 'https://learnhoops.com'
 
@@ -128,14 +127,6 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   const [showLeaderboard, setShowLeaderboard] = useState<string | null>(null)
   const [leaderboard, setLeaderboard] = useState<ClassEnrollment[]>([])
   const [leaderboardLoading, setLeaderboardLoading] = useState(false)
-
-  // Purchase tokens section state
-  const [ptTeamId, setPtTeamId] = useState<string>(teams[0]?.id ?? '')
-  const [ptRecipient, setPtRecipient] = useState('all')  // 'all' | 'coach' | userId
-  const [ptQty, setPtQty] = useState(1)
-  const [ptOpen, setPtOpen] = useState(true)
-  const [buyingTokens, setBuyingTokens] = useState(false)
-  const [tokensError, setTokensError] = useState('')
 
   const [addOpen, setAddOpen] = useState(false)
   const [newName, setNewName] = useState('')
@@ -396,51 +387,6 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
     }
   }
 
-  async function handleBuyTokens() {
-    const team = selectedPtTeam
-    if (!team) return
-    setBuyingTokens(true)
-    setTokensError('')
-    try {
-      if (ptRecipient === 'coach') {
-        const res = await fetch('/api/org/buy-team-credits', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ teamId: team.id, quantity: ptQty }),
-        })
-        const data = await res.json()
-        if (!res.ok || !data.url) {
-          setTokensError(data.error || 'Checkout failed')
-          setBuyingTokens(false)
-          return
-        }
-        window.location.href = data.url
-      } else {
-        const playerUserIds = ptRecipient === 'all' ? team.members.map(m => m.id) : [ptRecipient]
-        if (playerUserIds.length === 0) {
-          setTokensError('No players have joined this team yet')
-          setBuyingTokens(false)
-          return
-        }
-        const res = await fetch('/api/org/buy-player-tokens', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ playerUserIds, quantity: ptQty, teamId: team.id }),
-        })
-        const data = await res.json()
-        if (!res.ok || !data.url) {
-          setTokensError(data.error || 'Checkout failed')
-          setBuyingTokens(false)
-          return
-        }
-        window.location.href = data.url
-      }
-    } catch {
-      setTokensError('Something went wrong. Please try again.')
-      setBuyingTokens(false)
-    }
-  }
-
   async function handleBuyClass() {
     setBuyingClass(true)
     setClassError('')
@@ -515,7 +461,6 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   }
 
   const classPricePerPlayer = classPlayerCount >= CLASS_BULK_THRESHOLD ? 36.99 : 40
-  const anyInitiated = teams.some(t => t.initiated)
   const classTotal = classPriceCents(classPlayerCount) / 100
 
   const classProgramSection = (
@@ -823,145 +768,6 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
     </div>
   )
 
-  const selectedPtTeam = teams.find(t => t.id === ptTeamId) ?? teams[0]
-  const ptIsCoach = ptRecipient === 'coach'
-  const ptPlayerCount = !selectedPtTeam || ptIsCoach ? 0
-    : ptRecipient === 'all' ? selectedPtTeam.members.length
-    : 1
-  const ptPricePerToken = selectedPtTeam?.initiated ? 1.49 : 2.79
-  const ptTotal = ptPlayerCount * ptQty * ptPricePerToken
-
-  const purchaseTokensSection = (
-    <div className="border-2 border-orange-200 rounded-2xl bg-white overflow-hidden">
-      {/* Collapsible header */}
-      <button
-        onClick={() => setPtOpen(o => !o)}
-        className="w-full flex items-center justify-between gap-4 px-5 py-4 hover:bg-orange-50 transition-colors text-left"
-      >
-        <div>
-          <h2 className="text-xl font-black text-black">Purchase Tokens</h2>
-          <p className="text-sm text-gray-500">Buy analysis tokens for your players</p>
-        </div>
-        <div className="flex items-center gap-3 shrink-0">
-          {anyInitiated ? (
-            <span className="bg-green-100 text-green-700 text-xs font-black px-2.5 py-1 rounded-full">$1.49 / token</span>
-          ) : (
-            <span className="bg-gray-100 text-gray-600 text-xs font-black px-2.5 py-1 rounded-full">$2.79 / token</span>
-          )}
-          <span className="text-gray-400 text-sm">{ptOpen ? '−' : '+'}</span>
-        </div>
-      </button>
-
-      {ptOpen && (
-        <div className="px-5 pb-5 space-y-3 border-t border-orange-100">
-          {/* Pricing notice + team progress when no team is initiated */}
-          {!anyInitiated && teams.length > 0 && (
-            <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-4 space-y-3 mt-3">
-              <p className="text-sm font-black text-orange-900">Tokens drop to $1.49 once a team reaches 8 players</p>
-              <p className="text-xs text-orange-700">Currently $2.79 each — get more players to unlock the lower price.</p>
-              <div className="space-y-2 pt-1">
-                {teams.map(t => {
-                  const pct = Math.min(100, (t.members.length / 8) * 100)
-                  const needed = Math.max(0, 8 - t.members.length)
-                  return (
-                    <div key={t.id} className="space-y-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-xs font-semibold text-orange-800">{t.name}</p>
-                        <p className="text-xs text-orange-700 shrink-0">{t.members.length}/8</p>
-                      </div>
-                      <div className="w-full bg-orange-200 rounded-full h-1.5">
-                        <div className="bg-orange-500 h-1.5 rounded-full transition-all" style={{ width: `${pct}%` }} />
-                      </div>
-                      {needed > 0 && (
-                        <p className="text-xs text-orange-600">{needed} more player{needed !== 1 ? 's' : ''} to unlock $1.49</p>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {teams.length === 0 ? (
-            <p className="text-sm text-gray-400 pt-3">Add a team first to purchase tokens for players.</p>
-          ) : (
-            <div className="space-y-3 pt-3">
-              {/* Team dropdown */}
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Team</label>
-                <select
-                  value={ptTeamId || (teams[0]?.id ?? '')}
-                  onChange={e => { setPtTeamId(e.target.value); setPtRecipient('all') }}
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-black bg-white focus:outline-none focus:border-orange-500"
-                >
-                  {teams.map(t => (
-                    <option key={t.id} value={t.id}>
-                      {t.name} — {t.members.length} player{t.members.length !== 1 ? 's' : ''} ({t.initiated ? '$1.49' : '$2.79'}/token)
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Recipient dropdown */}
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Send to</label>
-                <select
-                  value={ptRecipient}
-                  onChange={e => setPtRecipient(e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-black bg-white focus:outline-none focus:border-orange-500"
-                >
-                  <option value="all">All Players ({selectedPtTeam?.members.length ?? 0})</option>
-                  {selectedPtTeam?.members.map(m => (
-                    <option key={m.id} value={m.id}>
-                      {memberDisplayName(m)} — {m.tokens} token{m.tokens !== 1 ? 's' : ''}
-                    </option>
-                  ))}
-                  <option value="coach">Coach Credits</option>
-                </select>
-              </div>
-
-              {/* Quantity dropdown */}
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  {ptIsCoach ? 'Credits' : 'Tokens per player'}
-                </label>
-                <select
-                  value={ptQty}
-                  onChange={e => setPtQty(Number(e.target.value))}
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-black bg-white focus:outline-none focus:border-orange-500"
-                >
-                  <option value={1}>1</option>
-                  <option value={5}>5</option>
-                  <option value={10}>10</option>
-                </select>
-              </div>
-
-              {/* Total (player tokens only) */}
-              {ptPlayerCount > 0 && (
-                <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 flex items-center justify-between">
-                  <p className="text-sm text-gray-600">
-                    {ptQty} token{ptQty > 1 ? 's' : ''} × {ptPlayerCount} player{ptPlayerCount !== 1 ? 's' : ''} × ${ptPricePerToken}
-                  </p>
-                  <p className="text-lg font-black text-black">${ptTotal.toFixed(2)}</p>
-                </div>
-              )}
-
-              {tokensError && <p className="text-red-500 text-sm">{tokensError}</p>}
-
-              <button
-                onClick={handleBuyTokens}
-                disabled={buyingTokens}
-                className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-black py-3 rounded-xl transition-colors"
-              >
-                {buyingTokens ? 'Redirecting to checkout...' : 'Purchase Tokens'}
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  )
-
   const addTeamSection = (
     <div className="border border-gray-200 rounded-2xl p-5 space-y-3">
       <div className="flex items-center justify-between gap-4">
@@ -1038,7 +844,6 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   if (teams.length === 0) {
     return (
       <div className="space-y-4">
-        {purchaseTokensSection}
         {classProgramSection}
         {addTeamSection}
         <div className="text-center py-12 text-gray-400 border-2 border-dashed border-gray-200 rounded-2xl">
@@ -1053,15 +858,14 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
 
   return (
     <div className="space-y-4">
-      {purchaseTokensSection}
       {classProgramSection}
       {addTeamSection}
 
-            <OrgTokenPanel
+      <OrgTokenPanel
         balance={orgTokenBalance}
         players={orgPlayers}
         coaches={orgCoaches}
-        teams={teams.map(t => ({ id: t.id, name: t.name, coachName: t.coachNickname || t.adminEmail, ageGroup: t.ageGroup }))}
+        teams={teams.map(t => ({ id: t.id, name: t.name, coachName: t.coachNickname || t.adminEmail, ageGroup: t.ageGroup, initiated: t.initiated, memberCount: t.members.length }))}
         totalPlayerTokens={teams.reduce((s, t) => s + t.members.reduce((ps, m) => ps + m.tokens, 0), 0)}
         totalCoachCredits={teams.reduce((s, t) => s + t.credits, 0)}
       />

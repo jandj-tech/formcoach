@@ -461,7 +461,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
     }
   }
 
-  const classPricePerPlayer = classPlayerCount >= CLASS_BULK_THRESHOLD ? 45 : 50
+  const classPricePerPlayer = classPlayerCount >= CLASS_BULK_THRESHOLD ? 36.99 : 40
   const classTotal = classPriceCents(classPlayerCount) / 100
 
   const classProgramSection = (
@@ -479,7 +479,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
             </p>
           </div>
           <div className="bg-white/20 rounded-xl px-4 py-3 text-center shrink-0">
-            <p className="text-4xl font-black">$50</p>
+            <p className="text-4xl font-black">$40</p>
             <p className="text-orange-100 text-xs">per player</p>
             <p className="text-orange-200 text-xs mt-1">$36.99/player for 30+</p>
           </div>

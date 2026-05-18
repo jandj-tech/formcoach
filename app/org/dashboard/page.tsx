@@ -49,6 +49,19 @@ export default async function OrgDashboardPage() {
 
   if (!org) redirect('/login')
 
+  // The organization's own token balance. Queried separately so a missing
+  // column (pre-migration) can't break the dashboard.
+  let orgTokenBalance = 0
+  try {
+    const [r] = (await db`
+      SELECT COALESCE(token_balance, 0)::int AS token_balance
+      FROM organizations WHERE id = ${org.id}
+    `) as unknown as [{ token_balance: number } | undefined]
+    orgTokenBalance = r?.token_balance ?? 0
+  } catch {
+    // token_balance column not migrated yet — treat as 0.
+  }
+
   let classPackages: ClassPackage[] = []
   try {
     const pkgs = await db`
@@ -228,7 +241,7 @@ export default async function OrgDashboardPage() {
           </p>
         </div>
 
-        <OrgDashboardClient teams={teams} orgName={org.name} classPackages={classPackages} myUploads={myUploads} />
+        <OrgDashboardClient teams={teams} orgName={org.name} classPackages={classPackages} myUploads={myUploads} orgTokenBalance={orgTokenBalance} />
       </div>
     </main>
   )

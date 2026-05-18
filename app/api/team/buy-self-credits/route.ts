@@ -63,11 +63,11 @@ export async function POST(req: NextRequest) {
           },
         },
       ],
-      metadata: {
-        type: 'coach_self_credits',
-        coachEmail,
-        quantity: String(qty),
-      },
+      // An org owner's self-credits go into the org token balance; a team
+      // coach's go into their personal coach_credits.
+      metadata: orgSession
+        ? { type: 'org_token_purchase', orgId: orgSession.orgId, quantity: String(qty) }
+        : { type: 'coach_self_credits', coachEmail, quantity: String(qty) },
       success_url: `${BASE_URL}/analyze?credits=1`,
       allow_promotion_codes: true,
       cancel_url: `${BASE_URL}/analyze`,

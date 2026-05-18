@@ -12,6 +12,7 @@ import LeaderboardTable from '@/components/LeaderboardTable'
 import PrintButton from '@/components/PrintButton'
 import InlineEdit from '@/components/InlineEdit'
 import PlayerShotList, { type Shot } from '@/components/PlayerShotList'
+import CoachTokenPanel from '@/components/CoachTokenPanel'
 import { useCart } from '@/lib/cart'
 
 interface Team {
@@ -70,6 +71,7 @@ interface Props {
   adminEmail: string
   fromOrg: boolean
   myUploads: Shot[]
+  coachCredits: number
 }
 
 export default function TeamDashboardClient({
@@ -87,6 +89,7 @@ export default function TeamDashboardClient({
   adminEmail,
   fromOrg,
   myUploads,
+  coachCredits,
 }: Props) {
   const router = useRouter()
   const { clear: clearCart } = useCart()
@@ -456,6 +459,14 @@ export default function TeamDashboardClient({
         <h2 className="text-base font-black text-black">Upload a Shot for a Player</h2>
         <CoachUploadForm accessCode={team.accessCode} members={uploadableMembers} />
       </div>
+
+      <CoachTokenPanel
+        credits={coachCredits}
+        players={members.map(m => ({
+          id: m.id,
+          label: formatPlayerName(m.first_name || m.email, m.last_name_initial),
+        }))}
+      />
 
       {/* Players */}
       <div className="bg-gray-50 rounded-2xl p-5 space-y-3">

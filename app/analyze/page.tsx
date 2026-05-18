@@ -37,12 +37,21 @@ export default async function AnalyzePage() {
     }
     let credits = 0
     try {
-      const [c] = (await db`
-        SELECT credits FROM coach_credits WHERE email = ${coachEmail}
-      `) as unknown as [{ credits: number } | undefined]
-      credits = c?.credits ?? 0
+      if (orgSession) {
+        // An org owner spends from the organization's own token balance.
+        const [o] = (await db`
+          SELECT COALESCE(token_balance, 0)::int AS token_balance
+          FROM organizations WHERE id = ${orgSession.orgId}
+        `) as unknown as [{ token_balance: number } | undefined]
+        credits = o?.token_balance ?? 0
+      } else {
+        const [c] = (await db`
+          SELECT credits FROM coach_credits WHERE email = ${coachEmail}
+        `) as unknown as [{ credits: number } | undefined]
+        credits = c?.credits ?? 0
+      }
     } catch {
-      // coach_credits table missing pre-migration
+      // coach_credits / token_balance column missing pre-migration
     }
     coachSelf = { credits, initiated }
   }

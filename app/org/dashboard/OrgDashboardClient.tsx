@@ -10,6 +10,7 @@ import TokenBalances from '@/components/TokenBalances'
 import InlineEdit from '@/components/InlineEdit'
 import LeaderboardTable, { type LeaderboardRow } from '@/components/LeaderboardTable'
 import SortMenu, { type SortOption } from '@/components/SortMenu'
+import OrgTokenPanel from '@/components/OrgTokenPanel'
 import PlayerShotList, { type Shot } from '@/components/PlayerShotList'
 import PrintButton from '@/components/PrintButton'
 import { CLASS_MIN_PLAYERS, CLASS_BULK_THRESHOLD, classPriceCents } from '@/lib/org-class-pricing'
@@ -76,6 +77,7 @@ interface Props {
   orgName: string
   classPackages: ClassPackage[]
   myUploads: Shot[]
+  orgTokenBalance: number
 }
 
 type DestMode = 'all' | 'specific' | 'coach'
@@ -88,7 +90,7 @@ const PLAYER_SORT_OPTIONS: SortOption<PlayerSortMode>[] = [
   { value: 'score-asc', label: 'Lowest score' },
 ]
 
-export default function OrgDashboardClient({ teams, orgName, classPackages, myUploads }: Props) {
+export default function OrgDashboardClient({ teams, orgName, classPackages, myUploads, orgTokenBalance }: Props) {
   const router = useRouter()
   const [expanded, setExpanded] = useState<string | null>(null)
   const [destMode, setDestMode] = useState<Record<string, DestMode>>({})
@@ -330,6 +332,23 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
         ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }, 60)
   }
+
+  // Every player and coach across the org — feeds the token-distribution panel.
+  const orgPlayers = teams.flatMap(t =>
+    t.members.map(m => ({ id: m.id, label: memberDisplayName(m), team: t.name })),
+  )
+  const orgCoachMap = new Map<string, string>()
+  for (const t of teams) {
+    const head = t.adminEmail.toLowerCase()
+    if (!orgCoachMap.has(head)) {
+      orgCoachMap.set(head, `${t.coachNickname || t.adminEmail} — ${t.name}`)
+    }
+    for (const c of t.coaches) {
+      const e = c.email.toLowerCase()
+      if (!orgCoachMap.has(e)) orgCoachMap.set(e, `${c.nickname || c.email} — ${t.name}`)
+    }
+  }
+  const orgCoaches = [...orgCoachMap.entries()].map(([email, label]) => ({ email, label }))
 
   async function handleBuy(team: TeamData) {
     const mode = getMode(team.id)
@@ -862,7 +881,6 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
       {addTeamSection}
 
       {(() => {
-        const totalPool = teams.reduce((s, t) => s + t.tokenPool, 0)
         const totalCredits = teams.reduce((s, t) => s + t.credits, 0)
         const totalPlayerTokens = teams.reduce(
           (s, t) => s + t.members.reduce((ps, m) => ps + m.tokens, 0), 0,
@@ -872,8 +890,8 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
             <h2 className="text-xl font-black text-black">Token Overview</h2>
             <div className="grid grid-cols-3 gap-2">
               <div className="bg-orange-50 border border-orange-200 rounded-xl px-3 py-2">
-                <p className="text-xs text-gray-500">Team pools</p>
-                <p className="text-2xl font-black text-black">{totalPool}</p>
+                <p className="text-xs text-gray-500">Your tokens</p>
+                <p className="text-2xl font-black text-black">{orgTokenBalance}</p>
               </div>
               <div className="bg-orange-50 border border-orange-200 rounded-xl px-3 py-2">
                 <p className="text-xs text-gray-500">Player tokens</p>
@@ -890,6 +908,8 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
           </div>
         )
       })()}
+
+      <OrgTokenPanel balance={orgTokenBalance} players={orgPlayers} coaches={orgCoaches} />
 
       <h2 className="text-xl font-black text-black">Your Teams</h2>
 

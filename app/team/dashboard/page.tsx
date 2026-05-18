@@ -191,6 +191,17 @@ export default async function TeamDashboardPage() {
     console.error('[team/dashboard] my uploads query failed:', err)
   }
 
+  // The logged-in coach's own credit balance.
+  let coachCredits = 0
+  try {
+    const [cc] = (await db`
+      SELECT credits FROM coach_credits WHERE email = ${session.adminEmail.toLowerCase()}
+    `) as unknown as [{ credits: number } | undefined]
+    coachCredits = cc?.credits ?? 0
+  } catch (err) {
+    console.error('[team/dashboard] coach credits query failed:', err)
+  }
+
   // The display name of whichever coach is currently logged in.
   const myNickname =
     session.adminEmail === team.admin_email
@@ -215,6 +226,7 @@ export default async function TeamDashboardPage() {
         adminEmail={session.adminEmail}
         fromOrg={fromOrg}
         myUploads={myUploads}
+        coachCredits={coachCredits}
       />
     </main>
   )

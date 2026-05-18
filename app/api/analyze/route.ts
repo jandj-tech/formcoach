@@ -29,8 +29,10 @@ export async function POST(req: NextRequest) {
     const isTeamUpload = !!(teamCode && playerFirstName && playerLastName)
     const isCoachSelf = formData.get('coachSelf') === 'true'
 
-    // A coach analyzing their own shot — paid from their personal credits.
+    // A coach or org owner analyzing their own shot. A team coach pays from
+    // their personal coach_credits; an org owner pays from the org balance.
     let coachEmail: string | null = null
+    let orgSelfId: string | null = null
     if (isCoachSelf) {
       const teamSession = await getTeamSessionFromRequest(req)
       const orgSession = teamSession ? null : await getOrgSessionFromRequest(req)
@@ -39,11 +41,22 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Login required' }, { status: 401 })
       }
       coachEmail = cEmail.toLowerCase()
-      const [cc] = (await db`
-        SELECT credits FROM coach_credits WHERE email = ${coachEmail}
-      `) as unknown as [{ credits: number } | undefined]
-      if (!cc || cc.credits < 1) {
-        return NextResponse.json({ error: 'No analysis credits' }, { status: 402 })
+      if (orgSession && !teamSession) {
+        orgSelfId = orgSession.orgId
+        const [org] = (await db`
+          SELECT COALESCE(token_balance, 0)::int AS token_balance
+          FROM organizations WHERE id = ${orgSelfId}
+        `) as unknown as [{ token_balance: number } | undefined]
+        if (!org || org.token_balance < 1) {
+          return NextResponse.json({ error: 'No analysis tokens' }, { status: 402 })
+        }
+      } else {
+        const [cc] = (await db`
+          SELECT credits FROM coach_credits WHERE email = ${coachEmail}
+        `) as unknown as [{ credits: number } | undefined]
+        if (!cc || cc.credits < 1) {
+          return NextResponse.json({ error: 'No analysis credits' }, { status: 402 })
+        }
       }
     }
 
@@ -250,8 +263,12 @@ export async function POST(req: NextRequest) {
       await db`UPDATE teams SET credits = credits - 1 WHERE id = ${teamId} AND credits > 0`
     }
 
-    if (isCoachSelf && coachEmail) {
-      await db`UPDATE coach_credits SET credits = credits - 1 WHERE email = ${coachEmail} AND credits > 0`
+    if (isCoachSelf) {
+      if (orgSelfId) {
+        await db`UPDATE organizations SET token_balance = token_balance - 1 WHERE id = ${orgSelfId} AND token_balance > 0`
+      } else if (coachEmail) {
+        await db`UPDATE coach_credits SET credits = credits - 1 WHERE email = ${coachEmail} AND credits > 0`
+      }
     }
 
     return NextResponse.json({

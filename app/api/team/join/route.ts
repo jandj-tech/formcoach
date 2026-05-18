@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSessionFromRequest } from '@/lib/auth'
 import { db } from '@/lib/db'
+import { grantFreeOrgTokensIfEligible } from '@/lib/team-tokens'
 
 export async function POST(req: NextRequest) {
   try {
@@ -34,6 +35,9 @@ export async function POST(req: NextRequest) {
       ON CONFLICT (user_id, team_id) DO UPDATE
         SET first_name = ${firstNameClean}, last_name_initial = ${lastInitialClean}
     `
+
+    // Grant free token to all eligible org team members (fires when team hits 8)
+    await grantFreeOrgTokensIfEligible(team.id)
 
     return NextResponse.json({ success: true, teamName: team.name })
   } catch (err) {

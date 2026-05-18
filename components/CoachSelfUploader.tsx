@@ -24,7 +24,7 @@ export default function CoachSelfUploader({
             {credits} analysis credit{credits !== 1 ? 's' : ''} remaining
           </p>
           <p className="text-xs text-gray-500 mt-0.5">
-            {initiated ? '$1.49 per analysis.' : '$2.79 per analysis until your team is initiated.'}
+            {initiated ? '$1.49 per analysis.' : '$2.79 per analysis until your team has 8+ players.'}
           </p>
         </div>
         <BuySelfCreditsButton initiated={initiated} />

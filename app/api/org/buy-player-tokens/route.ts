@@ -26,8 +26,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'teamId is required' }, { status: 400 })
     }
 
-    // The team must belong to this org. Tokens are $1.49 once it's initiated,
-    // $2.79 before.
+    // The team must belong to this org. Tokens are $1.49 once it has 8+
+    // players, $2.79 before.
     const [team] = (await db`
       SELECT id FROM teams WHERE id = ${teamId} AND organization_id = ${session.orgId}
     `) as unknown as [{ id: string } | undefined]

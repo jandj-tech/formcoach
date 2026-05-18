@@ -1,6 +1,5 @@
-import { redirect } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import { db } from '@/lib/db'
-import { getOrgSession } from '@/lib/org-auth'
 
 interface Props {
   params: Promise<{ enrollmentId: string }>
@@ -8,8 +7,6 @@ interface Props {
 
 export default async function CertificatePage({ params }: Props) {
   const { enrollmentId } = await params
-  const session = await getOrgSession()
-  if (!session) redirect('/org/login')
 
   const [row] = await db`
     SELECT
@@ -21,11 +18,10 @@ export default async function CertificatePage({ params }: Props) {
     JOIN org_class_packages p ON p.id = e.package_id
     JOIN organizations o ON o.id = p.org_id
     WHERE e.id = ${enrollmentId}
-      AND p.org_id = ${session.orgId}
       AND e.final_submission_id IS NOT NULL
   ` as unknown as [{ id: string; first_name: string | null; last_name_initial: string | null; first_score: number | null; display_final_score: number | null; final_score: number | null; is_first_class: boolean; certificate_issued_at: string | null; org_name: string } | undefined]
 
-  if (!row) redirect('/org/dashboard')
+  if (!row) notFound()
 
   const firstName = row.first_name || 'Player'
   const lastName = row.last_name_initial ? ` ${row.last_name_initial}.` : ''

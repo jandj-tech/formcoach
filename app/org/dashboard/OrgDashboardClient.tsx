@@ -10,6 +10,7 @@ import PoolAssignPanel from '@/components/PoolAssignPanel'
 import TokenBalances from '@/components/TokenBalances'
 import InlineEdit from '@/components/InlineEdit'
 import LeaderboardTable, { type LeaderboardRow } from '@/components/LeaderboardTable'
+import SortMenu, { type SortOption } from '@/components/SortMenu'
 import PlayerShotList, { type Shot } from '@/components/PlayerShotList'
 import PrintButton from '@/components/PrintButton'
 import { CLASS_MIN_PLAYERS, CLASS_BULK_THRESHOLD, classPriceCents } from '@/lib/org-class-pricing'
@@ -80,6 +81,14 @@ interface Props {
 
 type DestMode = 'all' | 'specific' | 'coach'
 
+type PlayerSortMode = 'name' | 'score-desc' | 'score-asc'
+
+const PLAYER_SORT_OPTIONS: SortOption<PlayerSortMode>[] = [
+  { value: 'name', label: 'Name (A–Z)' },
+  { value: 'score-desc', label: 'Highest score' },
+  { value: 'score-asc', label: 'Lowest score' },
+]
+
 export default function OrgDashboardClient({ teams, orgName, classPackages, myUploads }: Props) {
   const router = useRouter()
   const [expanded, setExpanded] = useState<string | null>(null)
@@ -94,6 +103,8 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   const [deletingTeam, setDeletingTeam] = useState<string | null>(null)
   const [showMyUploads, setShowMyUploads] = useState(false)
   const [showAllPlayers, setShowAllPlayers] = useState(false)
+  // Per-team sort mode for the team's player roster.
+  const [playerSort, setPlayerSort] = useState<Record<string, PlayerSortMode>>({})
   // Team id whose leaderboard popup is open (for the full view + print).
   const [teamLbModal, setTeamLbModal] = useState<string | null>(null)
   // Email draft outreach
@@ -287,6 +298,26 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
       return `${m.first_name}${m.last_name_initial ? ' ' + m.last_name_initial + '.' : ''}`
     }
     return m.email
+  }
+
+  // Returns the team's members in the chosen sort order. A member's score is
+  // their best score from the team leaderboard; members who haven't uploaded a
+  // shot have no score and always sort to the bottom.
+  function sortedMembers(team: TeamData): Member[] {
+    const mode = playerSort[team.id] ?? 'name'
+    const scoreOf = (m: Member): number | null => {
+      const row = team.leaderboard.find(r => r.kind === 'member' && r.id === m.id)
+      return row ? Number(row.best_score) : null
+    }
+    return [...team.members].sort((a, b) => {
+      if (mode === 'name') return memberDisplayName(a).localeCompare(memberDisplayName(b))
+      const sa = scoreOf(a)
+      const sb = scoreOf(b)
+      if (sa === null && sb === null) return memberDisplayName(a).localeCompare(memberDisplayName(b))
+      if (sa === null) return 1
+      if (sb === null) return -1
+      return mode === 'score-desc' ? sb - sa : sa - sb
+    })
   }
 
   async function handleBuy(team: TeamData) {
@@ -972,15 +1003,24 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                       </div>
                     </div>
                     <div>
-                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                        Players ({team.members.length})
-                      </p>
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                          Players ({team.members.length})
+                        </p>
+                        {team.members.length > 1 && (
+                          <SortMenu
+                            value={playerSort[team.id] ?? 'name'}
+                            options={PLAYER_SORT_OPTIONS}
+                            onChange={v => setPlayerSort(s => ({ ...s, [team.id]: v }))}
+                          />
+                        )}
+                      </div>
                       {team.members.length === 0 ? (
                         <p className="text-sm text-gray-400 mt-0.5">No players have joined yet.</p>
                       ) : (
                         <>
                           <div className="mt-1 border border-gray-100 rounded-xl divide-y divide-gray-100">
-                            {team.members.map(m => (
+                            {sortedMembers(team).map(m => (
                               <div key={m.id} className="flex items-center justify-between gap-3 px-3 py-2">
                                 <div className="flex items-center gap-2 min-w-0">
                                   <input

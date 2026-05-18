@@ -15,6 +15,7 @@ type PlayerType = 'child' | 'recreational' | 'college_pro' | 'nba_bad_form' | 'n
 
 interface AnalysisResult {
   overall_score: number
+  shot_detected: boolean
   player_assessment: {
     player_type: PlayerType
     player_name: string | null
@@ -112,6 +113,8 @@ ${feedbackText}
 
 HOW TO SCORE:
 
+STEP 0 — Before scoring anything, confirm these frames actually show a real shot being taken (see SHOT DETECTION below). If they do not, set shot_detected to false and do not score the criteria — producing a score for a clip that contains no shot is never acceptable.
+
 Use the sub-criteria breakdown in each criterion's grading guide. Score each sub-criterion individually, then calculate using the formula shown.
 
 BURDEN OF PROOF — deductions require evidence of a visible flaw: You need to clearly see something wrong to deduct points. Not being able to perfectly confirm something is correct is NOT a flaw. Default to full credit; only deduct when you can describe the specific flaw you observed.
@@ -131,6 +134,8 @@ THUMB — MANDATORY NULL CONDITION: Return null for the "Thumb is Spread Wide" c
 WITHIN A SCORED CRITERION — VISIBILITY IS NEVER A DEDUCTION REASON: Once you decide to score a criterion (not null), only clearly visible flaws count. The following phrases are FORBIDDEN as justification for any deduction — if you find yourself writing them, change the score to 10 for that criterion: "partially visible," "hard to confirm," "limited at this distance," "cannot fully see," "could not clearly confirm," "may be slightly off," "not fully clear," "difficult to assess," "angle makes it hard," "thumb not fully visible," "cannot confirm thumb," "grip hard to see." If your reasoning contains any of these, you are violating the rules.
 
 FOLLOW-THROUGH — ARMS DROPPING DOWN IS NOT A FLAW: After the ball leaves the hand, it is completely normal for both arms to drop down and move apart from each other as the player returns to rest. This must NEVER be scored as a flaw on any follow-through, guide hand, or one-hand-release criterion. Only deduct for those criteria if there is a visible INWARD snap or lateral flick AT the moment of release — not for the natural lowering of both arms afterward.
+
+GUIDE HAND — SCRUTINIZE EVERY RELEASE: The guide (off) hand must leave the ball completely BEFORE the ball leaves the shooting hand, and must add zero force. Examine the release and follow-through frames specifically for the guide hand. A two-hand release — where the guide hand is still on the ball at release, visibly pushes or steers it, or drives upward through the shot so both hands finish high and extended together — is a real and common flaw, and is NOT the same as the natural post-shot arm drop described above. When you see a genuine two-hand release or guide-hand flick, score "Shooting Through Guide Hand / One Hand Release" and "Guide Hand Follow Through" 4 or below and set followthrough_flick_to_side. Do not overlook this — it is one of the most score-relevant flaws, and it is easy to miss from front or elevated camera angles where the two hands overlap.
 
 CAMERA ANGLE — ELBOW ASSESSMENT: When the video is filmed from the side (player facing left or right), a side view can make the elbow appear further out than it really is. Use your best judgment — if the arm forms a clear L-shape with the elbow tucked under the ball even from the side view, give full credit. Only penalize or flag elbow_severely_out if the elbow looks clearly wrong even accounting for the side angle — do not assume it is out simply because the angle is imperfect.
 
@@ -162,6 +167,7 @@ CRITICAL FLAGS — these operate on their own detection standard, independent of
   • GUIDE HAND flick: at release, the guide hand snaps or flicks toward the shooting hand side (inward, across the body) rather than cleanly separating straight off.
   • SHOOTING HAND flick: at the exact release moment, the shooting hand briefly flicks toward the guide hand side (or away from the basket), then quickly self-corrects back to a normal-looking follow-through. The FINAL follow-through position may look correct — this does NOT mean there was no flick. The flick happens fast at release and is usually unconscious; players often don't know they do it.
   SIDE-ANGLE TELL: when filmed from the side, both hands flicking toward each other at release is visible as the arms/hands moving inward toward each other — they may even appear to cross or overlap momentarily at the release point. This crossing or convergence of the two hands at release is a strong indicator that both the shooting hand and guide hand are flicking.
+  OVERHEAD / HIGH-ANGLE TELL: when filmed from above or a high / elevated broadcast angle, a clean one-hand release shows the shooting hand finishing high and ALONE, with the guide hand already peeled away — lower, relaxed, or off to the side. A guide-hand flick or two-hand release instead shows BOTH hands finishing high, extended and spread together through the follow-through, because the guide hand never cleanly separated from the ball before release. If both hands stay up, open and active as the ball leaves and after it is gone, treat this as a guide-hand flick.
   WHAT IS NOT A FLICK: hands/arms moving DOWN or AWAY from each other (spreading apart, returning to rest) after release is normal and must NEVER be flagged. Only flag when the hands move TOWARD each other — converging, closing the gap, or crossing — at the moment of release. Divergence = fine. Convergence = flick.
   TIMING: the flick must occur within approximately 0.3 seconds of the ball leaving the hand. Arms drifting or dropping to the sides after that is normal post-shot follow-through, not a flick. Only flag lateral movement that happens immediately at or just after release — not the natural lowering of the arms after the shot is complete.
   SEVERITY — set this flag ONLY for significant flicks where the hands clearly and substantially converge toward each other, nearly or actually crossing. When true, apply caps ONLY to the hand that flicked:
@@ -177,8 +183,15 @@ NOTE: These flags are the most important flaws to detect. Missing them is a bigg
 
 For overall_score: average only scored criteria (exclude nulls).
 
+SHOT DETECTION — do these specific frames actually show a shot being taken? This is the FIRST thing to decide, before any scoring. Look at the frames as a sequence. To be analyzable, the frames must actually capture the shooting motion of ONE player: gathering the ball, lifting it to a set point, rising or jumping, releasing it, and following through.
+
+Set "shot_detected" to FALSE whenever the frames do NOT clearly show that shooting motion — for example: players running, walking off or up the court, dribbling, passing, playing defense, standing around, or celebrating; the aftermath of a shot with no actual release visible; a wide or TV-broadcast view where the action is far away or there are many players; or any clip where you cannot clearly watch one player take a shot from set-up through release. A person simply being on a basketball court, or simply being a basketball player, is NOT a shot — you must actually SEE the shooting motion happen in these frames.
+
+Set "shot_detected" to TRUE only when you can clearly see a real shot being taken in these frames. If you cannot, you MUST set it false — never produce a score for a clip that does not contain a visible shot. A score on a non-shot clip is a serious error; when the shooting motion is not clearly visible, set false.
+
 Return ONLY valid JSON, no other text:
 {
+  "shot_detected": <true|false — false ONLY if there is clearly no analyzable shot>,
   "overall_score": <average of scored criteria, 1-10, one decimal>,
   "player_assessment": {
     "player_type": "<child|recreational|college_pro|nba_bad_form|nba_decent|nba_elite>",
@@ -235,6 +248,13 @@ Return ONLY valid JSON, no other text:
 
   const result = JSON.parse(jsonMatch[0]) as AnalysisResult
 
+  // Default to true so a malformed response never wrongly rejects a real shot.
+  result.shot_detected = result.shot_detected ?? true
+  // No analyzable shot — return now; the caller discards it without charging.
+  if (result.shot_detected === false) {
+    return result
+  }
+
   // Ensure new flag fields default to false if missing from response
   result.critical_flags.arc_too_flat = result.critical_flags.arc_too_flat ?? false
 
@@ -271,6 +291,16 @@ Return ONLY valid JSON, no other text:
     if (!hasRimOrNetContact) {
       arcCriterion.score = null
     }
+  }
+
+  // If the AI could not assess at least half the criteria, the video was not
+  // truly analyzable — too far away, too cluttered, or no clear single shooter.
+  // Flag it as "no shot" so the caller cancels the analysis without charging,
+  // rather than publishing a score derived from only a handful of criteria.
+  const assessableCount = result.criteria.filter((c) => c.score !== null).length
+  if (assessableCount < activeCriteria.length / 2) {
+    result.shot_detected = false
+    return result
   }
 
   // Recalculate overall using weighted average (weight column from DB)
@@ -323,12 +353,12 @@ Return ONLY valid JSON, no other text:
   if (pt === 'child') {
     multiplier = 0.9
   } else if (pt === 'college_pro') {
-    multiplier = 1.1
+    multiplier = 1.025
   } else if (pt === 'nba_decent') {
-    multiplier = 1.1
+    multiplier = 1.025
     if (!flagsTriggered) minimumScore = 8.5
   } else if (pt === 'nba_elite') {
-    multiplier = 1.1
+    multiplier = 1.025
     if (!flagsTriggered) minimumScore = 9.5
   }
   // nba_bad_form and recreational: no adjustment
@@ -338,6 +368,19 @@ Return ONLY valid JSON, no other text:
     result.overall_score = Math.max(result.overall_score, minimumScore)
   }
   result.overall_score = Math.min(10, result.overall_score)
+
+  // The overall score can never exceed the player's best individual criterion.
+  // A headline number sitting above every sub-score reads as a bug to users —
+  // this clamps it after every bonus, floor, and cap above has been applied.
+  const scoredCriterionValues = result.criteria
+    .filter((c) => c.score !== null)
+    .map((c) => c.score as number)
+  if (scoredCriterionValues.length > 0) {
+    result.overall_score = Math.min(
+      result.overall_score,
+      Math.max(...scoredCriterionValues),
+    )
+  }
 
   return result
 }

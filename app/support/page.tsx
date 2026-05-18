@@ -53,7 +53,7 @@ export default function SupportPage() {
         <div className="flex flex-col items-center px-6 py-12 space-y-6">
           <div className="w-full max-w-3xl space-y-4">
             <h2 className="text-2xl font-black text-black text-center">Frequently Asked Questions</h2>
-            <details className="bg-white border border-gray-200 rounded-2xl group" open>
+            <details id="filming" className="bg-white border border-gray-200 rounded-2xl group" open>
               <summary className="flex items-center justify-between gap-3 px-5 py-4 cursor-pointer list-none font-bold text-black">
                 What angle should I film from to get the best results?
                 <span className="text-gray-400 text-lg group-open:rotate-180 transition-transform">›</span>

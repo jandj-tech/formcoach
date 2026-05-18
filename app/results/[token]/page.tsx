@@ -123,6 +123,22 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
             )}
           </div>
         )}
+
+        {/* Filming tips — the same guidance as the support FAQ, shown here so
+            players can improve their next upload straight from their results. */}
+        <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6 sm:p-8">
+          <h2 className="text-black font-black text-lg sm:text-xl mb-2">
+            How to get the best results
+          </h2>
+          <p className="text-zinc-700 text-sm leading-relaxed">
+            For the most accurate analysis, film from under or near the net — either directly
+            behind the basket or slightly to the side, at an angle where the shooter&apos;s elbow,
+            arms, and hands are all clearly visible throughout the shot. This gives the AI a clear
+            view of arm mechanics, elbow alignment, and release. If you also want arc to be
+            evaluated, choose an angle where the ball&apos;s flight path is visible. Avoid filming
+            directly face-on, as key form details are hidden from that perspective.
+          </p>
+        </div>
       </div>
     </main>
   )

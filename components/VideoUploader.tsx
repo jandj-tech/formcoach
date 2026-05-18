@@ -11,6 +11,77 @@ const REGION_PAD = 0.40     // ±40% of video around rough center
 const REGION_MIN_S = 5.0    // minimum dense region width — covers full short videos
 const SEEK_TIMEOUT_MS = 4000  // max ms to wait for a seek before skipping
 
+// True if the canvas holds an essentially solid-black image — the signature of
+// a frame the browser handed back before its video decoder was ready (common
+// on iOS/Android until the <video> has been played once).
+function isBlackFrame(ctx: CanvasRenderingContext2D, w: number, h: number): boolean {
+  const { data } = ctx.getImageData(0, 0, w, h)
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i] > 14 || data[i + 1] > 14 || data[i + 2] > 14) return false
+  }
+  return true
+}
+
+// Vercel rejects request bodies larger than 4.5MB with HTTP 413. The analyze
+// upload carries every extracted frame, so the batch is re-encoded here — in
+// escalating steps — until it fits comfortably under that limit.
+const UPLOAD_BUDGET_BYTES = 3.8 * 1024 * 1024
+
+function totalBytes(blobs: Blob[]): number {
+  return blobs.reduce((sum, b) => sum + b.size, 0)
+}
+
+async function reencodeFrames(
+  frames: Blob[],
+  quality: number,
+  scale: number,
+): Promise<Blob[]> {
+  const canvas = document.createElement('canvas')
+  const ctx = canvas.getContext('2d')!
+  const out: Blob[] = []
+  for (const frame of frames) {
+    const bitmap = await createImageBitmap(frame)
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale))
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale))
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+    bitmap.close()
+    out.push(
+      await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob(
+          (b) => (b ? resolve(b) : reject(new Error('Frame re-encode failed'))),
+          'image/jpeg',
+          quality,
+        )
+      }),
+    )
+  }
+  return out
+}
+
+// Returns a frame batch guaranteed to fit under UPLOAD_BUDGET_BYTES (so the
+// analyze upload can never trigger an HTTP 413), plus whether the batch had to
+// be compressed — `reduced: true` means analysis quality will be lower.
+async function fitFramesToBudget(
+  frames: Blob[],
+): Promise<{ frames: Blob[]; reduced: boolean }> {
+  if (totalBytes(frames) <= UPLOAD_BUDGET_BYTES) return { frames, reduced: false }
+  // Each step re-encodes from the original frames (no compounding artifacts),
+  // dropping quality first and then resolution until the batch is small enough.
+  const steps = [
+    { quality: 0.7, scale: 1 },
+    { quality: 0.55, scale: 1 },
+    { quality: 0.5, scale: 0.8 },
+    { quality: 0.42, scale: 0.65 },
+    { quality: 0.35, scale: 0.5 },
+  ]
+  let current = frames
+  for (const step of steps) {
+    current = await reencodeFrames(frames, step.quality, step.scale)
+    if (totalBytes(current) <= UPLOAD_BUDGET_BYTES) break
+  }
+  return { frames: current, reduced: true }
+}
+
 interface SessionUser { id: string; email: string; tokens: number; subscribed: boolean; onTeam: boolean }
 
 interface TeamMode {
@@ -22,10 +93,12 @@ interface TeamMode {
 
 export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { teamMode?: TeamMode; coachSelf?: boolean; coachCredits?: number } = {}) {
   const [isDragging, setIsDragging] = useState(false)
-  const [status, setStatus] = useState<'idle' | 'extracting' | 'uploading' | 'error'>('idle')
+  const [status, setStatus] = useState<'idle' | 'extracting' | 'uploading' | 'quality-warning' | 'error'>('idle')
   const [progress, setProgress] = useState(0)
   const [previews, setPreviews] = useState<string[]>([])
   const [errorMsg, setErrorMsg] = useState('')
+  // Set when the server reports the video contained no analyzable shot.
+  const [noShot, setNoShot] = useState(false)
   const [videoUploadStatus, setVideoUploadStatus] = useState<
     { state: 'idle' } | { state: 'uploading' } | { state: 'ok'; url: string } | { state: 'failed'; error: string }
   >({ state: 'idle' })
@@ -33,6 +106,8 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
   const inputRef = useRef<HTMLInputElement>(null)
   const cancelledRef = useRef(false)
   const abortRef = useRef<AbortController | null>(null)
+  // Resolves the quality-warning prompt: true = continue, false = re-record.
+  const confirmResolverRef = useRef<((proceed: boolean) => void) | null>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -62,17 +137,71 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
       const video = document.createElement('video')
       video.preload = 'auto'
       video.muted = true
+      video.defaultMuted = true
+      video.playsInline = true
+      // iOS Safari only decodes frames into a <canvas> when the <video> is
+      // attached to the DOM and carries these attributes — otherwise every
+      // drawImage() returns solid black. Keep it on the page but invisible.
+      video.setAttribute('playsinline', '')
+      video.setAttribute('webkit-playsinline', '')
+      video.setAttribute('muted', '')
+      video.style.cssText =
+        'position:fixed;left:-10000px;top:0;width:1px;height:1px;opacity:0;pointer-events:none;'
+      document.body.appendChild(video)
+
       const url = URL.createObjectURL(file)
-      video.src = url
+
+      const cleanup = () => {
+        URL.revokeObjectURL(url)
+        video.removeAttribute('src')
+        try { video.load() } catch {}
+        video.remove()
+      }
+
+      video.onerror = () => {
+        cleanup()
+        reject(new Error('Failed to load video'))
+      }
 
       video.onloadedmetadata = async () => {
+       try {
         const duration = video.duration
+        if (!duration || !isFinite(duration) || !video.videoWidth || !video.videoHeight) {
+          cleanup()
+          reject(new Error('Could not read this video. Please try a different file.'))
+          return
+        }
 
         // --- Phase 1a: Extract tiny rough frames for shot location ---
+        // Size the detection canvas to the video's true aspect ratio. Forcing
+        // a portrait or square clip into a fixed 16:9 canvas squashes the
+        // player and wrecks the AI's ability to locate the shot.
         const roughCanvas = document.createElement('canvas')
-        roughCanvas.width = 160
-        roughCanvas.height = 90
-        const roughCtx = roughCanvas.getContext('2d')!
+        const roughScale = Math.min(1, 160 / Math.max(video.videoWidth, video.videoHeight))
+        const roughW = Math.max(1, Math.round(video.videoWidth * roughScale))
+        const roughH = Math.max(1, Math.round(video.videoHeight * roughScale))
+        roughCanvas.width = roughW
+        roughCanvas.height = roughH
+        const roughCtx = roughCanvas.getContext('2d', { willReadFrequently: true })!
+
+        // Wake the video decoder. Mobile browsers (iOS especially) won't paint
+        // frames to a canvas until the video has actually played; muted
+        // playback is allowed without a user gesture. Play a beat, pause, and
+        // verify a real frame comes back — retry the nudge if it's still black.
+        let decoderReady = false
+        const probeTime = Math.min(duration * 0.5, Math.max(0, duration - 0.1))
+        for (let attempt = 0; attempt < 3 && !decoderReady; attempt++) {
+          try {
+            await video.play()
+            await new Promise<void>(r => setTimeout(r, 140))
+            video.pause()
+          } catch {
+            // play() can be refused; extraction may still work on desktop.
+          }
+          await seekTo(video, probeTime)
+          roughCtx.drawImage(video, 0, 0, roughW, roughH)
+          decoderReady = !isBlackFrame(roughCtx, roughW, roughH)
+        }
 
         const roughTimestamps = Array.from({ length: ROUGH_COUNT }, (_, i) =>
           (duration / (ROUGH_COUNT + 1)) * (i + 1)
@@ -81,7 +210,7 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
         const roughBase64: string[] = []
         for (let i = 0; i < ROUGH_COUNT; i++) {
           await seekTo(video, roughTimestamps[i])
-          roughCtx.drawImage(video, 0, 0, 160, 90)
+          roughCtx.drawImage(video, 0, 0, roughW, roughH)
           roughBase64.push(roughCanvas.toDataURL('image/jpeg', 0.6).split(',')[1])
           setProgress(Math.round(((i + 1) / ROUGH_COUNT) * 10))
         }
@@ -104,8 +233,11 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
 
         // --- Phase 1c: Extract dense probe frames around rough region ---
         const probeCanvas = document.createElement('canvas')
-        probeCanvas.width = 320
-        probeCanvas.height = 180
+        const probeScale = Math.min(1, 320 / Math.max(video.videoWidth, video.videoHeight))
+        const probeW = Math.max(1, Math.round(video.videoWidth * probeScale))
+        const probeH = Math.max(1, Math.round(video.videoHeight * probeScale))
+        probeCanvas.width = probeW
+        probeCanvas.height = probeH
         const probeCtx = probeCanvas.getContext('2d')!
 
         // Dense region: roughCenter ± 40%, minimum 5s total
@@ -122,7 +254,7 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
         const probeBase64: string[] = []
         for (let i = 0; i < PROBE_COUNT; i++) {
           await seekTo(video, probeTimestamps[i])
-          probeCtx.drawImage(video, 0, 0, 320, 180)
+          probeCtx.drawImage(video, 0, 0, probeW, probeH)
           probeBase64.push(probeCanvas.toDataURL('image/jpeg', 0.7).split(',')[1])
           setProgress(Math.round(20 + ((i + 1) / PROBE_COUNT) * 15))
         }
@@ -157,16 +289,26 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
         const blobs: Blob[] = []
         const thumbs: string[] = []
 
+        // Cap frame resolution. Full-res 1080p/4K phone frames produce a
+        // multipart upload that blows past Vercel's 4.5MB request-body limit,
+        // which the user only sees as "something went wrong". 1280px on the
+        // long edge keeps ample detail for the AI while staying well under it.
+        const MAX_FRAME_DIM = 1280
+        const frameScale = Math.min(
+          1,
+          MAX_FRAME_DIM / Math.max(video.videoWidth, video.videoHeight),
+        )
+        mainCanvas.width = Math.round(video.videoWidth * frameScale)
+        mainCanvas.height = Math.round(video.videoHeight * frameScale)
+
         const timestamps = Array.from({ length: FRAME_COUNT }, (_, i) =>
           shotStart + ((shotEnd - shotStart) / (FRAME_COUNT + 1)) * (i + 1)
         )
 
         for (let i = 0; i < timestamps.length; i++) {
-          if (cancelledRef.current) { URL.revokeObjectURL(url); resolve(blobs); return }
+          if (cancelledRef.current) { cleanup(); resolve(blobs); return }
           await seekTo(video, timestamps[i])
-          mainCanvas.width = video.videoWidth
-          mainCanvas.height = video.videoHeight
-          ctx.drawImage(video, 0, 0)
+          ctx.drawImage(video, 0, 0, mainCanvas.width, mainCanvas.height)
           await new Promise<void>((res) => {
             mainCanvas.toBlob(
               (blob) => {
@@ -178,20 +320,21 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
                 res()
               },
               'image/jpeg',
-              0.85
+              0.8
             )
           })
         }
 
         setPreviews(thumbs)
-        URL.revokeObjectURL(url)
+        cleanup()
         resolve(blobs)
+       } catch (err) {
+        cleanup()
+        reject(err instanceof Error ? err : new Error('Frame extraction failed'))
+       }
       }
 
-      video.onerror = () => {
-        URL.revokeObjectURL(url)
-        reject(new Error('Failed to load video'))
-      }
+      video.src = url
     })
   }, [])
 
@@ -207,6 +350,7 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
       }
 
       setErrorMsg('')
+      setNoShot(false)
       setStatus('extracting')
       setProgress(0)
       cancelledRef.current = false
@@ -214,8 +358,32 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
       abortRef.current = controller
 
       try {
-        const frames = await extractFrames(file)
+        const rawFrames = await extractFrames(file)
         if (cancelledRef.current) return
+
+        // Re-encode the frames if needed so the upload can never exceed
+        // Vercel's 4.5MB request limit (the cause of the HTTP 413 error).
+        const { frames, reduced } = await fitFramesToBudget(rawFrames)
+        if (cancelledRef.current) return
+
+        // The video was large enough to need compression — warn the user that
+        // analysis quality will suffer and let them continue or re-record.
+        if (reduced) {
+          setStatus('quality-warning')
+          const proceed = await new Promise<boolean>((resolve) => {
+            confirmResolverRef.current = resolve
+          })
+          confirmResolverRef.current = null
+          if (cancelledRef.current) return
+          if (!proceed) {
+            // User chose to re-record — nothing was uploaded or charged.
+            setStatus('idle')
+            setProgress(0)
+            setPreviews([])
+            if (inputRef.current) inputRef.current.value = ''
+            return
+          }
+        }
 
         setStatus('uploading')
         setProgress(60)
@@ -261,7 +429,16 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
 
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}))
-          throw new Error(errData.error || 'Analysis failed')
+          if (errData.error === 'no_shot') {
+            // No analyzable shot — not a failure, and nothing was charged.
+            setNoShot(true)
+            setStatus('idle')
+            setProgress(0)
+            setPreviews([])
+            return
+          }
+          // Surface the server's real error detail, not just the generic label.
+          throw new Error(errData.detail || errData.error || `Analysis failed (HTTP ${res.status})`)
         }
 
         const data = await res.json()
@@ -274,9 +451,13 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
         }
       } catch (err) {
         if (cancelledRef.current) return // user cancelled — state already reset
-        console.error(err)
+        console.error('[VideoUploader] upload failed:', err)
         setStatus('error')
-        setErrorMsg('Something went wrong. Please try again.')
+        // Show the actual reason so a failed upload is diagnosable, not a mystery.
+        const detail = err instanceof Error && err.message ? err.message : ''
+        setErrorMsg(
+          detail ? `Upload failed: ${detail}` : 'Something went wrong. Please try again.',
+        )
       }
     },
     [extractFrames, router]
@@ -308,6 +489,99 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
     setPreviews([])
     setVideoUploadStatus({ state: 'idle' })
     setErrorMsg('')
+  }
+
+  // Quality-warning prompt actions — resolve the promise handleFile awaits.
+  function continueAnyway() {
+    confirmResolverRef.current?.(true)
+  }
+  function cancelForRedo() {
+    confirmResolverRef.current?.(false)
+  }
+
+  if (noShot) {
+    return (
+      <div className="w-full max-w-lg mx-auto text-center space-y-5 px-2">
+        <div className="text-5xl">🚫</div>
+        <div>
+          <p className="text-black font-bold text-lg mb-2">
+            We couldn&apos;t analyze a shot in this video
+          </p>
+          <p className="text-gray-600 text-sm leading-relaxed">
+            The video wasn&apos;t analyzed and you were <strong>not charged</strong>. This happens
+            when the camera is too far away, there&apos;s too much going on (like a full game
+            clip), or no single shooter is clearly visible.
+          </p>
+        </div>
+        <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 text-left">
+          <p className="text-sm font-bold text-black mb-1.5">For a video that can be analyzed:</p>
+          <ul className="text-sm text-gray-600 space-y-1 list-disc pl-5">
+            <li>Show <strong>one person</strong> taking the shot</li>
+            <li>Film <strong>reasonably close</strong>, from the side</li>
+            <li>Keep it to <strong>one shot</strong> — not a full game</li>
+          </ul>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <a
+            href="/support#filming"
+            className="flex-1 bg-gray-100 hover:bg-gray-200 text-black font-bold py-3 rounded-xl transition-colors flex items-center justify-center"
+          >
+            How to take a proper video
+          </a>
+          <button
+            type="button"
+            onClick={() => {
+              setNoShot(false)
+              if (inputRef.current) inputRef.current.value = ''
+            }}
+            className="flex-1 bg-orange-500 hover:bg-orange-400 text-white font-bold py-3 rounded-xl transition-colors"
+          >
+            Try another video
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (status === 'quality-warning') {
+    return (
+      <div className="w-full max-w-lg mx-auto text-center space-y-5 px-2">
+        <div className="text-5xl">⚠️</div>
+        <div>
+          <p className="text-black font-bold text-lg mb-2">
+            Your video is large — analysis quality may suffer
+          </p>
+          <p className="text-gray-600 text-sm leading-relaxed">
+            Your video was big enough that we had to compress the frames to analyze it. The
+            results will still work, but they may be less accurate than normal.
+          </p>
+        </div>
+        <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 text-left">
+          <p className="text-sm font-bold text-black mb-1.5">For the most accurate analysis:</p>
+          <ul className="text-sm text-gray-600 space-y-1 list-disc pl-5">
+            <li>Record a <strong>short clip</strong> — just the shot, a few seconds long</li>
+            <li>Film <strong>one shot at a time</strong></li>
+            <li>Keep the camera <strong>close to the shooter</strong>, filmed from the side</li>
+          </ul>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <button
+            type="button"
+            onClick={cancelForRedo}
+            className="flex-1 bg-gray-100 hover:bg-gray-200 text-black font-bold py-3 rounded-xl transition-colors"
+          >
+            Cancel &amp; re-record
+          </button>
+          <button
+            type="button"
+            onClick={continueAnyway}
+            className="flex-1 bg-orange-500 hover:bg-orange-400 text-white font-bold py-3 rounded-xl transition-colors"
+          >
+            Continue anyway
+          </button>
+        </div>
+      </div>
+    )
   }
 
   if (status === 'extracting' || status === 'uploading') {

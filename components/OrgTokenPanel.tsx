@@ -224,6 +224,7 @@ export default function OrgTokenPanel({
                   min={1}
                   value={buyQty}
                   onChange={e => setBuyQty(Math.max(1, parseInt(e.target.value) || 1))}
+                  onFocus={e => e.target.select()}
                   className="w-20 border border-gray-300 rounded-xl px-2 py-2.5 text-center text-black text-sm font-bold focus:outline-none focus:border-orange-500"
                 />
               </div>

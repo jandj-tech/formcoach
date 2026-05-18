@@ -202,45 +202,14 @@ export default function OrgTokenPanel({
               </div>
             )}
 
-            {/* Quantity selector */}
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">How many tokens?</p>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  min={1}
-                  value={buyQty}
-                  onChange={e => setBuyQty(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="w-24 border border-gray-300 rounded-xl px-3 py-2.5 text-center text-black text-sm font-bold focus:outline-none focus:border-orange-500"
-                />
-                {[1, 5, 10, 25, 50, 100].map(q => (
-                  <button
-                    key={q}
-                    type="button"
-                    onClick={() => setBuyQty(q)}
-                    className={`px-3 py-2.5 rounded-xl text-sm font-bold border transition-colors ${
-                      buyQty === q
-                        ? 'bg-orange-500 text-white border-orange-500'
-                        : 'bg-white text-black border-gray-300 hover:border-orange-400'
-                    }`}
-                  >
-                    {q}
-                  </button>
-                ))}
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">Custom amount</span>
-                <input
-                  type="number"
-                  min={1}
-                  max={1000}
-                  value={buyQty}
-                  onChange={e => setBuyQty(Math.max(1, Math.min(1000, parseInt(e.target.value) || 1)))}
-                  aria-label="Custom token amount"
-                  className="w-24 border border-gray-300 rounded-lg px-2 py-1.5 text-center text-black text-sm focus:outline-none focus:border-orange-500"
-                />
-              </div>
-            </div>
+            {/* Quantity input */}
+            <input
+              type="number"
+              min={1}
+              value={buyQty}
+              onChange={e => setBuyQty(Math.max(1, parseInt(e.target.value) || 1))}
+              className="w-32 border border-gray-300 rounded-xl px-3 py-2.5 text-center text-black text-sm font-bold focus:outline-none focus:border-orange-500"
+            />
 
             <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 flex items-center justify-between">
               <p className="text-sm text-gray-600">

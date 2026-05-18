@@ -632,6 +632,61 @@ export async function sendShippingEmail(
   console.log('[email] shipping email sent:', data?.id, 'to:', to)
 }
 
+export async function sendOrgApprovalEmail(
+  to: string,
+  orgName: string,
+  signupToken: string,
+) {
+  const signupLink = `${BASE_URL}/org/signup?token=${signupToken}`
+  const { data, error } = await getResend().emails.send({
+    from: FROM,
+    to,
+    replyTo: 'learnhoops8@gmail.com',
+    subject: 'Your LearnHoops organization application has been approved',
+    text: [
+      `Hi,`,
+      ``,
+      `Your application for "${orgName}" has been approved.`,
+      ``,
+      `Use the link below to set up your organization account:`,
+      ``,
+      signupLink,
+      ``,
+      `This link is unique to your application — please don't share it.`,
+      ``,
+      `Once you're set up you'll be able to create teams, manage players, and purchase class packages.`,
+      ``,
+      `— The LearnHoops Team`,
+    ].join('\n'),
+    html: `
+      <div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
+        <div style="background:#000;padding:24px 32px;border-radius:12px 12px 0 0;">
+          <span style="color:#fff;font-size:22px;font-weight:900;letter-spacing:-0.5px;">LearnHoops</span>
+        </div>
+        <div style="background:#fff;border:1px solid #e5e7eb;border-top:none;padding:32px;border-radius:0 0 12px 12px;">
+          <h2 style="font-size:20px;font-weight:900;color:#000;margin:0 0 12px;">Application approved 🎉</h2>
+          <p style="color:#374151;font-size:15px;margin:0 0 8px;">Hi,</p>
+          <p style="color:#374151;font-size:15px;margin:0 0 20px;">
+            Your application for <strong>${orgName}</strong> has been approved.
+            Use the button below to set up your organization account.
+          </p>
+          <a href="${signupLink}" style="display:inline-block;background:#f97316;color:#fff;font-weight:900;font-size:15px;padding:14px 28px;border-radius:10px;text-decoration:none;margin-bottom:20px;">
+            Set up your account →
+          </a>
+          <p style="color:#9ca3af;font-size:12px;margin:0;">
+            This link is unique to your application. If you didn't apply, you can ignore this email.
+          </p>
+        </div>
+      </div>
+    `,
+  })
+  if (error) {
+    console.error('[email] org approval email failed:', error)
+    throw new Error(`Org approval email failed: ${error.message}`)
+  }
+  console.log('[email] org approval email sent:', data?.id, 'to:', to)
+}
+
 export async function sendNextMarketingEmail(
   to: string,
   emailsSentSoFar: number

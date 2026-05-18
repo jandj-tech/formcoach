@@ -14,12 +14,24 @@ function generateAccessCode(): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const { name, email, password } = await req.json()
+    const { name, email, password, token } = await req.json()
     if (!name || !email || !password || password.length < 6) {
       return NextResponse.json({ error: 'Organization name, email, and password (6+ chars) required' }, { status: 400 })
     }
 
     const emailLower = email.toLowerCase().trim()
+
+    // Require a valid approval token
+    if (!token) {
+      return NextResponse.json({ error: 'Invalid or missing approval token.' }, { status: 403 })
+    }
+    const [application] = await db`
+      SELECT id FROM org_applications
+      WHERE signup_token = ${token} AND status = 'approved'
+    ` as unknown as [{ id: string } | undefined]
+    if (!application) {
+      return NextResponse.json({ error: 'This signup link is invalid or has already been used.' }, { status: 403 })
+    }
 
     const existing = await db`SELECT id FROM organizations WHERE admin_email = ${emailLower}`
     if (existing.length > 0) {
@@ -41,9 +53,12 @@ export async function POST(req: NextRequest) {
       RETURNING id, admin_email
     ` as unknown as [{ id: string; admin_email: string }]
 
-    const token = await signOrgSession({ orgId: org.id, adminEmail: org.admin_email })
+    // Mark the application as used so the token can't be reused
+    await db`UPDATE org_applications SET status = 'registered' WHERE signup_token = ${token}`
+
+    const sessionToken = await signOrgSession({ orgId: org.id, adminEmail: org.admin_email })
     const res = NextResponse.json({ success: true })
-    res.cookies.set(orgSessionCookieOptions(token))
+    res.cookies.set(orgSessionCookieOptions(sessionToken))
     return res
   } catch (err) {
     console.error('Org register error:', err)

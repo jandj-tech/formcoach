@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
     const state = await getTeamTokenState(teamId)
     const unitAmount = state?.initiated ? TEAM_TOKEN_PRICE_CENTS : REGULAR_ANALYSIS_PRICE_CENTS
     const qty = typeof quantity === 'number' ? Math.floor(quantity) : 1
-    if (![1, 5, 10].includes(qty)) {
+    if (qty < 1 || qty > 1000) {
       return NextResponse.json({ error: 'Invalid quantity' }, { status: 400 })
     }
 

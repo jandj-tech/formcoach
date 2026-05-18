@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Select at least one player' }, { status: 400 })
     }
     const qty = typeof quantity === 'number' ? Math.floor(quantity) : 1
-    if (![1, 5, 10].includes(qty)) {
+    if (qty < 1 || qty > 1000) {
       return NextResponse.json({ error: 'Invalid quantity' }, { status: 400 })
     }
 

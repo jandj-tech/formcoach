@@ -65,7 +65,7 @@ export default function BuyPlayerTokensButton({ players, teamCode }: Props) {
 
   return (
     <div className="border border-gray-200 rounded-2xl p-5 space-y-4">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         <span className="text-sm text-gray-600">Tokens per player</span>
         {[1, 5, 10].map(q => (
           <button
@@ -80,6 +80,15 @@ export default function BuyPlayerTokensButton({ players, teamCode }: Props) {
             {q}
           </button>
         ))}
+        <input
+          type="number"
+          min={1}
+          max={1000}
+          value={quantity}
+          onChange={e => setQuantity(Math.max(1, Math.min(1000, parseInt(e.target.value) || 1)))}
+          aria-label="Custom token amount"
+          className="w-20 border border-gray-300 rounded-lg px-2 py-1 text-center text-black text-sm focus:outline-none focus:border-orange-500"
+        />
       </div>
 
       <div className="space-y-1">

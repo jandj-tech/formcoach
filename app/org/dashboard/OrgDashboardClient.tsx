@@ -1181,7 +1181,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                   </div>
 
                   {/* Quantity picker */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm text-gray-600">
                       {mode === 'coach' ? 'Credits' : 'Tokens per player'}
                     </span>
@@ -1198,6 +1198,18 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                         {q}
                       </button>
                     ))}
+                    <input
+                      type="number"
+                      min={1}
+                      max={1000}
+                      value={qty}
+                      onChange={e => setQuantity(prev => ({
+                        ...prev,
+                        [team.id]: Math.max(1, Math.min(1000, parseInt(e.target.value) || 1)),
+                      }))}
+                      aria-label="Custom amount"
+                      className="w-20 border border-gray-300 rounded-lg px-2 py-1 text-center text-black text-sm focus:outline-none focus:border-orange-500"
+                    />
                   </div>
 
                   {/* Player list (specific mode) */}

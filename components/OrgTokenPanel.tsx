@@ -18,6 +18,8 @@ export interface OrgCoachOpt {
 export interface OrgTeamOpt {
   id: string
   name: string
+  coachName: string
+  ageGroup: string | null
 }
 
 export default function OrgTokenPanel({
@@ -173,7 +175,11 @@ export default function OrgTokenPanel({
                   onChange={e => { setAssignTeamId(e.target.value); setAssignRecipient('all') }}
                   className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-black bg-white focus:outline-none focus:border-orange-500"
                 >
-                  {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  {teams.map(t => (
+                    <option key={t.id} value={t.id}>
+                      {t.name} ({t.coachName}{t.ageGroup ? ' ' + t.ageGroup : ''})
+                    </option>
+                  ))}
                 </select>
                 <select
                   value={assignRecipient}

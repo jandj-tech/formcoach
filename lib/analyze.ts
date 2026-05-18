@@ -113,6 +113,8 @@ ${feedbackText}
 
 HOW TO SCORE:
 
+STEP 0 — Before scoring anything, confirm these frames actually show a real shot being taken (see SHOT DETECTION below). If they do not, set shot_detected to false and do not score the criteria — producing a score for a clip that contains no shot is never acceptable.
+
 Use the sub-criteria breakdown in each criterion's grading guide. Score each sub-criterion individually, then calculate using the formula shown.
 
 BURDEN OF PROOF — deductions require evidence of a visible flaw: You need to clearly see something wrong to deduct points. Not being able to perfectly confirm something is correct is NOT a flaw. Default to full credit; only deduct when you can describe the specific flaw you observed.
@@ -181,7 +183,11 @@ NOTE: These flags are the most important flaws to detect. Missing them is a bigg
 
 For overall_score: average only scored criteria (exclude nulls).
 
-SHOT DETECTION — is there even an analyzable shot? Before scoring, decide whether these frames actually contain an analyzable basketball shot by a single, identifiable shooter. Set "shot_detected" to false ONLY when there is clearly nothing to analyze — for example: a wide game or TV broadcast showing many players with no single shooter to isolate, footage with no shooting motion at all, or no identifiable person taking a shot. If you can see one person shooting — even partially or with poor form — set "shot_detected" to true and score normally. When in doubt, set it to true.
+SHOT DETECTION — do these specific frames actually show a shot being taken? This is the FIRST thing to decide, before any scoring. Look at the frames as a sequence. To be analyzable, the frames must actually capture the shooting motion of ONE player: gathering the ball, lifting it to a set point, rising or jumping, releasing it, and following through.
+
+Set "shot_detected" to FALSE whenever the frames do NOT clearly show that shooting motion — for example: players running, walking off or up the court, dribbling, passing, playing defense, standing around, or celebrating; the aftermath of a shot with no actual release visible; a wide or TV-broadcast view where the action is far away or there are many players; or any clip where you cannot clearly watch one player take a shot from set-up through release. A person simply being on a basketball court, or simply being a basketball player, is NOT a shot — you must actually SEE the shooting motion happen in these frames.
+
+Set "shot_detected" to TRUE only when you can clearly see a real shot being taken in these frames. If you cannot, you MUST set it false — never produce a score for a clip that does not contain a visible shot. A score on a non-shot clip is a serious error; when the shooting motion is not clearly visible, set false.
 
 Return ONLY valid JSON, no other text:
 {

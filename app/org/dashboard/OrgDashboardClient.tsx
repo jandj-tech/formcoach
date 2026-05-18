@@ -95,6 +95,10 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   const [showMyUploads, setShowMyUploads] = useState(false)
   // Team id whose leaderboard popup is open (for the full view + print).
   const [teamLbModal, setTeamLbModal] = useState<string | null>(null)
+  // Email draft outreach
+  const [emailSelected, setEmailSelected] = useState<Record<string, boolean>>({})
+  const [emailDraftTeam, setEmailDraftTeam] = useState<string | null>(null)
+  const [emailCopied, setEmailCopied] = useState<'emails' | 'body' | null>(null)
 
   const BASE_URL = typeof window !== 'undefined' ? window.location.origin : 'https://learnhoops.com'
 
@@ -135,6 +139,17 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
     navigator.clipboard.writeText(`${BASE_URL}/signup?teamCode=${accessCode}`).then(() => {
       setCopiedLink(prev => ({ ...prev, [teamId]: true }))
       setTimeout(() => setCopiedLink(prev => ({ ...prev, [teamId]: false })), 2000)
+    })
+  }
+
+  function toggleEmailMember(userId: string) {
+    setEmailSelected(prev => ({ ...prev, [userId]: !prev[userId] }))
+  }
+
+  function copyText(text: string, kind: 'emails' | 'body') {
+    navigator.clipboard.writeText(text).then(() => {
+      setEmailCopied(kind)
+      setTimeout(() => setEmailCopied(null), 2000)
     })
   }
 
@@ -962,28 +977,46 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                       {team.members.length === 0 ? (
                         <p className="text-sm text-gray-400 mt-0.5">No players have joined yet.</p>
                       ) : (
-                        <div className="mt-1 border border-gray-100 rounded-xl divide-y divide-gray-100">
-                          {team.members.map(m => (
-                            <div key={m.id} className="flex items-center justify-between gap-3 px-3 py-2">
-                              <Link
-                                href={`/org/dashboard/member/${m.id}`}
-                                className="text-sm font-semibold text-black truncate hover:text-orange-600 hover:underline transition-colors"
-                              >
-                                {memberDisplayName(m)}
-                              </Link>
-                              <div className="flex items-center gap-2 shrink-0">
-                                <span className="text-xs text-gray-400 truncate max-w-[9rem]">{m.email}</span>
-                                <button
-                                  onClick={() => removePlayer(team.id, m.id)}
-                                  disabled={removingPlayer === m.id}
-                                  className="text-xs font-semibold text-gray-400 hover:text-red-500 disabled:opacity-50 transition-colors"
-                                >
-                                  {removingPlayer === m.id ? '…' : 'Remove'}
-                                </button>
+                        <>
+                          <div className="mt-1 border border-gray-100 rounded-xl divide-y divide-gray-100">
+                            {team.members.map(m => (
+                              <div key={m.id} className="flex items-center justify-between gap-3 px-3 py-2">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <input
+                                    type="checkbox"
+                                    checked={!!emailSelected[m.id]}
+                                    onChange={() => toggleEmailMember(m.id)}
+                                    className="w-4 h-4 accent-orange-500 shrink-0"
+                                  />
+                                  <Link
+                                    href={`/org/dashboard/member/${m.id}`}
+                                    className="text-sm font-semibold text-black truncate hover:text-orange-600 hover:underline transition-colors"
+                                  >
+                                    {memberDisplayName(m)}
+                                  </Link>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <span className="text-xs text-gray-400 truncate max-w-[9rem]">{m.email}</span>
+                                  <button
+                                    onClick={() => removePlayer(team.id, m.id)}
+                                    disabled={removingPlayer === m.id}
+                                    className="text-xs font-semibold text-gray-400 hover:text-red-500 disabled:opacity-50 transition-colors"
+                                  >
+                                    {removingPlayer === m.id ? '…' : 'Remove'}
+                                  </button>
+                                </div>
                               </div>
-                            </div>
-                          ))}
-                        </div>
+                            ))}
+                          </div>
+                          {team.members.some(m => emailSelected[m.id]) && (
+                            <button
+                              onClick={() => setEmailDraftTeam(team.id)}
+                              className="mt-2 text-sm font-bold text-orange-500 hover:text-orange-400 transition-colors"
+                            >
+                              ✉ Draft outreach email ({team.members.filter(m => emailSelected[m.id]).length} selected)
+                            </button>
+                          )}
+                        </>
                       )}
                     </div>
                     <div>
@@ -1185,6 +1218,89 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
           </div>
         )}
       </div>
+
+      {/* Email draft modal */}
+      {emailDraftTeam && (() => {
+        const t = teams.find(tm => tm.id === emailDraftTeam)
+        if (!t) return null
+        const selected = t.members.filter(m => emailSelected[m.id])
+        const emailList = selected.map(m => m.email).join(', ')
+        const names = selected.map(m => memberDisplayName(m))
+        const body = `Subject: Your Shooting Evaluation Results
+
+Hi [Player Name],
+
+We recently conducted a shooting form evaluation, and based on your results we think you would benefit from some additional work on your shooting mechanics.
+
+Your evaluation highlighted areas that, with focused coaching, can make a significant difference to your game.
+
+We are offering a shooting class specifically designed to address these areas. If you are interested in taking your game to the next level, we encourage you to sign up.
+
+[ADD CLASS NAME, DATES, LOCATION, PRICE, AND SIGNUP DETAILS HERE]
+
+Please reach out if you have any questions. We look forward to helping you improve.
+
+[YOUR NAME]
+[YOUR ORGANIZATION]`
+
+        return createPortal(
+          <div
+            className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+            onClick={() => setEmailDraftTeam(null)}
+          >
+            <div
+              className="bg-white rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-auto p-6 space-y-5"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between gap-4">
+                <h2 className="text-xl font-black text-black">Outreach Email Draft</h2>
+                <button onClick={() => setEmailDraftTeam(null)} className="text-gray-400 hover:text-black text-2xl leading-none">×</button>
+              </div>
+
+              {/* Emails block */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    Recipient emails ({selected.length})
+                  </p>
+                  <button
+                    onClick={() => copyText(emailList, 'emails')}
+                    className="text-xs font-bold text-orange-500 hover:text-orange-400 transition-colors"
+                  >
+                    {emailCopied === 'emails' ? 'Copied!' : 'Copy all emails'}
+                  </button>
+                </div>
+                <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 break-all leading-relaxed">
+                  {emailList}
+                </div>
+                <p className="text-xs text-gray-400">Paste these into the To or BCC field of your email client.</p>
+              </div>
+
+              {/* Body block */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Email body</p>
+                  <button
+                    onClick={() => copyText(body, 'body')}
+                    className="text-xs font-bold text-orange-500 hover:text-orange-400 transition-colors"
+                  >
+                    {emailCopied === 'body' ? 'Copied!' : 'Copy body'}
+                  </button>
+                </div>
+                <pre className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 whitespace-pre-wrap leading-relaxed font-sans">
+                  {body}
+                </pre>
+                <p className="text-xs text-gray-400">Fill in the bracketed sections with your own class details before sending.</p>
+              </div>
+
+              <p className="text-xs text-gray-400 border-t border-gray-100 pt-4">
+                Selected: {names.join(', ')}
+              </p>
+            </div>
+          </div>,
+          document.body,
+        )
+      })()}
 
       {/* Team leaderboard popup with print — portaled to <body> for a clean printout */}
       {teamLbModal && (() => {

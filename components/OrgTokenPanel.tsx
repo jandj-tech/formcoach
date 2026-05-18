@@ -202,14 +202,32 @@ export default function OrgTokenPanel({
               </div>
             )}
 
-            {/* Quantity input */}
-            <input
-              type="number"
-              min={1}
-              value={buyQty}
-              onChange={e => setBuyQty(Math.max(1, parseInt(e.target.value) || 1))}
-              className="w-32 border border-gray-300 rounded-xl px-3 py-2.5 text-center text-black text-sm font-bold focus:outline-none focus:border-orange-500"
-            />
+            {/* Quantity selector */}
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                {[5, 10, 25].map(q => (
+                  <button
+                    key={q}
+                    type="button"
+                    onClick={() => setBuyQty(q)}
+                    className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-colors ${
+                      buyQty === q
+                        ? 'bg-orange-500 text-white border-orange-500'
+                        : 'bg-white text-black border-gray-300 hover:border-orange-400'
+                    }`}
+                  >
+                    {q}
+                  </button>
+                ))}
+                <input
+                  type="number"
+                  min={1}
+                  value={buyQty}
+                  onChange={e => setBuyQty(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-20 border border-gray-300 rounded-xl px-2 py-2.5 text-center text-black text-sm font-bold focus:outline-none focus:border-orange-500"
+                />
+              </div>
+            </div>
 
             <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 flex items-center justify-between">
               <p className="text-sm text-gray-600">

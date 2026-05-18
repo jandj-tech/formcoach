@@ -93,6 +93,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   const [removingPlayer, setRemovingPlayer] = useState<string | null>(null)
   const [deletingTeam, setDeletingTeam] = useState<string | null>(null)
   const [showMyUploads, setShowMyUploads] = useState(false)
+  const [showAllPlayers, setShowAllPlayers] = useState(false)
   // Team id whose leaderboard popup is open (for the full view + print).
   const [teamLbModal, setTeamLbModal] = useState<string | null>(null)
   // Email draft outreach
@@ -1213,6 +1214,39 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
             ) : (
               <p className="text-sm text-gray-400">
                 You haven&apos;t analyzed any of your own shots yet — use the Analyze page to start.
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* All players across the organization — collapsible */}
+      <div className="border border-gray-200 rounded-2xl overflow-hidden">
+        <button
+          onClick={() => setShowAllPlayers(o => !o)}
+          className="w-full flex items-center justify-between gap-4 px-5 py-4 bg-gray-50 hover:bg-orange-50 transition-colors text-left"
+        >
+          <div>
+            <p className="font-bold text-black">All Players</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Every player across the organization, with their best score and team
+            </p>
+          </div>
+          <span className="text-gray-400 text-lg">{showAllPlayers ? '−' : '+'}</span>
+        </button>
+        {showAllPlayers && (
+          <div className="p-4">
+            {teams.some(t => t.leaderboard.length > 0) ? (
+              <LeaderboardTable
+                entries={teams.flatMap(t =>
+                  t.leaderboard.map(r => ({ ...r, team_name: t.name })),
+                )}
+                context="org"
+                showTeam
+              />
+            ) : (
+              <p className="text-sm text-gray-400">
+                No players in your organization have analyzed a shot yet.
               </p>
             )}
           </div>

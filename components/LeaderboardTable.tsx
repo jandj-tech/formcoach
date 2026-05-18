@@ -10,6 +10,8 @@ export interface LeaderboardRow {
   kind: 'member' | 'player'
   best_score: number | string
   upload_count: number
+  // Set for the organization-wide list, so the player's team can be shown.
+  team_name?: string
 }
 
 type SortMode = 'score-desc' | 'score-asc' | 'name'
@@ -44,15 +46,18 @@ function detailHref(entry: LeaderboardRow, context: 'team' | 'org'): string | nu
   return context === 'org' ? null : `/team/dashboard/player/${entry.id}`
 }
 
-// Team leaderboard table with a "Sort by" control. Each player's score is the
-// highest score recorded on their account; their Rank always reflects that
-// score standing, no matter which sort order is shown.
+// Team / organization leaderboard table with a "Sort by" control. Each player's
+// score is the highest score recorded on their account; their Rank always
+// reflects that score standing, no matter which sort order is shown.
+// Pass `showTeam` for the org-wide list to add a Team column.
 export default function LeaderboardTable({
   entries,
   context = 'team',
+  showTeam = false,
 }: {
   entries: LeaderboardRow[]
   context?: 'team' | 'org'
+  showTeam?: boolean
 }) {
   const [sortMode, setSortMode] = useState<SortMode>('score-desc')
   const [menuOpen, setMenuOpen] = useState(false)
@@ -70,16 +75,22 @@ export default function LeaderboardTable({
     return () => document.removeEventListener('mousedown', onDown)
   }, [menuOpen])
 
-  // Each player's rank by best score — fixed regardless of the display order.
-  const rankById = useMemo(() => {
+  // A player can appear once per team in the org-wide list, so the row key
+  // (and rank lookup) must include the team to stay unique.
+  function rowKey(e: LeaderboardRow) {
+    return showTeam ? `${e.id}::${e.team_name ?? ''}` : e.id
+  }
+
+  // Each row's rank by best score — fixed regardless of the display order.
+  const rankByKey = useMemo(() => {
     const map: Record<string, number> = {}
     ;[...entries]
       .sort((a, b) => Number(b.best_score) - Number(a.best_score))
       .forEach((e, i) => {
-        map[e.id] = i + 1
+        map[showTeam ? `${e.id}::${e.team_name ?? ''}` : e.id] = i + 1
       })
     return map
-  }, [entries])
+  }, [entries, showTeam])
 
   const sortedEntries = useMemo(() => {
     const copy = [...entries]
@@ -140,6 +151,9 @@ export default function LeaderboardTable({
             <tr>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Rank</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Player</th>
+              {showTeam && (
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Team</th>
+              )}
               <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Best Score</th>
               <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Uploads</th>
             </tr>
@@ -149,9 +163,10 @@ export default function LeaderboardTable({
               const score = Number(entry.best_score)
               const name = formatPlayerName(entry.first_name, entry.last_name_initial)
               const href = detailHref(entry, context)
-              const rank = rankById[entry.id]
+              const key = rowKey(entry)
+              const rank = rankByKey[key]
               return (
-                <tr key={entry.id} className={rank === 1 ? 'bg-orange-50/50' : 'bg-white'}>
+                <tr key={key} className={rank === 1 ? 'bg-orange-50/50' : 'bg-white'}>
                   <td className="px-4 py-3 text-sm font-bold text-gray-400">
                     {rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`}
                   </td>
@@ -164,6 +179,9 @@ export default function LeaderboardTable({
                       <span className="text-black">{name}</span>
                     )}
                   </td>
+                  {showTeam && (
+                    <td className="px-4 py-3 text-sm text-gray-600">{entry.team_name ?? '—'}</td>
+                  )}
                   <td className={`px-4 py-3 text-right font-black text-lg ${scoreColor(score)}`}>
                     {score.toFixed(1)}
                   </td>

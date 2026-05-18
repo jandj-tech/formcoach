@@ -359,7 +359,9 @@ export default function TeamDashboardClient({
                   />
                   <span className="text-sm text-gray-600">credits</span>
                 </div>
-                <p className="text-xs text-gray-400 text-right">${(quantity * 2.5).toFixed(2)} total @ $2.50 each</p>
+                <p className="text-xs text-gray-400 text-right">
+                  ${(quantity * (team.initiated ? 1.49 : 2.79)).toFixed(2)} total @ ${team.initiated ? '1.49' : '2.79'} each
+                </p>
                 <button
                   onClick={buyCredits}
                   disabled={buying}

@@ -40,7 +40,7 @@ export default function PremiumCTA({ dark = false }: { dark?: boolean }) {
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-base shrink-0">🏀</span>
           <span className={`text-sm font-medium truncate ${labelColor}`}>
-            1 shot analysis — <span className="font-bold text-orange-500">$4.99</span>
+            1 shot analysis — <span className="font-bold text-orange-500">$2.79</span>
           </span>
         </div>
         <button
@@ -64,7 +64,7 @@ export default function PremiumCTA({ dark = false }: { dark?: boolean }) {
         <p className={`text-xs ${subColor} mb-2`}>Each token gives you one full AI shot analysis across 17 coaching criteria.</p>
         <div className="flex items-center justify-between gap-3">
           <div>
-            <span className="text-orange-500 font-black text-2xl">$4.99</span>
+            <span className="text-orange-500 font-black text-2xl">$2.79</span>
             <p className={`text-xs ${subColor} mt-0.5`}>per analysis · one-time payment</p>
           </div>
           <button

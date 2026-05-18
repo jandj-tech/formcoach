@@ -15,7 +15,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL && process.env.NEXT_PUBLIC_BAS
     ? `https://${process.env.VERCEL_URL}`
     : 'http://localhost:3000'
 
-// One-time initiation package for a team in the org — unlocks the $2.50 token price.
+// One-time initiation package for a team in the org — unlocks the $1.49 token price.
 export async function POST(req: NextRequest) {
   const session = await getOrgSessionFromRequest(req)
   if (!session) {
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
             unit_amount: initiationPriceCents(qty),
             product_data: {
               name: `Team Initiation Package — ${qty} tokens (${state.name})`,
-              description: `Unlocks the $2.50 token price for ${state.name} and adds ${qty} tokens to the team pool.`,
+              description: `Unlocks the $1.49 token price for ${state.name} and adds ${qty} tokens to the team pool.`,
             },
           },
         },

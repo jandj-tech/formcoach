@@ -57,8 +57,8 @@ export default function InitiationPanel({ endpoint, teamId, playerCount }: Props
       <div>
         <p className="font-black text-black">Initiate this team</p>
         <p className="text-sm text-gray-600 mt-1">
-          To unlock the $2.50 token price, buy a one-time initiation package — a minimum of{' '}
-          {INITIATION_MIN_TOKENS} tokens for $30 (each token beyond {INITIATION_MIN_TOKENS} is $2.50).
+          To unlock the $1.49 token price, buy a one-time initiation package — a minimum of{' '}
+          {INITIATION_MIN_TOKENS} tokens for $30 (each token beyond {INITIATION_MIN_TOKENS} is $1.49).
           Package tokens go into the team pool for you to assign to players.
         </p>
       </div>

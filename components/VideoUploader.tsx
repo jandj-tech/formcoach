@@ -751,7 +751,7 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
                 onClick={handleBuyToken}
                 className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors"
               >
-                Buy Analysis — $4.99
+                Buy Analysis — $2.79
               </button>
               {sessionUser?.onTeam ? (
                 <p className="text-gray-500 text-xs text-center">

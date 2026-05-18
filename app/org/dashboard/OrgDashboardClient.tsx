@@ -908,7 +908,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
             const selCount = team.members.filter(m => selected[m.id]).length
             buyLabel = `Buy ${qty} token${qty > 1 ? 's' : ''} for ${selCount} selected`
           } else {
-            buyLabel = `Buy ${qty} coach credit${qty > 1 ? 's' : ''} ($${(qty * 2.5).toFixed(2)})`
+            buyLabel = `Buy ${qty} coach credit${qty > 1 ? 's' : ''} ($${(qty * (team.initiated ? 1.49 : 2.79)).toFixed(2)})`
           }
 
           return (

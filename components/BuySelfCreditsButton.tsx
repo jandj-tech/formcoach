@@ -3,10 +3,10 @@
 import { useState } from 'react'
 
 // Buys one analysis credit for a coach / org owner's own uploads —
-// $2.50 if their team is initiated, $4.99 otherwise.
+// $1.49 if their team is initiated, $2.79 otherwise.
 export default function BuySelfCreditsButton({ initiated }: { initiated: boolean }) {
   const [loading, setLoading] = useState(false)
-  const price = initiated ? '2.50' : '4.99'
+  const price = initiated ? '1.49' : '2.79'
 
   async function buy() {
     setLoading(true)

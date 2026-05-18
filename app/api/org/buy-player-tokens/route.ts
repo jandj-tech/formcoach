@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { getStripe } from '@/lib/stripe'
 import { db } from '@/lib/db'
-import { getTeamTokenState } from '@/lib/team-tokens'
+import { getTeamTokenState, TEAM_TOKEN_PRICE_CENTS, REGULAR_ANALYSIS_PRICE_CENTS } from '@/lib/team-tokens'
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL && process.env.NEXT_PUBLIC_BASE_URL !== 'http://localhost:3000'
   ? process.env.NEXT_PUBLIC_BASE_URL
@@ -26,7 +26,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'teamId is required' }, { status: 400 })
     }
 
-    // The team must belong to this org and be initiated before $2.50 tokens can be bought.
+    // The team must belong to this org. Tokens are $1.49 once it's initiated,
+    // $2.79 before.
     const [team] = (await db`
       SELECT id FROM teams WHERE id = ${teamId} AND organization_id = ${session.orgId}
     `) as unknown as [{ id: string } | undefined]
@@ -34,12 +35,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Team not found' }, { status: 404 })
     }
     const state = await getTeamTokenState(teamId)
-    if (!state || !state.initiated) {
-      return NextResponse.json(
-        { error: 'Complete this team’s initiation package before buying tokens' },
-        { status: 400 },
-      )
-    }
+    const unitAmount = state?.initiated ? TEAM_TOKEN_PRICE_CENTS : REGULAR_ANALYSIS_PRICE_CENTS
     const qty = typeof quantity === 'number' ? Math.floor(quantity) : 1
     if (![1, 5, 10].includes(qty)) {
       return NextResponse.json({ error: 'Invalid quantity' }, { status: 400 })
@@ -60,7 +56,7 @@ export async function POST(req: NextRequest) {
           quantity: totalTokens,
           price_data: {
             currency: 'usd',
-            unit_amount: 250, // $2.50 per analysis token (org/coach rate)
+            unit_amount: unitAmount,
             product_data: {
               name: `${qty} Analysis Token${qty > 1 ? 's' : ''} × ${ids.length} Player${ids.length > 1 ? 's' : ''}`,
             },

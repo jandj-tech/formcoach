@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe'
 import { getSessionFromRequest } from '@/lib/auth'
+import { REGULAR_ANALYSIS_PRICE_CENTS } from '@/lib/team-pricing'
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://learnhoops.com'
 
@@ -21,7 +22,7 @@ export async function POST(req: NextRequest) {
         quantity: 1,
         price_data: {
           currency: region === 'CA' ? 'cad' : 'usd',
-          unit_amount: 499,
+          unit_amount: REGULAR_ANALYSIS_PRICE_CENTS,
           product_data: {
             name: '1 Shot Analysis',
             description: 'One AI-powered basketball shot analysis on LearnHoops.com',

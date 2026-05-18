@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getTeamSessionFromRequest } from '@/lib/team-auth'
 import { getStripe } from '@/lib/stripe'
-import { getTeamTokenState } from '@/lib/team-tokens'
+import { getTeamTokenState, TEAM_TOKEN_PRICE_CENTS, REGULAR_ANALYSIS_PRICE_CENTS } from '@/lib/team-tokens'
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL && process.env.NEXT_PUBLIC_BASE_URL !== 'http://localhost:3000'
   ? process.env.NEXT_PUBLIC_BASE_URL
@@ -31,14 +31,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Select at least one player' }, { status: 400 })
     }
 
-    // The team must be initiated before $2.50 tokens can be bought.
+    // $1.49 per token once the team is initiated, $2.79 before.
     const state = await getTeamTokenState(session.teamId)
-    if (!state || !state.initiated) {
-      return NextResponse.json(
-        { error: 'Complete your team’s initiation package before buying tokens' },
-        { status: 400 },
-      )
-    }
+    const unitAmount = state?.initiated ? TEAM_TOKEN_PRICE_CENTS : REGULAR_ANALYSIS_PRICE_CENTS
 
     const totalTokens = ids.length * qty
 
@@ -50,7 +45,7 @@ export async function POST(req: NextRequest) {
           quantity: totalTokens,
           price_data: {
             currency: 'usd',
-            unit_amount: 250, // $2.50 per analysis token (team/coach rate)
+            unit_amount: unitAmount,
             product_data: {
               name: `${qty} Analysis Token${qty > 1 ? 's' : ''} × ${ids.length} Player${ids.length > 1 ? 's' : ''}`,
             },

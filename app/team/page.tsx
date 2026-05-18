@@ -19,7 +19,7 @@ export default function TeamLandingPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-2xl w-full text-left">
           <div className="bg-orange-50 border border-orange-100 rounded-2xl p-5 space-y-2">
-            <div className="text-2xl font-black text-orange-500">$2.50</div>
+            <div className="text-2xl font-black text-orange-500">$1.49</div>
             <div className="font-semibold text-black">Per upload</div>
             <div className="text-gray-500 text-sm">Buy credits and use them when you need them.</div>
           </div>

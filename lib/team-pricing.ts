@@ -10,8 +10,11 @@ export const INITIATION_MIN_TOKENS = 10
 /** Flat price (cents) of the initiation package — covers the first INITIATION_MIN_TOKENS tokens. */
 export const INITIATION_BASE_PRICE_CENTS = 3000
 
-/** Per-token price (cents) once a team is initiated. Also applies to package tokens beyond the minimum. */
-export const TEAM_TOKEN_PRICE_CENTS = 250
+/** Regular per-analysis price (cents) — players, and coaches/orgs before their team is initiated. */
+export const REGULAR_ANALYSIS_PRICE_CENTS = 279
+
+/** Discounted per-token price (cents) once a team is initiated. Also applies to initiation-package tokens beyond the minimum. */
+export const TEAM_TOKEN_PRICE_CENTS = 149
 
 /**
  * Price (cents) of an initiation package of `quantity` tokens.

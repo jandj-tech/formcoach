@@ -85,7 +85,7 @@ export default function OrgTokenPanel({
       const res = await fetch('/api/org/buy-tokens', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ quantity: buyQty }),
+        body: JSON.stringify({ quantity: Math.max(1, buyQty) }),
       })
       const data = await res.json()
       if (data.url) { window.location.href = data.url; return }
@@ -115,20 +115,22 @@ export default function OrgTokenPanel({
     const ids = [...selectedPlayerIds]
     if (ids.length === 0) { setMsg('Select at least one player'); return }
     if (balanceTooLow) { setMsg(`Balance too low — need ${needed} tokens, have ${balance}`); return }
+    const amt = Math.max(1, assignEach)
     post(
       '/api/org/assign-balance-tokens',
-      { playerUserIds: ids, tokensEach: assignEach },
-      `Assigned ${assignEach} token${assignEach !== 1 ? 's' : ''} to ${ids.length} player${ids.length !== 1 ? 's' : ''}.`,
+      { playerUserIds: ids, tokensEach: amt },
+      `Assigned ${amt} token${amt !== 1 ? 's' : ''} to ${ids.length} player${ids.length !== 1 ? 's' : ''}.`,
     )
     setSelectedPlayerIds(new Set())
   }
 
   function giveToCoach() {
     if (!coachEmail) { setMsg('Pick a coach'); return }
+    const amt = Math.max(1, giveQty)
     post(
       '/api/org/give-coach-credits',
-      { coachEmail, quantity: giveQty },
-      `Gave ${giveQty} credit${giveQty !== 1 ? 's' : ''} to the coach.`,
+      { coachEmail, quantity: amt },
+      `Gave ${amt} credit${amt !== 1 ? 's' : ''} to the coach.`,
     )
   }
 
@@ -227,8 +229,12 @@ export default function OrgTokenPanel({
                   type="number"
                   min={1}
                   max={1000}
-                  value={buyQty}
-                  onChange={e => setBuyQty(Math.max(1, Math.min(1000, parseInt(e.target.value) || 1)))}
+                  value={buyQty || ''}
+                  onChange={e => {
+                    const n = parseInt(e.target.value)
+                    setBuyQty(Number.isNaN(n) ? 0 : Math.min(1000, Math.max(0, n)))
+                  }}
+                  onBlur={() => { if (buyQty < 1) setBuyQty(1) }}
                   aria-label="Custom token amount"
                   className="w-24 border border-gray-300 rounded-lg px-2 py-1.5 text-center text-black text-sm focus:outline-none focus:border-orange-500"
                 />
@@ -310,8 +316,12 @@ export default function OrgTokenPanel({
                   <input
                     type="number"
                     min={1}
-                    value={assignEach}
-                    onChange={e => setAssignEach(Math.max(1, parseInt(e.target.value) || 1))}
+                    value={assignEach || ''}
+                    onChange={e => {
+                      const n = parseInt(e.target.value)
+                      setAssignEach(Number.isNaN(n) ? 0 : Math.min(1000, Math.max(0, n)))
+                    }}
+                    onBlur={() => { if (assignEach < 1) setAssignEach(1) }}
                     className="w-16 border border-gray-300 rounded-xl px-2 py-2 text-center text-black text-sm focus:outline-none focus:border-orange-500"
                   />
                   {selectedPlayerIds.size > 0 && (
@@ -354,8 +364,12 @@ export default function OrgTokenPanel({
                 <input
                   type="number"
                   min={1}
-                  value={giveQty}
-                  onChange={e => setGiveQty(Math.max(1, parseInt(e.target.value) || 1))}
+                  value={giveQty || ''}
+                  onChange={e => {
+                    const n = parseInt(e.target.value)
+                    setGiveQty(Number.isNaN(n) ? 0 : Math.min(1000, Math.max(0, n)))
+                  }}
+                  onBlur={() => { if (giveQty < 1) setGiveQty(1) }}
                   className="w-16 border border-gray-300 rounded-xl px-2 py-2 text-center text-black text-sm focus:outline-none focus:border-orange-500"
                 />
                 <button type="button" onClick={giveToCoach} disabled={busy}

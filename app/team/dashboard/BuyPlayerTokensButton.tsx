@@ -36,7 +36,7 @@ export default function BuyPlayerTokensButton({ players, teamCode }: Props) {
       const res = await fetch('/api/team/buy-player-tokens', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playerUserIds: selectedIds, quantity }),
+        body: JSON.stringify({ playerUserIds: selectedIds, quantity: Math.max(1, quantity) }),
       })
       const data = await res.json()
       if (!res.ok || !data.url) {
@@ -84,8 +84,12 @@ export default function BuyPlayerTokensButton({ players, teamCode }: Props) {
           type="number"
           min={1}
           max={1000}
-          value={quantity}
-          onChange={e => setQuantity(Math.max(1, Math.min(1000, parseInt(e.target.value) || 1)))}
+          value={quantity || ''}
+          onChange={e => {
+            const n = parseInt(e.target.value)
+            setQuantity(Number.isNaN(n) ? 0 : Math.min(1000, Math.max(0, n)))
+          }}
+          onBlur={() => { if (quantity < 1) setQuantity(1) }}
           aria-label="Custom token amount"
           className="w-20 border border-gray-300 rounded-lg px-2 py-1 text-center text-black text-sm focus:outline-none focus:border-orange-500"
         />

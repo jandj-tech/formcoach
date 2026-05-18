@@ -31,13 +31,14 @@ export default function CoachTokenPanel({
       setMsg('Select at least one player')
       return
     }
+    const amt = Math.max(1, each)
     setBusy(true)
     setMsg('')
     try {
       const res = await fetch('/api/team/assign-credits', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playerUserIds: ids, tokensEach: each }),
+        body: JSON.stringify({ playerUserIds: ids, tokensEach: amt }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -45,7 +46,7 @@ export default function CoachTokenPanel({
         setBusy(false)
         return
       }
-      setMsg(`Gave ${each} token${each !== 1 ? 's' : ''} to ${ids.length} player${ids.length !== 1 ? 's' : ''}.`)
+      setMsg(`Gave ${amt} token${amt !== 1 ? 's' : ''} to ${ids.length} player${ids.length !== 1 ? 's' : ''}.`)
       setSel({})
       router.refresh()
     } catch {
@@ -93,8 +94,12 @@ export default function CoachTokenPanel({
             <input
               type="number"
               min={1}
-              value={each}
-              onChange={(e) => setEach(Math.max(1, parseInt(e.target.value) || 1))}
+              value={each || ''}
+              onChange={(e) => {
+                const n = parseInt(e.target.value)
+                setEach(Number.isNaN(n) ? 0 : Math.min(1000, Math.max(0, n)))
+              }}
+              onBlur={() => { if (each < 1) setEach(1) }}
               className="w-16 border border-gray-300 rounded-lg px-2 py-1.5 text-center text-black text-sm focus:outline-none focus:border-orange-500"
             />
             <button

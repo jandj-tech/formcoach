@@ -22,6 +22,63 @@ function isBlackFrame(ctx: CanvasRenderingContext2D, w: number, h: number): bool
   return true
 }
 
+// Vercel rejects request bodies larger than 4.5MB with HTTP 413. The analyze
+// upload carries every extracted frame, so the batch is re-encoded here — in
+// escalating steps — until it fits comfortably under that limit.
+const UPLOAD_BUDGET_BYTES = 3.8 * 1024 * 1024
+
+function totalBytes(blobs: Blob[]): number {
+  return blobs.reduce((sum, b) => sum + b.size, 0)
+}
+
+async function reencodeFrames(
+  frames: Blob[],
+  quality: number,
+  scale: number,
+): Promise<Blob[]> {
+  const canvas = document.createElement('canvas')
+  const ctx = canvas.getContext('2d')!
+  const out: Blob[] = []
+  for (const frame of frames) {
+    const bitmap = await createImageBitmap(frame)
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale))
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale))
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+    bitmap.close()
+    out.push(
+      await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob(
+          (b) => (b ? resolve(b) : reject(new Error('Frame re-encode failed'))),
+          'image/jpeg',
+          quality,
+        )
+      }),
+    )
+  }
+  return out
+}
+
+// Returns a frame batch guaranteed to fit under UPLOAD_BUDGET_BYTES, so the
+// analyze upload can never trigger an HTTP 413.
+async function fitFramesToBudget(frames: Blob[]): Promise<Blob[]> {
+  if (totalBytes(frames) <= UPLOAD_BUDGET_BYTES) return frames
+  // Each step re-encodes from the original frames (no compounding artifacts),
+  // dropping quality first and then resolution until the batch is small enough.
+  const steps = [
+    { quality: 0.7, scale: 1 },
+    { quality: 0.55, scale: 1 },
+    { quality: 0.5, scale: 0.8 },
+    { quality: 0.42, scale: 0.65 },
+    { quality: 0.35, scale: 0.5 },
+  ]
+  let current = frames
+  for (const step of steps) {
+    current = await reencodeFrames(frames, step.quality, step.scale)
+    if (totalBytes(current) <= UPLOAD_BUDGET_BYTES) break
+  }
+  return current
+}
+
 interface SessionUser { id: string; email: string; tokens: number; subscribed: boolean; onTeam: boolean }
 
 interface TeamMode {
@@ -296,11 +353,16 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
       abortRef.current = controller
 
       try {
-        const frames = await extractFrames(file)
+        const rawFrames = await extractFrames(file)
         if (cancelledRef.current) return
 
         setStatus('uploading')
         setProgress(60)
+
+        // Re-encode the frames if needed so the upload can never exceed
+        // Vercel's 4.5MB request limit (the cause of the HTTP 413 error).
+        const frames = await fitFramesToBudget(rawFrames)
+        if (cancelledRef.current) return
 
         // Upload the original video directly to Vercel Blob (browser → Blob,
         // bypassing the serverless route's 4.5MB body limit).

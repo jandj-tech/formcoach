@@ -105,6 +105,8 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   const [showAllPlayers, setShowAllPlayers] = useState(false)
   // Per-team sort mode for the team's player roster.
   const [playerSort, setPlayerSort] = useState<Record<string, PlayerSortMode>>({})
+  // Sort mode for the org-wide All Players list.
+  const [allPlayersSort, setAllPlayersSort] = useState<PlayerSortMode>('name')
   // Team id whose leaderboard popup is open (for the full view + print).
   const [teamLbModal, setTeamLbModal] = useState<string | null>(null)
   // Email draft outreach
@@ -318,6 +320,16 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
       if (sb === null) return -1
       return mode === 'score-desc' ? sb - sa : sa - sb
     })
+  }
+
+  // Expand a team's panel and scroll to it — used from the All Players list.
+  function goToTeam(teamId: string) {
+    setExpanded(teamId)
+    setTimeout(() => {
+      document
+        .getElementById(`team-panel-${teamId}`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 60)
   }
 
   async function handleBuy(team: TeamData) {
@@ -900,7 +912,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
           }
 
           return (
-            <div key={team.id} className="border border-gray-200 rounded-2xl overflow-hidden">
+            <div key={team.id} id={`team-panel-${team.id}`} className="border border-gray-200 rounded-2xl overflow-hidden">
               <button
                 onClick={() => setExpanded(isOpen ? null : team.id)}
                 className="w-full flex items-center justify-between gap-4 px-5 py-4 bg-gray-50 hover:bg-orange-50 transition-colors text-left"
@@ -1275,29 +1287,133 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
           <span className="text-gray-400 text-lg">{showAllPlayers ? '−' : '+'}</span>
         </button>
         {showAllPlayers && (
-          <div className="p-4">
-            {teams.some(t => t.leaderboard.length > 0) ? (
-              <LeaderboardTable
-                entries={teams.flatMap(t =>
-                  t.leaderboard.map(r => ({ ...r, team_name: t.name })),
-                )}
-                context="org"
-                showTeam
-              />
-            ) : (
-              <p className="text-sm text-gray-400">
-                No players in your organization have analyzed a shot yet.
-              </p>
-            )}
+          <div className="p-4 space-y-3">
+            {(() => {
+              const rows = teams.flatMap(t =>
+                t.members.map(m => {
+                  const lb = t.leaderboard.find(r => r.kind === 'member' && r.id === m.id)
+                  return {
+                    member: m,
+                    teamId: t.id,
+                    teamName: t.name,
+                    score: lb ? Number(lb.best_score) : null,
+                  }
+                }),
+              )
+              if (rows.length === 0) {
+                return (
+                  <p className="text-sm text-gray-400">
+                    No players have joined a team in your organization yet.
+                  </p>
+                )
+              }
+              rows.sort((a, b) => {
+                if (allPlayersSort === 'name') {
+                  return memberDisplayName(a.member).localeCompare(memberDisplayName(b.member))
+                }
+                if (a.score === null && b.score === null) {
+                  return memberDisplayName(a.member).localeCompare(memberDisplayName(b.member))
+                }
+                if (a.score === null) return 1
+                if (b.score === null) return -1
+                return allPlayersSort === 'score-desc' ? b.score - a.score : a.score - b.score
+              })
+              const selectedCount = rows.filter(r => emailSelected[r.member.id]).length
+              return (
+                <>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs text-gray-400">
+                      {rows.length} player{rows.length !== 1 ? 's' : ''}
+                    </p>
+                    <SortMenu
+                      value={allPlayersSort}
+                      options={PLAYER_SORT_OPTIONS}
+                      onChange={setAllPlayersSort}
+                    />
+                  </div>
+                  <div className="border border-gray-200 rounded-2xl overflow-hidden">
+                    <table className="w-full">
+                      <thead className="bg-gray-50 border-b border-gray-200">
+                        <tr>
+                          <th className="px-3 py-3 w-8"></th>
+                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Player</th>
+                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Team</th>
+                          <th className="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Best Score</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {rows.map(({ member: m, teamId, teamName, score }) => (
+                          <tr key={m.id} className="bg-white">
+                            <td className="px-3 py-2.5">
+                              <input
+                                type="checkbox"
+                                checked={!!emailSelected[m.id]}
+                                onChange={() => toggleEmailMember(m.id)}
+                                className="w-4 h-4 accent-orange-500"
+                              />
+                            </td>
+                            <td className="px-3 py-2.5">
+                              <Link
+                                href={`/org/dashboard/member/${m.id}`}
+                                className="text-sm font-semibold text-black hover:text-orange-600 hover:underline transition-colors"
+                              >
+                                {memberDisplayName(m)}
+                              </Link>
+                            </td>
+                            <td className="px-3 py-2.5">
+                              <button
+                                onClick={() => goToTeam(teamId)}
+                                className="text-sm text-orange-600 hover:text-orange-500 hover:underline transition-colors"
+                              >
+                                {teamName}
+                              </button>
+                            </td>
+                            <td className="px-3 py-2.5 text-right">
+                              {score === null ? (
+                                <span className="text-xs text-gray-400">No shots</span>
+                              ) : (
+                                <span
+                                  className={`font-black text-base ${
+                                    score >= 8
+                                      ? 'text-green-600'
+                                      : score >= 6
+                                        ? 'text-orange-500'
+                                        : 'text-red-500'
+                                  }`}
+                                >
+                                  {score.toFixed(1)}
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {selectedCount > 0 && (
+                    <button
+                      onClick={() => setEmailDraftTeam('__all__')}
+                      className="text-sm font-bold text-orange-500 hover:text-orange-400 transition-colors"
+                    >
+                      ✉ Draft outreach email ({selectedCount} selected)
+                    </button>
+                  )}
+                </>
+              )
+            })()}
           </div>
         )}
       </div>
 
       {/* Email draft modal */}
       {emailDraftTeam && (() => {
-        const t = teams.find(tm => tm.id === emailDraftTeam)
-        if (!t) return null
-        const selected = t.members.filter(m => emailSelected[m.id])
+        // '__all__' = members selected across the org-wide All Players list;
+        // otherwise just the one team's members.
+        const pool = emailDraftTeam === '__all__'
+          ? teams.flatMap(tm => tm.members)
+          : (teams.find(tm => tm.id === emailDraftTeam)?.members ?? [])
+        const selected = pool.filter(m => emailSelected[m.id])
+        if (selected.length === 0) return null
         const emailList = selected.map(m => m.email).join(', ')
         const names = selected.map(m => memberDisplayName(m))
         const body = `Subject: Your Shooting Evaluation Results

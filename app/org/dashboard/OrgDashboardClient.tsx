@@ -976,7 +976,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                           ? `${8 - team.members.length} more player${8 - team.members.length !== 1 ? 's' : ''} needed to activate this team.`
                           : 'Almost there!'
                         }
-                        {' '}Once the team reaches 8 players, every player automatically gets <strong>1 free analysis token</strong>, and the team unlocks the ability to purchase additional tokens at $2.50 each.
+                        {' '}Once the team reaches 8 players, every player automatically gets <strong>1 free analysis token</strong>, and the team unlocks the ability to purchase additional tokens at $1.49 each.
                       </p>
                       <p className="text-xs text-gray-400">Share the player signup link below to invite players to this team.</p>
                     </div>

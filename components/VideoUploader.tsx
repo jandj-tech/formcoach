@@ -499,6 +499,50 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
     confirmResolverRef.current?.(false)
   }
 
+  if (noShot) {
+    return (
+      <div className="w-full max-w-lg mx-auto text-center space-y-5 px-2">
+        <div className="text-5xl">🚫</div>
+        <div>
+          <p className="text-black font-bold text-lg mb-2">
+            We couldn&apos;t analyze a shot in this video
+          </p>
+          <p className="text-gray-600 text-sm leading-relaxed">
+            The video wasn&apos;t analyzed and you were <strong>not charged</strong>. This happens
+            when the camera is too far away, there&apos;s too much going on (like a full game
+            clip), or no single shooter is clearly visible.
+          </p>
+        </div>
+        <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 text-left">
+          <p className="text-sm font-bold text-black mb-1.5">For a video that can be analyzed:</p>
+          <ul className="text-sm text-gray-600 space-y-1 list-disc pl-5">
+            <li>Show <strong>one person</strong> taking the shot</li>
+            <li>Film <strong>reasonably close</strong>, from the side</li>
+            <li>Keep it to <strong>one shot</strong> — not a full game</li>
+          </ul>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <a
+            href="/support#filming"
+            className="flex-1 bg-gray-100 hover:bg-gray-200 text-black font-bold py-3 rounded-xl transition-colors flex items-center justify-center"
+          >
+            How to take a proper video
+          </a>
+          <button
+            type="button"
+            onClick={() => {
+              setNoShot(false)
+              if (inputRef.current) inputRef.current.value = ''
+            }}
+            className="flex-1 bg-orange-500 hover:bg-orange-400 text-white font-bold py-3 rounded-xl transition-colors"
+          >
+            Try another video
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   if (status === 'quality-warning') {
     return (
       <div className="w-full max-w-lg mx-auto text-center space-y-5 px-2">
@@ -738,24 +782,6 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
           </div>
         )}
       </div>
-
-      {noShot && (
-        <div className="bg-amber-50 border border-amber-300 rounded-xl p-4 text-center space-y-1.5">
-          <p className="text-amber-900 font-bold text-sm">
-            We couldn&apos;t find a basketball shot in this video.
-          </p>
-          <p className="text-amber-800 text-xs leading-relaxed">
-            It wasn&apos;t analyzed and you were <strong>not charged</strong>. Make sure your video
-            clearly shows one person taking a shot — not a game clip with many players.
-          </p>
-          <a
-            href="/support#filming"
-            className="inline-block pt-1 text-orange-600 hover:text-orange-500 font-bold text-sm underline underline-offset-2"
-          >
-            How to take a proper video →
-          </a>
-        </div>
-      )}
 
       {errorMsg && (
         <p className="text-red-500 text-sm text-center">{errorMsg}</p>

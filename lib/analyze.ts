@@ -287,6 +287,16 @@ Return ONLY valid JSON, no other text:
     }
   }
 
+  // If the AI could not assess at least half the criteria, the video was not
+  // truly analyzable — too far away, too cluttered, or no clear single shooter.
+  // Flag it as "no shot" so the caller cancels the analysis without charging,
+  // rather than publishing a score derived from only a handful of criteria.
+  const assessableCount = result.criteria.filter((c) => c.score !== null).length
+  if (assessableCount < activeCriteria.length / 2) {
+    result.shot_detected = false
+    return result
+  }
+
   // Recalculate overall using weighted average (weight column from DB)
   const activeCriteriaRows = activeCriteria as unknown as Array<{ id: number; weight: unknown }>
   const weightMap: Record<number, number> = Object.fromEntries(

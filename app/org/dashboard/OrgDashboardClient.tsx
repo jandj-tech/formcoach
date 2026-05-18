@@ -718,33 +718,26 @@ export default function OrgDashboardClient({ teams, orgName, classPackages }: Pr
   const ptTotal = ptPlayerCount * ptQty * ptPricePerToken
 
   const purchaseTokensSection = (
-    <div className="border border-gray-200 rounded-2xl p-5 space-y-4">
+    <div className="border-2 border-orange-200 rounded-2xl p-5 space-y-4 bg-white">
+      {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h2 className="text-xl font-black text-black">Purchase Tokens</h2>
           <p className="text-sm text-gray-500 mt-0.5">Buy analysis tokens for your players</p>
         </div>
-        <div className="text-right shrink-0">
+        <div className="shrink-0 text-right">
           {anyInitiated ? (
-            <>
-              <p className="text-sm font-black text-green-700">$1.49 / token</p>
-              <p className="text-xs text-gray-400">team pricing</p>
-            </>
+            <span className="inline-block bg-green-100 text-green-700 text-sm font-black px-3 py-1 rounded-full">$1.49 / token</span>
           ) : (
-            <>
-              <p className="text-sm font-black text-gray-700">$2.79 / token</p>
-              <p className="text-xs text-gray-400">standard pricing</p>
-            </>
+            <span className="inline-block bg-gray-100 text-gray-600 text-sm font-black px-3 py-1 rounded-full">$2.79 / token</span>
           )}
         </div>
       </div>
 
       {!anyInitiated && (
         <div className="bg-orange-50 border border-orange-100 rounded-xl px-4 py-3">
-          <p className="text-sm text-orange-800 font-semibold">Unlock $1.49/token team pricing</p>
-          <p className="text-xs text-orange-700 mt-0.5">
-            Once any of your teams reaches 8 players, the token price drops to $1.49 each. You can still purchase at $2.79 now.
-          </p>
+          <p className="text-sm text-orange-800 font-semibold">Get $1.49/token once a team hits 8 players</p>
+          <p className="text-xs text-orange-700 mt-0.5">You can still buy now at $2.79 each.</p>
         </div>
       )}
 
@@ -752,22 +745,36 @@ export default function OrgDashboardClient({ teams, orgName, classPackages }: Pr
         <p className="text-sm text-gray-400">Add a team first to purchase tokens for players.</p>
       ) : (
         <>
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Team</label>
-            <select
-              value={ptTeamId || (selectedPtTeam?.id ?? '')}
-              onChange={e => { setPtTeamId(e.target.value); setPtSelected({}) }}
-              className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-black bg-white focus:outline-none focus:border-orange-500"
-            >
-              {teams.map(t => (
-                <option key={t.id} value={t.id}>
-                  {t.name} ({t.members.length} player{t.members.length !== 1 ? 's' : ''}{t.initiated ? ' · $1.49' : ' · $2.79'})
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Team selector — button pills, no dropdown */}
+          {teams.length > 1 && (
+            <div className="space-y-1.5">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Team</p>
+              <div className="flex flex-wrap gap-2">
+                {teams.map(t => {
+                  const active = (ptTeamId || teams[0]?.id) === t.id
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => { setPtTeamId(t.id); setPtSelected({}) }}
+                      className={`px-3 py-2 rounded-xl text-sm font-bold transition-colors text-left ${
+                        active
+                          ? 'bg-orange-500 text-white'
+                          : 'bg-white border border-gray-300 text-black hover:border-orange-400'
+                      }`}
+                    >
+                      <span className="block">{t.name}</span>
+                      <span className={`block text-xs font-medium ${active ? 'text-orange-100' : 'text-gray-400'}`}>
+                        {t.members.length} player{t.members.length !== 1 ? 's' : ''} · {t.initiated ? '$1.49' : '$2.79'}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
-          <div className="space-y-1">
+          {/* Send to: all or specific */}
+          <div className="space-y-1.5">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Send tokens to</p>
             <div className="flex gap-2">
               {(['all', 'specific'] as const).map(m => (
@@ -786,6 +793,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages }: Pr
             </div>
           </div>
 
+          {/* Specific player list */}
           {ptDestMode === 'specific' && selectedPtTeam && (
             selectedPtTeam.members.length === 0 ? (
               <p className="text-sm text-gray-400">No players on this team yet.</p>
@@ -807,14 +815,15 @@ export default function OrgDashboardClient({ teams, orgName, classPackages }: Pr
             )
           )}
 
-          <div className="space-y-1">
+          {/* Quantity per player */}
+          <div className="space-y-1.5">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Tokens per player</p>
             <div className="flex gap-2">
               {[1, 5, 10].map(q => (
                 <button
                   key={q}
                   onClick={() => setPtQty(q)}
-                  className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-colors ${
+                  className={`px-5 py-2 rounded-xl text-sm font-bold transition-colors ${
                     ptQty === q
                       ? 'bg-orange-500 text-white'
                       : 'bg-white border border-gray-300 text-black hover:border-orange-400'
@@ -826,6 +835,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages }: Pr
             </div>
           </div>
 
+          {/* Total row */}
           {ptPlayerCount > 0 && (
             <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 flex items-center justify-between">
               <p className="text-sm text-gray-600">
@@ -840,7 +850,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages }: Pr
           <button
             onClick={handleBuyTokens}
             disabled={buyingTokens}
-            className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-black py-3 rounded-xl text-sm transition-colors"
+            className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-black py-3 rounded-xl transition-colors"
           >
             {buyingTokens ? 'Redirecting to checkout...' : 'Purchase Tokens'}
           </button>
@@ -911,8 +921,8 @@ export default function OrgDashboardClient({ teams, orgName, classPackages }: Pr
   if (teams.length === 0) {
     return (
       <div className="space-y-4">
-        {classProgramSection}
         {purchaseTokensSection}
+        {classProgramSection}
         {addTeamSection}
         <div className="text-center py-12 text-gray-400 border-2 border-dashed border-gray-200 rounded-2xl">
           <p className="font-semibold">No teams in {orgName} yet</p>
@@ -926,8 +936,8 @@ export default function OrgDashboardClient({ teams, orgName, classPackages }: Pr
 
   return (
     <div className="space-y-4">
-      {classProgramSection}
       {purchaseTokensSection}
+      {classProgramSection}
       {addTeamSection}
 
       {(() => {

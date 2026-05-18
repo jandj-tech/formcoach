@@ -58,10 +58,13 @@ async function reencodeFrames(
   return out
 }
 
-// Returns a frame batch guaranteed to fit under UPLOAD_BUDGET_BYTES, so the
-// analyze upload can never trigger an HTTP 413.
-async function fitFramesToBudget(frames: Blob[]): Promise<Blob[]> {
-  if (totalBytes(frames) <= UPLOAD_BUDGET_BYTES) return frames
+// Returns a frame batch guaranteed to fit under UPLOAD_BUDGET_BYTES (so the
+// analyze upload can never trigger an HTTP 413), plus whether the batch had to
+// be compressed — `reduced: true` means analysis quality will be lower.
+async function fitFramesToBudget(
+  frames: Blob[],
+): Promise<{ frames: Blob[]; reduced: boolean }> {
+  if (totalBytes(frames) <= UPLOAD_BUDGET_BYTES) return { frames, reduced: false }
   // Each step re-encodes from the original frames (no compounding artifacts),
   // dropping quality first and then resolution until the batch is small enough.
   const steps = [
@@ -76,7 +79,7 @@ async function fitFramesToBudget(frames: Blob[]): Promise<Blob[]> {
     current = await reencodeFrames(frames, step.quality, step.scale)
     if (totalBytes(current) <= UPLOAD_BUDGET_BYTES) break
   }
-  return current
+  return { frames: current, reduced: true }
 }
 
 interface SessionUser { id: string; email: string; tokens: number; subscribed: boolean; onTeam: boolean }
@@ -90,7 +93,7 @@ interface TeamMode {
 
 export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { teamMode?: TeamMode; coachSelf?: boolean; coachCredits?: number } = {}) {
   const [isDragging, setIsDragging] = useState(false)
-  const [status, setStatus] = useState<'idle' | 'extracting' | 'uploading' | 'error'>('idle')
+  const [status, setStatus] = useState<'idle' | 'extracting' | 'uploading' | 'quality-warning' | 'error'>('idle')
   const [progress, setProgress] = useState(0)
   const [previews, setPreviews] = useState<string[]>([])
   const [errorMsg, setErrorMsg] = useState('')
@@ -103,6 +106,8 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
   const inputRef = useRef<HTMLInputElement>(null)
   const cancelledRef = useRef(false)
   const abortRef = useRef<AbortController | null>(null)
+  // Resolves the quality-warning prompt: true = continue, false = re-record.
+  const confirmResolverRef = useRef<((proceed: boolean) => void) | null>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -356,13 +361,32 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
         const rawFrames = await extractFrames(file)
         if (cancelledRef.current) return
 
-        setStatus('uploading')
-        setProgress(60)
-
         // Re-encode the frames if needed so the upload can never exceed
         // Vercel's 4.5MB request limit (the cause of the HTTP 413 error).
-        const frames = await fitFramesToBudget(rawFrames)
+        const { frames, reduced } = await fitFramesToBudget(rawFrames)
         if (cancelledRef.current) return
+
+        // The video was large enough to need compression — warn the user that
+        // analysis quality will suffer and let them continue or re-record.
+        if (reduced) {
+          setStatus('quality-warning')
+          const proceed = await new Promise<boolean>((resolve) => {
+            confirmResolverRef.current = resolve
+          })
+          confirmResolverRef.current = null
+          if (cancelledRef.current) return
+          if (!proceed) {
+            // User chose to re-record — nothing was uploaded or charged.
+            setStatus('idle')
+            setProgress(0)
+            setPreviews([])
+            if (inputRef.current) inputRef.current.value = ''
+            return
+          }
+        }
+
+        setStatus('uploading')
+        setProgress(60)
 
         // Upload the original video directly to Vercel Blob (browser → Blob,
         // bypassing the serverless route's 4.5MB body limit).
@@ -465,6 +489,55 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
     setPreviews([])
     setVideoUploadStatus({ state: 'idle' })
     setErrorMsg('')
+  }
+
+  // Quality-warning prompt actions — resolve the promise handleFile awaits.
+  function continueAnyway() {
+    confirmResolverRef.current?.(true)
+  }
+  function cancelForRedo() {
+    confirmResolverRef.current?.(false)
+  }
+
+  if (status === 'quality-warning') {
+    return (
+      <div className="w-full max-w-lg mx-auto text-center space-y-5 px-2">
+        <div className="text-5xl">⚠️</div>
+        <div>
+          <p className="text-black font-bold text-lg mb-2">
+            Your video is large — analysis quality may suffer
+          </p>
+          <p className="text-gray-600 text-sm leading-relaxed">
+            Your video was big enough that we had to compress the frames to analyze it. The
+            results will still work, but they may be less accurate than normal.
+          </p>
+        </div>
+        <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 text-left">
+          <p className="text-sm font-bold text-black mb-1.5">For the most accurate analysis:</p>
+          <ul className="text-sm text-gray-600 space-y-1 list-disc pl-5">
+            <li>Record a <strong>short clip</strong> — just the shot, a few seconds long</li>
+            <li>Film <strong>one shot at a time</strong></li>
+            <li>Keep the camera <strong>close to the shooter</strong>, filmed from the side</li>
+          </ul>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <button
+            type="button"
+            onClick={cancelForRedo}
+            className="flex-1 bg-gray-100 hover:bg-gray-200 text-black font-bold py-3 rounded-xl transition-colors"
+          >
+            Cancel &amp; re-record
+          </button>
+          <button
+            type="button"
+            onClick={continueAnyway}
+            className="flex-1 bg-orange-500 hover:bg-orange-400 text-white font-bold py-3 rounded-xl transition-colors"
+          >
+            Continue anyway
+          </button>
+        </div>
+      </div>
+    )
   }
 
   if (status === 'extracting' || status === 'uploading') {

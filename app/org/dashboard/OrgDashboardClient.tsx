@@ -469,7 +469,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
           <div className="bg-white/20 rounded-xl px-4 py-3 text-center shrink-0">
             <p className="text-4xl font-black">$50</p>
             <p className="text-orange-100 text-xs">per player</p>
-            <p className="text-orange-200 text-xs mt-1">$45/player for 30+</p>
+            <p className="text-orange-200 text-xs mt-1">$36.99/player for 30+</p>
           </div>
         </div>
 
@@ -541,7 +541,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
               />
             </div>
             {classPlayerCount >= CLASS_BULK_THRESHOLD && (
-              <p className="text-xs text-green-300 font-semibold">Bulk rate unlocked — $45/player</p>
+              <p className="text-xs text-green-300 font-semibold">Bulk rate unlocked — $36.99/player</p>
             )}
           </div>
 

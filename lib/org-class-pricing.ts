@@ -1,9 +1,9 @@
 // Pricing constants for the org class program — no DB imports, safe to import from client components.
 
 export const CLASS_MIN_PLAYERS = 10
-export const CLASS_PRICE_PER_PLAYER_CENTS = 5000   // $50
+export const CLASS_PRICE_PER_PLAYER_CENTS = 4000   // $40
 export const CLASS_BULK_THRESHOLD = 30
-export const CLASS_BULK_PRICE_PER_PLAYER_CENTS = 4500  // $45
+export const CLASS_BULK_PRICE_PER_PLAYER_CENTS = 3699  // $36.99
 
 export const CLASS_ANALYSES_PER_PLAYER = 2
 export const CLASS_IMPROVEMENT_THRESHOLD = 0.03    // 3% minimum for first-time class takers

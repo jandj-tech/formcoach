@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getTeamSessionFromRequest } from '@/lib/team-auth'
 import { getStripe } from '@/lib/stripe'
-import { getTeamTokenState } from '@/lib/team-tokens'
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL && process.env.NEXT_PUBLIC_BASE_URL !== 'http://localhost:3000'
   ? process.env.NEXT_PUBLIC_BASE_URL
@@ -29,15 +28,6 @@ export async function POST(req: NextRequest) {
     const ids = playerUserIds.filter((id: unknown): id is string => typeof id === 'string' && !!id)
     if (ids.length === 0) {
       return NextResponse.json({ error: 'Select at least one player' }, { status: 400 })
-    }
-
-    // The team must be initiated before $2.50 tokens can be bought.
-    const state = await getTeamTokenState(session.teamId)
-    if (!state || !state.initiated) {
-      return NextResponse.json(
-        { error: 'Complete your team’s initiation package before buying tokens' },
-        { status: 400 },
-      )
     }
 
     const totalTokens = ids.length * qty

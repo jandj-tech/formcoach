@@ -5,7 +5,6 @@ import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import OrgAddCoach from './OrgAddCoach'
-import InitiationPanel from '@/components/InitiationPanel'
 import PoolAssignPanel from '@/components/PoolAssignPanel'
 import TokenBalances from '@/components/TokenBalances'
 import InlineEdit from '@/components/InlineEdit'
@@ -952,7 +951,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                     />
                   </div>
 
-                  {/* Initiation / token pool — shown first, before anything can be bought */}
+                  {/* Token pool — available once team has 8+ players */}
                   {team.initiated ? (
                     <PoolAssignPanel
                       endpoint="/api/org/assign-tokens"
@@ -961,11 +960,10 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                       players={team.members.map(m => ({ id: m.id, label: memberDisplayName(m) }))}
                     />
                   ) : (
-                    <InitiationPanel
-                      endpoint="/api/org/buy-initiation"
-                      teamId={team.id}
-                      playerCount={team.members.length}
-                    />
+                    <p className="text-sm text-gray-400">
+                      This team needs at least 8 players before tokens can be purchased.
+                      {team.members.length > 0 && ` (${team.members.length}/8 joined)`}
+                    </p>
                   )}
 
                   {/* Roster — coach, players, and the player signup link */}

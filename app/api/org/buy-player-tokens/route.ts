@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { getStripe } from '@/lib/stripe'
 import { db } from '@/lib/db'
-import { getTeamTokenState } from '@/lib/team-tokens'
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL && process.env.NEXT_PUBLIC_BASE_URL !== 'http://localhost:3000'
   ? process.env.NEXT_PUBLIC_BASE_URL
@@ -32,13 +31,6 @@ export async function POST(req: NextRequest) {
     `) as unknown as [{ id: string } | undefined]
     if (!team) {
       return NextResponse.json({ error: 'Team not found' }, { status: 404 })
-    }
-    const state = await getTeamTokenState(teamId)
-    if (!state || !state.initiated) {
-      return NextResponse.json(
-        { error: 'Complete this team’s initiation package before buying tokens' },
-        { status: 400 },
-      )
     }
     const qty = typeof quantity === 'number' ? Math.floor(quantity) : 1
     if (![1, 5, 10].includes(qty)) {

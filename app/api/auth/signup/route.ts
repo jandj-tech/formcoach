@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
 import { signSession, sessionCookieOptions } from '@/lib/auth'
+import { grantFreeOrgTokensIfEligible } from '@/lib/team-tokens'
 
 export async function POST(req: NextRequest) {
   try {
@@ -69,6 +70,7 @@ export async function POST(req: NextRequest) {
               SET first_name = EXCLUDED.first_name, last_name_initial = EXCLUDED.last_name_initial
           `
           await db`DELETE FROM pending_team_members WHERE id = ${pending.id}`
+          await grantFreeOrgTokensIfEligible(pending.team_id)
         }
       } catch {
         // Non-fatal: still create the account even if invite claim fails

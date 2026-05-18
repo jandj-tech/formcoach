@@ -12,7 +12,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL && process.env.NEXT_PUBLIC_BAS
     : 'http://localhost:3000'
 
 // A coach or org owner buys analysis credits for their own shot uploads.
-// $2.50 each once their team is initiated, $4.99 otherwise.
+// $2.50 once their team has 8+ players, $4.99 before.
 export async function POST(req: NextRequest) {
   const teamSession = await getTeamSessionFromRequest(req)
   const orgSession = teamSession ? null : await getOrgSessionFromRequest(req)
@@ -27,22 +27,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid quantity' }, { status: 400 })
     }
 
-    // $2.50 if their team is initiated, $4.99 otherwise.
-    let initiated = false
+    // $2.50 once the team has 8+ players, $4.99 before.
+    let liveTeam = false
     if (teamSession) {
       const state = await getTeamTokenState(teamSession.teamId)
-      initiated = !!state?.initiated
+      liveTeam = !!state?.initiated
     } else {
       const rows = (await db`
-        SELECT 1 FROM teams
-        WHERE organization_id = ${orgSession!.orgId} AND initiated_at IS NOT NULL
+        SELECT 1 FROM teams t
+        JOIN team_memberships tm ON tm.team_id = t.id
+        WHERE t.organization_id = ${orgSession!.orgId}
+        GROUP BY t.id HAVING COUNT(tm.user_id) >= 8
         LIMIT 1
       `) as unknown as unknown[]
-      initiated = rows.length > 0
+      liveTeam = rows.length > 0
     }
 
     const coachEmail = teamSession?.adminEmail ?? orgSession!.adminEmail
-    const unitAmount = initiated ? 250 : 499
+    const unitAmount = liveTeam ? 250 : 499
 
     const checkout = await getStripe().checkout.sessions.create({
       mode: 'payment',

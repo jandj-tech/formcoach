@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import CoachUploadForm from './CoachUploadForm'
 import TeamCoaches from './TeamCoaches'
-import InitiationPanel from '@/components/InitiationPanel'
 import PoolAssignPanel from '@/components/PoolAssignPanel'
 import TokenBalances from '@/components/TokenBalances'
 import LeaderboardTable from '@/components/LeaderboardTable'
@@ -333,10 +332,10 @@ export default function TeamDashboardClient({
             }))}
           />
         ) : (
-          <InitiationPanel
-            endpoint="/api/team/buy-initiation"
-            playerCount={members.length}
-          />
+          <p className="text-sm text-gray-400">
+            Your team needs at least 8 players before tokens can be purchased.
+            {members.length > 0 && ` (${members.length}/8 joined)`}
+          </p>
         )}
 
         {team.initiated && (

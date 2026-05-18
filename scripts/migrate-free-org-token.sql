@@ -1,0 +1,1 @@
+ALTER TABLE team_memberships ADD COLUMN IF NOT EXISTS free_token_granted BOOLEAN DEFAULT FALSE;

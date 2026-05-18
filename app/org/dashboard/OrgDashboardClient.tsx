@@ -734,10 +734,32 @@ export default function OrgDashboardClient({ teams, orgName, classPackages }: Pr
         </div>
       </div>
 
-      {!anyInitiated && (
-        <div className="bg-orange-50 border border-orange-100 rounded-xl px-4 py-3">
-          <p className="text-sm text-orange-800 font-semibold">Get $1.49/token once a team hits 8 players</p>
-          <p className="text-xs text-orange-700 mt-0.5">You can still buy now at $2.79 each.</p>
+      {!anyInitiated && teams.length > 0 && (
+        <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-4 space-y-3">
+          <div>
+            <p className="text-sm font-black text-orange-900">Tokens are $1.49 each once a team reaches 8 players</p>
+            <p className="text-xs text-orange-700 mt-0.5">Currently $2.79 each — get more players to unlock the lower price.</p>
+          </div>
+          <div className="space-y-2">
+            {teams.map(t => {
+              const pct = Math.min(100, (t.members.length / 8) * 100)
+              const needed = Math.max(0, 8 - t.members.length)
+              return (
+                <div key={t.id} className="space-y-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-semibold text-orange-800">{t.name}</p>
+                    <p className="text-xs text-orange-700 shrink-0">{t.members.length}/8 players</p>
+                  </div>
+                  <div className="w-full bg-orange-200 rounded-full h-1.5">
+                    <div className="bg-orange-500 h-1.5 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                  </div>
+                  {needed > 0 && (
+                    <p className="text-xs text-orange-600">{needed} more player{needed !== 1 ? 's' : ''} needed to unlock $1.49</p>
+                  )}
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
 

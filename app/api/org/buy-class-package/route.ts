@@ -55,6 +55,8 @@ export async function POST(req: NextRequest) {
       pricePerPlayerCents: String(pricePerPlayer),
       totalCents: String(totalCents),
     },
+    shipping_address_collection: { allowed_countries: ['US', 'CA'] },
+    phone_number_collection: { enabled: true },
     success_url: `${baseUrl}/org/dashboard?class_success=1`,
     allow_promotion_codes: true,
     cancel_url: `${baseUrl}/org/dashboard`,

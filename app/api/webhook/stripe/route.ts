@@ -173,13 +173,18 @@ export async function POST(req: NextRequest) {
       const playerCount = parseInt(session.metadata?.playerCount || '0', 10)
       const pricePerPlayerCents = parseInt(session.metadata?.pricePerPlayerCents || '0', 10)
       const totalCents = parseInt(session.metadata?.totalCents || '0', 10)
+      const ship = session.collected_information?.shipping_details
       if (orgId && playerCount > 0) {
         try {
           await db`
             INSERT INTO org_class_packages
-              (org_id, stripe_session_id, player_count, price_per_player_cents, total_cents, token_pool, status)
+              (org_id, stripe_session_id, player_count, price_per_player_cents, total_cents, token_pool, status,
+               shipping_name, shipping_line1, shipping_line2, shipping_city, shipping_state, shipping_postal_code, shipping_country)
             VALUES
-              (${orgId}, ${session.id}, ${playerCount}, ${pricePerPlayerCents}, ${totalCents}, ${playerCount * 2}, 'active')
+              (${orgId}, ${session.id}, ${playerCount}, ${pricePerPlayerCents}, ${totalCents}, ${playerCount * 2}, 'active',
+               ${ship?.name ?? null}, ${ship?.address?.line1 ?? null}, ${ship?.address?.line2 ?? null},
+               ${ship?.address?.city ?? null}, ${ship?.address?.state ?? null},
+               ${ship?.address?.postal_code ?? null}, ${ship?.address?.country ?? null})
             ON CONFLICT (stripe_session_id) DO NOTHING
           `
         } catch (err) {

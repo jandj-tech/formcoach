@@ -71,6 +71,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ received: true })
     }
 
+    // --- Organization token purchase: tokens land in the org's balance ---
+    if (metaType === 'org_token_purchase') {
+      const orgId = session.metadata?.orgId
+      const quantity = parseInt(session.metadata?.quantity || '0', 10)
+      if (orgId && quantity > 0) {
+        try {
+          await db`
+            UPDATE organizations
+            SET token_balance = COALESCE(token_balance, 0) + ${quantity}
+            WHERE id = ${orgId}
+          `
+        } catch (err) {
+          console.error('Failed to credit org token balance:', err)
+          return NextResponse.json({ error: 'DB error' }, { status: 500 })
+        }
+      }
+      return NextResponse.json({ received: true })
+    }
+
     // --- Token grant for team/org players ---
     if (metaType === 'team_token_grant') {
       const recipientIds = (session.metadata?.recipientUserIds || '').split(',').filter(Boolean)

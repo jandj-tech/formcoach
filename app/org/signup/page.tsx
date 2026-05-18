@@ -184,7 +184,7 @@ function OrgSignupInner() {
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Number of players in your club</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Number of players in your club (estimate)</label>
               <input
                 type="number"
                 min={1}

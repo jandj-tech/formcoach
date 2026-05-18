@@ -45,6 +45,7 @@ export default function OrgTokenPanel({
   const [msg, setMsg] = useState('')
 
   const [buyQty, setBuyQty] = useState(10)
+  const [customQty, setCustomQty] = useState('')
 
   const [assignTeamId, setAssignTeamId] = useState(teams[0]?.id ?? '')
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(new Set())
@@ -204,39 +205,40 @@ export default function OrgTokenPanel({
               </div>
             )}
 
-            {/* Quantity selector */}
-            <div className="flex gap-2">
-              {[5, 10, 25].map(q => (
-                <button
-                  key={q}
-                  type="button"
-                  onClick={() => setBuyQty(q)}
-                  className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-colors ${
-                    buyQty === q
-                      ? 'bg-orange-500 text-white border-orange-500'
-                      : 'bg-white text-black border-gray-300 hover:border-orange-400'
-                  }`}
-                >
-                  {q}
-                </button>
-              ))}
-              <div className="relative flex-1">
-                <input
-                  type="number"
-                  min={1}
-                  max={10000}
-                  value={buyQty || ''}
-                  onChange={e => {
-                    const n = parseInt(e.target.value)
-                    setBuyQty(Number.isNaN(n) ? 0 : Math.min(10000, Math.max(0, n)))
-                  }}
-                  onBlur={() => { if (buyQty < 1) setBuyQty(1) }}
-                  onFocus={e => e.target.select()}
-                  placeholder="Custom"
-                  aria-label="Custom token amount"
-                  className="w-full py-2.5 px-2 border border-gray-300 rounded-xl text-center text-black text-sm font-bold focus:outline-none focus:border-orange-500"
-                />
+            {/* Quantity selector — quick picks, then a clearly-labelled custom box */}
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                {[5, 10, 25].map(q => (
+                  <button
+                    key={q}
+                    type="button"
+                    onClick={() => { setBuyQty(q); setCustomQty('') }}
+                    className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-colors ${
+                      buyQty === q && !customQty
+                        ? 'bg-orange-500 text-white border-orange-500'
+                        : 'bg-white text-black border-gray-300 hover:border-orange-400'
+                    }`}
+                  >
+                    {q}
+                  </button>
+                ))}
               </div>
+              <input
+                type="number"
+                min={1}
+                max={10000}
+                value={customQty}
+                onChange={e => {
+                  const v = e.target.value
+                  setCustomQty(v)
+                  const n = parseInt(v)
+                  if (!Number.isNaN(n)) setBuyQty(Math.min(10000, Math.max(1, n)))
+                }}
+                onFocus={e => e.target.select()}
+                placeholder="Or enter a custom amount…"
+                aria-label="Custom token amount"
+                className="w-full py-2.5 px-3 border border-gray-300 rounded-xl text-black text-sm placeholder:text-gray-400 placeholder:font-normal focus:outline-none focus:border-orange-500"
+              />
             </div>
 
             <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 flex items-center justify-between">

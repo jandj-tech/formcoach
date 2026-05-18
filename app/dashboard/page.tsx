@@ -94,47 +94,46 @@ export default async function DashboardPage() {
 
   if (!user) redirect('/login')
 
-  // Team the player has joined (if any). Falls back to null if the
-  // team_memberships table doesn't exist yet.
-  let team: { id: string; name: string; access_code: string; admin_email: string } | null = null
-  let coaches: string[] = []
+  // Teams the player has joined — a player can be on more than one (e.g. a
+  // house league team and a summer league team).
+  let teams: Array<{ id: string; name: string; access_code: string; admin_email: string }> = []
   try {
-    const [row] = (await db`
+    teams = (await db`
       SELECT t.id, t.name, t.access_code, t.admin_email
       FROM team_memberships tm
       JOIN teams t ON t.id = tm.team_id
       WHERE tm.user_id = ${user.id}
       ORDER BY tm.joined_at DESC
-      LIMIT 1
-    `) as unknown as [{ id: string; name: string; access_code: string; admin_email: string } | undefined]
-    team = row ?? null
+    `) as unknown as typeof teams
   } catch (err) {
     console.error('[dashboard] team membership query failed:', err)
   }
 
-  // Coaches for the player's team, shown by nickname (falling back to email):
-  // the founding coach plus any added coaches.
-  if (team) {
+  // Coaches for each team, shown by nickname (falling back to email): the
+  // founding coach plus any added coaches.
+  const coachesByTeam: Record<string, string[]> = {}
+  for (const t of teams) {
     let headCoachNickname: string | null = null
     try {
       const [r] = (await db`
-        SELECT coach_nickname FROM teams WHERE id = ${team.id}
+        SELECT coach_nickname FROM teams WHERE id = ${t.id}
       `) as unknown as [{ coach_nickname: string | null } | undefined]
       headCoachNickname = r?.coach_nickname ?? null
     } catch (err) {
       // coach_nickname column may not exist on older DBs.
       console.error('[dashboard] head coach nickname query failed:', err)
     }
-    coaches = [headCoachNickname || team.admin_email]
+    const list = [headCoachNickname || t.admin_email]
     try {
       const extra = (await db`
-        SELECT email, nickname FROM team_coaches WHERE team_id = ${team.id} ORDER BY created_at ASC
+        SELECT email, nickname FROM team_coaches WHERE team_id = ${t.id} ORDER BY created_at ASC
       `) as unknown as Array<{ email: string; nickname: string | null }>
-      coaches.push(...extra.map(c => c.nickname || c.email))
+      list.push(...extra.map(c => c.nickname || c.email))
     } catch (err) {
       // team_coaches may not exist on older DBs — just show the founding coach.
       console.error('[dashboard] team coaches query failed:', err)
     }
+    coachesByTeam[t.id] = list
   }
 
   const isSubscribed =
@@ -153,7 +152,7 @@ export default async function DashboardPage() {
   return (
     <main className="min-h-screen bg-white flex flex-col">
       <TopNav />
-      <JoinTeamPopup hasTeam={!!team} />
+      <JoinTeamPopup hasTeam={teams.length > 0} />
 
       <div className="max-w-3xl mx-auto w-full px-6 py-10 space-y-4">
         {/* Header */}
@@ -187,50 +186,66 @@ export default async function DashboardPage() {
           </div>
         </details>
 
-        {/* Your Team — collapsible to keep the shot history in view */}
+        {/* Your Teams — collapsible to keep the shot history in view. A player
+            can be on several teams (e.g. house league + summer league). */}
         <details className="group border border-gray-200 rounded-lg">
           <summary className="flex items-center justify-between gap-2 px-3 py-2 cursor-pointer select-none list-none">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Team</span>
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              {teams.length === 1 ? 'Team' : 'Teams'}
+            </span>
             <span className="flex items-center gap-2 text-sm text-gray-700">
-              <span className="truncate max-w-[10rem]">{team ? team.name : 'Not on a team'}</span>
+              <span className="truncate max-w-[12rem]">
+                {teams.length === 0
+                  ? 'Not on a team'
+                  : teams.length === 1
+                    ? teams[0].name
+                    : `${teams.length} teams`}
+              </span>
               <span className="text-gray-400 text-xs transition-transform group-open:rotate-180">▾</span>
             </span>
           </summary>
-          <div className="px-3 pb-3">
-            {team ? (
-              <div className="space-y-3">
-                <p className="text-gray-500 text-sm">
-                  Team code:{' '}
-                  <span className="font-mono font-semibold text-gray-700">{team.access_code}</span>
-                </p>
-                {coaches.length > 0 && (
-                  <div>
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                      {coaches.length === 1 ? 'Coach' : 'Coaches'}
-                    </p>
-                    <ul className="mt-1 space-y-0.5">
-                      {coaches.map((c, i) => (
-                        <li key={i} className="text-sm text-gray-700">{c}</li>
-                      ))}
-                    </ul>
+          <div className="px-3 pb-3 space-y-3">
+            {teams.map((t) => {
+              const teamCoaches = coachesByTeam[t.id] ?? []
+              return (
+                <div key={t.id} className="border border-gray-100 rounded-xl p-3 space-y-2">
+                  <p className="font-bold text-black text-sm">{t.name}</p>
+                  <p className="text-gray-500 text-xs">
+                    Team code:{' '}
+                    <span className="font-mono font-semibold text-gray-700">{t.access_code}</span>
+                  </p>
+                  {teamCoaches.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                        {teamCoaches.length === 1 ? 'Coach' : 'Coaches'}
+                      </p>
+                      <ul className="mt-1 space-y-0.5">
+                        {teamCoaches.map((c, i) => (
+                          <li key={i} className="text-sm text-gray-700">{c}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <Link
+                      href={`/dashboard/leaderboard?team=${t.id}`}
+                      className="inline-block bg-orange-500 hover:bg-orange-400 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors"
+                    >
+                      View Team Leaderboard
+                    </Link>
+                    <LeaveTeamButton teamId={t.id} teamName={t.name} />
                   </div>
-                )}
-                <div>
-                  <Link
-                    href="/dashboard/leaderboard"
-                    className="inline-block bg-orange-500 hover:bg-orange-400 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors"
-                  >
-                    View Team Leaderboard
-                  </Link>
                 </div>
-                <LeaveTeamButton teamName={team.name} />
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-sm text-gray-600">Have a team code? Enter it to join your team.</p>
-                <JoinTeamForm />
-              </div>
-            )}
+              )
+            })}
+            <div className="space-y-2 pt-1">
+              <p className="text-sm text-gray-600">
+                {teams.length === 0
+                  ? 'Have a team code? Enter it to join your team.'
+                  : 'Have another team code? Join another team — handy for house or summer league.'}
+              </p>
+              <JoinTeamForm />
+            </div>
           </div>
         </details>
 

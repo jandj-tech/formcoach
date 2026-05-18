@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-export default function LeaveTeamButton({ teamName }: { teamName: string }) {
+export default function LeaveTeamButton({ teamId, teamName }: { teamId: string; teamName: string }) {
   const router = useRouter()
   const [leaving, setLeaving] = useState(false)
 
@@ -11,7 +11,11 @@ export default function LeaveTeamButton({ teamName }: { teamName: string }) {
     if (!confirm(`Leave ${teamName}? You can rejoin later with the team code.`)) return
     setLeaving(true)
     try {
-      const res = await fetch('/api/team/leave', { method: 'DELETE' })
+      const res = await fetch('/api/team/leave', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teamId }),
+      })
       if (!res.ok) throw new Error('Leave failed')
       router.refresh()
     } catch {

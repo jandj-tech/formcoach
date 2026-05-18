@@ -25,24 +25,47 @@ function scoreColor(score: number) {
   return 'text-red-500'
 }
 
-export default async function TeamLeaderboardPage() {
+export default async function TeamLeaderboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ team?: string }>
+}) {
   const session = await getSession()
   if (!session) redirect('/login')
 
-  // The team this player has joined (most recent membership).
+  const { team: teamParam } = await searchParams
+
+  // A player can be on several teams. Show the team from the ?team= param
+  // (only if they're actually a member of it), otherwise their most recent.
   let team: { id: string; name: string } | null = null
-  try {
-    const [row] = (await db`
-      SELECT t.id, t.name
-      FROM team_memberships tm
-      JOIN teams t ON t.id = tm.team_id
-      WHERE tm.user_id = ${session.userId}
-      ORDER BY tm.joined_at DESC
-      LIMIT 1
-    `) as unknown as [{ id: string; name: string } | undefined]
-    team = row ?? null
-  } catch (err) {
-    console.error('[dashboard/leaderboard] team query failed:', err)
+  if (teamParam) {
+    try {
+      const [row] = (await db`
+        SELECT t.id, t.name
+        FROM team_memberships tm
+        JOIN teams t ON t.id = tm.team_id
+        WHERE tm.user_id = ${session.userId} AND t.id = ${teamParam}
+        LIMIT 1
+      `) as unknown as [{ id: string; name: string } | undefined]
+      team = row ?? null
+    } catch {
+      // Invalid team id in the param — fall through to the default below.
+    }
+  }
+  if (!team) {
+    try {
+      const [row] = (await db`
+        SELECT t.id, t.name
+        FROM team_memberships tm
+        JOIN teams t ON t.id = tm.team_id
+        WHERE tm.user_id = ${session.userId}
+        ORDER BY tm.joined_at DESC
+        LIMIT 1
+      `) as unknown as [{ id: string; name: string } | undefined]
+      team = row ?? null
+    } catch (err) {
+      console.error('[dashboard/leaderboard] team query failed:', err)
+    }
   }
 
   // Not on a team — nothing to rank, send them back to the dashboard.

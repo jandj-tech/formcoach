@@ -39,10 +39,10 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
     order_index: number
   }>
 
-  // Load tutorial-video map for the criteria the player needs help with (≤ 6).
+  // Load tutorial-video map for the criteria the player needs help with (≤ 8).
   // The video map function handles manual overrides and YouTube auto-matching.
   const needsHelp = scores
-    .filter((s) => s.ai_score !== null && Number(s.ai_score) <= 6)
+    .filter((s) => s.ai_score !== null && Number(s.ai_score) <= 8)
     .map((s) => s.name)
   const videoMap = needsHelp.length > 0 ? await getCriteriaVideoMap(needsHelp) : {}
 

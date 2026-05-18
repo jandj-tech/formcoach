@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   try {
     const { quantity } = await req.json()
     const qty = typeof quantity === 'number' ? Math.floor(quantity) : 1
-    if (qty < 1 || qty > 1000) {
+    if (qty < 1 || qty > 10000) {
       return NextResponse.json({ error: 'Invalid quantity' }, { status: 400 })
     }
 

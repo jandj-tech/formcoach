@@ -205,38 +205,36 @@ export default function OrgTokenPanel({
             )}
 
             {/* Quantity selector */}
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">How many tokens?</p>
-              <div className="flex gap-2">
-                {[1, 5, 10].map(q => (
-                  <button
-                    key={q}
-                    type="button"
-                    onClick={() => setBuyQty(q)}
-                    className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-colors ${
-                      buyQty === q
-                        ? 'bg-orange-500 text-white border-orange-500'
-                        : 'bg-white text-black border-gray-300 hover:border-orange-400'
-                    }`}
-                  >
-                    {q}
-                  </button>
-                ))}
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">Custom amount</span>
+            <div className="flex gap-2">
+              {[5, 10, 25].map(q => (
+                <button
+                  key={q}
+                  type="button"
+                  onClick={() => setBuyQty(q)}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-colors ${
+                    buyQty === q
+                      ? 'bg-orange-500 text-white border-orange-500'
+                      : 'bg-white text-black border-gray-300 hover:border-orange-400'
+                  }`}
+                >
+                  {q}
+                </button>
+              ))}
+              <div className="relative flex-1">
                 <input
                   type="number"
                   min={1}
-                  max={1000}
+                  max={10000}
                   value={buyQty || ''}
                   onChange={e => {
                     const n = parseInt(e.target.value)
-                    setBuyQty(Number.isNaN(n) ? 0 : Math.min(1000, Math.max(0, n)))
+                    setBuyQty(Number.isNaN(n) ? 0 : Math.min(10000, Math.max(0, n)))
                   }}
                   onBlur={() => { if (buyQty < 1) setBuyQty(1) }}
+                  onFocus={e => e.target.select()}
+                  placeholder="Custom"
                   aria-label="Custom token amount"
-                  className="w-24 border border-gray-300 rounded-lg px-2 py-1.5 text-center text-black text-sm focus:outline-none focus:border-orange-500"
+                  className="w-full py-2.5 px-2 border border-gray-300 rounded-xl text-center text-black text-sm font-bold focus:outline-none focus:border-orange-500"
                 />
               </div>
             </div>

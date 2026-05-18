@@ -336,7 +336,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
 
   // Every player and coach across the org — feeds the token-distribution panel.
   const orgPlayers = teams.flatMap(t =>
-    t.members.map(m => ({ id: m.id, label: memberDisplayName(m), team: t.name })),
+    t.members.map(m => ({ id: m.id, label: memberDisplayName(m), team: t.name, teamId: t.id })),
   )
   const orgCoachMap = new Map<string, string>()
   for (const t of teams) {
@@ -1057,46 +1057,14 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
       {classProgramSection}
       {addTeamSection}
 
-      {(() => {
-        const totalCredits = teams.reduce((s, t) => s + t.credits, 0)
-        const totalPlayerTokens = teams.reduce(
-          (s, t) => s + t.members.reduce((ps, m) => ps + m.tokens, 0), 0,
-        )
-        return (
-          <div className="border border-gray-200 rounded-2xl overflow-hidden">
-            <button
-              onClick={() => setTokenOverviewOpen(o => !o)}
-              className="w-full flex items-center justify-between gap-4 px-5 py-4 bg-gray-50 hover:bg-orange-50 transition-colors text-left"
-            >
-              <h2 className="text-xl font-black text-black">Token Overview</h2>
-              <span className="text-gray-400 text-sm">{tokenOverviewOpen ? '−' : '+'}</span>
-            </button>
-            {tokenOverviewOpen && (
-              <div className="px-5 pb-5 pt-3 space-y-3">
-                <div className="grid grid-cols-4 gap-2">
-                  <div className="bg-orange-50 border border-orange-200 rounded-xl px-3 py-2">
-                    <p className="text-xs text-gray-500">Your tokens</p>
-                    <p className="text-2xl font-black text-black">{orgTokenBalance}</p>
-                  </div>
-                  <div className="bg-orange-50 border border-orange-200 rounded-xl px-3 py-2">
-                    <p className="text-xs text-gray-500">Player tokens</p>
-                    <p className="text-2xl font-black text-black">{totalPlayerTokens}</p>
-                  </div>
-                  <div className="bg-orange-50 border border-orange-200 rounded-xl px-3 py-2">
-                    <p className="text-xs text-gray-500">Coach credits</p>
-                    <p className="text-2xl font-black text-black">{totalCredits}</p>
-                  </div>
-                </div>
-                <p className="text-xs text-gray-400">
-                  Across {teams.length} team{teams.length !== 1 ? 's' : ''}. Expand a team below for its per-player breakdown.
-                </p>
-              </div>
-            )}
-          </div>
-        )
-      })()}
-
-      <OrgTokenPanel balance={orgTokenBalance} players={orgPlayers} coaches={orgCoaches} />
+            <OrgTokenPanel
+        balance={orgTokenBalance}
+        players={orgPlayers}
+        coaches={orgCoaches}
+        teams={teams.map(t => ({ id: t.id, name: t.name }))}
+        totalPlayerTokens={teams.reduce((s, t) => s + t.members.reduce((ps, m) => ps + m.tokens, 0), 0)}
+        totalCoachCredits={teams.reduce((s, t) => s + t.credits, 0)}
+      />
 
       <h2 className="text-xl font-black text-black">Your Teams</h2>
 

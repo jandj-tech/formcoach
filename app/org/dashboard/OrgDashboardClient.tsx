@@ -960,10 +960,26 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                       players={team.members.map(m => ({ id: m.id, label: memberDisplayName(m) }))}
                     />
                   ) : (
-                    <p className="text-sm text-gray-400">
-                      This team needs at least 8 players before tokens can be purchased.
-                      {team.members.length > 0 && ` (${team.members.length}/8 joined)`}
-                    </p>
+                    <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-sm font-bold text-black">Team not yet active</p>
+                        <span className="text-xs font-black text-orange-500">{team.members.length}/8 players</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-orange-500 h-2 rounded-full transition-all"
+                          style={{ width: `${Math.min(100, (team.members.length / 8) * 100)}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500 leading-relaxed">
+                        {8 - team.members.length > 0
+                          ? `${8 - team.members.length} more player${8 - team.members.length !== 1 ? 's' : ''} needed to activate this team.`
+                          : 'Almost there!'
+                        }
+                        {' '}Once the team reaches 8 players, every player automatically gets <strong>1 free analysis token</strong>, and the team unlocks the ability to purchase additional tokens at $2.50 each.
+                      </p>
+                      <p className="text-xs text-gray-400">Share the player signup link below to invite players to this team.</p>
+                    </div>
                   )}
 
                   {/* Roster — coach, players, and the player signup link */}

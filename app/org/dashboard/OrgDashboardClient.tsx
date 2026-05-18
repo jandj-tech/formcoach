@@ -418,7 +418,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
     }
   }
 
-  const classPricePerPlayer = classPlayerCount >= CLASS_BULK_THRESHOLD ? 45 : 50
+  const classPricePerPlayer = classPlayerCount >= CLASS_BULK_THRESHOLD ? 36.99 : 40
   const classTotal = classPriceCents(classPlayerCount) / 100
 
   const classProgramSection = (

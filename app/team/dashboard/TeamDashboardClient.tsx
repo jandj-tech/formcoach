@@ -348,7 +348,7 @@ export default function TeamDashboardClient({
                 ? `${8 - members.length} more player${8 - members.length !== 1 ? 's' : ''} needed to activate this team.`
                 : 'Almost there!'
               }
-              {' '}Once you reach 8 players, every player on the team automatically gets <strong>1 free analysis token</strong>, and the team unlocks the ability to purchase additional tokens at $2.50 each.
+              {' '}Once you reach 8 players, every player on the team automatically gets <strong>1 free analysis token</strong>, and the team unlocks the ability to purchase additional tokens at $1.49 each.
             </p>
             <p className="text-xs text-gray-400">Share your team signup link below to invite players.</p>
           </div>

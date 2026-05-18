@@ -203,29 +203,30 @@ export default function OrgTokenPanel({
             )}
 
             {/* Quantity selector */}
-            <div className="space-y-2">
-              <div className="flex gap-2">
-                {[5, 10, 25].map(q => (
-                  <button
-                    key={q}
-                    type="button"
-                    onClick={() => setBuyQty(q)}
-                    className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-colors ${
-                      buyQty === q
-                        ? 'bg-orange-500 text-white border-orange-500'
-                        : 'bg-white text-black border-gray-300 hover:border-orange-400'
-                    }`}
-                  >
-                    {q}
-                  </button>
-                ))}
+            <div className="flex gap-2">
+              {[5, 10, 25].map(q => (
+                <button
+                  key={q}
+                  type="button"
+                  onClick={() => setBuyQty(q)}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-colors ${
+                    buyQty === q
+                      ? 'bg-orange-500 text-white border-orange-500'
+                      : 'bg-white text-black border-gray-300 hover:border-orange-400'
+                  }`}
+                >
+                  {q}
+                </button>
+              ))}
+              <div className="relative flex-1">
                 <input
                   type="number"
                   min={1}
                   value={buyQty}
                   onChange={e => setBuyQty(Math.max(1, parseInt(e.target.value) || 1))}
                   onFocus={e => e.target.select()}
-                  className="w-20 border border-gray-300 rounded-xl px-2 py-2.5 text-center text-black text-sm font-bold focus:outline-none focus:border-orange-500"
+                  placeholder="Custom"
+                  className="w-full py-2.5 px-2 border border-gray-300 rounded-xl text-center text-black text-sm font-bold focus:outline-none focus:border-orange-500"
                 />
               </div>
             </div>

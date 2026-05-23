@@ -6,6 +6,7 @@ import Link from 'next/link'
 import LogoutButton from './LogoutButton'
 import BuyTokenButton from './BuyTokenButton'
 import DeleteSubmissionButton from './DeleteSubmissionButton'
+import DeleteAccountButton from './DeleteAccountButton'
 import JoinTeamForm from './JoinTeamForm'
 import LeaveTeamButton from './LeaveTeamButton'
 import NicknameForm from './NicknameForm'
@@ -170,6 +171,9 @@ export default async function DashboardPage() {
             {!isSubscribed && <BuyTokenButton />}
             <LogoutButton />
           </div>
+        </div>
+        <div className="flex justify-end">
+          <DeleteAccountButton />
         </div>
 
         {/* Nickname — collapsible to keep the shot history in view */}

@@ -46,7 +46,7 @@ export default async function HomePage() {
         <div className="inline-flex items-center gap-2 bg-orange-500/10 border border-orange-500/30 rounded-full px-4 py-1.5 mb-5">
           <span className="text-orange-500 text-xs font-semibold tracking-wider uppercase">AI Shot Analysis</span>
         </div>
-        <h1 className="font-heading text-5xl sm:text-7xl md:text-8xl font-black text-black leading-none uppercase tracking-wide max-w-3xl">
+        <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-black leading-tight max-w-2xl">
           Get your shot<br />
           <span className="text-orange-500">professionally analyzed</span>
         </h1>

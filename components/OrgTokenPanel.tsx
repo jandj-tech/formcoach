@@ -22,6 +22,7 @@ export interface OrgTeamOpt {
   ageGroup: string | null
   initiated: boolean
   memberCount: number
+  credits: number
 }
 
 export default function OrgTokenPanel({
@@ -50,6 +51,13 @@ export default function OrgTokenPanel({
   const [assignTeamId, setAssignTeamId] = useState(teams[0]?.id ?? '')
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(new Set())
   const [assignEach, setAssignEach] = useState(1)
+  // 'balance' = org's personal balance, 'team' = the selected team's credits.
+  // Lazy init: if the org balance starts at 0 but the first team has credits,
+  // default to team-credits so the form is actionable on first render.
+  const [assignSource, setAssignSource] = useState<'balance' | 'team'>(() => {
+    const firstTeamCredits = teams[0]?.credits ?? 0
+    return balance === 0 && firstTeamCredits > 0 ? 'team' : 'balance'
+  })
 
   const [coachEmail, setCoachEmail] = useState(coaches[0]?.email ?? '')
   const [giveQty, setGiveQty] = useState(1)
@@ -62,8 +70,11 @@ export default function OrgTokenPanel({
   const buyTotal = (buyQty * pricePerToken).toFixed(2)
 
   const teamPlayers = players.filter(p => p.teamId === assignTeamId)
+  const selectedTeam = teams.find(t => t.id === assignTeamId)
+  const teamCredits = selectedTeam?.credits ?? 0
   const needed = selectedPlayerIds.size * assignEach
-  const balanceTooLow = selectedPlayerIds.size > 0 && balance < needed
+  const sourceTotal = assignSource === 'balance' ? balance : teamCredits
+  const sourceTooLow = selectedPlayerIds.size > 0 && sourceTotal < needed
 
   function togglePlayer(id: string) {
     setSelectedPlayerIds(prev => {
@@ -118,13 +129,29 @@ export default function OrgTokenPanel({
   function assignToPlayers() {
     const ids = [...selectedPlayerIds]
     if (ids.length === 0) { setMsg('Select at least one player'); return }
-    if (balanceTooLow) { setMsg(`Balance too low — need ${needed} tokens, have ${balance}`); return }
     const amt = Math.max(1, assignEach)
-    post(
-      '/api/org/assign-balance-tokens',
-      { playerUserIds: ids, tokensEach: amt },
-      `Assigned ${amt} token${amt !== 1 ? 's' : ''} to ${ids.length} player${ids.length !== 1 ? 's' : ''}.`,
-    )
+    const total = ids.length * amt
+    if (sourceTooLow) {
+      setMsg(
+        assignSource === 'balance'
+          ? `Personal balance too low — need ${total}, have ${balance}`
+          : `Team credits too low — need ${total}, ${selectedTeam?.name ?? 'this team'} has ${teamCredits}`,
+      )
+      return
+    }
+    if (assignSource === 'team') {
+      post(
+        '/api/org/assign-from-team-credits',
+        { teamId: assignTeamId, playerUserIds: ids, tokensEach: amt },
+        `Assigned ${amt} credit${amt !== 1 ? 's' : ''} from team to ${ids.length} player${ids.length !== 1 ? 's' : ''}.`,
+      )
+    } else {
+      post(
+        '/api/org/assign-balance-tokens',
+        { playerUserIds: ids, tokensEach: amt },
+        `Assigned ${amt} token${amt !== 1 ? 's' : ''} to ${ids.length} player${ids.length !== 1 ? 's' : ''}.`,
+      )
+    }
     setSelectedPlayerIds(new Set())
   }
 
@@ -289,10 +316,47 @@ export default function OrgTokenPanel({
                   >
                     {teams.map(t => (
                       <option key={t.id} value={t.id}>
-                        {t.name} ({t.coachName}{t.ageGroup ? ' ' + t.ageGroup : ''})
+                        {t.name} ({t.coachName}{t.ageGroup ? ' ' + t.ageGroup : ''}{t.credits > 0 ? ` · ${t.credits} team credits` : ''})
                       </option>
                     ))}
                   </select>
+                </div>
+
+                {/* Source picker — your personal balance OR the selected
+                    team's credits. Shown up front so you don't have to scroll
+                    looking for team credits when your balance is empty. */}
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Source</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAssignSource('balance')}
+                      disabled={balance === 0}
+                      className={`text-left border rounded-xl px-3 py-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                        assignSource === 'balance'
+                          ? 'border-orange-500 bg-orange-50'
+                          : 'border-gray-200 bg-white hover:border-orange-300'
+                      }`}
+                    >
+                      <p className="text-xs text-gray-500">Your balance</p>
+                      <p className="text-lg font-black text-black">{balance}</p>
+                      {balance === 0 && <p className="text-[10px] text-gray-400">Buy tokens to use</p>}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAssignSource('team')}
+                      disabled={teamCredits === 0}
+                      className={`text-left border rounded-xl px-3 py-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                        assignSource === 'team'
+                          ? 'border-orange-500 bg-orange-50'
+                          : 'border-gray-200 bg-white hover:border-orange-300'
+                      }`}
+                    >
+                      <p className="text-xs text-gray-500 truncate">This team&apos;s credits</p>
+                      <p className="text-lg font-black text-black">{teamCredits}</p>
+                      {teamCredits === 0 && <p className="text-[10px] text-gray-400">Allocate or buy to fund</p>}
+                    </button>
+                  </div>
                 </div>
 
                 {teamPlayers.length === 0 ? (
@@ -339,23 +403,33 @@ export default function OrgTokenPanel({
                     className="w-16 border border-gray-300 rounded-xl px-2 py-2 text-center text-black text-sm focus:outline-none focus:border-orange-500"
                   />
                   {selectedPlayerIds.size > 0 && (
-                    <span className="text-xs text-gray-500">= {needed} total from balance</span>
+                    <span className="text-xs text-gray-500">
+                      = {needed} total from {assignSource === 'balance' ? 'your balance' : "team credits"}
+                    </span>
                   )}
                 </div>
 
-                {balanceTooLow && (
+                {sourceTooLow && (
                   <p className="text-sm font-semibold text-red-500">
-                    Balance too low — purchase more tokens (need {needed}, have {balance})
+                    {assignSource === 'balance'
+                      ? `Personal balance too low — need ${needed}, have ${balance}.`
+                      : `Team credits too low — need ${needed}, ${selectedTeam?.name ?? 'this team'} has ${teamCredits}.`}
+                    {' '}{assignSource === 'balance' && teamCredits >= needed && (
+                      <button onClick={() => setAssignSource('team')} className="underline font-bold">Use team credits instead?</button>
+                    )}
+                    {assignSource === 'team' && balance >= needed && (
+                      <button onClick={() => setAssignSource('balance')} className="underline font-bold">Use personal balance instead?</button>
+                    )}
                   </p>
                 )}
 
                 <button
                   type="button"
                   onClick={assignToPlayers}
-                  disabled={busy || selectedPlayerIds.size === 0 || balanceTooLow}
+                  disabled={busy || selectedPlayerIds.size === 0 || sourceTooLow}
                   className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
                 >
-                  Assign tokens
+                  {`Assign tokens from ${assignSource === 'balance' ? 'your balance' : 'team credits'}`}
                 </button>
               </div>
             )}

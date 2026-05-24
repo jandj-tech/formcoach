@@ -776,7 +776,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
         balance={orgTokenBalance}
         players={orgPlayers}
         coaches={orgCoaches}
-        teams={teams.map(t => ({ id: t.id, name: t.name, coachName: t.coachNickname || t.adminEmail, ageGroup: t.ageGroup, initiated: t.initiated, memberCount: t.members.length }))}
+        teams={teams.map(t => ({ id: t.id, name: t.name, coachName: t.coachNickname || t.adminEmail, ageGroup: t.ageGroup, initiated: t.initiated, memberCount: t.members.length, credits: t.credits }))}
         totalPlayerTokens={teams.reduce((s, t) => s + t.members.reduce((ps, m) => ps + m.tokens, 0), 0)}
         totalCoachCredits={teams.reduce((s, t) => s + t.credits, 0)}
       />

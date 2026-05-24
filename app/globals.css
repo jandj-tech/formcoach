@@ -184,4 +184,22 @@ body {
     overflow: visible;
     box-shadow: none;
   }
+
+  /* Certificate page: fill the printed page with the certificate alone. */
+  body:has(.certificate-print) {
+    background: white !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  body:has(.certificate-print) main {
+    padding: 0 !important;
+    background: white !important;
+    min-height: 0 !important;
+    display: block !important;
+  }
+  body:has(.certificate-print) .certificate-print {
+    max-width: none !important;
+    width: 100% !important;
+    margin: 0 !important;
+  }
 }

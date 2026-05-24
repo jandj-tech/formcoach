@@ -1,5 +1,7 @@
+import Image from 'next/image'
 import { notFound } from 'next/navigation'
 import { db } from '@/lib/db'
+import PrintButton from '@/components/PrintButton'
 
 interface Props {
   params: Promise<{ enrollmentId: string }>
@@ -12,29 +14,33 @@ export default async function CertificatePage({ params }: Props) {
     SELECT
       e.id, e.first_name, e.last_name_initial,
       e.first_score, e.display_final_score, e.final_score,
-      e.is_first_class, e.certificate_issued_at,
-      o.name AS org_name
+      e.certificate_issued_at
     FROM org_class_enrollments e
-    JOIN org_class_packages p ON p.id = e.package_id
-    JOIN organizations o ON o.id = p.org_id
     WHERE e.id = ${enrollmentId}
       AND e.final_submission_id IS NOT NULL
-  ` as unknown as [{ id: string; first_name: string | null; last_name_initial: string | null; first_score: number | null; display_final_score: number | null; final_score: number | null; is_first_class: boolean; certificate_issued_at: string | null; org_name: string } | undefined]
+  ` as unknown as [{
+    id: string
+    first_name: string | null
+    last_name_initial: string | null
+    first_score: number | null
+    display_final_score: number | null
+    final_score: number | null
+    certificate_issued_at: string | null
+  } | undefined]
 
   if (!row) notFound()
 
   const firstName = row.first_name || 'Player'
   const lastName = row.last_name_initial ? ` ${row.last_name_initial}.` : ''
   const playerName = `${firstName}${lastName}`
-  const startScore = Number(row.first_score ?? 0).toFixed(1)
-  const finalScore = Number(row.display_final_score ?? row.final_score ?? 0).toFixed(1)
+
   const startNum = Number(row.first_score ?? 0)
   const finalNum = Number(row.display_final_score ?? row.final_score ?? 0)
-  const improvementPct = startNum > 0 ? (((finalNum - startNum) / startNum) * 100).toFixed(1) : '0.0'
-  const improved = finalNum > startNum
-  const passes = finalNum >= startNum
+  const startScore = startNum.toFixed(1)
+  const finalScore = finalNum.toFixed(1)
+  const diff = finalNum - startNum
+  const improvement = `${diff >= 0 ? '+' : '−'}${Math.abs(diff).toFixed(1)}`
 
-  // Mark certificate as issued if not yet
   if (!row.certificate_issued_at) {
     await db`
       UPDATE org_class_enrollments SET certificate_issued_at = NOW()
@@ -42,81 +48,71 @@ export default async function CertificatePage({ params }: Props) {
     `
   }
 
-  const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-6">
-      {/* Print button — hidden when printing */}
-      <div className="mb-6 print:hidden">
-        <button
-          onClick={undefined}
-          className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-6 py-3 rounded-xl text-sm transition-colors"
-          id="print-btn"
-        />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `document.getElementById('print-btn').textContent='Print Certificate';document.getElementById('print-btn').onclick=()=>window.print();`,
-          }}
-        />
+    <main className="min-h-screen bg-zinc-900 flex flex-col items-center justify-center p-4 sm:p-8">
+      {/* Page-scoped: landscape, no margins, only when printing this route. */}
+      <style>{`@page { size: landscape; margin: 0; }`}</style>
+
+      <div className="mb-5 print:hidden">
+        <PrintButton label="Print Certificate" />
       </div>
 
-      {/* Certificate */}
+      {/* certificate-print = print-mode targeting class (see globals.css).
+          container-type=inline-size so children can size with cqw. */}
       <div
-        className="bg-white w-full max-w-2xl rounded-3xl overflow-hidden"
-        style={{ boxShadow: '0 4px 40px rgba(0,0,0,0.15)', border: '8px solid #f97316' }}
+        className="certificate-print relative w-full max-w-5xl"
+        style={{ aspectRatio: '1491 / 1055', containerType: 'inline-size' }}
       >
-        {/* Header stripe */}
-        <div className="bg-orange-500 px-10 py-6 text-center">
-          <p className="text-orange-100 text-sm font-bold uppercase tracking-widest">LearnHoops.com</p>
-          <h1 className="text-white text-3xl font-black mt-1">Certificate of Completion</h1>
+        <Image
+          src="/certificate-template.png"
+          alt="LearnHoops Certificate of Completion"
+          fill
+          priority
+          sizes="(max-width: 1024px) 100vw, 1024px"
+          className="object-contain select-none pointer-events-none"
+        />
+
+        {/* Player name — sits above the "Presented to:" underline */}
+        <div
+          className="absolute font-black text-black"
+          style={{ left: '22%', right: '5%', top: '52.5%', fontSize: '3cqw', lineHeight: 1 }}
+        >
+          {playerName}
         </div>
 
-        <div className="px-10 py-8 text-center space-y-6">
-          <div>
-            <p className="text-gray-500 text-sm uppercase tracking-widest font-semibold">This certifies that</p>
-            <p className="text-5xl font-black text-black mt-2">{playerName}</p>
-          </div>
-
-          <p className="text-gray-600 text-base leading-relaxed max-w-md mx-auto">
-            has successfully completed the{' '}
-            <span className="font-bold text-black">10-Week Basketball Shooting Class</span>
-            {' '}presented by{' '}
-            <span className="font-bold text-orange-600">{row.org_name}</span>
-          </p>
-
-          {/* Score comparison */}
-          <div className="flex items-center justify-center gap-6 py-4">
-            <div className="text-center">
-              <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">Starting Score</p>
-              <p className="text-4xl font-black text-gray-400 mt-1">{startScore}</p>
-              <p className="text-xs text-gray-300 mt-0.5">/ 10.0</p>
-            </div>
-            <div className="text-center px-4">
-              <div
-                className={`text-3xl font-black ${improved ? 'text-green-500' : 'text-gray-400'}`}
-              >
-                {improved ? `+${improvementPct}%` : `${improvementPct}%`}
-              </div>
-              <p className="text-xs text-gray-400 mt-0.5">improvement</p>
-            </div>
-            <div className="text-center">
-              <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">Final Score</p>
-              <p className="text-4xl font-black text-orange-500 mt-1">{finalScore}</p>
-              <p className="text-xs text-gray-300 mt-0.5">/ 10.0</p>
-            </div>
-          </div>
-
-          {/* Pass / Fail badge */}
-          <div className={`inline-block px-8 py-3 rounded-full font-black text-xl ${passes ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
-            {passes ? 'PASSED' : 'COMPLETED'}
-          </div>
-
-          <div className="border-t border-gray-100 pt-5 text-sm text-gray-400 space-y-1">
-            <p>Issued on {today}</p>
-            <p className="text-xs">LearnHoops 10-Week Shooting Class · learnhoops.com</p>
-          </div>
+        {/* First Analysis Score */}
+        <div
+          className="absolute font-black text-black text-center"
+          style={{ left: '23.5%', width: '13%', top: '63%', fontSize: '2.2cqw', lineHeight: 1 }}
+        >
+          {startScore}
         </div>
+
+        {/* Final Analysis Score */}
+        <div
+          className="absolute font-black text-black text-center"
+          style={{ left: '52.5%', width: '11%', top: '63%', fontSize: '2.2cqw', lineHeight: 1 }}
+        >
+          {finalScore}
+        </div>
+
+        {/* Improvement — signed raw difference (green if up, red if down) */}
+        <div
+          className="absolute font-black text-center"
+          style={{
+            left: '74.5%',
+            width: '10%',
+            top: '63%',
+            fontSize: '2.2cqw',
+            color: diff >= 0 ? '#16a34a' : '#dc2626',
+            lineHeight: 1,
+          }}
+        >
+          {improvement}
+        </div>
+
+        {/* DATE + COACH SIGNATURE — intentionally left blank for the coach to fill in */}
       </div>
-    </div>
+    </main>
   )
 }

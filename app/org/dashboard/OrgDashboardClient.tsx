@@ -37,6 +37,7 @@ interface TeamData {
   accessCode: string
   adminEmail: string
   credits: number
+  classPackageId: string | null
   members: Member[]
   coaches: Coach[]
   coachNickname: string | null
@@ -124,7 +125,6 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   const [classProgramOpen, setClassProgramOpen] = useState(classPackages.length === 0)
   const [buyingClass, setBuyingClass] = useState(false)
   const [classError, setClassError] = useState('')
-  const [expandedPackage, setExpandedPackage] = useState<string | null>(null)
   const [enrollOpen, setEnrollOpen] = useState<string | null>(null)
   const [enrollFirstName, setEnrollFirstName] = useState('')
   const [enrollLastInit, setEnrollLastInit] = useState('')
@@ -629,232 +629,9 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
       </div>
       )}
 
-      {/* Active class packages */}
-      {classPackages.length > 0 && (
-        <div className="space-y-3">
-          <h3 className="font-black text-black text-lg">Active Class Programs</h3>
-          {classPackages.map(pkg => {
-            const isOpen = expandedPackage === pkg.id
-            const purchasedAt = new Date(pkg.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-            return (
-              <div key={pkg.id} className="border border-gray-200 rounded-2xl overflow-hidden">
-                <button
-                  onClick={() => setExpandedPackage(isOpen ? null : pkg.id)}
-                  className="w-full flex items-center justify-between gap-4 px-5 py-4 bg-gray-50 hover:bg-orange-50 transition-colors text-left"
-                >
-                  <div>
-                    <p className="font-bold text-black">{pkg.player_count}-Player Class Package</p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {pkg.enrolled_count}/{pkg.player_count} enrolled · {pkg.completed_count} completed · purchased {purchasedAt}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${pkg.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                      {pkg.status}
-                    </span>
-                    <span className="text-gray-400 text-sm">{isOpen ? '−' : '+'}</span>
-                  </div>
-                </button>
-
-                {isOpen && (
-                  <div className="px-5 py-4 space-y-5">
-                    {pkg.team_access_code && (
-                      <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
-                        <div>
-                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Training Camp join code</p>
-                          <p className="text-2xl font-black text-orange-600 tracking-widest mt-0.5">{pkg.team_access_code}</p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            Share this with your players — they each get {pkg.player_count > 0 ? '2 analysis tokens' : 'tokens'} when they join, up to {pkg.player_count} players.
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => {
-                            const code = pkg.team_access_code as string
-                            copyToClipboard(`${BASE_URL}/signup?teamCode=${code}`, 'Join link copied!')
-                          }}
-                          className="shrink-0 bg-white border border-orange-300 text-orange-600 text-xs font-bold px-3 py-2 rounded-lg hover:bg-orange-100"
-                        >
-                          Copy join link
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Stats row */}
-                    <div className="grid grid-cols-4 gap-2">
-                      {[
-                        { label: 'Players', value: pkg.player_count },
-                        { label: 'Enrolled', value: pkg.enrolled_count },
-                        { label: 'Completed', value: pkg.completed_count },
-                        { label: 'Tokens left', value: pkg.token_pool },
-                      ].map(s => (
-                        <div key={s.label} className="bg-orange-50 border border-orange-100 rounded-xl px-3 py-2 text-center">
-                          <p className="text-xs text-gray-500">{s.label}</p>
-                          <p className="text-xl font-black text-black">{s.value}</p>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Curriculum download */}
-                    <div className="flex items-center justify-between bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
-                      <div>
-                        <p className="text-sm font-bold text-blue-900">10-Week Session Guide</p>
-                        <p className="text-xs text-blue-600">Optional week-by-week curriculum PDF</p>
-                      </div>
-                      <a
-                        href={`/org/curriculum/${pkg.id}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-xs font-bold text-blue-700 bg-blue-100 hover:bg-blue-200 px-3 py-1.5 rounded-lg transition"
-                      >
-                        Download PDF →
-                      </a>
-                    </div>
-
-                    {/* Enroll a player */}
-                    {pkg.enrolled_count < pkg.player_count && (
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Enroll a Player</p>
-                          <button
-                            onClick={() => { setEnrollOpen(enrollOpen === pkg.id ? null : pkg.id); setEnrollSuccess(false); setEnrollError('') }}
-                            className="text-sm font-bold text-orange-500 hover:text-orange-400"
-                          >
-                            {enrollOpen === pkg.id ? 'Cancel' : '+ Add Player'}
-                          </button>
-                        </div>
-                        {enrollOpen === pkg.id && (
-                          <div className="space-y-2 bg-gray-50 border border-gray-200 rounded-xl p-4">
-                            <input
-                              type="text"
-                              placeholder="First name *"
-                              value={enrollFirstName}
-                              onChange={e => setEnrollFirstName(e.target.value)}
-                              className="w-full border border-gray-300 rounded-xl px-3 py-2 text-black text-sm focus:outline-none focus:border-orange-500"
-                            />
-                            <input
-                              type="text"
-                              placeholder="Last name initial (optional)"
-                              value={enrollLastInit}
-                              onChange={e => setEnrollLastInit(e.target.value)}
-                              className="w-full border border-gray-300 rounded-xl px-3 py-2 text-black text-sm focus:outline-none focus:border-orange-500"
-                            />
-                            <input
-                              type="text"
-                              placeholder="Player account ID (optional — links to their login)"
-                              value={enrollUserId}
-                              onChange={e => setEnrollUserId(e.target.value)}
-                              className="w-full border border-gray-300 rounded-xl px-3 py-2 text-black text-sm font-mono focus:outline-none focus:border-orange-500"
-                            />
-                            {enrollError && <p className="text-red-500 text-sm">{enrollError}</p>}
-                            {enrollSuccess && <p className="text-green-600 text-sm font-medium">Player enrolled!</p>}
-                            <button
-                              onClick={() => handleEnroll(pkg.id)}
-                              disabled={enrolling || enrollSuccess}
-                              className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
-                            >
-                              {enrolling ? 'Enrolling...' : 'Enroll Player'}
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Enrolled players list */}
-                    {pkg.enrollments.length > 0 && (
-                      <div>
-                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Enrolled Players ({pkg.enrollments.length})</p>
-                        <div className="border border-gray-100 rounded-xl divide-y divide-gray-100">
-                          {pkg.enrollments.map(e => {
-                            const name = `${e.first_name || 'Player'}${e.last_name_initial ? ' ' + e.last_name_initial + '.' : ''}`
-                            const startScore = e.first_score != null ? Number(e.first_score).toFixed(1) : null
-                            const finalScore = e.display_final_score != null ? Number(e.display_final_score).toFixed(1) : null
-                            return (
-                              <div key={e.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
-                                <div className="min-w-0">
-                                  <p className="text-sm font-semibold text-black">{name}</p>
-                                  <p className="text-xs text-gray-400 mt-0.5">
-                                    {!e.has_first && 'Not started'}
-                                    {e.has_first && !e.has_final && `Start: ${startScore} — awaiting final`}
-                                    {e.has_final && `${startScore} → ${finalScore}`}
-                                  </p>
-                                </div>
-                                <div className="flex items-center gap-2 shrink-0">
-                                  {e.has_final ? (
-                                    <span className="text-xs bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full">Done</span>
-                                  ) : e.has_first ? (
-                                    <span className="text-xs bg-orange-100 text-orange-700 font-bold px-2 py-0.5 rounded-full">In progress</span>
-                                  ) : (
-                                    <span className="text-xs bg-gray-100 text-gray-500 font-bold px-2 py-0.5 rounded-full">Not started</span>
-                                  )}
-                                  {e.has_final && (
-                                    <Link
-                                      href={`/org/certificate/${e.id}`}
-                                      target="_blank"
-                                      className="text-xs font-bold text-orange-500 hover:text-orange-400"
-                                    >
-                                      Certificate
-                                    </Link>
-                                  )}
-                                </div>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Leaderboard toggle */}
-                    {pkg.enrollments.some(e => e.has_first) && (
-                      <div>
-                        <button
-                          onClick={() => toggleLeaderboard(pkg.id)}
-                          className="text-sm font-bold text-orange-500 hover:text-orange-400"
-                        >
-                          {showLeaderboard === pkg.id ? 'Hide Leaderboard' : 'Show Leaderboard'}
-                        </button>
-                        {showLeaderboard === pkg.id && (
-                          <div className="mt-3 border border-gray-100 rounded-xl overflow-hidden">
-                            <div className="bg-orange-50 px-4 py-2.5 border-b border-orange-100">
-                              <p className="text-sm font-black text-black">Class Leaderboard</p>
-                            </div>
-                            {leaderboardLoading ? (
-                              <p className="text-sm text-gray-400 p-4">Loading...</p>
-                            ) : (
-                              <div className="divide-y divide-gray-100">
-                                {leaderboard.map((e, i) => {
-                                  const name = `${e.first_name || 'Player'}${e.last_name_initial ? ' ' + e.last_name_initial + '.' : ''}`
-                                  const score = e.display_final_score ?? e.first_score
-                                  const improvement = e.first_score != null && e.display_final_score != null
-                                    ? (Number(e.display_final_score) - Number(e.first_score)).toFixed(1)
-                                    : null
-                                  return (
-                                    <div key={e.id} className="flex items-center gap-3 px-4 py-2.5">
-                                      <span className="text-lg font-black text-gray-300 w-6 text-center">{i + 1}</span>
-                                      <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-semibold text-black">{name}</p>
-                                        {improvement && (
-                                          <p className="text-xs text-green-600 font-medium">+{improvement} pts</p>
-                                        )}
-                                      </div>
-                                      {score != null && (
-                                        <span className="text-lg font-black text-black">{Number(score).toFixed(1)}</span>
-                                      )}
-                                    </div>
-                                  )
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      )}
+      {/* Each class package is now rendered inline inside its matching team
+          panel below (Your Teams), so no standalone "Active Class Programs"
+          section is needed. */}
     </div>
   )
 
@@ -996,6 +773,208 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                   >
                     Open team dashboard →
                   </button>
+
+                  {/* Class-package details — only when this team is the auto-created
+                      team for a class purchase. Surfaces join code, stats, the
+                      10-week PDF, enroll form, and per-player Certificate links
+                      inline so the org doesn't have to jump between cards. */}
+                  {(() => {
+                    const pkg = team.classPackageId
+                      ? classPackages.find(p => p.id === team.classPackageId)
+                      : null
+                    if (!pkg) return null
+                    const isEnrollOpen = enrollOpen === pkg.id
+                    const isLbOpen = showLeaderboard === pkg.id
+                    const remainingSlots = pkg.player_count - pkg.enrolled_count
+                    return (
+                      <div className="space-y-4 border border-orange-100 rounded-2xl p-4 bg-orange-50/30">
+                        {/* Join code */}
+                        <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Class join code</p>
+                            <p className="text-2xl font-black text-orange-600 tracking-widest mt-0.5">{team.accessCode}</p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Share this with your players — up to {pkg.player_count} can join. The org leader uploads videos for each.
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => copyToClipboard(`${BASE_URL}/signup?teamCode=${team.accessCode}`, 'Join link copied!')}
+                            className="shrink-0 bg-white border border-orange-300 text-orange-600 text-xs font-bold px-3 py-2 rounded-lg hover:bg-orange-100"
+                          >
+                            Copy join link
+                          </button>
+                        </div>
+
+                        {/* Stats */}
+                        <div className="grid grid-cols-4 gap-2">
+                          {[
+                            { label: 'Players', value: pkg.player_count },
+                            { label: 'Enrolled', value: pkg.enrolled_count },
+                            { label: 'Completed', value: pkg.completed_count },
+                            { label: 'Credits left', value: team.credits },
+                          ].map(s => (
+                            <div key={s.label} className="bg-white border border-orange-100 rounded-xl px-3 py-2 text-center">
+                              <p className="text-xs text-gray-500">{s.label}</p>
+                              <p className="text-xl font-black text-black">{s.value}</p>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* 10-week curriculum PDF */}
+                        <div className="flex items-center justify-between bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
+                          <div>
+                            <p className="text-sm font-bold text-blue-900">10-Week Session Guide</p>
+                            <p className="text-xs text-blue-600">Optional week-by-week curriculum PDF</p>
+                          </div>
+                          <a
+                            href={`/org/curriculum/${pkg.id}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-xs font-bold text-blue-700 bg-blue-100 hover:bg-blue-200 px-3 py-1.5 rounded-lg transition"
+                          >
+                            Download PDF →
+                          </a>
+                        </div>
+
+                        {/* Manual enroll */}
+                        {remainingSlots > 0 && (
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Enroll a Player</p>
+                              <button
+                                onClick={() => { setEnrollOpen(isEnrollOpen ? null : pkg.id); setEnrollSuccess(false); setEnrollError('') }}
+                                className="text-sm font-bold text-orange-500 hover:text-orange-400"
+                              >
+                                {isEnrollOpen ? 'Cancel' : '+ Add Player'}
+                              </button>
+                            </div>
+                            {isEnrollOpen && (
+                              <div className="space-y-2 bg-white border border-gray-200 rounded-xl p-4">
+                                <input
+                                  type="text"
+                                  placeholder="First name *"
+                                  value={enrollFirstName}
+                                  onChange={e => setEnrollFirstName(e.target.value)}
+                                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-black text-sm focus:outline-none focus:border-orange-500"
+                                />
+                                <input
+                                  type="text"
+                                  placeholder="Last name initial (optional)"
+                                  value={enrollLastInit}
+                                  onChange={e => setEnrollLastInit(e.target.value)}
+                                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-black text-sm focus:outline-none focus:border-orange-500"
+                                />
+                                <input
+                                  type="text"
+                                  placeholder="Player account ID (optional — links to their login)"
+                                  value={enrollUserId}
+                                  onChange={e => setEnrollUserId(e.target.value)}
+                                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-black text-sm font-mono focus:outline-none focus:border-orange-500"
+                                />
+                                {enrollError && <p className="text-red-500 text-sm">{enrollError}</p>}
+                                {enrollSuccess && <p className="text-green-600 text-sm font-medium">Player enrolled!</p>}
+                                <button
+                                  onClick={() => handleEnroll(pkg.id)}
+                                  disabled={enrolling || enrollSuccess}
+                                  className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+                                >
+                                  {enrolling ? 'Enrolling...' : 'Enroll Player'}
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Enrolled players w/ certificate */}
+                        {pkg.enrollments.length > 0 && (
+                          <div>
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Enrolled Players ({pkg.enrollments.length})</p>
+                            <div className="border border-gray-100 rounded-xl divide-y divide-gray-100 bg-white">
+                              {pkg.enrollments.map(en => {
+                                const name = `${en.first_name || 'Player'}${en.last_name_initial ? ' ' + en.last_name_initial + '.' : ''}`
+                                const startScore = en.first_score != null ? Number(en.first_score).toFixed(1) : null
+                                const finalScore = en.display_final_score != null ? Number(en.display_final_score).toFixed(1) : null
+                                return (
+                                  <div key={en.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
+                                    <div className="min-w-0">
+                                      <p className="text-sm font-semibold text-black">{name}</p>
+                                      <p className="text-xs text-gray-400 mt-0.5">
+                                        {!en.has_first && 'Not started'}
+                                        {en.has_first && !en.has_final && `Start: ${startScore} — awaiting final`}
+                                        {en.has_final && `${startScore} → ${finalScore}`}
+                                      </p>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                      {en.has_final ? (
+                                        <span className="text-xs bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full">Done</span>
+                                      ) : en.has_first ? (
+                                        <span className="text-xs bg-orange-100 text-orange-700 font-bold px-2 py-0.5 rounded-full">In progress</span>
+                                      ) : (
+                                        <span className="text-xs bg-gray-100 text-gray-500 font-bold px-2 py-0.5 rounded-full">Not started</span>
+                                      )}
+                                      {en.has_final && (
+                                        <Link
+                                          href={`/org/certificate/${en.id}`}
+                                          target="_blank"
+                                          className="text-xs font-bold text-orange-500 hover:text-orange-400"
+                                        >
+                                          Certificate
+                                        </Link>
+                                      )}
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Class leaderboard toggle */}
+                        {pkg.enrollments.some(en => en.has_first) && (
+                          <div>
+                            <button
+                              onClick={() => toggleLeaderboard(pkg.id)}
+                              className="text-sm font-bold text-orange-500 hover:text-orange-400"
+                            >
+                              {isLbOpen ? 'Hide Class Leaderboard' : 'Show Class Leaderboard'}
+                            </button>
+                            {isLbOpen && (
+                              <div className="mt-3 border border-gray-100 rounded-xl overflow-hidden bg-white">
+                                <div className="bg-orange-50 px-4 py-2.5 border-b border-orange-100">
+                                  <p className="text-sm font-black text-black">Class Leaderboard</p>
+                                </div>
+                                {leaderboardLoading ? (
+                                  <p className="text-sm text-gray-400 p-4">Loading...</p>
+                                ) : (
+                                  <div className="divide-y divide-gray-100">
+                                    {leaderboard.map((en, i) => {
+                                      const lbName = `${en.first_name || 'Player'}${en.last_name_initial ? ' ' + en.last_name_initial + '.' : ''}`
+                                      const lbScore = en.display_final_score ?? en.first_score
+                                      const lbImp = en.first_score != null && en.display_final_score != null
+                                        ? (Number(en.display_final_score) - Number(en.first_score)).toFixed(1)
+                                        : null
+                                      return (
+                                        <div key={en.id} className="flex items-center gap-3 px-4 py-2.5">
+                                          <span className="text-lg font-black text-gray-300 w-6 text-center">{i + 1}</span>
+                                          <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-semibold text-black">{lbName}</p>
+                                            {lbImp && <p className="text-xs text-green-600 font-medium">+{lbImp} pts</p>}
+                                          </div>
+                                          {lbScore != null && (
+                                            <span className="text-lg font-black text-black">{Number(lbScore).toFixed(1)}</span>
+                                          )}
+                                        </div>
+                                      )
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
 
                   {/* Age group — editable by the org */}
                   <div className="flex items-center gap-2 flex-wrap">

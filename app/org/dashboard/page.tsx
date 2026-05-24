@@ -30,6 +30,7 @@ interface TeamData {
   accessCode: string
   adminEmail: string
   credits: number
+  classPackageId: string | null
   members: Member[]
   coaches: Coach[]
   coachNickname: string | null
@@ -105,10 +106,12 @@ export default async function OrgDashboardPage() {
 
   try {
     const teamRows = (await db`
-      SELECT id, name, age_group, access_code, admin_email, COALESCE(credits, 0)::int AS credits
+      SELECT id, name, age_group, access_code, admin_email,
+             COALESCE(credits, 0)::int AS credits,
+             class_package_id
       FROM teams WHERE organization_id = ${org.id}
       ORDER BY created_at ASC
-    `) as unknown as Array<{ id: string; name: string; age_group: string | null; access_code: string; admin_email: string; credits: number }>
+    `) as unknown as Array<{ id: string; name: string; age_group: string | null; access_code: string; admin_email: string; credits: number; class_package_id: string | null }>
 
     teams = await Promise.all(
       teamRows.map(async (t) => {
@@ -189,6 +192,7 @@ export default async function OrgDashboardPage() {
           accessCode: t.access_code,
           adminEmail: t.admin_email,
           credits: t.credits,
+          classPackageId: t.class_package_id,
           members,
           coaches,
           coachNickname,

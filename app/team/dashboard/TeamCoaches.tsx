@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import CoachNicknameForm from './CoachNicknameForm'
+import { copyToClipboard } from '@/lib/copy'
 
 interface Coach {
   id: string
@@ -72,7 +73,7 @@ export default function TeamCoaches({
   }
 
   function copyInvite() {
-    navigator.clipboard.writeText(inviteUrl).then(() => {
+    copyToClipboard(inviteUrl, 'Invite link copied!').then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     })

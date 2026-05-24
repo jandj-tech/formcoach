@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { copyToClipboard } from '@/lib/copy'
 
 // Self-contained "add a coach to this team" control for the org dashboard.
 export default function OrgAddCoach({ teamId }: { teamId: string }) {
@@ -82,7 +83,7 @@ export default function OrgAddCoach({ teamId }: { teamId: string }) {
   }
 
   function copyInvite() {
-    navigator.clipboard.writeText(inviteUrl).then(() => {
+    copyToClipboard(inviteUrl, 'Invite link copied!').then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     })

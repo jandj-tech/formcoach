@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { copyToClipboard as copyWithToast } from '@/lib/copy'
 
 type FreeAccount = {
   email: string
@@ -140,7 +141,7 @@ export default function AccessPage() {
   }
 
   function copyToClipboard(text: string) {
-    navigator.clipboard.writeText(text)
+    copyWithToast(text, 'Copied!')
     setCopied(text)
     setTimeout(() => setCopied(''), 2000)
   }

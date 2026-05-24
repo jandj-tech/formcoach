@@ -13,6 +13,7 @@ import OrgTokenPanel from '@/components/OrgTokenPanel'
 import PlayerShotList, { type Shot } from '@/components/PlayerShotList'
 import PrintButton from '@/components/PrintButton'
 import { CLASS_MIN_PLAYERS, CLASS_BULK_THRESHOLD, classPriceCents } from '@/lib/org-class-pricing'
+import { copyToClipboard } from '@/lib/copy'
 
 interface Member {
   id: string
@@ -153,7 +154,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   }
 
   function copyLink(teamId: string, accessCode: string) {
-    navigator.clipboard.writeText(`${BASE_URL}/signup?teamCode=${accessCode}`).then(() => {
+    copyToClipboard(`${BASE_URL}/signup?teamCode=${accessCode}`, 'Signup link copied!').then(() => {
       setCopiedLink(prev => ({ ...prev, [teamId]: true }))
       setTimeout(() => setCopiedLink(prev => ({ ...prev, [teamId]: false })), 2000)
     })
@@ -164,7 +165,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   }
 
   function copyText(text: string, kind: 'emails' | 'body') {
-    navigator.clipboard.writeText(text).then(() => {
+    copyToClipboard(text, kind === 'emails' ? 'Emails copied!' : 'Email body copied!').then(() => {
       setEmailCopied(kind)
       setTimeout(() => setEmailCopied(null), 2000)
     })
@@ -669,8 +670,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                         <button
                           onClick={() => {
                             const code = pkg.team_access_code as string
-                            const link = `${BASE_URL}/signup?teamCode=${code}`
-                            navigator.clipboard.writeText(link)
+                            copyToClipboard(`${BASE_URL}/signup?teamCode=${code}`, 'Join link copied!')
                           }}
                           className="shrink-0 bg-white border border-orange-300 text-orange-600 text-xs font-bold px-3 py-2 rounded-lg hover:bg-orange-100"
                         >

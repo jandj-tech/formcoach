@@ -13,6 +13,7 @@ import PrintButton from '@/components/PrintButton'
 import InlineEdit from '@/components/InlineEdit'
 import PlayerShotList, { type Shot } from '@/components/PlayerShotList'
 import CoachTokenPanel from '@/components/CoachTokenPanel'
+import { copyToClipboard } from '@/lib/copy'
 import { useCart } from '@/lib/cart'
 
 interface Team {
@@ -213,21 +214,21 @@ export default function TeamDashboardClient({
   }
 
   function copyInviteUrl(url: string, id: string) {
-    navigator.clipboard.writeText(url).then(() => {
+    copyToClipboard(url, 'Invite link copied!').then(() => {
       setCopiedId(id)
       setTimeout(() => setCopiedId(null), 2000)
     })
   }
 
   function copySignupLink() {
-    navigator.clipboard.writeText(playerSignupLink).then(() => {
+    copyToClipboard(playerSignupLink, 'Signup link copied!').then(() => {
       setCopiedSignup(true)
       setTimeout(() => setCopiedSignup(false), 2000)
     })
   }
 
   function copyNewInviteUrl() {
-    navigator.clipboard.writeText(newInviteUrl).then(() => {
+    copyToClipboard(newInviteUrl, 'Invite link copied!').then(() => {
       setCopiedInvite(true)
       setTimeout(() => setCopiedInvite(false), 2000)
     })

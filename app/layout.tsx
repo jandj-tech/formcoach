@@ -4,6 +4,7 @@ import { ViewTransition } from 'react'
 import './globals.css'
 import { CartProvider } from '@/lib/cart'
 import MetaPixel from '@/components/MetaPixel'
+import CopyToast from '@/components/CopyToast'
 
 const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })
 const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] })
@@ -40,6 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-full bg-white text-black flex flex-col">
         <CartProvider>
           <MetaPixel />
+          <CopyToast />
           <ViewTransition default="page-fade">{children}</ViewTransition>
         </CartProvider>
       </body>

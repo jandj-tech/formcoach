@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import type Stripe from 'stripe'
 import { getStripe } from '@/lib/stripe'
 import { db } from '@/lib/db'
-import { sendClaimCreditsEmail } from '@/lib/email'
+import { sendClaimCreditsEmail, sendClassPurchaseConfirmationEmail } from '@/lib/email'
 
 function generateTeamAccessCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -196,10 +196,14 @@ export async function POST(req: NextRequest) {
     //      and each gets 2 tokens out of the package pool on join.
     if (metaType === 'org_class_package') {
       const orgId = session.metadata?.orgId
+      const orgName = session.metadata?.orgName || 'Your Organization'
       const playerCount = parseInt(session.metadata?.playerCount || '0', 10)
       const pricePerPlayerCents = parseInt(session.metadata?.pricePerPlayerCents || '0', 10)
       const totalCents = parseInt(session.metadata?.totalCents || '0', 10)
       const ship = session.collected_information?.shipping_details
+      const phone = session.customer_details?.phone ?? null
+      const orgEmail = session.customer_details?.email ?? null
+
       console.log('[stripe webhook] org_class_package', { orgId, playerCount, totalCents })
       if (!orgId || playerCount <= 0) {
         console.warn('[stripe webhook] org_class_package: skipping (missing orgId or playerCount)')
@@ -219,10 +223,10 @@ export async function POST(req: NextRequest) {
       try {
         const inserted = await db`
           INSERT INTO org_class_packages
-            (org_id, stripe_session_id, player_count, price_per_player_cents, total_cents, token_pool, status,
+            (org_id, stripe_session_id, player_count, price_per_player_cents, total_cents, token_pool, status, contact_phone,
              shipping_name, shipping_line1, shipping_line2, shipping_city, shipping_state, shipping_postal_code, shipping_country)
           VALUES
-            (${orgId}, ${session.id}, ${playerCount}, ${pricePerPlayerCents}, ${totalCents}, ${playerCount * 2}, 'active',
+            (${orgId}, ${session.id}, ${playerCount}, ${pricePerPlayerCents}, ${totalCents}, ${playerCount * 2}, 'active', ${phone},
              ${ship?.name ?? null}, ${ship?.address?.line1 ?? null}, ${ship?.address?.line2 ?? null},
              ${ship?.address?.city ?? null}, ${ship?.address?.state ?? null},
              ${ship?.address?.postal_code ?? null}, ${ship?.address?.country ?? null})
@@ -238,10 +242,7 @@ export async function POST(req: NextRequest) {
       // Webhook redelivery — package already existed, nothing else to do.
       if (!packageId) return NextResponse.json({ received: true })
 
-      // Ball shipment: one order row covering all `playerCount` balls. variant/size
-      // are NOT NULL on `orders` with CHECK constraints, so we store defaults here;
-      // fulfillment uses the `kind` + `quantity` columns to know this is a bulk class
-      // shipment and to follow up with the org for handedness/sizes per player.
+      // Ball shipment: one order row covering all `playerCount` balls.
       try {
         await db`
           INSERT INTO orders (
@@ -250,7 +251,7 @@ export async function POST(req: NextRequest) {
             shipping_name, shipping_line1, shipping_line2,
             shipping_city, shipping_state, shipping_postal_code, shipping_country
           ) VALUES (
-            ${session.id}, ${org.admin_email}, ${ship?.name ?? null}, ${session.customer_details?.phone ?? null},
+            ${session.id}, ${org.admin_email}, ${ship?.name ?? null}, ${phone},
             'right', '7',
             ${session.amount_total ?? totalCents}, ${session.currency ?? 'usd'},
             'class_package', ${playerCount}, ${packageId},
@@ -265,25 +266,39 @@ export async function POST(req: NextRequest) {
         // Non-fatal — package + team still get created
       }
 
-      // Auto-create the "Training Camp" team. Self-coached by the org admin
-      // (password_hash NULL), capped at playerCount via the class_package_id link.
+      // Auto-create the "10 Week Shooting Class" team using crypto for access code generation
+      let teamAccessCode = ''
       try {
-        let accessCode = generateTeamAccessCode()
-        for (let attempt = 0; attempt < 5; attempt++) {
-          const collision = await db`SELECT id FROM teams WHERE access_code = ${accessCode}`
-          if (collision.length === 0) break
-          accessCode = generateTeamAccessCode()
+        const { randomInt } = await import('crypto')
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+        for (let attempt = 0; attempt < 10; attempt++) {
+          let code = ''
+          for (let i = 0; i < 8; i++) code += chars[randomInt(chars.length)]
+          const collision = await db`SELECT id FROM teams WHERE access_code = ${code}`
+          if (collision.length === 0) { teamAccessCode = code; break }
         }
+        if (!teamAccessCode) throw new Error('Failed to generate unique access code')
 
         await db`
           INSERT INTO teams
-            (name, admin_email, password_hash, access_code, organization_id, class_package_id)
+            (name, admin_email, password_hash, access_code, organization_id, class_package_id, initiated_at, token_pool)
           VALUES
-            ('Training Camp', ${org.admin_email}, ${null}, ${accessCode}, ${orgId}, ${packageId})
+            ('10 Week Shooting Class', ${org.admin_email}, ${null}, ${teamAccessCode}, ${orgId}, ${packageId}, NOW(), ${playerCount * 2})
         `
       } catch (err) {
-        console.error('Failed to auto-create Training Camp team:', err)
+        console.error('Failed to auto-create 10 Week Shooting Class team:', err)
         // Non-fatal — package + order still recorded; org admin can create a team manually
+      }
+
+      // Send confirmation email with team access code
+      if (orgEmail && teamAccessCode) {
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://learnhoops.com'
+        try {
+          await sendClassPurchaseConfirmationEmail(orgEmail, orgName, playerCount, teamAccessCode, `${baseUrl}/org/dashboard`)
+        } catch (emailErr) {
+          console.error('Failed to send class purchase confirmation email:', emailErr)
+          // Non-fatal — package and team are created, email can be resent manually
+        }
       }
 
       return NextResponse.json({ received: true })

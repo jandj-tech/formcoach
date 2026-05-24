@@ -702,3 +702,100 @@ export async function sendNextMarketingEmail(
   })
   return true
 }
+
+function escHtml(s: string) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
+
+export async function sendClassPurchaseConfirmationEmail(
+  to: string,
+  orgName: string,
+  playerCount: number,
+  teamAccessCode: string,
+  dashboardUrl: string,
+) {
+  const { data, error } = await getResend().emails.send({
+    from: FROM,
+    to,
+    replyTo: 'learnhoops8@gmail.com',
+    subject: '10-Week Shooting Class — your program is confirmed',
+    text: [
+      `Hi ${orgName},`,
+      ``,
+      `Your 10-Week Shooting Class program is confirmed and ready.`,
+      ``,
+      `Players enrolled: ${playerCount}`,
+      `Team access code: ${teamAccessCode}`,
+      ``,
+      `Your team "10 Week Shooting Class" has been created on your dashboard. Players can join with the access code above.`,
+      ``,
+      `Balls will ship to the address you provided. You'll receive a separate shipping confirmation when they're on the way.`,
+      ``,
+      `Access your dashboard here:`,
+      dashboardUrl,
+      ``,
+      `— The LearnHoops Team`,
+    ].join('\n'),
+    html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/></head>
+<body style="margin:0;padding:0;background:#F4F4F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#111111;">
+  <table role="presentation" width="100%" style="background:#F4F4F5;"><tr><td align="center" style="padding:32px 16px;">
+    <table role="presentation" width="100%" style="max-width:560px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #E4E4E7;">
+
+      <tr><td style="background:#000000;padding:22px 32px;">
+        <div style="color:#F97316;font-size:20px;font-weight:800;letter-spacing:-0.3px;">LearnHoops<span style="color:#71717A;">.com</span></div>
+        <div style="color:#A1A1AA;font-size:12px;margin-top:5px;">Your shot. Perfected by AI.</div>
+      </td></tr>
+
+      <tr><td style="padding:36px 32px 8px;">
+        <h1 style="margin:0 0 10px;color:#111111;font-size:24px;line-height:1.25;font-weight:800;">Your 10-Week Shooting Class is confirmed!</h1>
+        <p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;">
+          Hi <strong>${escHtml(orgName)}</strong> — your program is set up and ready to go. Here's everything you need.
+        </p>
+      </td></tr>
+
+      <tr><td style="padding:20px 32px 8px;">
+        <table role="presentation" width="100%" style="background:#F8FAFC;border:1px solid #E4E4E7;border-radius:10px;padding:0;">
+          <tr><td style="padding:16px 20px;">
+            <div style="color:#71717A;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Players Enrolled</div>
+            <div style="color:#111111;font-size:22px;font-weight:800;">${playerCount}</div>
+          </td></tr>
+          <tr><td style="padding:0 20px 16px;">
+            <div style="color:#71717A;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Team Access Code</div>
+            <div style="color:#F97316;font-size:26px;font-weight:900;letter-spacing:2px;">${escHtml(teamAccessCode)}</div>
+            <div style="color:#52525B;font-size:12px;margin-top:4px;">Players use this code to join the "10 Week Shooting Class" team</div>
+          </td></tr>
+        </table>
+      </td></tr>
+
+      <tr><td style="padding:16px 32px 8px;">
+        <p style="margin:0;color:#52525B;font-size:14px;line-height:1.6;">
+          ✅ <strong>Team created</strong> — "10 Week Shooting Class" is live on your dashboard<br/>
+          ✅ <strong>Balls shipping</strong> — to the address you entered at checkout<br/>
+          ✅ <strong>2 shot analyses per player</strong> — tokens are ready to assign
+        </p>
+      </td></tr>
+
+      <tr><td style="padding:20px 32px 32px;">
+        <a href="${dashboardUrl.startsWith('https://') ? dashboardUrl : 'https://learnhoops.com/org/dashboard'}" style="display:inline-block;background:#F97316;color:#ffffff;padding:13px 26px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">
+          Go to my dashboard
+        </a>
+      </td></tr>
+
+      <tr><td style="padding:18px 32px;background:#FAFAFA;border-top:1px solid #E4E4E7;">
+        <p style="margin:0;color:#A1A1AA;font-size:11px;line-height:1.6;">
+          Questions? Reply to this email or visit <a href="${BASE_URL}" style="color:#71717A;text-decoration:none;font-weight:600;">LearnHoops.com</a>.
+        </p>
+      </td></tr>
+
+    </table>
+  </td></tr></table>
+</body>
+</html>`.trim(),
+  })
+  if (error) {
+    console.error('[email] class purchase confirmation failed:', error)
+    throw new Error(`Class confirmation email failed: ${error instanceof Error ? error.message : String(error)}`)
+  }
+  console.log('[email] class purchase confirmation sent:', data?.id, 'to:', to)
+}

@@ -643,6 +643,22 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                       ))}
                     </div>
 
+                    {/* Curriculum download */}
+                    <div className="flex items-center justify-between bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
+                      <div>
+                        <p className="text-sm font-bold text-blue-900">10-Week Session Guide</p>
+                        <p className="text-xs text-blue-600">Optional week-by-week curriculum PDF</p>
+                      </div>
+                      <a
+                        href={`/org/curriculum/${pkg.id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs font-bold text-blue-700 bg-blue-100 hover:bg-blue-200 px-3 py-1.5 rounded-lg transition"
+                      >
+                        Download PDF →
+                      </a>
+                    </div>
+
                     {/* Enroll a player */}
                     {pkg.enrolled_count < pkg.player_count && (
                       <div className="space-y-2">

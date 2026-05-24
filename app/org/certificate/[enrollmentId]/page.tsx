@@ -72,10 +72,10 @@ export default async function CertificatePage({ params }: Props) {
           className="object-contain select-none pointer-events-none"
         />
 
-        {/* Player name — text baseline sits on the "Presented to:" underline. */}
+        {/* Player name — text sits just above the "Presented to:" underline. */}
         <div
           className="absolute font-black text-black"
-          style={{ left: '22%', right: '5%', top: '58%', fontSize: '2.8cqw', lineHeight: 1 }}
+          style={{ left: '22%', right: '5%', top: '54.5%', fontSize: '2.6cqw', lineHeight: 1 }}
         >
           {playerName}
         </div>
@@ -83,7 +83,7 @@ export default async function CertificatePage({ params }: Props) {
         {/* First Analysis Score — centered over the first blank. */}
         <div
           className="absolute font-black text-black text-center"
-          style={{ left: '22.5%', width: '14%', top: '66%', fontSize: '2cqw', lineHeight: 1 }}
+          style={{ left: '22.5%', width: '14%', top: '63%', fontSize: '1.9cqw', lineHeight: 1 }}
         >
           {startScore}
         </div>
@@ -91,22 +91,21 @@ export default async function CertificatePage({ params }: Props) {
         {/* Final Analysis Score — centered over the second blank. */}
         <div
           className="absolute font-black text-black text-center"
-          style={{ left: '52%', width: '12%', top: '66%', fontSize: '2cqw', lineHeight: 1 }}
+          style={{ left: '52%', width: '12%', top: '63%', fontSize: '1.9cqw', lineHeight: 1 }}
         >
           {finalScore}
         </div>
 
         {/* Improvement — signed raw difference (green if up, red if down).
             The Keep Hooping badge crowds this slot, so the box is narrow,
-            placed flush to the right edge of the blank, and uses a smaller
-            font to stay clear of the badge. */}
+            placed clear to the LEFT of the badge with a smaller font. */}
         <div
           className="absolute font-black text-center whitespace-nowrap"
           style={{
-            left: '81%',
-            width: '8%',
-            top: '66%',
-            fontSize: '1.6cqw',
+            left: '79%',
+            width: '7%',
+            top: '63.2%',
+            fontSize: '1.5cqw',
             color: diff >= 0 ? '#16a34a' : '#dc2626',
             lineHeight: 1,
           }}

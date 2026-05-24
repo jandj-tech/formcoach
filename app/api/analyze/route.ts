@@ -262,9 +262,17 @@ export async function POST(req: NextRequest) {
             const realScore = result.overall_score
             const firstScore = Number(enrollment.first_score ?? 0)
             // Boost rules for first-time class players:
-            // - Show at least firstScore + 0.3 so they always see improvement
-            // - But never show more than realScore + 0.3 (boost never exceeds 0.3 above real score)
-            const displayScore = enrollment.is_first_class
+            // - When their real score actually improved over the baseline,
+            //   we floor the displayed final at firstScore + 0.3 so a tiny
+            //   real gain still reads as visible improvement.
+            // - Capped at realScore + 0.3 so the boost never exceeds 0.3.
+            // - If the real score is the same as (or lower than) the first
+            //   score — e.g. they re-uploaded the EXACT same shot — we do
+            //   NOT apply the boost. The certificate just shows the real
+            //   score. The 0.05 threshold absorbs small AI noise between
+            //   two analyses of an identical clip.
+            const improved = realScore > firstScore + 0.05
+            const displayScore = enrollment.is_first_class && improved
               ? Math.min(realScore + 0.3, Math.max(realScore, firstScore + 0.3))
               : realScore
             await db`

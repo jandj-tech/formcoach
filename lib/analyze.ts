@@ -129,6 +129,8 @@ VISIBILITY RULE (null decisions only): If a criterion cannot be assessed AT ALL 
 
 SHOT ARC — RIM OR NET CONTACT REQUIRED: You may only score arc if you can clearly see the ball physically contact the rim (backboard, rim, or glass) OR visibly touch the mesh of the net. If you cannot see the ball make contact with the rim or net mesh — even if you think it went in, even if you can see the basket — return null. Trajectory alone is never enough. The ball must visibly interact with the basket hardware or net. If the ball disappears before reaching the rim, or you only see the basket from a distance without visible ball-rim/net contact, return null.
 
+BALL ROTATION — TIED TO SHOT ARC: Score ball rotation if and only if shot arc receives a score. If shot arc is null (ball flight not visible to the basket), the ball in the air is not clearly visible either, so ball rotation must also be null. Never score ball rotation when shot arc is null.
+
 THUMB — MANDATORY NULL CONDITION: Return null for the "Thumb is Spread Wide" criterion if the thumb is not clearly and directly visible in at least one frame. Do not infer thumb position from finger spacing or general hand shape — if you cannot see the thumb clearly, return null.
 
 WITHIN A SCORED CRITERION — VISIBILITY IS NEVER A DEDUCTION REASON: Once you decide to score a criterion (not null), only clearly visible flaws count. The following phrases are FORBIDDEN as justification for any deduction — if you find yourself writing them, change the score to 10 for that criterion: "partially visible," "hard to confirm," "limited at this distance," "cannot fully see," "could not clearly confirm," "may be slightly off," "not fully clear," "difficult to assess," "angle makes it hard," "thumb not fully visible," "cannot confirm thumb," "grip hard to see." If your reasoning contains any of these, you are violating the rules.
@@ -291,6 +293,13 @@ Return ONLY valid JSON, no other text:
     if (!hasRimOrNetContact) {
       arcCriterion.score = null
     }
+  }
+
+  // Ball rotation is only visible when the ball is tracked in flight.
+  // If arc was not scored (ball flight not visible), rotation cannot be scored either.
+  if (!arcCriterion || arcCriterion.score === null) {
+    const rotationCriterion = result.criteria.find(c => c.id === 13)
+    if (rotationCriterion) rotationCriterion.score = null
   }
 
   // If the AI could not assess at least half the criteria, the video was not

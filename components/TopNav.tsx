@@ -72,10 +72,10 @@ export default function TopNav() {
           })}
           <Link
             href="/team"
-            className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors border ${
+            className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${
               pathname.startsWith('/team')
-                ? 'border-orange-500 bg-orange-500 text-white'
-                : 'border-orange-500 text-orange-400 hover:bg-orange-500 hover:text-white'
+                ? 'bg-orange-500 text-white'
+                : 'text-white hover:text-white hover:bg-zinc-900'
             }`}
           >
             Organizations

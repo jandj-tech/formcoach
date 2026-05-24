@@ -46,11 +46,11 @@ export default async function HomePage() {
         <div className="inline-flex items-center gap-2 bg-orange-500/10 border border-orange-500/30 rounded-full px-4 py-1.5 mb-5">
           <span className="text-orange-500 text-xs font-semibold tracking-wider uppercase">AI Shot Analysis</span>
         </div>
-        <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-black leading-tight max-w-2xl">
+        <h1 className="font-heading text-3xl sm:text-5xl md:text-6xl font-black text-black leading-tight max-w-2xl">
           Get your shot<br />
           <span className="text-orange-500">professionally analyzed</span>
         </h1>
-        <p className="text-black text-base sm:text-lg mt-4 max-w-lg leading-relaxed px-2">
+        <p className="text-gray-600 text-base sm:text-lg mt-4 max-w-lg leading-relaxed px-2">
           Upload a video of your shot. Our AI studies 12 frames and scores 17 key form criteria — instantly.
         </p>
 
@@ -79,7 +79,7 @@ export default async function HomePage() {
           { num: '3', title: 'Get Your Results', desc: 'We email you a private breakdown with scores & tips.' },
         ].map((step) => (
           <div key={step.num} className="bg-gray-50 rounded-xl p-5 text-center border border-gray-200">
-            <div className="w-8 h-8 rounded-full bg-orange-500 text-white font-bold text-sm flex items-center justify-center mx-auto mb-3">
+            <div className="w-12 h-12 rounded-full bg-orange-500 text-white font-bold text-base flex items-center justify-center mx-auto mb-3">
               {step.num}
             </div>
             <h3 className="text-black font-semibold text-sm mb-1">{step.title}</h3>
@@ -110,7 +110,7 @@ export default async function HomePage() {
 
       <div className="flex-1" />
 
-      <footer className="py-5 border-t border-gray-200 text-center text-black text-xs">
+      <footer className="py-5 border-t border-gray-200 text-center text-gray-400 text-xs">
         © {new Date().getFullYear()} LearnHoops.com. All rights reserved.
       </footer>
     </main>

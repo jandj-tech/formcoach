@@ -84,7 +84,7 @@ export default async function CertificatePage({ params }: Props) {
         {/* First Analysis Score — centered over the first blank. */}
         <div
           className="absolute font-black text-black text-center"
-          style={{ left: '22.5%', width: '14%', top: '63%', fontSize: '1.9cqw', lineHeight: 1 }}
+          style={{ left: '20.5%', width: '14%', top: '63%', fontSize: '1.9cqw', lineHeight: 1 }}
         >
           {startScore}
         </div>
@@ -103,7 +103,7 @@ export default async function CertificatePage({ params }: Props) {
         <div
           className="absolute font-black text-center whitespace-nowrap"
           style={{
-            left: '73%',
+            left: '71%',
             width: '7%',
             top: '63.2%',
             fontSize: '1.5cqw',

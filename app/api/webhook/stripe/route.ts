@@ -18,6 +18,10 @@ export async function POST(req: NextRequest) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
 
   if (!sig || !webhookSecret) {
+    console.error('[stripe webhook] rejected: missing', {
+      hasSignature: !!sig,
+      hasWebhookSecret: !!webhookSecret,
+    })
     return NextResponse.json({ error: 'Missing signature or webhook secret' }, { status: 400 })
   }
 
@@ -27,9 +31,11 @@ export async function POST(req: NextRequest) {
   try {
     event = getStripe().webhooks.constructEvent(rawBody, sig, webhookSecret)
   } catch (err) {
-    console.error('Webhook signature verification failed:', err)
+    console.error('[stripe webhook] signature verification failed:', err)
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
+
+  console.log('[stripe webhook] received', event.type, 'id=', event.id)
 
   // --- All checkout.session.completed events ---
   if (event.type === 'checkout.session.completed') {
@@ -39,6 +45,10 @@ export async function POST(req: NextRequest) {
     const plan = session.metadata?.plan as 'monthly' | 'annual' | 'team-credits' | undefined
     const metaType = session.metadata?.type
     const email = session.customer_details?.email
+
+    console.log('[stripe webhook] checkout.session.completed metadata', {
+      sessionId: session.id, metaType, plan, hasVariant: !!variant, hasSize: !!size,
+    })
 
     // --- Team initiation package: unlocks $2.50 pricing + fills the token pool ---
     if (metaType === 'team_initiation') {
@@ -190,7 +200,9 @@ export async function POST(req: NextRequest) {
       const pricePerPlayerCents = parseInt(session.metadata?.pricePerPlayerCents || '0', 10)
       const totalCents = parseInt(session.metadata?.totalCents || '0', 10)
       const ship = session.collected_information?.shipping_details
+      console.log('[stripe webhook] org_class_package', { orgId, playerCount, totalCents })
       if (!orgId || playerCount <= 0) {
+        console.warn('[stripe webhook] org_class_package: skipping (missing orgId or playerCount)')
         return NextResponse.json({ received: true })
       }
 

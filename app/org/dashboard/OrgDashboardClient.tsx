@@ -136,6 +136,13 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   const [leaderboard, setLeaderboard] = useState<ClassEnrollment[]>([])
   const [leaderboardLoading, setLeaderboardLoading] = useState(false)
 
+  // Per-team "assign team credits to players" form state.
+  const [teamAssignOpen, setTeamAssignOpen] = useState<Record<string, boolean>>({})
+  const [teamAssignPicks, setTeamAssignPicks] = useState<Record<string, Record<string, boolean>>>({})
+  const [teamAssignEach, setTeamAssignEach] = useState<Record<string, number>>({})
+  const [teamAssignBusy, setTeamAssignBusy] = useState<string | null>(null)
+  const [teamAssignMsg, setTeamAssignMsg] = useState<Record<string, string>>({})
+
   const [addOpen, setAddOpen] = useState(false)
   const [newName, setNewName] = useState('')
   const [newAgeGroup, setNewAgeGroup] = useState('')
@@ -275,6 +282,43 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
     } catch {
       setAddError('Something went wrong. Please try again.')
       setAddStatus('error')
+    }
+  }
+
+  async function assignTeamCreditsToPlayers(teamId: string, teamCredits: number) {
+    const picks = teamAssignPicks[teamId] || {}
+    const ids = Object.keys(picks).filter(id => picks[id])
+    const each = Math.max(1, teamAssignEach[teamId] ?? 1)
+    if (ids.length === 0) {
+      setTeamAssignMsg(prev => ({ ...prev, [teamId]: 'Pick at least one player.' }))
+      return
+    }
+    const total = ids.length * each
+    if (total > teamCredits) {
+      setTeamAssignMsg(prev => ({ ...prev, [teamId]: `Need ${total}, team has ${teamCredits}.` }))
+      return
+    }
+    setTeamAssignBusy(teamId)
+    setTeamAssignMsg(prev => ({ ...prev, [teamId]: '' }))
+    try {
+      const res = await fetch('/api/org/assign-from-team-credits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teamId, playerUserIds: ids, tokensEach: each }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setTeamAssignMsg(prev => ({ ...prev, [teamId]: data.error || 'Could not assign credits.' }))
+        setTeamAssignBusy(null)
+        return
+      }
+      setTeamAssignPicks(prev => ({ ...prev, [teamId]: {} }))
+      setTeamAssignMsg(prev => ({ ...prev, [teamId]: `Assigned ${total} credit${total !== 1 ? 's' : ''}.` }))
+      setTeamAssignBusy(null)
+      router.refresh()
+    } catch {
+      setTeamAssignMsg(prev => ({ ...prev, [teamId]: 'Something went wrong.' }))
+      setTeamAssignBusy(null)
     }
   }
 
@@ -1143,6 +1187,117 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                       tokenPool={team.tokenPool}
                     />
                   )}
+
+                  {/* Assign team credits to players — spends teams.credits on
+                      specific players in this team. Same pool the coach uses
+                      via Open team dashboard; lets the org act without
+                      hopping into the team's coach view. */}
+                  {(() => {
+                    const isAssignOpen = teamAssignOpen[team.id] ?? false
+                    const picks = teamAssignPicks[team.id] || {}
+                    const each = Math.max(1, teamAssignEach[team.id] ?? 1)
+                    const selectedIds = Object.keys(picks).filter(id => picks[id])
+                    const totalNeeded = selectedIds.length * each
+                    const msg = teamAssignMsg[team.id]
+                    const isAssignBusy = teamAssignBusy === team.id
+                    return (
+                      <div className="border border-orange-100 rounded-xl overflow-hidden">
+                        <button
+                          onClick={() => setTeamAssignOpen(prev => ({ ...prev, [team.id]: !isAssignOpen }))}
+                          className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-orange-50 hover:bg-orange-100 transition-colors text-left"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-black">Assign team credits to players</p>
+                            <p className="text-xs text-gray-500 mt-0.5">
+                              Team credits: <span className="font-bold text-orange-600">{team.credits}</span>
+                              {' '}— spend on specific players in this team.
+                            </p>
+                          </div>
+                          <span className="text-gray-400 text-sm shrink-0">{isAssignOpen ? '−' : '+'}</span>
+                        </button>
+                        {isAssignOpen && (
+                          <div className="px-4 py-4 space-y-3 bg-white">
+                            {team.members.length === 0 ? (
+                              <p className="text-sm text-gray-400">No players have joined this team yet.</p>
+                            ) : team.credits === 0 ? (
+                              <p className="text-sm text-gray-500">No credits on this team yet — allocate some from your org balance above.</p>
+                            ) : (
+                              <>
+                                <div className="space-y-1">
+                                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Tokens per player</label>
+                                  <div className="flex items-center gap-2">
+                                    {[1, 2, 5].map(q => (
+                                      <button
+                                        key={q}
+                                        onClick={() => setTeamAssignEach(prev => ({ ...prev, [team.id]: q }))}
+                                        className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-colors ${
+                                          each === q
+                                            ? 'bg-orange-500 text-white'
+                                            : 'bg-white border border-gray-300 text-black hover:border-orange-400'
+                                        }`}
+                                      >
+                                        {q}
+                                      </button>
+                                    ))}
+                                    <input
+                                      type="number"
+                                      min={1}
+                                      value={each}
+                                      onChange={e => {
+                                        const n = parseInt(e.target.value)
+                                        setTeamAssignEach(prev => ({ ...prev, [team.id]: Number.isNaN(n) ? 1 : Math.max(1, n) }))
+                                      }}
+                                      className="w-16 border border-gray-300 rounded-lg px-2 py-1.5 text-black text-sm text-center focus:outline-none focus:border-orange-500"
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className="space-y-1 border border-gray-100 rounded-xl divide-y divide-gray-100 max-h-56 overflow-y-auto">
+                                  {team.members.map(m => (
+                                    <label key={m.id} className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-gray-50">
+                                      <input
+                                        type="checkbox"
+                                        checked={!!picks[m.id]}
+                                        onChange={() => setTeamAssignPicks(prev => ({
+                                          ...prev,
+                                          [team.id]: { ...(prev[team.id] || {}), [m.id]: !(prev[team.id]?.[m.id]) },
+                                        }))}
+                                        className="w-4 h-4 accent-orange-500"
+                                      />
+                                      <span className="flex-1 text-sm text-black">{memberDisplayName(m)}</span>
+                                      <span className="text-xs text-gray-400">{m.tokens} token{m.tokens !== 1 ? 's' : ''}</span>
+                                    </label>
+                                  ))}
+                                </div>
+
+                                <p className="text-xs text-gray-500">
+                                  {selectedIds.length} player{selectedIds.length !== 1 ? 's' : ''} selected
+                                  {selectedIds.length > 0 && ` · ${totalNeeded} credit${totalNeeded !== 1 ? 's' : ''} total`}
+                                  {totalNeeded > team.credits && (
+                                    <span className="text-red-500 font-semibold"> · not enough credits</span>
+                                  )}
+                                </p>
+
+                                {msg && (
+                                  <p className={`text-sm font-medium ${msg.startsWith('Assigned') ? 'text-green-600' : 'text-red-500'}`}>
+                                    {msg}
+                                  </p>
+                                )}
+
+                                <button
+                                  onClick={() => assignTeamCreditsToPlayers(team.id, team.credits)}
+                                  disabled={isAssignBusy || selectedIds.length === 0 || totalNeeded > team.credits}
+                                  className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+                                >
+                                  {isAssignBusy ? 'Assigning…' : `Assign ${totalNeeded} credit${totalNeeded !== 1 ? 's' : ''}`}
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
 
                   {/* Team leaderboard */}
                   <div className="space-y-2">

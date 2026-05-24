@@ -3,6 +3,7 @@ import type Stripe from 'stripe'
 import { getStripe } from '@/lib/stripe'
 import { db } from '@/lib/db'
 import { sendClaimCreditsEmail, sendClassPurchaseConfirmationEmail } from '@/lib/email'
+import { sendClassPurchaseConfirmationSms } from '@/lib/sms'
 
 function generateTeamAccessCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -314,7 +315,7 @@ export async function POST(req: NextRequest) {
         // Non-fatal — package + order still recorded; org admin can create a team manually
       }
 
-      // Send confirmation email with team access code
+      // Send confirmation email + SMS with team access code
       if (orgEmail && teamAccessCode) {
         const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://learnhoops.com'
         try {
@@ -322,6 +323,15 @@ export async function POST(req: NextRequest) {
         } catch (emailErr) {
           console.error('Failed to send class purchase confirmation email:', emailErr)
           // Non-fatal — package and team are created, email can be resent manually
+        }
+      }
+
+      if (phone && teamAccessCode) {
+        try {
+          await sendClassPurchaseConfirmationSms(phone, orgName, playerCount, teamAccessCode)
+        } catch (smsErr) {
+          console.error('Failed to send class purchase confirmation SMS:', smsErr)
+          // Non-fatal — email already sent
         }
       }
 

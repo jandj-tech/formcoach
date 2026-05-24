@@ -1131,12 +1131,18 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                     </div>
                   </div>
 
-                  {/* Token balances */}
-                  <TokenBalances
-                    players={team.members.map(m => ({ id: m.id, label: memberDisplayName(m), tokens: m.tokens }))}
-                    coachCredits={team.credits}
-                    tokenPool={team.tokenPool}
-                  />
+                  {/* Token balances — only on non-class teams. Class teams
+                      already show their stats (Players / Enrolled / Completed /
+                      Credits left) in the class panel above, so this duplicate
+                      block is redundant and the "PLAYERS — N TOKENS TOTAL"
+                      line is misleading in a coach-uploads-for-players model. */}
+                  {!team.classPackageId && (
+                    <TokenBalances
+                      players={team.members.map(m => ({ id: m.id, label: memberDisplayName(m), tokens: m.tokens }))}
+                      coachCredits={team.credits}
+                      tokenPool={team.tokenPool}
+                    />
+                  )}
 
                   {/* Team leaderboard */}
                   <div className="space-y-2">

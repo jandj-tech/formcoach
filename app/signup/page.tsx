@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { trackCompleteRegistration } from '@/lib/meta-pixel'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
 import TopNav from '@/components/TopNav'
@@ -59,6 +60,8 @@ function SignupForm() {
         setStatus('error')
         return
       }
+
+      trackCompleteRegistration()
 
       const tc = teamCode.trim()
       if (tc) {

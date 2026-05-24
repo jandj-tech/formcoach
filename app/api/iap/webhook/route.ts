@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { sendMetaEvent, makePurchaseEvent } from '@/lib/meta-server'
 
 export async function POST(req: NextRequest) {
   try {

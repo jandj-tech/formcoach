@@ -1,5 +1,7 @@
 'use client'
 
+import { trackInitiateCheckout } from '@/lib/meta-pixel'
+
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { upload } from '@vercel/blob/client'
@@ -666,6 +668,7 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
   const isLocked = sessionLoading || notLoggedIn || noTokens || noCredits
 
   async function handleBuyToken() {
+    trackInitiateCheckout()
     try {
       const res = await fetch('/api/buy-token', {
         method: 'POST',

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { trackInitiateCheckout } from '@/lib/meta-pixel'
 import Link from 'next/link'
 
 type Region = 'US' | 'CA'
@@ -15,6 +16,7 @@ export default function PremiumCTA({ dark = false }: { dark?: boolean }) {
   }, [])
 
   async function handleBuyToken() {
+    trackInitiateCheckout()
     setLoading(true)
     try {
       const res = await fetch('/api/buy-token', {

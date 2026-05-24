@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
 import { signSession, sessionCookieOptions } from '@/lib/auth'
 import { grantFreeOrgTokensIfEligible } from '@/lib/team-tokens'
+import { sendMetaEvent, makeRegistrationEvent } from '@/lib/meta-server'
 
 export async function POST(req: NextRequest) {
   try {
@@ -76,6 +77,14 @@ export async function POST(req: NextRequest) {
         // Non-fatal: still create the account even if invite claim fails
       }
     }
+
+    // Fire server-side Meta CAPI event (deduplicates with client-side pixel)
+    await sendMetaEvent(makeRegistrationEvent({
+      email: emailLower,
+      ip: req.headers.get('x-forwarded-for') ?? undefined,
+      userAgent: req.headers.get('user-agent') ?? undefined,
+      url: 'https://www.learnhoops.com/signup',
+    }))
 
     const token = await signSession({ userId: user.id, email: user.email })
     const res = NextResponse.json({ success: true, token })

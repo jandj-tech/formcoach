@@ -69,7 +69,8 @@ export default async function OrgDashboardPage() {
         p.id, p.player_count, p.price_per_player_cents, p.total_cents,
         p.token_pool, p.status, p.created_at,
         COUNT(e.id)::int AS enrolled_count,
-        COUNT(e.final_submission_id)::int AS completed_count
+        COUNT(e.final_submission_id)::int AS completed_count,
+        (SELECT access_code FROM teams WHERE class_package_id = p.id LIMIT 1) AS team_access_code
       FROM org_class_packages p
       LEFT JOIN org_class_enrollments e ON e.package_id = p.id
       WHERE p.org_id = ${org.id}
@@ -79,6 +80,7 @@ export default async function OrgDashboardPage() {
       id: string; player_count: number; price_per_player_cents: number; total_cents: number
       token_pool: number; status: string; created_at: string
       enrolled_count: number; completed_count: number
+      team_access_code: string | null
     }>
 
     classPackages = await Promise.all(pkgs.map(async (pkg) => {

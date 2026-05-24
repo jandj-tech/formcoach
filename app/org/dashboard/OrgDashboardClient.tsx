@@ -68,6 +68,7 @@ export interface ClassPackage {
   created_at: string
   enrolled_count: number
   completed_count: number
+  team_access_code: string | null
   enrollments: ClassEnrollment[]
 }
 
@@ -605,6 +606,28 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
 
                 {isOpen && (
                   <div className="px-5 py-4 space-y-5">
+                    {pkg.team_access_code && (
+                      <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Training Camp join code</p>
+                          <p className="text-2xl font-black text-orange-600 tracking-widest mt-0.5">{pkg.team_access_code}</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Share this with your players — they each get {pkg.player_count > 0 ? '2 analysis tokens' : 'tokens'} when they join, up to {pkg.player_count} players.
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            const code = pkg.team_access_code as string
+                            const link = `${BASE_URL}/signup?teamCode=${code}`
+                            navigator.clipboard.writeText(link)
+                          }}
+                          className="shrink-0 bg-white border border-orange-300 text-orange-600 text-xs font-bold px-3 py-2 rounded-lg hover:bg-orange-100"
+                        >
+                          Copy join link
+                        </button>
+                      </div>
+                    )}
+
                     {/* Stats row */}
                     <div className="grid grid-cols-4 gap-2">
                       {[

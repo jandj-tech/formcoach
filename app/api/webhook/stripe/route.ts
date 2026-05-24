@@ -4,6 +4,15 @@ import { getStripe } from '@/lib/stripe'
 import { db } from '@/lib/db'
 import { sendClaimCreditsEmail } from '@/lib/email'
 
+function generateTeamAccessCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  let code = ''
+  for (let i = 0; i < 8; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)]
+  }
+  return code
+}
+
 export async function POST(req: NextRequest) {
   const sig = req.headers.get('stripe-signature')
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
@@ -168,30 +177,103 @@ export async function POST(req: NextRequest) {
     }
 
     // --- Org class package purchase ---
+    //
+    // One Stripe checkout buys all three things:
+    //   1. an org_class_packages row (the token pool, capped at playerCount * 2)
+    //   2. a row in `orders` so the shipping queue sees the balls to ship
+    //   3. a self-coached "Training Camp" team under the org, capped to playerCount
+    //      players via the package link — players join with the team access code
+    //      and each gets 2 tokens out of the package pool on join.
     if (metaType === 'org_class_package') {
       const orgId = session.metadata?.orgId
       const playerCount = parseInt(session.metadata?.playerCount || '0', 10)
       const pricePerPlayerCents = parseInt(session.metadata?.pricePerPlayerCents || '0', 10)
       const totalCents = parseInt(session.metadata?.totalCents || '0', 10)
       const ship = session.collected_information?.shipping_details
-      if (orgId && playerCount > 0) {
-        try {
-          await db`
-            INSERT INTO org_class_packages
-              (org_id, stripe_session_id, player_count, price_per_player_cents, total_cents, token_pool, status,
-               shipping_name, shipping_line1, shipping_line2, shipping_city, shipping_state, shipping_postal_code, shipping_country)
-            VALUES
-              (${orgId}, ${session.id}, ${playerCount}, ${pricePerPlayerCents}, ${totalCents}, ${playerCount * 2}, 'active',
-               ${ship?.name ?? null}, ${ship?.address?.line1 ?? null}, ${ship?.address?.line2 ?? null},
-               ${ship?.address?.city ?? null}, ${ship?.address?.state ?? null},
-               ${ship?.address?.postal_code ?? null}, ${ship?.address?.country ?? null})
-            ON CONFLICT (stripe_session_id) DO NOTHING
-          `
-        } catch (err) {
-          console.error('Failed to create org class package:', err)
-          return NextResponse.json({ error: 'DB error' }, { status: 500 })
-        }
+      if (!orgId || playerCount <= 0) {
+        return NextResponse.json({ received: true })
       }
+
+      const orgRows = await db`
+        SELECT id, name, admin_email FROM organizations WHERE id = ${orgId}
+      ` as unknown as Array<{ id: string; name: string; admin_email: string }>
+      const org = orgRows[0]
+      if (!org) {
+        console.error('org_class_package: org not found', orgId)
+        return NextResponse.json({ received: true })
+      }
+
+      let packageId: string | null = null
+      try {
+        const inserted = await db`
+          INSERT INTO org_class_packages
+            (org_id, stripe_session_id, player_count, price_per_player_cents, total_cents, token_pool, status,
+             shipping_name, shipping_line1, shipping_line2, shipping_city, shipping_state, shipping_postal_code, shipping_country)
+          VALUES
+            (${orgId}, ${session.id}, ${playerCount}, ${pricePerPlayerCents}, ${totalCents}, ${playerCount * 2}, 'active',
+             ${ship?.name ?? null}, ${ship?.address?.line1 ?? null}, ${ship?.address?.line2 ?? null},
+             ${ship?.address?.city ?? null}, ${ship?.address?.state ?? null},
+             ${ship?.address?.postal_code ?? null}, ${ship?.address?.country ?? null})
+          ON CONFLICT (stripe_session_id) DO NOTHING
+          RETURNING id
+        ` as unknown as Array<{ id: string }>
+        packageId = inserted[0]?.id ?? null
+      } catch (err) {
+        console.error('Failed to create org class package:', err)
+        return NextResponse.json({ error: 'DB error' }, { status: 500 })
+      }
+
+      // Webhook redelivery — package already existed, nothing else to do.
+      if (!packageId) return NextResponse.json({ received: true })
+
+      // Ball shipment: one order row covering all `playerCount` balls. variant/size
+      // are NOT NULL on `orders` with CHECK constraints, so we store defaults here;
+      // fulfillment uses the `kind` + `quantity` columns to know this is a bulk class
+      // shipment and to follow up with the org for handedness/sizes per player.
+      try {
+        await db`
+          INSERT INTO orders (
+            stripe_session_id, email, customer_name, phone, variant, size,
+            amount_total, currency, kind, quantity, class_package_id,
+            shipping_name, shipping_line1, shipping_line2,
+            shipping_city, shipping_state, shipping_postal_code, shipping_country
+          ) VALUES (
+            ${session.id}, ${org.admin_email}, ${ship?.name ?? null}, ${session.customer_details?.phone ?? null},
+            'right', '7',
+            ${session.amount_total ?? totalCents}, ${session.currency ?? 'usd'},
+            'class_package', ${playerCount}, ${packageId},
+            ${ship?.name ?? null}, ${ship?.address?.line1 ?? null}, ${ship?.address?.line2 ?? null},
+            ${ship?.address?.city ?? null}, ${ship?.address?.state ?? null},
+            ${ship?.address?.postal_code ?? null}, ${ship?.address?.country ?? null}
+          )
+          ON CONFLICT (stripe_session_id) DO NOTHING
+        `
+      } catch (err) {
+        console.error('Failed to record class package shipment order:', err)
+        // Non-fatal — package + team still get created
+      }
+
+      // Auto-create the "Training Camp" team. Self-coached by the org admin
+      // (password_hash NULL), capped at playerCount via the class_package_id link.
+      try {
+        let accessCode = generateTeamAccessCode()
+        for (let attempt = 0; attempt < 5; attempt++) {
+          const collision = await db`SELECT id FROM teams WHERE access_code = ${accessCode}`
+          if (collision.length === 0) break
+          accessCode = generateTeamAccessCode()
+        }
+
+        await db`
+          INSERT INTO teams
+            (name, admin_email, password_hash, access_code, organization_id, class_package_id)
+          VALUES
+            ('Training Camp', ${org.admin_email}, ${null}, ${accessCode}, ${orgId}, ${packageId})
+        `
+      } catch (err) {
+        console.error('Failed to auto-create Training Camp team:', err)
+        // Non-fatal — package + order still recorded; org admin can create a team manually
+      }
+
       return NextResponse.json({ received: true })
     }
 

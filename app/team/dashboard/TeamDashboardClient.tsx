@@ -107,6 +107,11 @@ export default function TeamDashboardClient({
   const [kicking, setKicking] = useState<string | null>(null)
   const [cancelling, setCancelling] = useState<string | null>(null)
 
+  // Bulk grant state: one-click 'give N to every joined player'.
+  const [bulkGrantEach, setBulkGrantEach] = useState(2)
+  const [bulkGranting, setBulkGranting] = useState(false)
+  const [bulkGrantMsg, setBulkGrantMsg] = useState('')
+
   // Add player form
   const [addOpen, setAddOpen] = useState(false)
   const [addFirst, setAddFirst] = useState('')
@@ -135,6 +140,39 @@ export default function TeamDashboardClient({
       if (url) window.location.href = url
     } catch {
       setBuying(false)
+    }
+  }
+
+  async function grantToAll() {
+    if (members.length === 0) {
+      setBulkGrantMsg('No players on this team yet.')
+      return
+    }
+    const total = members.length * bulkGrantEach
+    if (total > team.credits) {
+      setBulkGrantMsg(`Need ${total} credits, team has ${team.credits}.`)
+      return
+    }
+    setBulkGranting(true)
+    setBulkGrantMsg('')
+    try {
+      const res = await fetch('/api/team/grant-all-tokens', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tokensEach: bulkGrantEach }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setBulkGrantMsg(data.error || 'Could not grant tokens')
+        setBulkGranting(false)
+        return
+      }
+      setBulkGrantMsg(`Gave ${bulkGrantEach} to ${members.length} player${members.length !== 1 ? 's' : ''}.`)
+      setBulkGranting(false)
+      router.refresh()
+    } catch {
+      setBulkGrantMsg('Something went wrong.')
+      setBulkGranting(false)
     }
   }
 
@@ -305,6 +343,52 @@ export default function TeamDashboardClient({
           {loggingOut ? 'Logging out...' : 'Log out'}
         </button>
       </div>
+
+      {/* Quick grant — class-style "give every joined player N credits" in
+          one click, paid out of the team's credit pool. Shown when there's
+          at least one player and the team has credits to spend. */}
+      {members.length > 0 && (
+        <div className="bg-orange-50 border border-orange-200 rounded-2xl p-5 space-y-3">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <p className="font-black text-black">Quick grant credits to all players</p>
+              <p className="text-xs text-gray-600 mt-0.5">
+                Spend <span className="font-bold text-orange-600">{bulkGrantEach * members.length}</span> from this team&apos;s {team.credits} credits to give every player {bulkGrantEach} token{bulkGrantEach !== 1 ? 's' : ''}.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Each</label>
+              {[1, 2, 5].map(n => (
+                <button
+                  key={n}
+                  onClick={() => setBulkGrantEach(n)}
+                  className={`w-10 h-10 rounded-lg text-sm font-bold transition-colors ${
+                    bulkGrantEach === n
+                      ? 'bg-orange-500 text-white border border-orange-500'
+                      : 'bg-white text-black border border-orange-200 hover:border-orange-400'
+                  }`}
+                >
+                  {n}
+                </button>
+              ))}
+              <button
+                onClick={grantToAll}
+                disabled={bulkGranting || team.credits < bulkGrantEach * members.length}
+                className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-black text-sm px-4 py-2.5 rounded-xl transition-colors"
+              >
+                {bulkGranting
+                  ? 'Granting…'
+                  : `Give ${bulkGrantEach} to all ${members.length}`}
+              </button>
+            </div>
+          </div>
+          {bulkGrantMsg && (
+            <p className={`text-sm font-medium ${bulkGrantMsg.startsWith('Gave') ? 'text-green-700' : 'text-red-600'}`}>
+              {bulkGrantMsg}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Team Information — one collapsible section wrapping everything but My Uploads */}
       <div className="border border-gray-200 rounded-2xl overflow-hidden">

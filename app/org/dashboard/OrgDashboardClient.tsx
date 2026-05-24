@@ -119,6 +119,8 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   const [classSize6, setClassSize6] = useState(0)
   const [classSize7, setClassSize7] = useState(CLASS_MIN_PLAYERS)
   const classPlayerCount = classSize5 + classSize6 + classSize7
+  // Collapsed by default once the org has at least one package — they've seen the pitch.
+  const [classProgramOpen, setClassProgramOpen] = useState(classPackages.length === 0)
   const [buyingClass, setBuyingClass] = useState(false)
   const [classError, setClassError] = useState('')
   const [expandedPackage, setExpandedPackage] = useState<string | null>(null)
@@ -474,7 +476,20 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
 
   const classProgramSection = (
     <div className="space-y-4">
-      {/* Program summary + buy form — all one card */}
+      {/* Collapsed view: slim orange bar; expanded view: full pitch + buy form. */}
+      {!classProgramOpen ? (
+        <button
+          onClick={() => setClassProgramOpen(true)}
+          className="w-full flex items-center justify-between gap-4 bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 rounded-2xl px-5 py-4 text-white text-left transition-colors"
+        >
+          <div className="min-w-0">
+            <p className="text-orange-100 text-[10px] font-bold uppercase tracking-widest">New</p>
+            <p className="font-black text-base truncate">10-Week Shooting Class · $40/player</p>
+            <p className="text-orange-100 text-xs mt-0.5">{classPackages.length > 0 ? 'Buy another class package' : 'Tap to expand the buy form'}</p>
+          </div>
+          <span className="text-2xl font-black shrink-0">+</span>
+        </button>
+      ) : (
       <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-6 text-white space-y-5">
         {/* Header */}
         <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -486,10 +501,17 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
               Each player gets a ball, 2 shot analyses, and a personalized completion certificate.
             </p>
           </div>
-          <div className="bg-white/20 rounded-xl px-4 py-3 text-center shrink-0">
-            <p className="text-4xl font-black">$40</p>
-            <p className="text-orange-100 text-xs">per player</p>
-            <p className="text-orange-200 text-xs mt-1">$36.99/player for 30+</p>
+          <div className="flex items-start gap-2 shrink-0">
+            <div className="bg-white/20 rounded-xl px-4 py-3 text-center">
+              <p className="text-4xl font-black">$40</p>
+              <p className="text-orange-100 text-xs">per player</p>
+              <p className="text-orange-200 text-xs mt-1">$36.99/player for 30+</p>
+            </div>
+            <button
+              onClick={() => setClassProgramOpen(false)}
+              className="bg-white/20 hover:bg-white/30 rounded-xl w-10 h-10 flex items-center justify-center text-white text-2xl font-black transition-colors"
+              aria-label="Minimize"
+            >−</button>
           </div>
         </div>
 
@@ -604,6 +626,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
           </button>
         </div>
       </div>
+      )}
 
       {/* Active class packages */}
       {classPackages.length > 0 && (

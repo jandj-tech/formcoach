@@ -62,14 +62,27 @@ export async function POST(req: NextRequest) {
         )
       }
 
-      await db`
+      // org_class_enrollments has a PARTIAL unique index on (package_id, user_id)
+      // WHERE user_id IS NOT NULL — Postgres can't infer a partial index for
+      // `ON CONFLICT (cols) DO UPDATE`, so we use plain `ON CONFLICT DO NOTHING`
+      // (works regardless of which index conflicts) and follow up with an
+      // explicit UPDATE if the row already existed.
+      const inserted = (await db`
         INSERT INTO org_class_enrollments
           (package_id, user_id, first_name, last_name_initial, is_first_class)
         VALUES
           (${pkg.id}, ${session.userId}, ${firstNameClean}, ${lastInitialClean}, true)
-        ON CONFLICT (package_id, user_id) DO UPDATE
+        ON CONFLICT DO NOTHING
+        RETURNING id
+      `) as unknown as Array<{ id: string }>
+
+      if (inserted.length === 0) {
+        await db`
+          UPDATE org_class_enrollments
           SET first_name = ${firstNameClean}, last_name_initial = ${lastInitialClean}
-      `
+          WHERE package_id = ${pkg.id} AND user_id = ${session.userId}
+        `
+      }
     }
 
     await db`
@@ -87,7 +100,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, teamName: team.name })
   } catch (err) {
-    console.error('Team join error:', err)
+    // Surface the DB / Postgres error message to server logs so we can see
+    // exactly which step failed (constraint name, column, etc.).
+    const detail = err instanceof Error ? err.message : String(err)
+    console.error('[team/join] failed:', detail)
     return NextResponse.json({ error: 'Failed to join team' }, { status: 500 })
   }
 }

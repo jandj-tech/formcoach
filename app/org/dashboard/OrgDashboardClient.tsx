@@ -136,6 +136,8 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   const [leaderboard, setLeaderboard] = useState<ClassEnrollment[]>([])
   const [leaderboardLoading, setLeaderboardLoading] = useState(false)
 
+  const [resettingEnrollment, setResettingEnrollment] = useState<string | null>(null)
+
   // Per-team "assign team credits to players" form state.
   const [teamAssignOpen, setTeamAssignOpen] = useState<Record<string, boolean>>({})
   const [teamAssignPicks, setTeamAssignPicks] = useState<Record<string, Record<string, boolean>>>({})
@@ -283,6 +285,28 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
       setAddError('Something went wrong. Please try again.')
       setAddStatus('error')
     }
+  }
+
+  async function resetEnrollment(enrollmentId: string, playerName: string) {
+    if (!confirm(`Clear all class progress for ${playerName}? Their next upload will count as their FIRST again.`)) return
+    setResettingEnrollment(enrollmentId)
+    try {
+      const res = await fetch('/api/org/reset-enrollment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enrollmentId }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        alert(data.error || 'Could not reset enrollment.')
+        setResettingEnrollment(null)
+        return
+      }
+      router.refresh()
+    } catch {
+      alert('Something went wrong.')
+    }
+    setResettingEnrollment(null)
   }
 
   async function assignTeamCreditsToPlayers(teamId: string, teamCredits: number) {
@@ -964,6 +988,16 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                                         >
                                           Certificate
                                         </Link>
+                                      )}
+                                      {(en.has_first || en.has_final) && (
+                                        <button
+                                          onClick={() => resetEnrollment(en.id, name)}
+                                          disabled={resettingEnrollment === en.id}
+                                          title="Clear first/final progress so the next upload counts as their first again"
+                                          className="text-xs font-semibold text-gray-400 hover:text-red-500 disabled:opacity-50 transition-colors"
+                                        >
+                                          {resettingEnrollment === en.id ? '…' : 'Reset'}
+                                        </button>
                                       )}
                                     </div>
                                   </div>

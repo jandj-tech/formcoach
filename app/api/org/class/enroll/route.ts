@@ -11,26 +11,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'packageId and firstName required' }, { status: 400 })
   }
 
-  // Verify package belongs to this org and has capacity
+  // Verify package belongs to this org and has capacity. No more
+  // token-pool deduction or per-player token grant — the new model has the
+  // org leader / coach uploading on each player's behalf out of the team's
+  // credit pool, so players don't carry personal tokens.
   const [pkg] = await db`
-    SELECT p.id, p.player_count, p.token_pool, p.status,
+    SELECT p.id, p.player_count, p.status,
            COUNT(e.id)::int AS enrolled_count
     FROM org_class_packages p
     LEFT JOIN org_class_enrollments e ON e.package_id = p.id
     WHERE p.id = ${packageId} AND p.org_id = ${session.orgId}
     GROUP BY p.id
-  ` as unknown as [{ id: string; player_count: number; token_pool: number; status: string; enrolled_count: number } | undefined]
+  ` as unknown as [{ id: string; player_count: number; status: string; enrolled_count: number } | undefined]
 
   if (!pkg) return NextResponse.json({ error: 'Package not found' }, { status: 404 })
   if (pkg.status !== 'active') return NextResponse.json({ error: 'Package is not active' }, { status: 400 })
   if (pkg.enrolled_count >= pkg.player_count) {
     return NextResponse.json({ error: 'Package is full — all player slots are taken' }, { status: 400 })
   }
-  if (pkg.token_pool < 2) {
-    return NextResponse.json({ error: 'Not enough analysis tokens remaining in this package' }, { status: 400 })
-  }
 
-  // Check if this is the player's first time in a class (determines 3% display rule)
+  // First-time class flag — drives the small display-score boost in analyze.
   let isFirstClass = true
   if (userId) {
     const [prior] = await db`
@@ -44,21 +44,6 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // Deduct 2 tokens from package pool
-    await db`
-      UPDATE org_class_packages
-      SET token_pool = token_pool - 2
-      WHERE id = ${packageId}
-    `
-
-    // Grant 2 tokens to the player's account if they have one
-    if (userId) {
-      await db`
-        UPDATE users SET analysis_tokens = COALESCE(analysis_tokens, 0) + 2
-        WHERE id = ${userId}
-      `
-    }
-
     const [enrollment] = await db`
       INSERT INTO org_class_enrollments
         (package_id, user_id, first_name, last_name_initial, is_first_class)

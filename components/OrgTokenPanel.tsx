@@ -54,6 +54,9 @@ export default function OrgTokenPanel({
   const [coachEmail, setCoachEmail] = useState(coaches[0]?.email ?? '')
   const [giveQty, setGiveQty] = useState(1)
 
+  const [allocTeamId, setAllocTeamId] = useState(teams[0]?.id ?? '')
+  const [allocQty, setAllocQty] = useState(10)
+
   const anyInitiated = teams.some(t => t.initiated)
   const pricePerToken = anyInitiated ? 1.49 : 2.79
   const buyTotal = (buyQty * pricePerToken).toFixed(2)
@@ -132,6 +135,17 @@ export default function OrgTokenPanel({
       '/api/org/give-coach-credits',
       { coachEmail, quantity: amt },
       `Gave ${amt} credit${amt !== 1 ? 's' : ''} to the coach.`,
+    )
+  }
+
+  function allocateToTeam() {
+    if (!allocTeamId) { setMsg('Pick a team'); return }
+    const amt = Math.max(1, allocQty)
+    if (amt > balance) { setMsg(`Balance too low — need ${amt}, have ${balance}`); return }
+    post(
+      '/api/org/allocate-team-credits',
+      { teamId: allocTeamId, quantity: amt },
+      `Allocated ${amt} credit${amt !== 1 ? 's' : ''} to the team.`,
     )
   }
 
@@ -347,9 +361,59 @@ export default function OrgTokenPanel({
             )}
           </div>
 
-          {/* Give credits to coach */}
+          {/* Allocate credits to a team — funds teams.credits, which both the
+              coach (within their team) and the org can spend. Coaches can't
+              move them elsewhere; the org keeps full access. */}
           <div className="space-y-2">
-            <p className="text-sm font-bold text-black">Give credits to a coach</p>
+            <p className="text-sm font-bold text-black">Allocate credits to a team</p>
+            <p className="text-xs text-gray-500 -mt-1">
+              The team&apos;s coach can spend these on coach uploads or assign them to players in this team only — you keep full access.
+            </p>
+            {teams.length === 0 ? (
+              <p className="text-xs text-gray-400">No teams yet.</p>
+            ) : (
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  value={allocTeamId}
+                  onChange={e => setAllocTeamId(e.target.value)}
+                  className="flex-1 min-w-[10rem] border border-gray-300 rounded-xl px-3 py-2.5 text-black text-sm focus:outline-none focus:border-orange-500"
+                >
+                  {teams.map(t => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}{t.ageGroup ? ' · ' + t.ageGroup : ''}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  min={1}
+                  value={allocQty || ''}
+                  onChange={e => {
+                    const n = parseInt(e.target.value)
+                    setAllocQty(Number.isNaN(n) ? 0 : Math.min(10000, Math.max(0, n)))
+                  }}
+                  onBlur={() => { if (allocQty < 1) setAllocQty(1) }}
+                  className="w-20 border border-gray-300 rounded-xl px-2 py-2 text-center text-black text-sm focus:outline-none focus:border-orange-500"
+                />
+                <button
+                  type="button"
+                  onClick={allocateToTeam}
+                  disabled={busy || allocQty < 1 || allocQty > balance}
+                  className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+                >
+                  Allocate
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Give credits to coach — coach's personal self-upload credits (for
+              analyzing their own shots, separate from team operations). */}
+          <div className="space-y-2">
+            <p className="text-sm font-bold text-black">Give a coach personal upload credits</p>
+            <p className="text-xs text-gray-500 -mt-1">
+              For the coach analyzing their own shots — separate from team credits above.
+            </p>
             {coaches.length === 0 ? (
               <p className="text-xs text-gray-400">No coaches yet.</p>
             ) : (

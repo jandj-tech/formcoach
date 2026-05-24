@@ -299,11 +299,15 @@ export async function POST(req: NextRequest) {
         if (!teamAccessCode) throw new Error('Failed to generate unique access code')
 
         const teamName = `10-Week Class — ${playerCount} Players`
+        // teams.credits is the coach-upload budget (one credit per analysis the
+        // org leader / team coach burns). Players don't get personal tokens —
+        // the org leader uploads on their behalf out of this credit pool.
+        // token_pool is kept in sync for legacy displays.
         await db`
           INSERT INTO teams
-            (name, admin_email, password_hash, access_code, organization_id, class_package_id, initiated_at, token_pool)
+            (name, admin_email, password_hash, access_code, organization_id, class_package_id, initiated_at, token_pool, credits)
           VALUES
-            (${teamName}, ${org.admin_email}, ${null}, ${teamAccessCode}, ${orgId}, ${packageId}, NOW(), ${playerCount * 2})
+            (${teamName}, ${org.admin_email}, ${null}, ${teamAccessCode}, ${orgId}, ${packageId}, NOW(), ${playerCount * 2}, ${playerCount * 2})
         `
       } catch (err) {
         console.error('Failed to auto-create class team:', err)

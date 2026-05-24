@@ -119,11 +119,28 @@ export async function POST(req: NextRequest) {
       teamPlayerId = player.id
     }
 
+    // For class team uploads, look up the joined player's user_id so the
+    // class-enrollment auto-link below (line ~207) can update their
+    // first_submission_id / final_submission_id and the certificate fires.
+    // Falls through silently if the player hasn't joined yet via signup link.
+    let classPlayerUserId: string | null = null
+    if (isTeamUpload && teamId) {
+      const [member] = (await db`
+        SELECT user_id FROM team_memberships
+        WHERE team_id = ${teamId}
+          AND first_name = ${playerFirstName!.trim()}
+          AND last_name_initial = ${playerLastName!.trim().charAt(0).toUpperCase()}
+        LIMIT 1
+      `) as unknown as Array<{ user_id: string | null }>
+      classPlayerUserId = member?.user_id ?? null
+    }
+
     // Create submission record
     const submissionToken = crypto.randomBytes(32).toString('hex')
+    const submissionUserId = userId ?? classPlayerUserId
     const [submission] = await db`
       INSERT INTO submissions (token, status, user_id, team_id, team_player_id, email)
-      VALUES (${submissionToken}, 'processing', ${userId}, ${teamId}, ${teamPlayerId}, ${coachEmail})
+      VALUES (${submissionToken}, 'processing', ${submissionUserId}, ${teamId}, ${teamPlayerId}, ${coachEmail})
       RETURNING id
     `
 
@@ -204,13 +221,17 @@ export async function POST(req: NextRequest) {
     // For first-time class players: every shot after the first gets a display score of
     // max(actual_score, first_score + 0.3). Boost lasts while the player is enrolled
     // in an active class. Once the package is inactive or they leave, no more boost.
-    if (userId) {
+    // Use whichever user_id this submission is actually tied to:
+    // - self uploads → session.userId
+    // - coach team uploads → the joined class player's user_id (resolved above)
+    const enrollmentUserId = userId ?? classPlayerUserId
+    if (enrollmentUserId) {
       try {
         const activeEnrollment = await db`
           SELECT e.id, e.first_submission_id, e.first_score, e.is_first_class
           FROM org_class_enrollments e
           JOIN org_class_packages p ON p.id = e.package_id
-          WHERE e.user_id = ${userId}
+          WHERE e.user_id = ${enrollmentUserId}
             AND p.status = 'active'
           ORDER BY e.created_at ASC
           LIMIT 1

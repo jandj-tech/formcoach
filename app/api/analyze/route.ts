@@ -227,13 +227,22 @@ export async function POST(req: NextRequest) {
     const enrollmentUserId = userId ?? classPlayerUserId
     if (enrollmentUserId) {
       try {
+        // Pick the right enrollment when a player is in more than one class:
+        //   - Coach team upload → prefer the enrollment whose package belongs
+        //     to THIS team (the team the coach is uploading through).
+        //   - Self upload (no team context) → oldest active enrollment.
+        // The CASE in ORDER BY ranks the matching team's enrollment first;
+        // tie-breaks by created_at so behavior stays predictable.
         const activeEnrollment = await db`
           SELECT e.id, e.first_submission_id, e.first_score, e.is_first_class
           FROM org_class_enrollments e
           JOIN org_class_packages p ON p.id = e.package_id
+          LEFT JOIN teams t ON t.class_package_id = p.id
           WHERE e.user_id = ${enrollmentUserId}
             AND p.status = 'active'
-          ORDER BY e.created_at ASC
+          ORDER BY
+            CASE WHEN ${teamId}::uuid IS NOT NULL AND t.id = ${teamId}::uuid THEN 0 ELSE 1 END,
+            e.created_at ASC
           LIMIT 1
         ` as unknown as { id: string; first_submission_id: string | null; first_score: number | null; is_first_class: boolean }[]
 

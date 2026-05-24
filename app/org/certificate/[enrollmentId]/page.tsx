@@ -72,10 +72,11 @@ export default async function CertificatePage({ params }: Props) {
           className="object-contain select-none pointer-events-none"
         />
 
-        {/* Player name — text sits just above the "Presented to:" underline. */}
+        {/* Player name — text sits just above the "Presented to:" underline,
+            indented past the label so it doesn't crowd the colon. */}
         <div
           className="absolute font-black text-black"
-          style={{ left: '22%', right: '5%', top: '54.5%', fontSize: '2.6cqw', lineHeight: 1 }}
+          style={{ left: '24%', right: '5%', top: '54.5%', fontSize: '2.6cqw', lineHeight: 1 }}
         >
           {playerName}
         </div>
@@ -88,21 +89,22 @@ export default async function CertificatePage({ params }: Props) {
           {startScore}
         </div>
 
-        {/* Final Analysis Score — centered over the second blank. */}
+        {/* Final Analysis Score — centered over the second blank.
+            Nudged LEFT so it sits on the start of the blank, not the end. */}
         <div
           className="absolute font-black text-black text-center"
-          style={{ left: '52%', width: '12%', top: '63%', fontSize: '1.9cqw', lineHeight: 1 }}
+          style={{ left: '50%', width: '12%', top: '63%', fontSize: '1.9cqw', lineHeight: 1 }}
         >
           {finalScore}
         </div>
 
         {/* Improvement — signed raw difference (green if up, red if down).
-            The Keep Hooping badge crowds this slot, so the box is narrow,
-            placed clear to the LEFT of the badge with a smaller font. */}
+            Pushed LEFT toward the start of the IMPROVEMENT blank so it
+            stays clear of the Keep Hooping badge. */}
         <div
           className="absolute font-black text-center whitespace-nowrap"
           style={{
-            left: '79%',
+            left: '76%',
             width: '7%',
             top: '63.2%',
             fontSize: '1.5cqw',

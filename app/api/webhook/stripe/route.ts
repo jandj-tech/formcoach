@@ -200,11 +200,14 @@ export async function POST(req: NextRequest) {
       const playerCount = parseInt(session.metadata?.playerCount || '0', 10)
       const pricePerPlayerCents = parseInt(session.metadata?.pricePerPlayerCents || '0', 10)
       const totalCents = parseInt(session.metadata?.totalCents || '0', 10)
+      const size5 = parseInt(session.metadata?.size5 || '0', 10)
+      const size6 = parseInt(session.metadata?.size6 || '0', 10)
+      const size7 = parseInt(session.metadata?.size7 || '0', 10)
       const ship = session.collected_information?.shipping_details
       const phone = session.customer_details?.phone ?? null
       const orgEmail = session.customer_details?.email ?? null
 
-      console.log('[stripe webhook] org_class_package', { orgId, playerCount, totalCents })
+      console.log('[stripe webhook] org_class_package', { orgId, playerCount, totalCents, size5, size6, size7 })
       if (!orgId || playerCount <= 0) {
         console.warn('[stripe webhook] org_class_package: skipping (missing orgId or playerCount)')
         return NextResponse.json({ received: true })
@@ -224,12 +227,14 @@ export async function POST(req: NextRequest) {
         const inserted = await db`
           INSERT INTO org_class_packages
             (org_id, stripe_session_id, player_count, price_per_player_cents, total_cents, token_pool, status, contact_phone,
-             shipping_name, shipping_line1, shipping_line2, shipping_city, shipping_state, shipping_postal_code, shipping_country)
+             shipping_name, shipping_line1, shipping_line2, shipping_city, shipping_state, shipping_postal_code, shipping_country,
+             ball_size_5_count, ball_size_6_count, ball_size_7_count)
           VALUES
             (${orgId}, ${session.id}, ${playerCount}, ${pricePerPlayerCents}, ${totalCents}, ${playerCount * 2}, 'active', ${phone},
              ${ship?.name ?? null}, ${ship?.address?.line1 ?? null}, ${ship?.address?.line2 ?? null},
              ${ship?.address?.city ?? null}, ${ship?.address?.state ?? null},
-             ${ship?.address?.postal_code ?? null}, ${ship?.address?.country ?? null})
+             ${ship?.address?.postal_code ?? null}, ${ship?.address?.country ?? null},
+             ${size5}, ${size6}, ${size7})
           ON CONFLICT (stripe_session_id) DO NOTHING
           RETURNING id
         ` as unknown as Array<{ id: string }>
@@ -242,31 +247,45 @@ export async function POST(req: NextRequest) {
       // Webhook redelivery — package already existed, nothing else to do.
       if (!packageId) return NextResponse.json({ received: true })
 
-      // Ball shipment: one order row covering all `playerCount` balls.
+      // Ball shipment: one order row per non-zero ball size, each carrying its
+      // own quantity. Falls back to a single all-size-7 row for legacy orders
+      // that didn't pass per-size metadata.
+      const sizeRows: Array<{ size: '5' | '6' | '7'; qty: number }> = []
+      if (size5 > 0) sizeRows.push({ size: '5', qty: size5 })
+      if (size6 > 0) sizeRows.push({ size: '6', qty: size6 })
+      if (size7 > 0) sizeRows.push({ size: '7', qty: size7 })
+      if (sizeRows.length === 0) sizeRows.push({ size: '7', qty: playerCount })
+
       try {
-        await db`
-          INSERT INTO orders (
-            stripe_session_id, email, customer_name, phone, variant, size,
-            amount_total, currency, kind, quantity, class_package_id,
-            shipping_name, shipping_line1, shipping_line2,
-            shipping_city, shipping_state, shipping_postal_code, shipping_country
-          ) VALUES (
-            ${session.id}, ${org.admin_email}, ${ship?.name ?? null}, ${phone},
-            'right', '7',
-            ${session.amount_total ?? totalCents}, ${session.currency ?? 'usd'},
-            'class_package', ${playerCount}, ${packageId},
-            ${ship?.name ?? null}, ${ship?.address?.line1 ?? null}, ${ship?.address?.line2 ?? null},
-            ${ship?.address?.city ?? null}, ${ship?.address?.state ?? null},
-            ${ship?.address?.postal_code ?? null}, ${ship?.address?.country ?? null}
-          )
-          ON CONFLICT (stripe_session_id) DO NOTHING
-        `
+        for (const { size: ballSize, qty } of sizeRows) {
+          // stripe_session_id is unique on orders, so derive a per-size key
+          // for the multi-row case.
+          const orderKey = sizeRows.length === 1 ? session.id : `${session.id}__sz${ballSize}`
+          await db`
+            INSERT INTO orders (
+              stripe_session_id, email, customer_name, phone, variant, size,
+              amount_total, currency, kind, quantity, class_package_id,
+              shipping_name, shipping_line1, shipping_line2,
+              shipping_city, shipping_state, shipping_postal_code, shipping_country
+            ) VALUES (
+              ${orderKey}, ${org.admin_email}, ${ship?.name ?? null}, ${phone},
+              'right', ${ballSize},
+              ${session.amount_total ?? totalCents}, ${session.currency ?? 'usd'},
+              'class_package', ${qty}, ${packageId},
+              ${ship?.name ?? null}, ${ship?.address?.line1 ?? null}, ${ship?.address?.line2 ?? null},
+              ${ship?.address?.city ?? null}, ${ship?.address?.state ?? null},
+              ${ship?.address?.postal_code ?? null}, ${ship?.address?.country ?? null}
+            )
+            ON CONFLICT (stripe_session_id) DO NOTHING
+          `
+        }
       } catch (err) {
         console.error('Failed to record class package shipment order:', err)
         // Non-fatal — package + team still get created
       }
 
-      // Auto-create the "10 Week Shooting Class" team using crypto for access code generation
+      // Auto-create the class team. Named to include the player count so the
+      // org sees what they bought; coach can rename via the team dashboard.
       let teamAccessCode = ''
       try {
         const { randomInt } = await import('crypto')
@@ -279,14 +298,15 @@ export async function POST(req: NextRequest) {
         }
         if (!teamAccessCode) throw new Error('Failed to generate unique access code')
 
+        const teamName = `10-Week Class — ${playerCount} Players`
         await db`
           INSERT INTO teams
             (name, admin_email, password_hash, access_code, organization_id, class_package_id, initiated_at, token_pool)
           VALUES
-            ('10 Week Shooting Class', ${org.admin_email}, ${null}, ${teamAccessCode}, ${orgId}, ${packageId}, NOW(), ${playerCount * 2})
+            (${teamName}, ${org.admin_email}, ${null}, ${teamAccessCode}, ${orgId}, ${packageId}, NOW(), ${playerCount * 2})
         `
       } catch (err) {
-        console.error('Failed to auto-create 10 Week Shooting Class team:', err)
+        console.error('Failed to auto-create class team:', err)
         // Non-fatal — package + order still recorded; org admin can create a team manually
       }
 

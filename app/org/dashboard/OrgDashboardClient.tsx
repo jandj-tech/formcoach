@@ -113,8 +113,12 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
 
   const BASE_URL = typeof window !== 'undefined' ? window.location.origin : 'https://learnhoops.com'
 
-  // Class program state
-  const [classPlayerCount, setClassPlayerCount] = useState(CLASS_MIN_PLAYERS)
+  // Class program: per ball-size counts; classPlayerCount = sum.
+  // Seeds with the minimum on size 7 (men's) so the page loads with a valid order.
+  const [classSize5, setClassSize5] = useState(0)
+  const [classSize6, setClassSize6] = useState(0)
+  const [classSize7, setClassSize7] = useState(CLASS_MIN_PLAYERS)
+  const classPlayerCount = classSize5 + classSize6 + classSize7
   const [buyingClass, setBuyingClass] = useState(false)
   const [classError, setClassError] = useState('')
   const [expandedPackage, setExpandedPackage] = useState<string | null>(null)
@@ -389,13 +393,17 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   }
 
   async function handleBuyClass() {
+    if (classPlayerCount < CLASS_MIN_PLAYERS) {
+      setClassError(`Minimum ${CLASS_MIN_PLAYERS} players total across the three ball sizes.`)
+      return
+    }
     setBuyingClass(true)
     setClassError('')
     try {
       const res = await fetch('/api/org/buy-class-package', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playerCount: classPlayerCount }),
+        body: JSON.stringify({ size5: classSize5, size6: classSize6, size7: classSize7 }),
       })
       const data = await res.json()
       if (!res.ok || !data.url) {
@@ -530,28 +538,48 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
         {/* Buy form — inside the same card */}
         <div className="space-y-3">
           <p className="font-black text-white text-base">Purchase a Class Package</p>
-          <p className="text-orange-100 text-xs">Minimum {CLASS_MIN_PLAYERS} players. Each player gets 2 analysis tokens + a certificate when they complete both evaluations.</p>
+          <p className="text-orange-100 text-xs">Minimum {CLASS_MIN_PLAYERS} players total. Each player gets a training ball, 2 analysis tokens, and a certificate when they complete both evaluations.</p>
 
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-orange-200 uppercase tracking-wide">Number of players</label>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setClassPlayerCount(c => Math.max(CLASS_MIN_PLAYERS, c - 1))}
-                className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 text-white font-bold transition-colors flex items-center justify-center"
-              >−</button>
-              <span className="text-2xl font-black text-white w-12 text-center">{classPlayerCount}</span>
-              <button
-                onClick={() => setClassPlayerCount(c => c + 1)}
-                className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 text-white font-bold transition-colors flex items-center justify-center"
-              >+</button>
-              <input
-                type="number"
-                min={CLASS_MIN_PLAYERS}
-                value={classPlayerCount}
-                onChange={e => setClassPlayerCount(Math.max(CLASS_MIN_PLAYERS, parseInt(e.target.value) || CLASS_MIN_PLAYERS))}
-                className="w-20 bg-white/20 border border-white/30 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-white placeholder-orange-200"
-              />
+            <label className="text-xs font-semibold text-orange-200 uppercase tracking-wide">Players by ball size</label>
+            <div className="space-y-2">
+              {([
+                { key: 'size5' as const, label: 'Size 5', sub: 'Youth · 27.5"', value: classSize5, set: setClassSize5 },
+                { key: 'size6' as const, label: 'Size 6', sub: "Women's / Youth · 28.5\"", value: classSize6, set: setClassSize6 },
+                { key: 'size7' as const, label: 'Size 7', sub: "Men's · 29.5\"", value: classSize7, set: setClassSize7 },
+              ]).map(row => (
+                <div key={row.key} className="flex items-center gap-3 bg-white/10 rounded-xl px-3 py-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white font-bold text-sm">{row.label}</p>
+                    <p className="text-orange-200 text-xs">{row.sub}</p>
+                  </div>
+                  <button
+                    onClick={() => row.set(v => Math.max(0, v - 1))}
+                    className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 text-white font-bold transition-colors flex items-center justify-center shrink-0"
+                  >−</button>
+                  <input
+                    type="number"
+                    min={0}
+                    value={row.value}
+                    onChange={e => row.set(Math.max(0, parseInt(e.target.value) || 0))}
+                    className="w-14 bg-white/20 border border-white/30 rounded-lg px-2 py-1.5 text-white text-sm text-center focus:outline-none focus:border-white"
+                  />
+                  <button
+                    onClick={() => row.set(v => v + 1)}
+                    className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 text-white font-bold transition-colors flex items-center justify-center shrink-0"
+                  >+</button>
+                </div>
+              ))}
             </div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-orange-200">Total players</span>
+              <span className={`font-black text-base ${classPlayerCount < CLASS_MIN_PLAYERS ? 'text-red-200' : 'text-white'}`}>
+                {classPlayerCount}
+              </span>
+            </div>
+            {classPlayerCount < CLASS_MIN_PLAYERS && (
+              <p className="text-xs text-red-200 font-semibold">Need at least {CLASS_MIN_PLAYERS} players total.</p>
+            )}
             {classPlayerCount >= CLASS_BULK_THRESHOLD && (
               <p className="text-xs text-green-300 font-semibold">Bulk rate unlocked — $36.99/player</p>
             )}
@@ -569,8 +597,8 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
 
           <button
             onClick={handleBuyClass}
-            disabled={buyingClass}
-            className="w-full bg-white hover:bg-orange-50 disabled:bg-white/60 text-orange-600 font-black py-3 rounded-xl transition-colors"
+            disabled={buyingClass || classPlayerCount < CLASS_MIN_PLAYERS}
+            className="w-full bg-white hover:bg-orange-50 disabled:bg-white/60 disabled:text-orange-400 text-orange-600 font-black py-3 rounded-xl transition-colors"
           >
             {buyingClass ? 'Redirecting to checkout...' : `Buy Class Package — $${classTotal.toLocaleString()}`}
           </button>

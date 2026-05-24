@@ -89,22 +89,21 @@ export default async function CertificatePage({ params }: Props) {
           {startScore}
         </div>
 
-        {/* Final Analysis Score — centered over the second blank.
-            Nudged LEFT so it sits on the start of the blank, not the end. */}
+        {/* Final Analysis Score — centered over the second blank. */}
         <div
           className="absolute font-black text-black text-center"
-          style={{ left: '50%', width: '12%', top: '63%', fontSize: '1.9cqw', lineHeight: 1 }}
+          style={{ left: '48%', width: '12%', top: '63%', fontSize: '1.9cqw', lineHeight: 1 }}
         >
           {finalScore}
         </div>
 
         {/* Improvement — signed raw difference (green if up, red if down).
-            Pushed LEFT toward the start of the IMPROVEMENT blank so it
-            stays clear of the Keep Hooping badge. */}
+            Sits at the start of the IMPROVEMENT blank, well clear of the
+            Keep Hooping badge. */}
         <div
           className="absolute font-black text-center whitespace-nowrap"
           style={{
-            left: '76%',
+            left: '73%',
             width: '7%',
             top: '63.2%',
             fontSize: '1.5cqw',

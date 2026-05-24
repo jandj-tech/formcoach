@@ -58,6 +58,7 @@ export interface ClassEnrollment {
   certificate_issued_at: string | null
   has_first: boolean
   has_final: boolean
+  tokens: number
 }
 
 export interface ClassPackage {
@@ -972,6 +973,16 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                                         {en.has_final && `${startScore} → ${finalScore}`}
                                       </p>
                                     </div>
+                                    <span
+                                      className={`shrink-0 text-xs font-bold px-2 py-0.5 rounded-full ${
+                                        en.tokens > 0
+                                          ? 'bg-orange-50 text-orange-600 border border-orange-200'
+                                          : 'bg-gray-50 text-gray-400 border border-gray-200'
+                                      }`}
+                                      title="Personal analysis tokens on this player's account"
+                                    >
+                                      {en.tokens} credit{en.tokens !== 1 ? 's' : ''}
+                                    </span>
                                     <div className="flex items-center gap-2 shrink-0">
                                       {en.has_final ? (
                                         <span className="text-xs bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full">Done</span>

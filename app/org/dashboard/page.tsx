@@ -91,8 +91,10 @@ export default async function OrgDashboardPage() {
           e.first_score, e.final_score, e.display_final_score,
           e.is_first_class, e.certificate_issued_at,
           (e.first_submission_id IS NOT NULL) AS has_first,
-          (e.final_submission_id IS NOT NULL) AS has_final
+          (e.final_submission_id IS NOT NULL) AS has_final,
+          COALESCE(u.analysis_tokens, 0)::int AS tokens
         FROM org_class_enrollments e
+        LEFT JOIN users u ON u.id = e.user_id
         WHERE e.package_id = ${pkg.id}
         ORDER BY e.created_at ASC
       ` as unknown as ClassPackage['enrollments']

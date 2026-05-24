@@ -5,6 +5,7 @@ import { signSession, sessionCookieOptions } from '@/lib/auth'
 import { signTeamSession, teamSessionCookieOptions } from '@/lib/team-auth'
 import { signOrgSession, orgSessionCookieOptions } from '@/lib/org-auth'
 import { clearOtherSessions, PLAYER_COOKIE, TEAM_COOKIE, ORG_COOKIE } from '@/lib/sessions'
+import { sendPasswordChangedEmail } from '@/lib/email'
 
 // Completes a password reset: verifies the token, sets the new password on the
 // matching account (player, coach, or organization), and logs them in.
@@ -32,6 +33,9 @@ export async function POST(req: NextRequest) {
     }
 
     const res = NextResponse.json({ success: true, redirect: target.redirect })
+
+    // Non-fatal security notification
+    try { await sendPasswordChangedEmail(target.email) } catch {}
 
     if (target.kind === 'user') {
       const sessionToken = await signSession({ userId: target.userId!, email: target.email })

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import type Stripe from 'stripe'
 import { getStripe } from '@/lib/stripe'
 import { db } from '@/lib/db'
-import { sendClaimCreditsEmail, sendClassPurchaseConfirmationEmail } from '@/lib/email'
+import { sendClaimCreditsEmail, sendClassPurchaseConfirmationEmail, sendTokenPurchaseConfirmationEmail } from '@/lib/email'
 import { sendClassPurchaseConfirmationSms } from '@/lib/sms'
 
 function generateTeamAccessCode(): string {
@@ -102,6 +102,15 @@ export async function POST(req: NextRequest) {
             SET token_balance = COALESCE(token_balance, 0) + ${quantity}
             WHERE id = ${orgId}
           `
+          const orgEmail = session.customer_details?.email
+          if (orgEmail) {
+            const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://learnhoops.com'
+            const orgRows = await db`SELECT name FROM organizations WHERE id = ${orgId}` as unknown as { name: string }[]
+            const orgName = orgRows[0]?.name || 'Your Organization'
+            try {
+              await sendTokenPurchaseConfirmationEmail(orgEmail, orgName, quantity, `${baseUrl}/org/dashboard`)
+            } catch {}
+          }
         } catch (err) {
           console.error('Failed to credit org token balance:', err)
           return NextResponse.json({ error: 'DB error' }, { status: 500 })

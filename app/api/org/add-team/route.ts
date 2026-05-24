@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { db } from '@/lib/db'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
-import { sendCoachInviteEmail, sendCoachAddedEmail } from '@/lib/email'
+import { sendCoachInviteEmail, sendCoachAddedEmail, sendTeamCreatedEmail } from '@/lib/email'
 
 function generateAccessCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -55,6 +55,10 @@ export async function POST(req: NextRequest) {
         INSERT INTO teams (name, admin_email, password_hash, access_code, organization_id, age_group, coach_nickname)
         VALUES (${name.trim()}, ${session.adminEmail}, ${null}, ${accessCode}, ${org.id}, ${ageGroupValue}, ${nickname})
       `
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://learnhoops.com'
+      try {
+        await sendTeamCreatedEmail(session.adminEmail, org.name, name.trim(), accessCode, `${baseUrl}/org/dashboard`)
+      } catch {}
       return NextResponse.json({ success: true, teamCode: accessCode, selfCoached: true })
     }
 

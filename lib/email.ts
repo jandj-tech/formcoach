@@ -799,3 +799,226 @@ export async function sendClassPurchaseConfirmationEmail(
   }
   console.log('[email] class purchase confirmation sent:', data?.id, 'to:', to)
 }
+
+export async function sendTeamCreatedEmail(
+  to: string,
+  orgName: string,
+  teamName: string,
+  teamAccessCode: string,
+  dashboardUrl: string,
+) {
+  const { data, error } = await getResend().emails.send({
+    from: FROM,
+    to,
+    replyTo: 'learnhoops8@gmail.com',
+    subject: `Team created: ${teamName}`,
+    text: [
+      `Hi ${orgName},`,
+      ``,
+      `Your team "${teamName}" has been created.`,
+      ``,
+      `Team access code: ${teamAccessCode}`,
+      ``,
+      `Players join your team by entering this code on LearnHoops.com.`,
+      ``,
+      `Manage your team here: ${dashboardUrl}`,
+      ``,
+      `— The LearnHoops Team`,
+    ].join('\n'),
+    html: `
+<!DOCTYPE html><html><head><meta charset="utf-8"/></head>
+<body style="margin:0;padding:0;background:#F4F4F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table role="presentation" width="100%" style="background:#F4F4F5;"><tr><td align="center" style="padding:32px 16px;">
+    <table role="presentation" width="100%" style="max-width:560px;background:#fff;border-radius:14px;border:1px solid #E4E4E7;">
+      <tr><td style="background:#000;padding:22px 32px;">
+        <div style="color:#F97316;font-size:20px;font-weight:800;">LearnHoops<span style="color:#71717A;">.com</span></div>
+      </td></tr>
+      <tr><td style="padding:36px 32px 8px;">
+        <h1 style="margin:0 0 10px;color:#111;font-size:22px;font-weight:800;">Team created!</h1>
+        <p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;">
+          Hi <strong>${escHtml(orgName)}</strong> — your team <strong>${escHtml(teamName)}</strong> is live.
+        </p>
+      </td></tr>
+      <tr><td style="padding:20px 32px 8px;">
+        <div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:10px;padding:16px 20px;">
+          <div style="color:#92400E;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Team Access Code</div>
+          <div style="color:#F97316;font-size:30px;font-weight:900;letter-spacing:3px;">${escHtml(teamAccessCode)}</div>
+          <div style="color:#52525B;font-size:12px;margin-top:6px;">Players enter this code on LearnHoops.com to join the team.</div>
+        </div>
+      </td></tr>
+      <tr><td style="padding:20px 32px 32px;">
+        <a href="${dashboardUrl.startsWith('https://') ? dashboardUrl : 'https://learnhoops.com/org/dashboard'}" style="display:inline-block;background:#F97316;color:#fff;padding:13px 26px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">Go to dashboard</a>
+      </td></tr>
+    </table>
+  </td></tr></table>
+</body></html>`.trim(),
+  })
+  if (error) {
+    console.error('[email] team created email failed:', error)
+    throw new Error(`Team created email failed: ${error instanceof Error ? error.message : String(error)}`)
+  }
+  console.log('[email] team created email sent:', data?.id, 'to:', to)
+}
+
+export async function sendPasswordChangedEmail(to: string) {
+  const { data, error } = await getResend().emails.send({
+    from: FROM,
+    to,
+    replyTo: 'learnhoops8@gmail.com',
+    subject: 'Your LearnHoops password was changed',
+    text: [
+      `Your LearnHoops password was just changed.`,
+      ``,
+      `If you made this change, you can ignore this email.`,
+      ``,
+      `If you did NOT make this change, contact us immediately at learnhoops8@gmail.com`,
+      ``,
+      `— The LearnHoops Team`,
+    ].join('\n'),
+    html: `
+<!DOCTYPE html><html><head><meta charset="utf-8"/></head>
+<body style="margin:0;padding:0;background:#F4F4F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table role="presentation" width="100%" style="background:#F4F4F5;"><tr><td align="center" style="padding:32px 16px;">
+    <table role="presentation" width="100%" style="max-width:560px;background:#fff;border-radius:14px;border:1px solid #E4E4E7;">
+      <tr><td style="background:#000;padding:22px 32px;">
+        <div style="color:#F97316;font-size:20px;font-weight:800;">LearnHoops<span style="color:#71717A;">.com</span></div>
+      </td></tr>
+      <tr><td style="padding:36px 32px 8px;">
+        <h1 style="margin:0 0 10px;color:#111;font-size:22px;font-weight:800;">Password changed</h1>
+        <p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;">
+          Your LearnHoops password was just changed. If this was you, no action needed.
+        </p>
+      </td></tr>
+      <tr><td style="padding:12px 32px 32px;">
+        <p style="margin:0;color:#DC2626;font-size:14px;font-weight:600;">
+          If you did NOT make this change, contact us immediately at learnhoops8@gmail.com
+        </p>
+      </td></tr>
+    </table>
+  </td></tr></table>
+</body></html>`.trim(),
+  })
+  if (error) console.error('[email] password changed email failed:', error)
+  console.log('[email] password changed email sent:', data?.id, 'to:', to)
+}
+
+export async function sendTokenPurchaseConfirmationEmail(
+  to: string,
+  orgName: string,
+  quantity: number,
+  dashboardUrl: string,
+) {
+  const { data, error } = await getResend().emails.send({
+    from: FROM,
+    to,
+    replyTo: 'learnhoops8@gmail.com',
+    subject: `${quantity} analysis token${quantity !== 1 ? 's' : ''} added to your account`,
+    text: [
+      `Hi ${orgName},`,
+      ``,
+      `${quantity} analysis token${quantity !== 1 ? 's' : ''} have been added to your LearnHoops account.`,
+      ``,
+      `Manage your tokens here: ${dashboardUrl}`,
+      ``,
+      `— The LearnHoops Team`,
+    ].join('\n'),
+    html: `
+<!DOCTYPE html><html><head><meta charset="utf-8"/></head>
+<body style="margin:0;padding:0;background:#F4F4F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table role="presentation" width="100%" style="background:#F4F4F5;"><tr><td align="center" style="padding:32px 16px;">
+    <table role="presentation" width="100%" style="max-width:560px;background:#fff;border-radius:14px;border:1px solid #E4E4E7;">
+      <tr><td style="background:#000;padding:22px 32px;">
+        <div style="color:#F97316;font-size:20px;font-weight:800;">LearnHoops<span style="color:#71717A;">.com</span></div>
+      </td></tr>
+      <tr><td style="padding:36px 32px 8px;">
+        <h1 style="margin:0 0 10px;color:#111;font-size:22px;font-weight:800;">Tokens added!</h1>
+        <p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;">
+          Hi <strong>${escHtml(orgName)}</strong> — <strong>${quantity} analysis token${quantity !== 1 ? 's' : ''}</strong> have been added to your account.
+        </p>
+      </td></tr>
+      <tr><td style="padding:20px 32px 32px;">
+        <a href="${dashboardUrl.startsWith('https://') ? dashboardUrl : 'https://learnhoops.com/org/dashboard'}" style="display:inline-block;background:#F97316;color:#fff;padding:13px 26px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">Go to dashboard</a>
+      </td></tr>
+    </table>
+  </td></tr></table>
+</body></html>`.trim(),
+  })
+  if (error) console.error('[email] token purchase email failed:', error)
+  console.log('[email] token purchase email sent:', data?.id, 'to:', to)
+}
+
+export async function sendAccountDeletedEmail(to: string) {
+  const { data, error } = await getResend().emails.send({
+    from: FROM,
+    to,
+    replyTo: 'learnhoops8@gmail.com',
+    subject: 'Your LearnHoops account has been deleted',
+    text: [
+      `Your LearnHoops account has been permanently deleted.`,
+      `All your data, submissions, and tokens have been removed.`,
+      ``,
+      `If you did NOT request this, contact us immediately at learnhoops8@gmail.com`,
+      ``,
+      `— The LearnHoops Team`,
+    ].join('\n'),
+    html: `
+<!DOCTYPE html><html><head><meta charset="utf-8"/></head>
+<body style="margin:0;padding:0;background:#F4F4F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table role="presentation" width="100%" style="background:#F4F4F5;"><tr><td align="center" style="padding:32px 16px;">
+    <table role="presentation" width="100%" style="max-width:560px;background:#fff;border-radius:14px;border:1px solid #E4E4E7;">
+      <tr><td style="background:#000;padding:22px 32px;">
+        <div style="color:#F97316;font-size:20px;font-weight:800;">LearnHoops<span style="color:#71717A;">.com</span></div>
+      </td></tr>
+      <tr><td style="padding:36px 32px 8px;">
+        <h1 style="margin:0 0 10px;color:#111;font-size:22px;font-weight:800;">Account deleted</h1>
+        <p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;">
+          Your LearnHoops account has been permanently deleted. All your data, submissions, and tokens have been removed.
+        </p>
+      </td></tr>
+      <tr><td style="padding:12px 32px 32px;">
+        <p style="margin:0;color:#DC2626;font-size:14px;font-weight:600;">
+          If you did NOT request this deletion, contact us immediately at learnhoops8@gmail.com
+        </p>
+      </td></tr>
+    </table>
+  </td></tr></table>
+</body></html>`.trim(),
+  })
+  if (error) console.error('[email] account deleted email failed:', error)
+  console.log('[email] account deleted email sent:', data?.id, 'to:', to)
+}
+
+export async function sendLeftTeamEmail(to: string, teamName: string) {
+  const { data, error } = await getResend().emails.send({
+    from: FROM,
+    to,
+    replyTo: 'learnhoops8@gmail.com',
+    subject: `You've left ${teamName}`,
+    text: [
+      `You have left the team "${teamName}" on LearnHoops.`,
+      ``,
+      `If you did not do this, contact us at learnhoops8@gmail.com`,
+      ``,
+      `— The LearnHoops Team`,
+    ].join('\n'),
+    html: `
+<!DOCTYPE html><html><head><meta charset="utf-8"/></head>
+<body style="margin:0;padding:0;background:#F4F4F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table role="presentation" width="100%" style="background:#F4F4F5;"><tr><td align="center" style="padding:32px 16px;">
+    <table role="presentation" width="100%" style="max-width:560px;background:#fff;border-radius:14px;border:1px solid #E4E4E7;">
+      <tr><td style="background:#000;padding:22px 32px;">
+        <div style="color:#F97316;font-size:20px;font-weight:800;">LearnHoops<span style="color:#71717A;">.com</span></div>
+      </td></tr>
+      <tr><td style="padding:36px 32px 32px;">
+        <h1 style="margin:0 0 10px;color:#111;font-size:22px;font-weight:800;">You've left ${escHtml(teamName)}</h1>
+        <p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;">
+          You have been removed from <strong>${escHtml(teamName)}</strong> on LearnHoops. If you did not do this, contact us at learnhoops8@gmail.com.
+        </p>
+      </td></tr>
+    </table>
+  </td></tr></table>
+</body></html>`.trim(),
+  })
+  if (error) console.error('[email] left team email failed:', error)
+  console.log('[email] left team email sent:', data?.id, 'to:', to)
+}

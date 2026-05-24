@@ -7,7 +7,10 @@ export default async function OrdersPage() {
            amount_total, currency,
            shipping_name, shipping_line1, shipping_line2, shipping_city,
            shipping_state, shipping_postal_code, shipping_country,
-           status, shipping_link, created_at
+           status, shipping_link, created_at,
+           COALESCE(kind, 'single') AS kind,
+           COALESCE(quantity, 1)::int AS quantity,
+           class_package_id
     FROM orders
     ORDER BY created_at DESC
     LIMIT 200

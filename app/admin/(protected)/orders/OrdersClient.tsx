@@ -24,6 +24,9 @@ interface Order {
   status: string
   shipping_link: string | null
   created_at: string
+  kind: string
+  quantity: number
+  class_package_id: string | null
 }
 
 const sizeInches: Record<string, string> = { '5': '27.5"', '6': '28.5"', '7': '29.5"' }
@@ -207,12 +210,18 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
                     <td className="px-4 py-3">
                       {hasBall ? (
                         <div className="space-y-0.5">
+                          {o.kind === 'class_package' && (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-300 font-medium mr-1">
+                              Class Package
+                            </span>
+                          )}
                           <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-400 font-medium">
                             {o.variant === 'left' ? 'Left-handed' : 'Right-handed'}
                           </span>
                           {o.size && (
-                            <div className="text-zinc-400 text-xs">
-                              Size {o.size} ({sizeInches[String(o.size)] ?? '—'})
+                            <div className="text-zinc-300 text-sm font-semibold">
+                              {o.quantity > 1 ? `${o.quantity}× ` : ''}
+                              Size {o.size} <span className="text-zinc-500 font-normal">({sizeInches[String(o.size)] ?? '—'})</span>
                             </div>
                           )}
                         </div>
@@ -309,11 +318,15 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
                   </div>
 
                   {/* Order details */}
-                  <div className="flex gap-3 text-xs text-zinc-400">
+                  <div className="flex flex-wrap gap-3 text-xs text-zinc-400">
                     <span className="text-orange-400 font-semibold">
+                      {o.quantity > 1 ? `${o.quantity}× ` : ''}
                       {o.variant === 'left' ? 'Left-handed' : 'Right-handed'}
                       {o.size ? ` · Size ${o.size}` : ''}
                     </span>
+                    {o.kind === 'class_package' && (
+                      <span className="text-purple-300 font-semibold">Class Package</span>
+                    )}
                     {isPending ? (
                       <span className="text-yellow-400">Pending</span>
                     ) : (

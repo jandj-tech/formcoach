@@ -4,16 +4,15 @@ interface Props {
   playerName: string
   firstScore: number | null
   finalScore: number | null
-  /** True on every certificate EXCEPT the last in a batch — adds a CSS page
-   *  break after this cert so each one prints on its own landscape sheet. */
-  pageBreak?: boolean
 }
 
 // Reusable certificate visual block. Both the single-player page
 // (/org/certificate/[enrollmentId]) and the batch-print page
 // (/org/class/[packageId]/certificates) render this so they stay
 // pixel-identical and one set of tweaks updates both.
-export default function CertificateBlock({ playerName, firstScore, finalScore, pageBreak = false }: Props) {
+// Wrap each instance in a .cert-page div for proper print pagination
+// (one cert per landscape page, vertically centered — see globals.css).
+export default function CertificateBlock({ playerName, firstScore, finalScore }: Props) {
   const startNum = Number(firstScore ?? 0)
   const finalNum = Number(finalScore ?? 0)
   const startScore = startNum.toFixed(1)
@@ -27,8 +26,6 @@ export default function CertificateBlock({ playerName, firstScore, finalScore, p
       style={{
         aspectRatio: '1491 / 1055',
         containerType: 'inline-size',
-        breakAfter: pageBreak ? 'page' : 'auto',
-        pageBreakAfter: pageBreak ? 'always' : 'auto',
       }}
     >
       <Image

@@ -185,7 +185,8 @@ body {
     box-shadow: none;
   }
 
-  /* Certificate page: fill the printed page with the certificate alone. */
+  /* Certificate page: each cert sits on its own landscape page,
+     vertically centered so there's no big white gap at the bottom. */
   body:has(.certificate-print) {
     background: white !important;
     print-color-adjust: exact;
@@ -201,5 +202,20 @@ body {
     max-width: none !important;
     width: 100% !important;
     margin: 0 !important;
+  }
+  /* cert-page wrapper takes the full landscape page and flex-centers
+     the cert inside, then forces a page break after each (except last).
+     Result: one cert per page, centered top-to-bottom. */
+  body:has(.certificate-print) .cert-page {
+    height: 100vh !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    break-after: page;
+    page-break-after: always;
+  }
+  body:has(.certificate-print) .cert-page:last-child {
+    break-after: auto;
+    page-break-after: auto;
   }
 }

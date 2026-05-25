@@ -84,19 +84,19 @@ export default async function BatchCertificatesPage({ params }: Props) {
         </div>
       ) : (
         <div className="w-full flex flex-col items-center gap-6">
-          {rows.map((r, i) => {
+          {rows.map((r) => {
             const firstName = r.first_name || 'Player'
             const lastName = r.last_name_initial ? ` ${r.last_name_initial}.` : ''
             const playerName = `${firstName}${lastName}`
             const finalScore = r.display_final_score ?? r.final_score
             return (
-              <CertificateBlock
-                key={r.id}
-                playerName={playerName}
-                firstScore={r.first_score}
-                finalScore={finalScore}
-                pageBreak={i < rows.length - 1}
-              />
+              <div key={r.id} className="cert-page w-full flex justify-center">
+                <CertificateBlock
+                  playerName={playerName}
+                  firstScore={r.first_score}
+                  finalScore={finalScore}
+                />
+              </div>
             )
           })}
         </div>

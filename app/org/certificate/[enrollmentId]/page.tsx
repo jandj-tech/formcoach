@@ -50,11 +50,13 @@ export default async function CertificatePage({ params }: Props) {
         <PrintButton label="Print Certificate" />
       </div>
 
-      <CertificateBlock
-        playerName={playerName}
-        firstScore={row.first_score}
-        finalScore={finalScore}
-      />
+      <div className="cert-page w-full flex justify-center">
+        <CertificateBlock
+          playerName={playerName}
+          firstScore={row.first_score}
+          finalScore={finalScore}
+        />
+      </div>
     </main>
   )
 }

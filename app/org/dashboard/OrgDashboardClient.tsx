@@ -1298,7 +1298,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                       </thead>
                       <tbody className="divide-y divide-gray-100">
                         {rows.map(({ member: m, teamId, teamName, score }) => (
-                          <tr key={m.id} className="bg-white">
+                          <tr key={`${teamId}:${m.id}`} className="bg-white">
                             <td className="px-3 py-2.5">
                               <input
                                 type="checkbox"

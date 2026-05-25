@@ -72,27 +72,60 @@ export default async function CertificatePage({ params }: Props) {
           className="object-contain select-none pointer-events-none"
         />
 
-        {/* Player name — text sits just above the "Presented to:" underline,
-            indented past the label so it doesn't crowd the colon. */}
+        {/* Certificate field typography: Space Grotesk (already loaded in
+            layout via --font-space-grotesk) for a modern geometric sans that
+            pairs with the template's condensed display headers. Player name
+            is italic + tracked for a signature feel; scores stay upright for
+            legibility. */}
+
+        {/* Player name — text sits just above the "Presented to:" underline. */}
         <div
-          className="absolute font-black text-black"
-          style={{ left: '24%', right: '5%', top: '54.5%', fontSize: '2.6cqw', lineHeight: 1 }}
+          className="absolute text-black"
+          style={{
+            left: '24%',
+            right: '5%',
+            top: '54.5%',
+            fontSize: '2.7cqw',
+            fontFamily: 'var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif',
+            fontWeight: 700,
+            fontStyle: 'italic',
+            letterSpacing: '0.01em',
+            lineHeight: 1,
+          }}
         >
           {playerName}
         </div>
 
         {/* First Analysis Score — centered over the first blank. */}
         <div
-          className="absolute font-black text-black text-center"
-          style={{ left: '20.5%', width: '14%', top: '63%', fontSize: '1.9cqw', lineHeight: 1 }}
+          className="absolute text-black text-center"
+          style={{
+            left: '20.5%',
+            width: '14%',
+            top: '63%',
+            fontSize: '1.9cqw',
+            fontFamily: 'var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif',
+            fontWeight: 700,
+            letterSpacing: '0.02em',
+            lineHeight: 1,
+          }}
         >
           {startScore}
         </div>
 
         {/* Final Analysis Score — centered over the second blank. */}
         <div
-          className="absolute font-black text-black text-center"
-          style={{ left: '48%', width: '12%', top: '63%', fontSize: '1.9cqw', lineHeight: 1 }}
+          className="absolute text-black text-center"
+          style={{
+            left: '48%',
+            width: '12%',
+            top: '63%',
+            fontSize: '1.9cqw',
+            fontFamily: 'var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif',
+            fontWeight: 700,
+            letterSpacing: '0.02em',
+            lineHeight: 1,
+          }}
         >
           {finalScore}
         </div>
@@ -101,12 +134,15 @@ export default async function CertificatePage({ params }: Props) {
             Sits at the start of the IMPROVEMENT blank, well clear of the
             Keep Hooping badge. */}
         <div
-          className="absolute font-black text-center whitespace-nowrap"
+          className="absolute text-center whitespace-nowrap"
           style={{
-            left: '71%',
+            left: '69%',
             width: '7%',
             top: '63.2%',
             fontSize: '1.5cqw',
+            fontFamily: 'var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif',
+            fontWeight: 700,
+            letterSpacing: '0.02em',
             color: diff >= 0 ? '#16a34a' : '#dc2626',
             lineHeight: 1,
           }}

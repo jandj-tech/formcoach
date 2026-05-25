@@ -957,7 +957,18 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                         {/* Enrolled players w/ certificate */}
                         {pkg.enrollments.length > 0 && (
                           <div>
-                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Enrolled Players ({pkg.enrollments.length})</p>
+                            <div className="flex items-center justify-between gap-3 mb-2">
+                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Enrolled Players ({pkg.enrollments.length})</p>
+                              {pkg.enrollments.some(en => en.has_final) && (
+                                <Link
+                                  href={`/org/class/${pkg.id}/certificates`}
+                                  target="_blank"
+                                  className="text-xs font-bold text-orange-500 hover:text-orange-400 transition-colors"
+                                >
+                                  🖨 Print all certificates ({pkg.enrollments.filter(en => en.has_final).length})
+                                </Link>
+                              )}
+                            </div>
                             <div className="border border-gray-100 rounded-xl divide-y divide-gray-100 bg-white">
                               {pkg.enrollments.map(en => {
                                 const name = `${en.first_name || 'Player'}${en.last_name_initial ? ' ' + en.last_name_initial + '.' : ''}`

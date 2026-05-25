@@ -1507,17 +1507,34 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
         {showAllPlayers && (
           <div className="p-4 space-y-3">
             {(() => {
-              const rows = teams.flatMap(t =>
-                t.members.map(m => {
+              // Group by member.id so a player on multiple teams is one row
+              // with their teams joined in the Team column. Best score is the
+              // max across all teams they're on.
+              const byMember = new Map<string, {
+                member: typeof teams[number]['members'][number]
+                teams: Array<{ teamId: string; teamName: string }>
+                score: number | null
+              }>()
+              for (const t of teams) {
+                for (const m of t.members) {
                   const lb = t.leaderboard.find(r => r.kind === 'member' && r.id === m.id)
-                  return {
-                    member: m,
-                    teamId: t.id,
-                    teamName: t.name,
-                    score: lb ? Number(lb.best_score) : null,
+                  const teamScore = lb ? Number(lb.best_score) : null
+                  const existing = byMember.get(m.id)
+                  if (existing) {
+                    existing.teams.push({ teamId: t.id, teamName: t.name })
+                    if (teamScore !== null && (existing.score === null || teamScore > existing.score)) {
+                      existing.score = teamScore
+                    }
+                  } else {
+                    byMember.set(m.id, {
+                      member: m,
+                      teams: [{ teamId: t.id, teamName: t.name }],
+                      score: teamScore,
+                    })
                   }
-                }),
-              )
+                }
+              }
+              const rows = Array.from(byMember.values())
               if (rows.length === 0) {
                 return (
                   <p className="text-sm text-gray-400">
@@ -1555,13 +1572,13 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                         <tr>
                           <th className="px-3 py-3 w-8"></th>
                           <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Player</th>
-                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Team</th>
+                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Teams</th>
                           <th className="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Best Score</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
-                        {rows.map(({ member: m, teamId, teamName, score }) => (
-                          <tr key={`${teamId}:${m.id}`} className="bg-white">
+                        {rows.map(({ member: m, teams: memberTeams, score }) => (
+                          <tr key={m.id} className="bg-white">
                             <td className="px-3 py-2.5">
                               <input
                                 type="checkbox"
@@ -1579,12 +1596,19 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                               </Link>
                             </td>
                             <td className="px-3 py-2.5">
-                              <button
-                                onClick={() => goToTeam(teamId)}
-                                className="text-sm text-orange-600 hover:text-orange-500 hover:underline transition-colors"
-                              >
-                                {teamName}
-                              </button>
+                              <span className="text-sm text-gray-700">
+                                {memberTeams.map((tm, i) => (
+                                  <span key={tm.teamId}>
+                                    <button
+                                      onClick={() => goToTeam(tm.teamId)}
+                                      className="text-orange-600 hover:text-orange-500 hover:underline transition-colors"
+                                    >
+                                      {tm.teamName}
+                                    </button>
+                                    {i < memberTeams.length - 1 && <span>, </span>}
+                                  </span>
+                                ))}
+                              </span>
                             </td>
                             <td className="px-3 py-2.5 text-right">
                               {score === null ? (

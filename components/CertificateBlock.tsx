@@ -92,10 +92,10 @@ export default function CertificateBlock({ playerName, firstScore, finalScore, p
       <div
         className="absolute text-center whitespace-nowrap"
         style={{
-          left: '70.5%',
-          width: '7%',
-          top: '61.6%',
-          fontSize: '2.4cqw',
+          left: '70%',
+          width: '8%',
+          top: '61.3%',
+          fontSize: '2.7cqw',
           fontFamily: 'var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif',
           fontWeight: 700,
           letterSpacing: '0.02em',

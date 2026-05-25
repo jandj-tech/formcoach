@@ -136,7 +136,7 @@ export default async function CertificatePage({ params }: Props) {
         <div
           className="absolute text-center whitespace-nowrap"
           style={{
-            left: '69%',
+            left: '71%',
             width: '7%',
             top: '63.2%',
             fontSize: '1.5cqw',

@@ -84,8 +84,8 @@ export default async function CertificatePage({ params }: Props) {
           style={{
             left: '24%',
             right: '5%',
-            top: '53.9%',
-            fontSize: '3.3cqw',
+            top: '53.6%',
+            fontSize: '3.6cqw',
             fontFamily: 'var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif',
             fontWeight: 700,
             fontStyle: 'italic',
@@ -102,8 +102,8 @@ export default async function CertificatePage({ params }: Props) {
           style={{
             left: '20.5%',
             width: '14%',
-            top: '62.4%',
-            fontSize: '2.5cqw',
+            top: '61.4%',
+            fontSize: '2.8cqw',
             fontFamily: 'var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif',
             fontWeight: 700,
             letterSpacing: '0.02em',
@@ -119,8 +119,8 @@ export default async function CertificatePage({ params }: Props) {
           style={{
             left: '48%',
             width: '12%',
-            top: '62.4%',
-            fontSize: '2.5cqw',
+            top: '61.4%',
+            fontSize: '2.8cqw',
             fontFamily: 'var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif',
             fontWeight: 700,
             letterSpacing: '0.02em',
@@ -138,8 +138,8 @@ export default async function CertificatePage({ params }: Props) {
           style={{
             left: '70.5%',
             width: '7%',
-            top: '62.6%',
-            fontSize: '2.1cqw',
+            top: '61.6%',
+            fontSize: '2.4cqw',
             fontFamily: 'var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif',
             fontWeight: 700,
             letterSpacing: '0.02em',

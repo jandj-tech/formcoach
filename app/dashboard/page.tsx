@@ -10,6 +10,7 @@ import DeleteAccountButton from './DeleteAccountButton'
 import JoinTeamForm from './JoinTeamForm'
 import LeaveTeamButton from './LeaveTeamButton'
 import NicknameForm from './NicknameForm'
+import NameForm from './NameForm'
 import JoinTeamPopup from './JoinTeamPopup'
 
 type UserRow = {
@@ -19,6 +20,8 @@ type UserRow = {
   subscription_expires_at: string | null
   analysis_tokens?: number
   nickname?: string | null
+  first_name?: string | null
+  last_initial?: string | null
 }
 
 type SubmissionRow = {
@@ -43,16 +46,27 @@ export default async function DashboardPage() {
     // migration hasn't been applied — fall back to the base column set.
     try {
       ;[user] = (await db`
-        SELECT id, email, subscription_type, subscription_expires_at, analysis_tokens, nickname
+        SELECT id, email, subscription_type, subscription_expires_at,
+               analysis_tokens, nickname, first_name, last_initial
         FROM users WHERE id = ${session.userId}
       `) as unknown as [UserRow | undefined]
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       if (!/column .* does not exist/i.test(msg)) throw err
-      ;[user] = (await db`
-        SELECT id, email, subscription_type, subscription_expires_at
-        FROM users WHERE id = ${session.userId}
-      `) as unknown as [UserRow | undefined]
+      // first_name / last_initial migration not yet run — fall back without them.
+      try {
+        ;[user] = (await db`
+          SELECT id, email, subscription_type, subscription_expires_at, analysis_tokens, nickname
+          FROM users WHERE id = ${session.userId}
+        `) as unknown as [UserRow | undefined]
+      } catch (err2) {
+        const msg2 = err2 instanceof Error ? err2.message : String(err2)
+        if (!/column .* does not exist/i.test(msg2)) throw err2
+        ;[user] = (await db`
+          SELECT id, email, subscription_type, subscription_expires_at
+          FROM users WHERE id = ${session.userId}
+        `) as unknown as [UserRow | undefined]
+      }
     }
 
     if (user) {
@@ -150,10 +164,15 @@ export default async function DashboardPage() {
     return 'text-red-500'
   }
 
+  const fullName = user.first_name && user.last_initial
+    ? `${user.first_name} ${user.last_initial}`
+    : null
+  const hasName = !!fullName
+
   return (
     <main className="min-h-screen bg-white flex flex-col">
       <TopNav />
-      <JoinTeamPopup hasTeam={teams.length > 0} />
+      <JoinTeamPopup hasTeam={teams.length > 0} hasName={hasName} />
 
       <div className="max-w-3xl mx-auto w-full px-6 py-10 space-y-4">
         {/* Header */}
@@ -161,7 +180,7 @@ export default async function DashboardPage() {
           <div>
             <h1 className="text-2xl font-black text-black">Your Shot History</h1>
             <p className="text-gray-500 text-sm mt-1">
-              {user.nickname ? `${user.nickname} · ${user.email}` : user.email}
+              {fullName ? `${fullName} · ${user.email}` : user.nickname ? `${user.nickname} · ${user.email}` : user.email}
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap justify-end">
@@ -176,7 +195,24 @@ export default async function DashboardPage() {
           <DeleteAccountButton />
         </div>
 
-        {/* Nickname — collapsible to keep the shot history in view */}
+        {/* Display name — set once, used on every team and certificate */}
+        <details className="group border border-gray-200 rounded-lg" open={!hasName}>
+          <summary className="flex items-center justify-between gap-2 px-3 py-2 cursor-pointer select-none list-none">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Display name</span>
+            <span className="flex items-center gap-2 text-sm text-gray-700">
+              <span className="truncate max-w-[10rem]">{fullName || 'Not set'}</span>
+              <span className="text-gray-400 text-xs transition-transform group-open:rotate-180">▾</span>
+            </span>
+          </summary>
+          <div className="px-3 pb-3">
+            <NameForm
+              currentFirstName={user.first_name ?? null}
+              currentLastInitial={user.last_initial ?? null}
+            />
+          </div>
+        </details>
+
+        {/* Nickname — optional handle (e.g. "Buckets") */}
         <details className="group border border-gray-200 rounded-lg">
           <summary className="flex items-center justify-between gap-2 px-3 py-2 cursor-pointer select-none list-none">
             <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Nickname</span>
@@ -248,7 +284,7 @@ export default async function DashboardPage() {
                   ? 'Have a team code? Enter it to join your team.'
                   : 'Have another team code? Join another team — handy for house or summer league.'}
               </p>
-              <JoinTeamForm />
+              <JoinTeamForm hasName={hasName} />
             </div>
           </div>
         </details>

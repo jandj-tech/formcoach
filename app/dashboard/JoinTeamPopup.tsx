@@ -1,12 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
 // Shown right after a player signs up via a team link (/signup?teamCode=...).
-// They land on /dashboard?joinTeam=CODE and this collects their name to
-// finish joining the team.
-export default function JoinTeamPopup({ hasTeam }: { hasTeam: boolean }) {
+// They land on /dashboard?joinTeam=CODE. If the player already has a canonical
+// name set, we auto-join silently. If not, we collect first/last initial — the
+// join endpoint stores them on the user record and they'll appear automatically
+// on every team they join from then on.
+export default function JoinTeamPopup({
+  hasTeam, hasName,
+}: { hasTeam: boolean; hasName: boolean }) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const teamCode = searchParams.get('joinTeam')?.trim() || ''
@@ -16,24 +20,19 @@ export default function JoinTeamPopup({ hasTeam }: { hasTeam: boolean }) {
   const [lastInitial, setLastInitial] = useState('')
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [error, setError] = useState('')
+  // Guard so the auto-join effect fires once per mount.
+  const autoJoined = useRef(false)
 
-  // Only show when arriving with a join code and not already on a team.
-  if (!teamCode || hasTeam || !open) return null
+  const shouldShow = teamCode && !hasTeam && open
 
-  function dismiss() {
-    setOpen(false)
-    router.replace('/dashboard')
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
+  async function performJoin(payload: { teamCode: string; firstName?: string; lastInitial?: string }) {
     setStatus('loading')
     setError('')
     try {
       const res = await fetch('/api/team/join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ teamCode, firstName: firstName.trim(), lastInitial: lastInitial.trim() }),
+        body: JSON.stringify(payload),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -50,6 +49,54 @@ export default function JoinTeamPopup({ hasTeam }: { hasTeam: boolean }) {
     }
   }
 
+  // Auto-join when the player already has a name on file — no friction.
+  useEffect(() => {
+    if (!shouldShow || !hasName || autoJoined.current) return
+    autoJoined.current = true
+    performJoin({ teamCode })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldShow, hasName, teamCode])
+
+  if (!shouldShow) return null
+
+  function dismiss() {
+    setOpen(false)
+    router.replace('/dashboard')
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    await performJoin({
+      teamCode,
+      firstName: firstName.trim(),
+      lastInitial: lastInitial.trim().charAt(0).toUpperCase(),
+    })
+  }
+
+  // While auto-joining a name-set player, show a brief status modal.
+  if (hasName) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+        <div className="bg-white rounded-2xl p-6 w-full max-w-sm space-y-3 text-center">
+          <div className="text-4xl">🏀</div>
+          <h2 className="text-xl font-black text-black">
+            {status === 'error' ? 'Could not join' : 'Joining your team…'}
+          </h2>
+          {error && <p className="text-red-500 text-sm">{error}</p>}
+          {status === 'error' && (
+            <button
+              onClick={dismiss}
+              className="bg-orange-500 hover:bg-orange-400 text-white font-bold py-2.5 px-5 rounded-xl transition-colors"
+            >
+              Close
+            </button>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // First-time player without a saved name — collect it once, then join.
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
       <div className="bg-white rounded-2xl p-6 w-full max-w-sm space-y-4">
@@ -57,7 +104,7 @@ export default function JoinTeamPopup({ hasTeam }: { hasTeam: boolean }) {
           <div className="text-4xl">🏀</div>
           <h2 className="text-xl font-black text-black">Join your team</h2>
           <p className="text-sm text-gray-500">
-            Enter your name so your coach can find you on the team roster.
+            Set your name once — it’ll be used on every team you join from now on.
           </p>
         </div>
 
@@ -93,7 +140,7 @@ export default function JoinTeamPopup({ hasTeam }: { hasTeam: boolean }) {
               disabled={status === 'loading'}
               className="flex-1 bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold py-3 rounded-xl transition-colors"
             >
-              {status === 'loading' ? 'Joining…' : 'Join Team'}
+              {status === 'loading' ? 'Joining…' : 'Save & Join'}
             </button>
           </div>
         </form>

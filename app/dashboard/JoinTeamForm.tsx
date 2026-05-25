@@ -3,11 +3,12 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-export default function JoinTeamForm() {
+// hasName is `true` once the player has set their canonical name on the
+// dashboard. Without it the join is blocked server-side, so we surface a
+// helpful inline notice instead of letting them submit a guaranteed failure.
+export default function JoinTeamForm({ hasName }: { hasName: boolean }) {
   const router = useRouter()
   const [teamCode, setTeamCode] = useState('')
-  const [firstName, setFirstName] = useState('')
-  const [lastInitial, setLastInitial] = useState('')
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [message, setMessage] = useState('')
 
@@ -20,7 +21,7 @@ export default function JoinTeamForm() {
       const res = await fetch('/api/team/join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ teamCode, firstName, lastInitial }),
+        body: JSON.stringify({ teamCode }),
       })
       const data = await res.json()
 
@@ -41,25 +42,11 @@ export default function JoinTeamForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
-      <div className="flex gap-2">
-        <input
-          type="text"
-          required
-          placeholder="First name"
-          value={firstName}
-          onChange={e => setFirstName(e.target.value)}
-          className="flex-1 bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
-        />
-        <input
-          type="text"
-          required
-          maxLength={1}
-          placeholder="Last initial"
-          value={lastInitial}
-          onChange={e => setLastInitial(e.target.value.toUpperCase())}
-          className="w-28 bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
-        />
-      </div>
+      {!hasName && (
+        <p className="text-sm text-orange-600 bg-orange-50 border border-orange-200 rounded-xl px-3 py-2">
+          Set your name in the Display name section above first — it’ll be used on every team you join.
+        </p>
+      )}
       <div className="flex gap-2">
         <input
           type="text"
@@ -71,7 +58,7 @@ export default function JoinTeamForm() {
         />
         <button
           type="submit"
-          disabled={status === 'loading'}
+          disabled={status === 'loading' || !hasName}
           className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-6 py-3 rounded-xl transition-colors"
         >
           {status === 'loading' ? 'Joining...' : 'Join'}

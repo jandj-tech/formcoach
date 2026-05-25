@@ -10,12 +10,40 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Login required' }, { status: 401 })
     }
 
+    // firstName / lastInitial are accepted only as a one-time *initial* set
+    // for users who have no canonical name yet (e.g. someone signing up via
+    // /signup?teamCode=… joining their first team). Once users.first_name is
+    // set, those fields are ignored — the canonical user name wins so a single
+    // email can't appear under different names on different teams.
     const { teamCode, firstName, lastInitial } = await req.json()
     if (!teamCode || typeof teamCode !== 'string') {
       return NextResponse.json({ error: 'Team code required' }, { status: 400 })
     }
-    if (!firstName || !lastInitial) {
-      return NextResponse.json({ error: 'First name and last initial required' }, { status: 400 })
+
+    const [user] = await db`
+      SELECT first_name, last_initial FROM users WHERE id = ${session.userId}
+    ` as unknown as [{ first_name: string | null; last_initial: string | null } | undefined]
+
+    let firstNameClean = user?.first_name?.trim() ?? ''
+    let lastInitialClean = user?.last_initial?.trim().charAt(0).toUpperCase() ?? ''
+
+    if (!firstNameClean || !lastInitialClean) {
+      const bodyFirst = typeof firstName === 'string' ? firstName.trim().slice(0, 100) : ''
+      const bodyLast = typeof lastInitial === 'string'
+        ? lastInitial.trim().charAt(0).toUpperCase() : ''
+      if (!bodyFirst || !bodyLast) {
+        return NextResponse.json(
+          { error: 'Set your name on the dashboard first, then try joining.' },
+          { status: 400 },
+        )
+      }
+      firstNameClean = bodyFirst
+      lastInitialClean = bodyLast
+      await db`
+        UPDATE users
+        SET first_name = ${firstNameClean}, last_initial = ${lastInitialClean}
+        WHERE id = ${session.userId}
+      `
     }
 
     const [team] = await db`
@@ -27,9 +55,6 @@ export async function POST(req: NextRequest) {
     if (!team) {
       return NextResponse.json({ error: 'Team not found' }, { status: 404 })
     }
-
-    const firstNameClean = String(firstName).trim()
-    const lastInitialClean = String(lastInitial).trim().charAt(0).toUpperCase()
 
     // Class-package team: enforce the roster cap and record the enrollment.
     // No tokens are granted to the player — the org leader / team coach

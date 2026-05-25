@@ -28,7 +28,8 @@ export async function POST(req: NextRequest) {
     let lastInitialClean = user?.last_initial?.trim().charAt(0).toUpperCase() ?? ''
 
     if (!firstNameClean || !lastInitialClean) {
-      const bodyFirst = typeof firstName === 'string' ? firstName.trim().slice(0, 100) : ''
+      const rawFirst = typeof firstName === 'string' ? firstName.trim().slice(0, 100) : ''
+      const bodyFirst = rawFirst ? rawFirst.charAt(0).toUpperCase() + rawFirst.slice(1) : ''
       const bodyLast = typeof lastInitial === 'string'
         ? lastInitial.trim().charAt(0).toUpperCase() : ''
       if (!bodyFirst || !bodyLast) {

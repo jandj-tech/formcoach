@@ -114,7 +114,10 @@ export default function JoinTeamPopup({
             required
             placeholder="First name"
             value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
+            onChange={(e) => {
+              const v = e.target.value
+              setFirstName(v ? v.charAt(0).toUpperCase() + v.slice(1) : '')
+            }}
             className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
           />
           <input

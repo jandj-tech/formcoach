@@ -13,7 +13,8 @@ export async function POST(req: NextRequest) {
     firstName?: string
     lastInitial?: string
   }
-  const firstName = body.firstName?.trim().slice(0, 100) ?? ''
+  const rawFirst = body.firstName?.trim().slice(0, 100) ?? ''
+  const firstName = rawFirst ? rawFirst.charAt(0).toUpperCase() + rawFirst.slice(1) : ''
   const lastInitial = body.lastInitial?.trim().charAt(0).toUpperCase() ?? ''
 
   if (!firstName) return NextResponse.json({ error: 'First name is required' }, { status: 400 })

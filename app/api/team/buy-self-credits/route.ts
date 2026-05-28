@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
 
     const coachEmail = teamSession?.adminEmail ?? orgSession!.adminEmail
     const unitAmount = liveTeam ? TEAM_TOKEN_PRICE_CENTS : REGULAR_ANALYSIS_PRICE_CENTS
+    console.log('[buy-self-credits] pricing', { teamId: teamSession?.teamId, orgId: orgSession?.orgId, liveTeam, unitAmount, qty })
 
     const checkout = await getStripe().checkout.sessions.create({
       mode: 'payment',

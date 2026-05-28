@@ -34,9 +34,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Team not found' }, { status: 404 })
     }
     // Org owners unlock $1.49 org-wide once ANY of their teams is initiated.
-    const unitAmount = (await orgHasInitiatedTeam(session.orgId))
-      ? TEAM_TOKEN_PRICE_CENTS
-      : REGULAR_ANALYSIS_PRICE_CENTS
+    const orgInitiated = await orgHasInitiatedTeam(session.orgId)
+    const unitAmount = orgInitiated ? TEAM_TOKEN_PRICE_CENTS : REGULAR_ANALYSIS_PRICE_CENTS
+    console.log('[buy-player-tokens] org pricing', { orgId: session.orgId, teamId, orgInitiated, unitAmount })
     const qty = typeof quantity === 'number' ? Math.floor(quantity) : 1
     if (qty < 1 || qty > 1000) {
       return NextResponse.json({ error: 'Invalid quantity' }, { status: 400 })

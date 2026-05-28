@@ -24,9 +24,9 @@ export async function POST(req: NextRequest) {
     // Org owners unlock the $1.49 rate org-wide once ANY of their teams
     // is initiated — applies to every buy flow, including coach credits
     // for a team that hasn't reached 8 players on its own yet.
-    const unitAmount = (await orgHasInitiatedTeam(session.orgId))
-      ? TEAM_TOKEN_PRICE_CENTS
-      : REGULAR_ANALYSIS_PRICE_CENTS
+    const orgInitiated = await orgHasInitiatedTeam(session.orgId)
+    const unitAmount = orgInitiated ? TEAM_TOKEN_PRICE_CENTS : REGULAR_ANALYSIS_PRICE_CENTS
+    console.log('[buy-team-credits] org pricing', { orgId: session.orgId, teamId: team.id, orgInitiated, unitAmount, quantity })
 
     const stripeSession = await getStripe().checkout.sessions.create({
       mode: 'payment',

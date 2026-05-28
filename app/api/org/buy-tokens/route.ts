@@ -26,9 +26,9 @@ export async function POST(req: NextRequest) {
     }
 
     // Discounted price unlocks once any team in the org has 8+ players.
-    const unitAmount = (await orgHasInitiatedTeam(session.orgId))
-      ? TEAM_TOKEN_PRICE_CENTS
-      : REGULAR_ANALYSIS_PRICE_CENTS
+    const orgInitiated = await orgHasInitiatedTeam(session.orgId)
+    const unitAmount = orgInitiated ? TEAM_TOKEN_PRICE_CENTS : REGULAR_ANALYSIS_PRICE_CENTS
+    console.log('[buy-tokens] org pricing', { orgId: session.orgId, orgInitiated, unitAmount, qty })
 
     const checkout = await getStripe().checkout.sessions.create({
       mode: 'payment',

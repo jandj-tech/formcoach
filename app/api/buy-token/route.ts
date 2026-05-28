@@ -16,9 +16,9 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({})) as { region?: string }
     const region = body.region ?? 'US'
 
-    const unitAmount = (await userHasInitiatedTeam(session.userId))
-      ? TEAM_TOKEN_PRICE_CENTS
-      : REGULAR_ANALYSIS_PRICE_CENTS
+    const userInitiated = await userHasInitiatedTeam(session.userId)
+    const unitAmount = userInitiated ? TEAM_TOKEN_PRICE_CENTS : REGULAR_ANALYSIS_PRICE_CENTS
+    console.log('[buy-token] player pricing', { userId: session.userId, userInitiated, unitAmount })
 
     const stripeSession = await getStripe().checkout.sessions.create({
       mode: 'payment',

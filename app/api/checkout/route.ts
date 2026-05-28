@@ -235,9 +235,6 @@ export async function POST(req: NextRequest) {
       // routing in the webhook uses metadata.token_recipient, not the
       // checkout email, so receipts going to a different address are
       // fine. We still record the entered email on the orders row.
-      // 'if_required' skips card collection when a 100%-off promo brings
-      // the total to $0, but still collects shipping + phone.
-      payment_method_collection: 'if_required',
       line_items,
       shipping_address_collection: { allowed_countries: ['US', 'CA'] },
       phone_number_collection: { enabled: true },

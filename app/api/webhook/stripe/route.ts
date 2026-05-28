@@ -16,6 +16,18 @@ function generateTeamAccessCode(): string {
 }
 
 export async function POST(req: NextRequest) {
+  try {
+    return await handleWebhook(req)
+  } catch (err) {
+    // Catch-all: log and 200 so Stripe doesn't retry forever. The success
+    // page has its own server-side grant safety net, so missing a webhook
+    // delivery doesn't strand credits.
+    console.error('[stripe webhook] unhandled error:', err)
+    return NextResponse.json({ received: true, handled: false })
+  }
+}
+
+async function handleWebhook(req: NextRequest): Promise<NextResponse> {
   const sig = req.headers.get('stripe-signature')
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
 
@@ -66,7 +78,7 @@ export async function POST(req: NextRequest) {
           `
         } catch (err) {
           console.error('Failed to initiate team:', err)
-          return NextResponse.json({ error: 'DB error' }, { status: 500 })
+          return NextResponse.json({ received: true, handled: false })
         }
       }
       return NextResponse.json({ received: true })
@@ -86,7 +98,7 @@ export async function POST(req: NextRequest) {
           `
         } catch (err) {
           console.error('Failed to grant coach self-credits:', err)
-          return NextResponse.json({ error: 'DB error' }, { status: 500 })
+          return NextResponse.json({ received: true, handled: false })
         }
       }
       return NextResponse.json({ received: true })
@@ -114,7 +126,7 @@ export async function POST(req: NextRequest) {
           }
         } catch (err) {
           console.error('Failed to credit org token balance:', err)
-          return NextResponse.json({ error: 'DB error' }, { status: 500 })
+          return NextResponse.json({ received: true, handled: false })
         }
       }
       return NextResponse.json({ received: true })
@@ -130,7 +142,7 @@ export async function POST(req: NextRequest) {
         }
       } catch (err) {
         console.error('Failed to grant player tokens:', err)
-        return NextResponse.json({ error: 'DB error' }, { status: 500 })
+        return NextResponse.json({ received: true, handled: false })
       }
       return NextResponse.json({ received: true })
     }
@@ -144,7 +156,7 @@ export async function POST(req: NextRequest) {
           await db`UPDATE teams SET credits = credits + ${quantity} WHERE id = ${teamId}`
         } catch (err) {
           console.error('Failed to credit team uploads:', err)
-          return NextResponse.json({ error: 'DB error' }, { status: 500 })
+          return NextResponse.json({ received: true, handled: false })
         }
       }
       return NextResponse.json({ received: true })
@@ -162,7 +174,7 @@ export async function POST(req: NextRequest) {
         }
       } catch (err) {
         console.error('Failed to credit analysis token:', err)
-        return NextResponse.json({ error: 'DB error' }, { status: 500 })
+        return NextResponse.json({ received: true, handled: false })
       }
       return NextResponse.json({ received: true })
     }
@@ -191,7 +203,7 @@ export async function POST(req: NextRequest) {
         `
       } catch (err) {
         console.error('Failed to save subscription:', err)
-        return NextResponse.json({ error: 'DB error' }, { status: 500 })
+        return NextResponse.json({ received: true, handled: false })
       }
 
       return NextResponse.json({ received: true })
@@ -224,10 +236,16 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ received: true })
       }
 
-      const orgRows = await db`
-        SELECT id, name, admin_email FROM organizations WHERE id = ${orgId}
-      ` as unknown as Array<{ id: string; name: string; admin_email: string }>
-      const org = orgRows[0]
+      let org: { id: string; name: string; admin_email: string } | undefined
+      try {
+        const orgRows = await db`
+          SELECT id, name, admin_email FROM organizations WHERE id = ${orgId}
+        ` as unknown as Array<{ id: string; name: string; admin_email: string }>
+        org = orgRows[0]
+      } catch (err) {
+        console.error('[stripe webhook] org_class_package: org lookup failed:', err)
+        return NextResponse.json({ received: true, handled: false })
+      }
       if (!org) {
         console.error('org_class_package: org not found', orgId)
         return NextResponse.json({ received: true })
@@ -252,7 +270,7 @@ export async function POST(req: NextRequest) {
         packageId = inserted[0]?.id ?? null
       } catch (err) {
         console.error('Failed to create org class package:', err)
-        return NextResponse.json({ error: 'DB error' }, { status: 500 })
+        return NextResponse.json({ received: true, handled: false })
       }
 
       // Webhook redelivery — package already existed, nothing else to do.

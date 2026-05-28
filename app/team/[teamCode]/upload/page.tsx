@@ -11,11 +11,18 @@ export default async function TeamUploadPage({
   const { teamCode } = await params
 
   const [team] = await db`
-    SELECT name, access_code, credits
+    SELECT name, access_code, admin_email, credits
     FROM teams WHERE access_code = ${teamCode.toUpperCase()}
-  ` as unknown as [{ name: string; access_code: string; credits: number } | undefined]
+  ` as unknown as [{ name: string; access_code: string; admin_email: string; credits: number } | undefined]
 
   if (!team) return notFound()
+
+  // Team uploads spend the coach's personal credits first, then the legacy
+  // team budget — show the combined total so the count matches what's usable.
+  const [cc] = await db`
+    SELECT COALESCE(credits, 0)::int AS credits FROM coach_credits WHERE LOWER(email) = ${team.admin_email.toLowerCase()}
+  ` as unknown as [{ credits: number } | undefined]
+  const availableCredits = (cc?.credits ?? 0) + team.credits
 
   return (
     <main className="min-h-screen bg-white flex flex-col">
@@ -23,7 +30,7 @@ export default async function TeamUploadPage({
       <TeamUploadClient
         teamName={team.name}
         teamCode={team.access_code}
-        initialCredits={team.credits}
+        initialCredits={availableCredits}
       />
     </main>
   )

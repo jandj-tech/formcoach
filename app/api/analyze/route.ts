@@ -88,20 +88,30 @@ export async function POST(req: NextRequest) {
 
     let teamId: string | null = null
     let teamPlayerId: string | null = null
+    let teamCoachEmail: string | null = null
 
     if (isTeamUpload) {
       const [team] = await db`
-        SELECT id, credits FROM teams WHERE access_code = ${teamCode!.toUpperCase()} FOR UPDATE
-      ` as unknown as [{ id: string; credits: number } | undefined]
+        SELECT id, admin_email, credits FROM teams WHERE access_code = ${teamCode!.toUpperCase()} FOR UPDATE
+      ` as unknown as [{ id: string; admin_email: string; credits: number } | undefined]
 
       if (!team) {
         return NextResponse.json({ error: 'Team not found' }, { status: 404 })
       }
-      if (team.credits < 1) {
+
+      // One coach balance funds team uploads: the coach's personal
+      // coach_credits, with legacy teams.credits as a fallback so older
+      // teams that still hold a team budget keep working.
+      const [cc] = await db`
+        SELECT COALESCE(credits, 0)::int AS credits FROM coach_credits WHERE LOWER(email) = ${team.admin_email.toLowerCase()}
+      ` as unknown as [{ credits: number } | undefined]
+      const coachBalance = cc?.credits ?? 0
+      if (coachBalance + team.credits < 1) {
         return NextResponse.json({ error: 'Insufficient credits' }, { status: 402 })
       }
 
       teamId = team.id
+      teamCoachEmail = team.admin_email.toLowerCase()
 
       const lastNameClean = playerLastName!.trim()
       await db`
@@ -298,7 +308,20 @@ export async function POST(req: NextRequest) {
     }
 
     if (isTeamUpload && teamId) {
-      await db`UPDATE teams SET credits = credits - 1 WHERE id = ${teamId} AND credits > 0`
+      // Spend the coach's personal credits first; fall back to the legacy
+      // team budget only if the coach has none left.
+      let spentFromCoach = false
+      if (teamCoachEmail) {
+        const rows = await db`
+          UPDATE coach_credits SET credits = credits - 1
+          WHERE LOWER(email) = ${teamCoachEmail} AND credits > 0
+          RETURNING email
+        ` as unknown as Array<{ email: string }>
+        spentFromCoach = rows.length > 0
+      }
+      if (!spentFromCoach) {
+        await db`UPDATE teams SET credits = credits - 1 WHERE id = ${teamId} AND credits > 0`
+      }
     }
 
     if (isCoachSelf) {

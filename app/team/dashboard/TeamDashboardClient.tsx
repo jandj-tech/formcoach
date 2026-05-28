@@ -98,9 +98,6 @@ export default function TeamDashboardClient({
   const [quantity, setQuantity] = useState(10)
   const [customQty, setCustomQty] = useState('')
   const [showBuyCredits, setShowBuyCredits] = useState(false)
-  // Which balance the buy panel tops up: the team's player-upload budget,
-  // or the coach's own personal credits.
-  const [creditType, setCreditType] = useState<'player' | 'personal'>('player')
   const [loggingOut, setLoggingOut] = useState(false)
   const [showLeaderboard, setShowLeaderboard] = useState(false)
   const [showInvite, setShowInvite] = useState(false)
@@ -136,12 +133,9 @@ export default function TeamDashboardClient({
   async function buyCredits() {
     setBuying(true)
     try {
-      // 'player' tops up the team's player-upload budget; 'personal' tops
-      // up the coach's own credit balance.
-      const endpoint = creditType === 'personal'
-        ? '/api/team/buy-self-credits'
-        : '/api/checkout/team-credits'
-      const res = await fetch(endpoint, {
+      // One coach balance (coach_credits): funds the coach's own uploads,
+      // uploading on behalf of players, and is distributable to any player.
+      const res = await fetch('/api/team/buy-self-credits', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ quantity }),
@@ -408,14 +402,13 @@ export default function TeamDashboardClient({
         >
           <div className="flex items-center gap-6 flex-wrap">
             <div>
-              <p className="text-xs text-gray-500">My personal credits</p>
-              <p className="text-2xl font-black text-black leading-tight">{coachCredits}</p>
-              <p className="text-[11px] text-gray-400 leading-tight">for your own uploads</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">Player-upload credits</p>
-              <p className="text-2xl font-black text-black leading-tight">{team.credits}</p>
-              <p className="text-[11px] text-gray-400 leading-tight">for uploading on behalf of players</p>
+              <p className="text-xs text-gray-500">Your credits</p>
+              <p className="text-2xl font-black text-black leading-tight">
+                {coachCredits + team.credits}
+              </p>
+              <p className="text-[11px] text-gray-400 leading-tight">
+                use for your own uploads, uploading for players, or give to any player
+              </p>
             </div>
             <p className="text-sm text-gray-600">
               ${team.initiated ? '1.49' : '2.79'} per credit
@@ -428,28 +421,8 @@ export default function TeamDashboardClient({
         </button>
         {showBuyCredits && (
           <div className="px-5 pb-5 space-y-4">
-            {/* Which balance to top up */}
-            <div className="flex gap-2">
-              {([['personal', 'My credits'], ['player', 'Player uploads']] as const).map(([val, label]) => (
-                <button
-                  key={val}
-                  type="button"
-                  onClick={() => setCreditType(val)}
-                  className={`flex-1 py-2 rounded-xl text-sm font-bold border transition-colors ${
-                    creditType === val
-                      ? 'bg-black text-white border-black'
-                      : 'bg-white text-black border-gray-300 hover:border-gray-500'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-
             <div className="space-y-2">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                {creditType === 'personal' ? 'Buy my personal credits' : 'Buy player-upload credits'}
-              </p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Buy credits</p>
               <div className="flex gap-2">
                 {[1, 5, 10].map(q => (
                   <button

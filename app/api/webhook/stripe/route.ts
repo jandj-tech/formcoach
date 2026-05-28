@@ -352,12 +352,98 @@ export async function POST(req: NextRequest) {
     const phone = session.customer_details?.phone
     const ship = session.collected_information?.shipping_details
 
+    // Grant the free shot analyses FIRST, before any validation that could
+    // early-return. The order row is nice-to-have; the credits the buyer
+    // paid for must always land. Token amounts and routing both come from
+    // metadata set at checkout-creation time.
+    const tokensToGrant = parseInt(session.metadata?.analysis_tokens ?? '0', 10)
+    const recipient = session.metadata?.token_recipient ?? ''
+    const emailLower = (email ?? '').toLowerCase()
+    if (tokensToGrant > 0) {
+      try {
+        if (recipient.startsWith('team:')) {
+          const teamId = recipient.slice(5)
+          const updated = await db`
+            UPDATE teams SET token_pool = COALESCE(token_pool, 0) + ${tokensToGrant}
+            WHERE id = ${teamId}
+            RETURNING id
+          ` as unknown as Array<{ id: string }>
+          console.log('[stripe webhook] ball-order tokens granted (team)', { sessionId: session.id, teamId, tokensToGrant, updated: updated.length })
+        } else if (recipient.startsWith('user:')) {
+          const userId = recipient.slice(5)
+          const updated = await db`
+            UPDATE users SET analysis_tokens = COALESCE(analysis_tokens, 0) + ${tokensToGrant}
+            WHERE id = ${userId}
+            RETURNING id, email
+          ` as unknown as Array<{ id: string; email: string }>
+          console.log('[stripe webhook] ball-order tokens granted (user)', { sessionId: session.id, userId, tokensToGrant, updated: updated.length })
+
+          // If the recipient user wasn't found (deleted/stale id), fall back
+          // to an email match so the buyer still gets credited.
+          if (updated.length === 0 && emailLower) {
+            const byEmail = await db`
+              UPDATE users SET analysis_tokens = COALESCE(analysis_tokens, 0) + ${tokensToGrant}
+              WHERE LOWER(email) = ${emailLower}
+              RETURNING id
+            ` as unknown as Array<{ id: string }>
+            console.log('[stripe webhook] ball-order user-id stale, fell back to email', { sessionId: session.id, emailLower, updated: byEmail.length })
+          }
+
+          if (emailLower) {
+            await db`
+              INSERT INTO email_list (email, analysis_tokens)
+              VALUES (${emailLower}, ${tokensToGrant})
+              ON CONFLICT (email) DO UPDATE
+              SET analysis_tokens = COALESCE(email_list.analysis_tokens, 0) + ${tokensToGrant}
+            `
+          }
+        } else if (emailLower) {
+          // Legacy/guest orders with no recipient — credit by email. Use
+          // LOWER() on the users column so legacy mixed-case rows still match.
+          await db`
+            INSERT INTO email_list (email, analysis_tokens)
+            VALUES (${emailLower}, ${tokensToGrant})
+            ON CONFLICT (email) DO UPDATE
+            SET analysis_tokens = COALESCE(email_list.analysis_tokens, 0) + ${tokensToGrant}
+          `
+          const updated = await db`
+            UPDATE users SET analysis_tokens = COALESCE(analysis_tokens, 0) + ${tokensToGrant}
+            WHERE LOWER(email) = ${emailLower}
+            RETURNING id
+          ` as unknown as Array<{ id: string }>
+          console.log('[stripe webhook] ball-order tokens granted (email)', { sessionId: session.id, emailLower, tokensToGrant, updated: updated.length })
+        } else {
+          console.warn('[stripe webhook] ball-order has tokens to grant but no recipient and no email', { sessionId: session.id, tokensToGrant })
+        }
+      } catch (err) {
+        console.error('[stripe webhook] Failed to grant tokens:', err)
+        // Non-fatal — return success so Stripe doesn't keep retrying. The
+        // log line above gives ops what they need to credit manually.
+      }
+    }
+
+    // For guest purchases, the claim token was generated at checkout and is in the
+    // metadata. Send a backup email so they can still claim credits if they closed
+    // the browser before finishing signup.
+    const claimToken = session.metadata?.claim_token
+    if (tokensToGrant > 0 && claimToken && !recipient.startsWith('user:') && !recipient.startsWith('team:') && emailLower) {
+      try {
+        await sendClaimCreditsEmail(emailLower, name || null, tokensToGrant, claimToken)
+      } catch (err) {
+        console.error('Failed to send claim credits email:', err)
+      }
+    }
+
+    // Now persist the order row. If validation fails we still log it and
+    // return success — the credits were already granted above.
     if (
       !email ||
       (variant !== 'left' && variant !== 'right') ||
       (size !== '5' && size !== '6' && size !== '7')
     ) {
-      console.error('Missing required fields on session', session.id)
+      console.error('[stripe webhook] ball-order: missing/invalid fields, skipping orders insert', {
+        sessionId: session.id, hasEmail: !!email, variant, size,
+      })
       return NextResponse.json({ received: true })
     }
 
@@ -379,65 +465,7 @@ export async function POST(req: NextRequest) {
       `
     } catch (err) {
       console.error('Failed to save order:', err)
-      return NextResponse.json({ error: 'DB error' }, { status: 500 })
-    }
-
-    // Free shot analyses for this order, computed at checkout:
-    // 5 per single training ball, 10 for the 2-ball bundle.
-    // token_recipient routes them: a player's own account ("user:<id>")
-    // or a team's shared pool ("team:<id>") for coach/org purchases.
-    const tokensToGrant = parseInt(session.metadata?.analysis_tokens ?? '0', 10)
-    const recipient = session.metadata?.token_recipient ?? ''
-    const emailLower = email.toLowerCase()
-    if (tokensToGrant > 0) {
-      try {
-        if (recipient.startsWith('team:')) {
-          const teamId = recipient.slice(5)
-          await db`
-            UPDATE teams SET token_pool = COALESCE(token_pool, 0) + ${tokensToGrant}
-            WHERE id = ${teamId}
-          `
-        } else if (recipient.startsWith('user:')) {
-          const userId = recipient.slice(5)
-          await db`
-            UPDATE users SET analysis_tokens = COALESCE(analysis_tokens, 0) + ${tokensToGrant}
-            WHERE id = ${userId}
-          `
-          await db`
-            INSERT INTO email_list (email, analysis_tokens)
-            VALUES (${emailLower}, ${tokensToGrant})
-            ON CONFLICT (email) DO UPDATE
-            SET analysis_tokens = COALESCE(email_list.analysis_tokens, 0) + ${tokensToGrant}
-          `
-        } else {
-          // Legacy orders with no recipient — credit by email.
-          await db`
-            INSERT INTO email_list (email, analysis_tokens)
-            VALUES (${emailLower}, ${tokensToGrant})
-            ON CONFLICT (email) DO UPDATE
-            SET analysis_tokens = COALESCE(email_list.analysis_tokens, 0) + ${tokensToGrant}
-          `
-          await db`
-            UPDATE users SET analysis_tokens = COALESCE(analysis_tokens, 0) + ${tokensToGrant}
-            WHERE email = ${emailLower}
-          `
-        }
-      } catch (err) {
-        console.error('Failed to grant tokens:', err)
-        // Non-fatal — order is saved, tokens can be credited manually
-      }
-    }
-
-    // For guest purchases, the claim token was generated at checkout and is in the
-    // metadata. Send a backup email so they can still claim credits if they closed
-    // the browser before finishing signup.
-    const claimToken = session.metadata?.claim_token
-    if (tokensToGrant > 0 && claimToken && !recipient.startsWith('user:') && !recipient.startsWith('team:')) {
-      try {
-        await sendClaimCreditsEmail(emailLower, name || null, tokensToGrant, claimToken)
-      } catch (err) {
-        console.error('Failed to send claim credits email:', err)
-      }
+      // Tokens were already credited above — don't ask Stripe to retry.
     }
   }
 

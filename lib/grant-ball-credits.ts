@@ -2,7 +2,12 @@ import { db } from '@/lib/db'
 
 export interface GrantBallCreditsInput {
   sessionId: string
-  recipient: string  // "user:<id>", "team:<id>", or "" for guest/email
+  // "user:<id>"   credits users.analysis_tokens (player)
+  // "coach:<email>" credits coach_credits.credits (team coach personal pool)
+  // "org:<id>"    credits organizations.token_balance (org owner pool)
+  // "team:<id>"   legacy — credits teams.token_pool (kept for old sessions)
+  // ""            guest/email — credits by email match + email_list
+  recipient: string
   tokensToGrant: number
   email: string | null
 }
@@ -61,7 +66,26 @@ export async function grantBallCreditsOnce(input: GrantBallCreditsInput): Promis
 
   let updatedRows = 0
   try {
-    if (recipient.startsWith('team:')) {
+    if (recipient.startsWith('coach:')) {
+      const coachEmail = recipient.slice(6).toLowerCase()
+      const rows = await db`
+        INSERT INTO coach_credits (email, credits)
+        VALUES (${coachEmail}, ${tokensToGrant})
+        ON CONFLICT (email) DO UPDATE
+        SET credits = COALESCE(coach_credits.credits, 0) + ${tokensToGrant}
+        RETURNING email
+      ` as unknown as Array<{ email: string }>
+      updatedRows = rows.length
+    } else if (recipient.startsWith('org:')) {
+      const orgId = recipient.slice(4)
+      const rows = await db`
+        UPDATE organizations SET token_balance = COALESCE(token_balance, 0) + ${tokensToGrant}
+        WHERE id = ${orgId}
+        RETURNING id
+      ` as unknown as Array<{ id: string }>
+      updatedRows = rows.length
+    } else if (recipient.startsWith('team:')) {
+      // Legacy — only hit by pre-deploy sessions still being processed.
       const teamId = recipient.slice(5)
       const rows = await db`
         UPDATE teams SET token_pool = COALESCE(token_pool, 0) + ${tokensToGrant}

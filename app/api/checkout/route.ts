@@ -66,8 +66,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid region' }, { status: 400 })
     }
 
-    // Where the free analysis tokens land: a player's own account, a team's pool,
-    // or via a one-time claim link for guest (not-logged-in) purchases.
+    // Where the free analysis tokens land: always the BUYER'S personal
+    // balance, regardless of session type. Coaches and org owners can
+    // transfer to a team / players later from their dashboard.
+    //   user:<id>  → users.analysis_tokens
+    //   coach:<email> → coach_credits.credits (team coach's personal pool)
+    //   org:<id>   → organizations.token_balance (org owner's personal pool)
     let tokenRecipient = ''
     let guestClaimToken: string | undefined
 
@@ -78,20 +82,9 @@ export async function POST(req: NextRequest) {
     } else if (playerSession) {
       tokenRecipient = `user:${playerSession.userId}`
     } else if (teamSession) {
-      tokenRecipient = `team:${teamSession.teamId}`
-    } else {
-      // Organization — must pick which team's pool receives the free analyses.
-      const teamId = typeof body?.teamId === 'string' ? body.teamId : ''
-      const [team] = (await db`
-        SELECT id FROM teams WHERE id = ${teamId} AND organization_id = ${orgSession!.orgId}
-      `) as unknown as [{ id: string } | undefined]
-      if (!team) {
-        return NextResponse.json(
-          { error: 'Select which team should receive the free analyses' },
-          { status: 400 },
-        )
-      }
-      tokenRecipient = `team:${team.id}`
+      tokenRecipient = `coach:${teamSession.adminEmail.toLowerCase()}`
+    } else if (orgSession) {
+      tokenRecipient = `org:${orgSession.orgId}`
     }
 
     const rawItems: IncomingItem[] = Array.isArray(body?.items)

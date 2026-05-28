@@ -31,25 +31,14 @@ export default function CartView() {
   const { items, hydrated, setQuantity, removeItem } = useCart()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  // Logged-in account type, plus the org's teams for the free-analysis picker.
+  // Logged-in account type — drives the "your credits will land here" hint.
   const [account, setAccount] = useState<{ type: string } | null>(null)
-  const [orgTeams, setOrgTeams] = useState<Array<{ id: string; name: string }>>([])
-  const [teamId, setTeamId] = useState('')
 
   useEffect(() => {
     fetch('/api/auth/session')
       .then(r => r.json())
       .then(({ account }) => {
         setAccount(account ?? null)
-        if (account?.type === 'org') {
-          fetch('/api/org/teams')
-            .then(r => r.json())
-            .then(({ teams }) => {
-              setOrgTeams(teams ?? [])
-              if (teams?.length) setTeamId(teams[0].id)
-            })
-            .catch(() => {})
-        }
       })
       .catch(() => {})
   }, [])
@@ -62,10 +51,6 @@ export default function CartView() {
 
   async function handleCheckout() {
     if (items.length === 0) return
-    if (account?.type === 'org' && !teamId) {
-      setError('Choose which team should receive the free analyses.')
-      return
-    }
     setLoading(true)
     setError('')
     try {
@@ -74,7 +59,6 @@ export default function CartView() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           region: 'US',
-          ...(account?.type === 'org' ? { teamId } : {}),
           items: items.map((it) => {
             if (it.productSlug === 'bundle') {
               return {
@@ -170,27 +154,16 @@ export default function CartView() {
           </span>
         </div>
 
-        {account?.type === 'org' && (
-          <div className="flex flex-col gap-2">
-            <label className="text-white text-sm font-semibold">
-              Free analyses go to this team&apos;s pool
-            </label>
-            {orgTeams.length === 0 ? (
-              <p className="text-zinc-400 text-sm">
-                Your organization has no teams yet — add a team to receive the free analyses.
-              </p>
-            ) : (
-              <select
-                value={teamId}
-                onChange={(e) => setTeamId(e.target.value)}
-                className="bg-zinc-950 border border-zinc-800 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-orange-500"
-              >
-                {orgTeams.map((t) => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
-                ))}
-              </select>
-            )}
-          </div>
+        {account && (
+          <p className="text-zinc-400 text-xs">
+            Free analyses go to your{' '}
+            {account.type === 'org'
+              ? 'organization balance'
+              : account.type === 'team'
+                ? 'coach credits'
+                : 'account'}
+            . You can transfer them to a team or players later from your dashboard.
+          </p>
         )}
 
         <button

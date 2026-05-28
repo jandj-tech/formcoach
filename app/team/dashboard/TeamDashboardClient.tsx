@@ -413,8 +413,8 @@ export default function TeamDashboardClient({
             <p className="text-sm text-gray-600">
               ${team.initiated ? '1.49' : '2.79'} per credit
               {team.initiated
-                ? <span className="ml-1.5 text-xs text-green-600 font-semibold">$1.49 rate unlocked</span>
-                : <span className="ml-1.5 text-xs text-gray-500">unlocks at 8 players</span>}
+                ? <span className="ml-1.5 text-xs text-green-600 font-semibold">discounted $1.49 rate active</span>
+                : <span className="ml-1.5 text-xs text-gray-500">drops to $1.49 once your team reaches 8 players</span>}
             </p>
           </div>
           <span className="text-gray-400 text-lg shrink-0">{showBuyCredits ? '−' : '+'}</span>

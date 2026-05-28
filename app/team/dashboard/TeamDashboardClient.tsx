@@ -96,6 +96,7 @@ export default function TeamDashboardClient({
   const { clear: clearCart } = useCart()
   const [buying, setBuying] = useState(false)
   const [quantity, setQuantity] = useState(10)
+  const [customQty, setCustomQty] = useState('')
   const [loggingOut, setLoggingOut] = useState(false)
   const [showLeaderboard, setShowLeaderboard] = useState(false)
   const [showInvite, setShowInvite] = useState(false)
@@ -442,40 +443,75 @@ export default function TeamDashboardClient({
           </div>
         )}
 
-        {team.initiated && (
-          <div className="bg-orange-50 border border-orange-200 rounded-2xl p-5">
-            <div className="flex items-center justify-between gap-4 flex-wrap">
-              <div>
-                <p className="text-sm text-gray-500">Upload credits remaining</p>
-                <p className="text-4xl font-black text-black">{team.credits}</p>
-              </div>
-              <div className="text-right space-y-2">
-                <div className="flex items-center gap-2 justify-end">
-                  <span className="text-sm text-gray-600">Buy</span>
-                  <input
-                    type="number"
-                    min={1}
-                    max={500}
-                    value={quantity}
-                    onChange={e => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="w-16 border border-gray-300 rounded-lg px-2 py-1 text-center text-black text-sm focus:outline-none focus:border-orange-500"
-                  />
-                  <span className="text-sm text-gray-600">credits</span>
-                </div>
-                <p className="text-xs text-gray-400 text-right">
-                  ${(quantity * (team.initiated ? 1.49 : 2.79)).toFixed(2)} total @ ${team.initiated ? '1.49' : '2.79'} each
-                </p>
-                <button
-                  onClick={buyCredits}
-                  disabled={buying}
-                  className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
-                >
-                  {buying ? 'Redirecting...' : 'Buy Credits'}
-                </button>
-              </div>
+        <div className="bg-orange-50 border border-orange-200 rounded-2xl p-5 space-y-4">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <p className="text-sm text-gray-500">Upload credits remaining</p>
+              <p className="text-4xl font-black text-black">{team.credits}</p>
             </div>
+            <p className="text-sm text-gray-600">
+              ${team.initiated ? '1.49' : '2.79'} per credit
+              {team.initiated
+                ? <span className="ml-1.5 text-xs text-green-600 font-semibold">$1.49 rate unlocked</span>
+                : <span className="ml-1.5 text-xs text-gray-500">unlocks at 8 players</span>}
+            </p>
           </div>
-        )}
+
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Buy credits</p>
+            <div className="flex gap-2">
+              {[1, 5, 10].map(q => (
+                <button
+                  key={q}
+                  type="button"
+                  onClick={() => { setQuantity(q); setCustomQty('') }}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-colors ${
+                    quantity === q && !customQty
+                      ? 'bg-orange-500 text-white border-orange-500'
+                      : 'bg-white text-black border-gray-300 hover:border-orange-400'
+                  }`}
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+            <input
+              type="number"
+              min={1}
+              max={500}
+              value={customQty}
+              onChange={e => {
+                const v = e.target.value
+                setCustomQty(v)
+                const n = parseInt(v)
+                if (!Number.isNaN(n)) setQuantity(Math.min(500, Math.max(1, n)))
+              }}
+              onFocus={e => e.target.select()}
+              placeholder="Or enter a custom amount…"
+              aria-label="Custom credit amount"
+              className="w-full py-2.5 px-3 border border-gray-300 rounded-xl text-black text-sm placeholder:text-gray-400 placeholder:font-normal focus:outline-none focus:border-orange-500"
+            />
+          </div>
+
+          <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex items-center justify-between">
+            <p className="text-sm text-gray-600">
+              {quantity} credit{quantity !== 1 ? 's' : ''} × ${team.initiated ? '1.49' : '2.79'}
+            </p>
+            <p className="text-lg font-black text-black">
+              ${(quantity * (team.initiated ? 1.49 : 2.79)).toFixed(2)}
+            </p>
+          </div>
+
+          <button
+            onClick={buyCredits}
+            disabled={buying}
+            className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-black py-3 rounded-xl transition-colors"
+          >
+            {buying
+              ? 'Redirecting to checkout…'
+              : `Buy ${quantity} Credit${quantity !== 1 ? 's' : ''} — $${(quantity * (team.initiated ? 1.49 : 2.79)).toFixed(2)}`}
+          </button>
+        </div>
 
         <TokenBalances
           players={members.map(m => ({

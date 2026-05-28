@@ -12,7 +12,7 @@ export const metadata = {
 // Idempotent via processed_stripe_sessions, so the webhook (if it fires)
 // won't double-credit. This runs without JS so a flaky client can't
 // strand the buyer's credits.
-async function grantCreditsForSession(sessionId: string | undefined): Promise<{ ok: boolean; tokens: number; reason: string }> {
+async function grantCreditsForSession(sessionId: string | undefined): Promise<{ ok: boolean; tokens: number; reason: string; updatedRows?: number }> {
   if (!sessionId) return { ok: false, tokens: 0, reason: 'no_session_id' }
   try {
     const session = await getStripe().checkout.sessions.retrieve(sessionId)
@@ -24,7 +24,11 @@ async function grantCreditsForSession(sessionId: string | undefined): Promise<{ 
     const email = session.customer_details?.email ?? null
     const result = await grantBallCreditsOnce({ sessionId, recipient, tokensToGrant, email })
     console.log('[shop/success] server-side grant', { sessionId, tokensToGrant, recipient, ...result })
-    return { ok: result.granted || result.reason === 'already_processed', tokens: tokensToGrant, reason: result.reason }
+    // Honest reporting: only "ok" if a row was actually updated. Trusting
+    // 'already_processed' would lie when the webhook claimed the session
+    // but couldn't credit anyone.
+    const ok = result.granted && (result.updatedRows ?? 0) > 0
+    return { ok, tokens: tokensToGrant, reason: result.reason, updatedRows: result.updatedRows }
   } catch (err) {
     console.error('[shop/success] grant retrieval failed:', err)
     return { ok: false, tokens: 0, reason: 'retrieve_failed' }
@@ -48,12 +52,22 @@ export default async function ShopSuccessPage({ searchParams }: { searchParams: 
             Thanks for ordering The LearnHoops.com Training Ball. We&apos;ll email you a receipt and let you know
             when your order ships.
           </p>
-          {grant.tokens > 0 && (
+          {grant.tokens > 0 && grant.ok && (
             <p className="text-orange-400 font-bold">
-              {grant.ok
-                ? `${grant.tokens} free shot analyses credited to your account.`
-                : `${grant.tokens} free shot analyses pending — refresh if they don't show on your dashboard in a minute.`}
+              {grant.tokens} free shot analyses credited to your account.
             </p>
+          )}
+          {grant.tokens > 0 && !grant.ok && (
+            <div className="space-y-1">
+              <p className="text-yellow-300 font-bold">
+                {grant.tokens} free shot analyses pending.
+              </p>
+              <p className="text-gray-400 text-xs">
+                Refresh in a minute — if they still don&apos;t show, email{' '}
+                <a href="mailto:support@learnhoops.com" className="underline">support@learnhoops.com</a>
+                {sessionId ? ` with order ${sessionId.slice(0, 18)}…` : ''} and we&apos;ll fix it.
+              </p>
+            </div>
           )}
           <Link
             href="/dashboard"

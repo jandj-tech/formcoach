@@ -9,7 +9,7 @@ export interface GrantBallCreditsInput {
 
 export interface GrantBallCreditsResult {
   granted: boolean
-  reason: 'no_tokens' | 'already_processed' | 'no_recipient_no_email' | 'granted'
+  reason: 'no_tokens' | 'already_processed' | 'no_recipient_no_email' | 'no_match' | 'grant_failed' | 'granted'
   updatedRows?: number
 }
 
@@ -30,6 +30,7 @@ export async function grantBallCreditsOnce(input: GrantBallCreditsInput): Promis
   // Claim the session — insert wins, conflict means another caller already
   // processed it. Until the migration runs, fall through to the grant logic
   // (best-effort) so we don't silently drop credits on a missing table.
+  let claimedThisCall = false
   try {
     const claimed = await db`
       INSERT INTO processed_stripe_sessions (session_id, tokens_granted, recipient)
@@ -41,8 +42,21 @@ export async function grantBallCreditsOnce(input: GrantBallCreditsInput): Promis
       console.log('[grantBallCreditsOnce] already processed', { sessionId })
       return { granted: false, reason: 'already_processed' }
     }
+    claimedThisCall = true
   } catch (err) {
     console.warn('[grantBallCreditsOnce] processed_stripe_sessions unavailable, proceeding without idempotency lock', err)
+  }
+
+  // Helper: release the claim row if we end up not crediting anyone,
+  // so a retry has a chance to actually land.
+  async function releaseClaim(label: string) {
+    if (!claimedThisCall) return
+    try {
+      await db`DELETE FROM processed_stripe_sessions WHERE session_id = ${sessionId}`
+      console.warn('[grantBallCreditsOnce] released claim', { sessionId, label })
+    } catch (err) {
+      console.error('[grantBallCreditsOnce] failed to release claim:', err)
+    }
   }
 
   let updatedRows = 0
@@ -98,9 +112,16 @@ export async function grantBallCreditsOnce(input: GrantBallCreditsInput): Promis
     }
   } catch (err) {
     console.error('[grantBallCreditsOnce] grant failed:', err)
-    // Don't rethrow — log + return so callers can surface failure without
-    // making Stripe retry the webhook indefinitely.
-    return { granted: false, reason: 'granted', updatedRows: 0 }
+    await releaseClaim('grant_failed')
+    return { granted: false, reason: 'grant_failed', updatedRows: 0 }
+  }
+
+  if (updatedRows === 0) {
+    console.error('[grantBallCreditsOnce] grant matched nothing', {
+      sessionId, recipient, emailLower, tokensToGrant,
+    })
+    await releaseClaim('no_match')
+    return { granted: false, reason: 'no_match', updatedRows: 0 }
   }
 
   console.log('[grantBallCreditsOnce] granted', { sessionId, recipient, emailLower, tokensToGrant, updatedRows })

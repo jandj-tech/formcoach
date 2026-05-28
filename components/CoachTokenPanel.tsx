@@ -58,13 +58,13 @@ export default function CoachTokenPanel({
   return (
     <div className="bg-gray-50 rounded-2xl p-5 space-y-3">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-base font-black text-black">Your Credits</h2>
+        <h2 className="text-base font-black text-black">My Personal Credits</h2>
         <span className="bg-orange-50 border border-orange-200 rounded-xl px-3 py-1.5 text-lg font-black text-black">
           {credits}
         </span>
       </div>
       <p className="text-xs text-gray-500">
-        Spend credits on your own uploads, or hand them to players as analysis tokens.
+        Your own balance — this is where ball purchases land. Spend it on your own uploads, or hand credits to players as analysis tokens.
       </p>
 
       {msg && <p className="text-sm text-orange-600 font-semibold">{msg}</p>}

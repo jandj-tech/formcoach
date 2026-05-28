@@ -400,8 +400,9 @@ export default function TeamDashboardClient({
         >
           <div className="flex items-center gap-4 flex-wrap">
             <div>
-              <p className="text-xs text-gray-500">Upload credits remaining</p>
+              <p className="text-xs text-gray-500">Player-upload credits</p>
               <p className="text-2xl font-black text-black leading-tight">{team.credits}</p>
+              <p className="text-[11px] text-gray-400 leading-tight">for uploading shots on behalf of players</p>
             </div>
             <p className="text-sm text-gray-600">
               ${team.initiated ? '1.49' : '2.79'} per credit
@@ -415,7 +416,7 @@ export default function TeamDashboardClient({
         {showBuyCredits && (
           <div className="px-5 pb-5 space-y-4">
             <div className="space-y-2">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Buy credits</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Buy player-upload credits</p>
               <div className="flex gap-2">
                 {[1, 5, 10].map(q => (
                   <button

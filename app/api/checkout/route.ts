@@ -69,7 +69,6 @@ export async function POST(req: NextRequest) {
     // Where the free analysis tokens land: a player's own account, a team's pool,
     // or via a one-time claim link for guest (not-logged-in) purchases.
     let tokenRecipient = ''
-    let customerEmail: string | undefined
     let guestClaimToken: string | undefined
 
     if (isGuest) {
@@ -78,10 +77,8 @@ export async function POST(req: NextRequest) {
       guestClaimToken = crypto.randomUUID()
     } else if (playerSession) {
       tokenRecipient = `user:${playerSession.userId}`
-      customerEmail = playerSession.email
     } else if (teamSession) {
       tokenRecipient = `team:${teamSession.teamId}`
-      customerEmail = teamSession.adminEmail
     } else {
       // Organization — must pick which team's pool receives the free analyses.
       const teamId = typeof body?.teamId === 'string' ? body.teamId : ''
@@ -95,7 +92,6 @@ export async function POST(req: NextRequest) {
         )
       }
       tokenRecipient = `team:${team.id}`
-      customerEmail = orgSession!.adminEmail
     }
 
     const rawItems: IncomingItem[] = Array.isArray(body?.items)
@@ -235,9 +231,14 @@ export async function POST(req: NextRequest) {
 
     const session = await getStripe().checkout.sessions.create({
       mode: 'payment',
-      payment_method_types: ['card'],
+      // Leave email unset so the buyer can edit it at Stripe. Order
+      // routing in the webhook uses metadata.token_recipient, not the
+      // checkout email, so receipts going to a different address are
+      // fine. We still record the entered email on the orders row.
+      // 'if_required' skips card collection when a 100%-off promo brings
+      // the total to $0, but still collects shipping + phone.
+      payment_method_collection: 'if_required',
       line_items,
-      ...(customerEmail ? { customer_email: customerEmail } : {}),
       shipping_address_collection: { allowed_countries: ['US', 'CA'] },
       phone_number_collection: { enabled: true },
       metadata,

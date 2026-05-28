@@ -6,10 +6,12 @@ export const metadata = {
   title: 'Order Confirmed — LearnHoops.com',
 }
 
-export default function ShopSuccessPage() {
+export default async function ShopSuccessPage({ searchParams }: { searchParams: Promise<{ session_id?: string }> }) {
+  const params = await searchParams
+  const sessionId = params.session_id
   return (
     <main className="min-h-screen bg-black flex flex-col">
-      <ClearCart />
+      <ClearCart sessionId={sessionId} />
       <TopNav />
       <div className="flex-1 flex items-center justify-center px-6">
         <div className="text-center space-y-4 max-w-md">

@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 
-export default function BuyTokenButton() {
+export default function BuyTokenButton({ isInApp = false }: { isInApp?: boolean }) {
+  if (isInApp) return null
   const [region, setRegion] = useState('US')
   const [loading, setLoading] = useState(false)
 

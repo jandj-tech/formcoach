@@ -33,9 +33,12 @@ type SubmissionRow = {
   frame_urls: string[] | null
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ app?: string }> }) {
   const session = await getSession()
   if (!session) redirect('/login')
+
+  const params = await searchParams
+  const isInApp = params.app === 'ios'
 
   let user: UserRow | undefined
   let submissions: SubmissionRow[] = []
@@ -187,7 +190,7 @@ export default async function DashboardPage() {
             <span className="bg-orange-100 text-orange-700 text-xs font-bold px-3 py-1 rounded-full">
               {isSubscribed ? 'Unlimited analyses' : `${tokens} analysis token${tokens !== 1 ? 's' : ''}`}
             </span>
-            {!isSubscribed && <BuyTokenButton />}
+            {!isSubscribed && <BuyTokenButton isInApp={isInApp} />}
             <LogoutButton />
           </div>
         </div>

@@ -200,6 +200,14 @@ export async function POST(req: NextRequest) {
     metadata.token_recipient = tokenRecipient
     if (guestClaimToken) metadata.claim_token = guestClaimToken
 
+    // 5 per single ball × qty, 10 per 2-ball bundle. Logged so any future
+    // "I didn't get my credits" can be cross-checked against checkout intent.
+    console.log('[checkout] free-analysis grant computed', {
+      itemsCount: rawItems.length,
+      analysisTokens,
+      tokenRecipient,
+    })
+
     const cartJson = JSON.stringify(
       rawItems.map((it) =>
         it.productSlug === 'bundle'

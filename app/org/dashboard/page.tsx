@@ -139,21 +139,22 @@ export default async function OrgDashboardPage() {
         }
 
         let coachNickname: string | null = null
-        let initiated = false
         let tokenPool = 0
         try {
           const [r] = (await db`
             SELECT coach_nickname,
-                   COALESCE(token_pool, 0)::int AS token_pool,
-                   (initiated_at IS NOT NULL) AS initiated
+                   COALESCE(token_pool, 0)::int AS token_pool
             FROM teams WHERE id = ${t.id}
-          `) as unknown as [{ coach_nickname: string | null; token_pool: number; initiated: boolean } | undefined]
+          `) as unknown as [{ coach_nickname: string | null; token_pool: number } | undefined]
           coachNickname = r?.coach_nickname ?? null
           tokenPool = r?.token_pool ?? 0
-          initiated = r?.initiated ?? false
         } catch {
-          // coach_nickname / token_pool / initiated_at columns may not exist yet
+          // coach_nickname / token_pool columns may not exist yet
         }
+        // A team is initiated if it has a class package OR has reached the
+        // player threshold. Both unlock the $1.49 rate everywhere this team
+        // is involved.
+        const initiated = !!t.class_package_id || members.length >= 8
 
         // Leaderboard: account players (by user_id) + coach-added players (by team_player_id).
         let leaderboard: LeaderboardRow[] = []

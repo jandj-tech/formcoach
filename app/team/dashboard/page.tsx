@@ -162,19 +162,23 @@ export default async function TeamDashboardPage() {
 
   // Head coach's display name — queried separately so a missing column
   // (pre-migration) can't break the whole dashboard.
+  let hasClassPackage = false
   try {
     const [row] = (await db`
       SELECT coach_nickname,
              COALESCE(token_pool, 0)::int AS token_pool,
-             (initiated_at IS NOT NULL) AS initiated
+             (class_package_id IS NOT NULL) AS has_class_package
       FROM teams WHERE id = ${team.id}
-    `) as unknown as [{ coach_nickname: string | null; token_pool: number; initiated: boolean } | undefined]
+    `) as unknown as [{ coach_nickname: string | null; token_pool: number; has_class_package: boolean } | undefined]
     headCoachNickname = row?.coach_nickname ?? null
     teamTokenPool = row?.token_pool ?? 0
-    teamInitiated = row?.initiated ?? false
+    hasClassPackage = !!row?.has_class_package
   } catch (err) {
     console.error('[team/dashboard] team meta query failed:', err)
   }
+  // A team is initiated if a class was bought for it OR the player count
+  // reached the threshold. Either path unlocks $1.49 for this team's coach.
+  teamInitiated = hasClassPackage || members.length >= 8
 
   // The coach's own shot uploads, shown as a list in "My Uploads".
   let myUploads: Array<{ id: string; token: string; created_at: string; overall_score: string | number | null }> = []

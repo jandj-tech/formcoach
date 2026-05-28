@@ -21,15 +21,18 @@ export interface TeamTokenState {
 export async function getTeamTokenState(teamId: string): Promise<TeamTokenState | null> {
   let name = ''
   let tokenPool = 0
+  let hasClassPackage = false
 
   try {
     const [team] = (await db`
-      SELECT name, COALESCE(token_pool, 0)::int AS token_pool
+      SELECT name, COALESCE(token_pool, 0)::int AS token_pool,
+             (class_package_id IS NOT NULL) AS has_class_package
       FROM teams WHERE id = ${teamId}
-    `) as unknown as [{ name: string; token_pool: number } | undefined]
+    `) as unknown as [{ name: string; token_pool: number; has_class_package: boolean } | undefined]
     if (!team) return null
     name = team.name
     tokenPool = team.token_pool
+    hasClassPackage = team.has_class_package
   } catch {
     const [team] = (await db`
       SELECT name FROM teams WHERE id = ${teamId}
@@ -42,48 +45,77 @@ export async function getTeamTokenState(teamId: string): Promise<TeamTokenState 
     SELECT COUNT(*)::int AS count FROM team_memberships WHERE team_id = ${teamId}
   `) as unknown as [{ count: number }]
 
-  // Teams are "live" (initiated) once they reach the minimum player count — no payment required.
-  const initiated = row.count >= INITIATION_MIN_PLAYERS
+  // A team is "live" (initiated) once it either reaches the minimum player
+  // count or a class package was bought for it. Either path unlocks $1.49.
+  const initiated = hasClassPackage || row.count >= INITIATION_MIN_PLAYERS
 
   return { teamId, name, initiated, playerCount: row.count, tokenPool }
 }
 
 /**
- * True if the user belongs to at least one team that has reached the
- * initiated-player threshold. Used to decide whether their per-analysis
- * price should be the discounted team rate ($1.49) instead of $2.79.
+ * True if the user belongs to at least one team that is initiated — either
+ * by having reached INITIATION_MIN_PLAYERS players, or by having had a class
+ * package purchased for it (teams.class_package_id IS NOT NULL).
  */
 export async function userHasInitiatedTeam(userId: string): Promise<boolean> {
   try {
     const rows = (await db`
       SELECT 1 FROM team_memberships tm
+      JOIN teams t ON t.id = tm.team_id
       WHERE tm.user_id = ${userId}
-      AND (SELECT COUNT(*) FROM team_memberships WHERE team_id = tm.team_id) >= ${INITIATION_MIN_PLAYERS}
+      AND (
+        t.class_package_id IS NOT NULL
+        OR (SELECT COUNT(*) FROM team_memberships WHERE team_id = tm.team_id) >= ${INITIATION_MIN_PLAYERS}
+      )
       LIMIT 1
     `) as unknown as unknown[]
     return rows.length > 0
   } catch {
-    return false
+    // Pre-migration fallback — no class_package_id column.
+    try {
+      const rows = (await db`
+        SELECT 1 FROM team_memberships tm
+        WHERE tm.user_id = ${userId}
+        AND (SELECT COUNT(*) FROM team_memberships WHERE team_id = tm.team_id) >= ${INITIATION_MIN_PLAYERS}
+        LIMIT 1
+      `) as unknown as unknown[]
+      return rows.length > 0
+    } catch {
+      return false
+    }
   }
 }
 
 /**
- * True if the organization has at least one team that has reached the
- * initiated-player threshold. Org leaders get the discounted $1.49 rate
- * across every purchase flow once any of their teams is initiated.
+ * True if the organization has at least one team that is initiated — either
+ * by reaching INITIATION_MIN_PLAYERS players or by having a class package
+ * bought for it. Org leaders get $1.49 across every buy flow once this is true.
  */
 export async function orgHasInitiatedTeam(orgId: string): Promise<boolean> {
   try {
     const rows = (await db`
       SELECT 1 FROM teams t
-      JOIN team_memberships tm ON tm.team_id = t.id
+      LEFT JOIN team_memberships tm ON tm.team_id = t.id
       WHERE t.organization_id = ${orgId}
-      GROUP BY t.id HAVING COUNT(tm.user_id) >= ${INITIATION_MIN_PLAYERS}
+      GROUP BY t.id
+      HAVING bool_or(t.class_package_id IS NOT NULL) OR COUNT(tm.user_id) >= ${INITIATION_MIN_PLAYERS}
       LIMIT 1
     `) as unknown as unknown[]
     return rows.length > 0
   } catch {
-    return false
+    // Pre-migration fallback — no class_package_id column.
+    try {
+      const rows = (await db`
+        SELECT 1 FROM teams t
+        JOIN team_memberships tm ON tm.team_id = t.id
+        WHERE t.organization_id = ${orgId}
+        GROUP BY t.id HAVING COUNT(tm.user_id) >= ${INITIATION_MIN_PLAYERS}
+        LIMIT 1
+      `) as unknown as unknown[]
+      return rows.length > 0
+    } catch {
+      return false
+    }
   }
 }
 

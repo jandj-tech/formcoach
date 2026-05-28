@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { db } from '@/lib/db'
-import { getTeamTokenState, TEAM_TOKEN_PRICE_CENTS, REGULAR_ANALYSIS_PRICE_CENTS } from '@/lib/team-tokens'
+import { orgHasInitiatedTeam, TEAM_TOKEN_PRICE_CENTS, REGULAR_ANALYSIS_PRICE_CENTS } from '@/lib/team-tokens'
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://learnhoops.com'
 
@@ -21,9 +21,12 @@ export async function POST(req: NextRequest) {
     ` as unknown as [{ id: string; name: string } | undefined]
     if (!team) return NextResponse.json({ error: 'Team not found' }, { status: 404 })
 
-    // Coach credits: $1.49 once the team is initiated, $2.79 before.
-    const state = await getTeamTokenState(team.id)
-    const unitAmount = state?.initiated ? TEAM_TOKEN_PRICE_CENTS : REGULAR_ANALYSIS_PRICE_CENTS
+    // Org owners unlock the $1.49 rate org-wide once ANY of their teams
+    // is initiated — applies to every buy flow, including coach credits
+    // for a team that hasn't reached 8 players on its own yet.
+    const unitAmount = (await orgHasInitiatedTeam(session.orgId))
+      ? TEAM_TOKEN_PRICE_CENTS
+      : REGULAR_ANALYSIS_PRICE_CENTS
 
     const stripeSession = await getStripe().checkout.sessions.create({
       mode: 'payment',

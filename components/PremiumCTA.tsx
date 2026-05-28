@@ -6,10 +6,11 @@ import Link from 'next/link'
 
 type Region = 'US' | 'CA'
 
-export default function PremiumCTA({ dark = false }: { dark?: boolean }) {
+export default function PremiumCTA({ dark = false, initiated = false }: { dark?: boolean; initiated?: boolean }) {
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
   const [region, setRegion] = useState<Region>('US')
+  const price = initiated ? '1.49' : '2.79'
 
   useEffect(() => {
     fetch('/api/region').then(r => r.json()).then(({ region }) => setRegion(region)).catch(() => {})
@@ -42,7 +43,7 @@ export default function PremiumCTA({ dark = false }: { dark?: boolean }) {
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-base shrink-0">🏀</span>
           <span className={`text-sm font-medium truncate ${labelColor}`}>
-            1 shot analysis — <span className="font-bold text-orange-500">$2.79</span>
+            1 shot analysis — <span className="font-bold text-orange-500">${price}</span>
           </span>
         </div>
         <button
@@ -66,7 +67,7 @@ export default function PremiumCTA({ dark = false }: { dark?: boolean }) {
         <p className={`text-xs ${subColor} mb-2`}>Each token gives you one full AI shot analysis across 17 coaching criteria.</p>
         <div className="flex items-center justify-between gap-3">
           <div>
-            <span className="text-orange-500 font-black text-2xl">$2.79</span>
+            <span className="text-orange-500 font-black text-2xl">${price}</span>
             <p className={`text-xs ${subColor} mt-0.5`}>per analysis · one-time payment</p>
           </div>
           <button

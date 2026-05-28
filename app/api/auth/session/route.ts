@@ -3,6 +3,7 @@ import { getSession } from '@/lib/auth'
 import { getTeamSession } from '@/lib/team-auth'
 import { getOrgSession } from '@/lib/org-auth'
 import { db } from '@/lib/db'
+import { userHasInitiatedTeam } from '@/lib/team-tokens'
 
 export async function GET() {
   // 1. Player session — also returns token/subscription info used elsewhere.
@@ -54,8 +55,12 @@ export async function GET() {
         // team_memberships table may not exist yet
       }
 
+      // If any of their teams has reached the initiated player count, the
+      // per-analysis price is $1.49 instead of $2.79.
+      const onInitiatedTeam = onTeam && (await userHasInitiatedTeam(user.id))
+
       return NextResponse.json({
-        user: { id: user.id, email: user.email, subscribed, tokens, onTeam },
+        user: { id: user.id, email: user.email, subscribed, tokens, onTeam, onInitiatedTeam },
         account: { type: 'player', dashboard: '/dashboard' },
       })
     }

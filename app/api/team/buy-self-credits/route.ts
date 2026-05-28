@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getTeamSessionFromRequest } from '@/lib/team-auth'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { getStripe } from '@/lib/stripe'
-import { getTeamTokenState, TEAM_TOKEN_PRICE_CENTS, REGULAR_ANALYSIS_PRICE_CENTS } from '@/lib/team-tokens'
-import { db } from '@/lib/db'
+import { getTeamTokenState, orgHasInitiatedTeam, TEAM_TOKEN_PRICE_CENTS, REGULAR_ANALYSIS_PRICE_CENTS } from '@/lib/team-tokens'
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL && process.env.NEXT_PUBLIC_BASE_URL !== 'http://localhost:3000'
   ? process.env.NEXT_PUBLIC_BASE_URL
@@ -27,21 +26,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid quantity' }, { status: 400 })
     }
 
-    // $1.49 once the team has 8+ players, $2.79 before. For an org owner,
-    // that means at least one of their teams has reached 8 players.
+    // A team coach (no org) only gets $1.49 if their own team is initiated.
+    // An org owner gets $1.49 once any team in their org is initiated.
     let liveTeam = false
     if (teamSession) {
       const state = await getTeamTokenState(teamSession.teamId)
       liveTeam = !!state?.initiated
     } else {
-      const rows = (await db`
-        SELECT 1 FROM teams t
-        JOIN team_memberships tm ON tm.team_id = t.id
-        WHERE t.organization_id = ${orgSession!.orgId}
-        GROUP BY t.id HAVING COUNT(tm.user_id) >= 8
-        LIMIT 1
-      `) as unknown as unknown[]
-      liveTeam = rows.length > 0
+      liveTeam = await orgHasInitiatedTeam(orgSession!.orgId)
     }
 
     const coachEmail = teamSession?.adminEmail ?? orgSession!.adminEmail

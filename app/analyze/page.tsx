@@ -5,7 +5,7 @@ import PremiumCTA from '@/components/PremiumCTA'
 import { getSession } from '@/lib/auth'
 import { getTeamSession } from '@/lib/team-auth'
 import { getOrgSession } from '@/lib/org-auth'
-import { getTeamTokenState } from '@/lib/team-tokens'
+import { getTeamTokenState, userHasInitiatedTeam, orgHasInitiatedTeam } from '@/lib/team-tokens'
 import { db } from '@/lib/db'
 
 export default async function AnalyzePage() {
@@ -17,23 +17,21 @@ export default async function AnalyzePage() {
 
   const coachEmail = teamSession?.adminEmail ?? orgSession?.adminEmail ?? null
   let coachSelf: { credits: number; initiated: boolean } | null = null
+  const playerInitiated = playerSession ? await userHasInitiatedTeam(playerSession.userId) : false
 
   if (coachEmail) {
     let initiated = false
     try {
       if (teamSession) {
+        // A team coach only gets $1.49 if their own team is initiated.
         const state = await getTeamTokenState(teamSession.teamId)
         initiated = !!state?.initiated
       } else if (orgSession) {
-        const rows = (await db`
-          SELECT 1 FROM teams
-          WHERE organization_id = ${orgSession.orgId} AND initiated_at IS NOT NULL
-          LIMIT 1
-        `) as unknown as unknown[]
-        initiated = rows.length > 0
+        // An org owner gets $1.49 once any of their teams is initiated.
+        initiated = await orgHasInitiatedTeam(orgSession.orgId)
       }
     } catch {
-      // initiated_at column missing pre-migration — treat as not initiated
+      // team-membership query failed pre-migration — treat as not initiated
     }
     let credits = 0
     try {
@@ -76,7 +74,7 @@ export default async function AnalyzePage() {
           <>
             <VideoUploader />
             <div className="w-full max-w-lg mt-4 px-2">
-              <PremiumCTA />
+              <PremiumCTA initiated={playerInitiated} />
             </div>
           </>
         )}

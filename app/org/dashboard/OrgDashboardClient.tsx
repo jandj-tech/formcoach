@@ -1386,8 +1386,8 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                     </button>
                     {isBuyOpen && (
                       <div className="px-4 py-4 space-y-3">
-                        {!team.initiated && (
-                          <p className="text-xs text-orange-600 font-semibold">Team not yet active — tokens are $2.79 each until the team reaches 8 players.</p>
+                        {!team.initiated && !teams.some(t => t.initiated) && (
+                          <p className="text-xs text-orange-600 font-semibold">Team not yet active — tokens are $2.79 each until any of your teams reaches 8 players.</p>
                         )}
                         <div className="space-y-1">
                           <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Send to</label>

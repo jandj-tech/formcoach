@@ -49,6 +49,45 @@ export async function getTeamTokenState(teamId: string): Promise<TeamTokenState 
 }
 
 /**
+ * True if the user belongs to at least one team that has reached the
+ * initiated-player threshold. Used to decide whether their per-analysis
+ * price should be the discounted team rate ($1.49) instead of $2.79.
+ */
+export async function userHasInitiatedTeam(userId: string): Promise<boolean> {
+  try {
+    const rows = (await db`
+      SELECT 1 FROM team_memberships tm
+      WHERE tm.user_id = ${userId}
+      AND (SELECT COUNT(*) FROM team_memberships WHERE team_id = tm.team_id) >= ${INITIATION_MIN_PLAYERS}
+      LIMIT 1
+    `) as unknown as unknown[]
+    return rows.length > 0
+  } catch {
+    return false
+  }
+}
+
+/**
+ * True if the organization has at least one team that has reached the
+ * initiated-player threshold. Org leaders get the discounted $1.49 rate
+ * across every purchase flow once any of their teams is initiated.
+ */
+export async function orgHasInitiatedTeam(orgId: string): Promise<boolean> {
+  try {
+    const rows = (await db`
+      SELECT 1 FROM teams t
+      JOIN team_memberships tm ON tm.team_id = t.id
+      WHERE t.organization_id = ${orgId}
+      GROUP BY t.id HAVING COUNT(tm.user_id) >= ${INITIATION_MIN_PLAYERS}
+      LIMIT 1
+    `) as unknown as unknown[]
+    return rows.length > 0
+  } catch {
+    return false
+  }
+}
+
+/**
  * Grant 1 free analysis token to every member of an org team that has just
  * reached INITIATION_MIN_PLAYERS players. Skips members who already got theirs.
  * No-ops silently if the team is not in an org or not yet large enough.

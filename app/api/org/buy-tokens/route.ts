@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { getStripe } from '@/lib/stripe'
-import { db } from '@/lib/db'
-import { TEAM_TOKEN_PRICE_CENTS, REGULAR_ANALYSIS_PRICE_CENTS } from '@/lib/team-pricing'
+import { orgHasInitiatedTeam, TEAM_TOKEN_PRICE_CENTS, REGULAR_ANALYSIS_PRICE_CENTS } from '@/lib/team-tokens'
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL && process.env.NEXT_PUBLIC_BASE_URL !== 'http://localhost:3000'
   ? process.env.NEXT_PUBLIC_BASE_URL
@@ -27,14 +26,9 @@ export async function POST(req: NextRequest) {
     }
 
     // Discounted price unlocks once any team in the org has 8+ players.
-    const liveTeams = (await db`
-      SELECT 1 FROM teams t
-      JOIN team_memberships tm ON tm.team_id = t.id
-      WHERE t.organization_id = ${session.orgId}
-      GROUP BY t.id HAVING COUNT(tm.user_id) >= 8
-      LIMIT 1
-    `) as unknown as unknown[]
-    const unitAmount = liveTeams.length > 0 ? TEAM_TOKEN_PRICE_CENTS : REGULAR_ANALYSIS_PRICE_CENTS
+    const unitAmount = (await orgHasInitiatedTeam(session.orgId))
+      ? TEAM_TOKEN_PRICE_CENTS
+      : REGULAR_ANALYSIS_PRICE_CENTS
 
     const checkout = await getStripe().checkout.sessions.create({
       mode: 'payment',

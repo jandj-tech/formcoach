@@ -84,7 +84,7 @@ async function fitFramesToBudget(
   return { frames: current, reduced: true }
 }
 
-interface SessionUser { id: string; email: string; tokens: number; subscribed: boolean; onTeam: boolean }
+interface SessionUser { id: string; email: string; tokens: number; subscribed: boolean; onTeam: boolean; onInitiatedTeam: boolean }
 
 interface TeamMode {
   code: string
@@ -754,7 +754,7 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
                 onClick={handleBuyToken}
                 className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors"
               >
-                Buy Analysis — $2.79
+                Buy Analysis — ${sessionUser?.onInitiatedTeam ? '1.49' : '2.79'}
               </button>
               {sessionUser?.onTeam ? (
                 <p className="text-gray-500 text-xs text-center">

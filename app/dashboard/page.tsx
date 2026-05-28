@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth'
 import { db } from '@/lib/db'
+import { userHasInitiatedTeam } from '@/lib/team-tokens'
 import TopNav from '@/components/TopNav'
 import Link from 'next/link'
 import LogoutButton from './LogoutButton'
@@ -160,6 +161,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     new Date(user.subscription_expires_at) > new Date()
 
   const tokens = user.analysis_tokens ?? 0
+  const onInitiatedTeam = await userHasInitiatedTeam(user.id)
 
   function scoreColor(score: number) {
     if (score >= 8) return 'text-green-600'
@@ -190,7 +192,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             <span className="bg-orange-100 text-orange-700 text-xs font-bold px-3 py-1 rounded-full">
               {isSubscribed ? 'Unlimited analyses' : `${tokens} analysis token${tokens !== 1 ? 's' : ''}`}
             </span>
-            {!isSubscribed && <BuyTokenButton isInApp={isInApp} />}
+            {!isSubscribed && <BuyTokenButton isInApp={isInApp} initiated={onInitiatedTeam} />}
             <LogoutButton />
           </div>
         </div>

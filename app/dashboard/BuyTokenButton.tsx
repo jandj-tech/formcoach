@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react'
 
-export default function BuyTokenButton({ isInApp = false }: { isInApp?: boolean }) {
+export default function BuyTokenButton({ isInApp = false, initiated = false }: { isInApp?: boolean; initiated?: boolean }) {
   if (isInApp) return null
   const [region, setRegion] = useState('US')
   const [loading, setLoading] = useState(false)
+  const price = initiated ? '1.49' : '2.79'
 
   useEffect(() => {
     fetch('/api/region').then(r => r.json()).then(({ region: r }) => setRegion(r)).catch(() => {})
@@ -32,7 +33,7 @@ export default function BuyTokenButton({ isInApp = false }: { isInApp?: boolean 
       disabled={loading}
       className="shrink-0 bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors"
     >
-      {loading ? 'Loading...' : 'Buy Token — $2.79'}
+      {loading ? 'Loading...' : `Buy Token — $${price}`}
     </button>
   )
 }

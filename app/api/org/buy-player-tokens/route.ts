@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { getStripe } from '@/lib/stripe'
 import { db } from '@/lib/db'
-import { getTeamTokenState, TEAM_TOKEN_PRICE_CENTS, REGULAR_ANALYSIS_PRICE_CENTS } from '@/lib/team-tokens'
+import { orgHasInitiatedTeam, TEAM_TOKEN_PRICE_CENTS, REGULAR_ANALYSIS_PRICE_CENTS } from '@/lib/team-tokens'
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL && process.env.NEXT_PUBLIC_BASE_URL !== 'http://localhost:3000'
   ? process.env.NEXT_PUBLIC_BASE_URL
@@ -26,16 +26,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'teamId is required' }, { status: 400 })
     }
 
-    // The team must belong to this org. Tokens are $1.49 once it has 8+
-    // players, $2.79 before.
+    // The team must belong to this org.
     const [team] = (await db`
       SELECT id FROM teams WHERE id = ${teamId} AND organization_id = ${session.orgId}
     `) as unknown as [{ id: string } | undefined]
     if (!team) {
       return NextResponse.json({ error: 'Team not found' }, { status: 404 })
     }
-    const state = await getTeamTokenState(teamId)
-    const unitAmount = state?.initiated ? TEAM_TOKEN_PRICE_CENTS : REGULAR_ANALYSIS_PRICE_CENTS
+    // Org owners unlock $1.49 org-wide once ANY of their teams is initiated.
+    const unitAmount = (await orgHasInitiatedTeam(session.orgId))
+      ? TEAM_TOKEN_PRICE_CENTS
+      : REGULAR_ANALYSIS_PRICE_CENTS
     const qty = typeof quantity === 'number' ? Math.floor(quantity) : 1
     if (qty < 1 || qty > 1000) {
       return NextResponse.json({ error: 'Invalid quantity' }, { status: 400 })

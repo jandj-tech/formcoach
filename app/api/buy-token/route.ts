@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe'
 import { getSessionFromRequest } from '@/lib/auth'
-import { REGULAR_ANALYSIS_PRICE_CENTS } from '@/lib/team-pricing'
+import { REGULAR_ANALYSIS_PRICE_CENTS, TEAM_TOKEN_PRICE_CENTS } from '@/lib/team-pricing'
+import { userHasInitiatedTeam } from '@/lib/team-tokens'
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://learnhoops.com'
 
@@ -15,6 +16,10 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({})) as { region?: string }
     const region = body.region ?? 'US'
 
+    const unitAmount = (await userHasInitiatedTeam(session.userId))
+      ? TEAM_TOKEN_PRICE_CENTS
+      : REGULAR_ANALYSIS_PRICE_CENTS
+
     const stripeSession = await getStripe().checkout.sessions.create({
       mode: 'payment',
       payment_method_types: ['card'],
@@ -22,7 +27,7 @@ export async function POST(req: NextRequest) {
         quantity: 1,
         price_data: {
           currency: region === 'CA' ? 'cad' : 'usd',
-          unit_amount: REGULAR_ANALYSIS_PRICE_CENTS,
+          unit_amount: unitAmount,
           product_data: {
             name: '1 Shot Analysis',
             description: 'One AI-powered basketball shot analysis on LearnHoops.com',

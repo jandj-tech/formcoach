@@ -42,9 +42,12 @@ export async function POST(req: NextRequest) {
     size7 > 0 ? `${size7}× size 7` : null,
   ].filter(Boolean).join(', ')
 
+  // Don't pre-fill customer_email — Stripe locks it when set, and the
+  // buyer may want the receipt to go to a different address (e.g. a
+  // coach or finance person). Order confirmation still uses
+  // org.admin_email server-side via the webhook.
   const stripeSession = await getStripe().checkout.sessions.create({
     mode: 'payment',
-    customer_email: org.admin_email,
     line_items: [
       {
         quantity: 1,

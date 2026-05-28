@@ -4,6 +4,7 @@ import { getSessionFromRequest } from '@/lib/auth'
 import { getTeamSessionFromRequest } from '@/lib/team-auth'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { db } from '@/lib/db'
+import { isValidCompCode, getCompCouponId } from '@/lib/comp'
 
 const BALL_DESCRIPTION = 'Training basketball with hand-placement guide lines that build consistent shooting form.'
 
@@ -222,6 +223,15 @@ export async function POST(req: NextRequest) {
       ? `${BASE_URL}/signup?claimToken=${guestClaimToken}&credits=${analysisTokens}`
       : `${BASE_URL}/shop/success?session_id={CHECKOUT_SESSION_ID}`
 
+    // A valid comp code applies a 100%-off coupon server-side, so the
+    // Stripe total is $0 and the card form is skipped (shipping is still
+    // collected). allow_promotion_codes and discounts are mutually
+    // exclusive, so only one is set.
+    const comp = isValidCompCode(body?.compCode)
+    const discountOpts = comp
+      ? { discounts: [{ coupon: await getCompCouponId() }] }
+      : { allow_promotion_codes: true as const }
+
     const session = await getStripe().checkout.sessions.create({
       mode: 'payment',
       // Leave email unset so the buyer can edit it at Stripe. Order
@@ -233,7 +243,7 @@ export async function POST(req: NextRequest) {
       phone_number_collection: { enabled: true },
       metadata,
       success_url: successUrl,
-      allow_promotion_codes: true,
+      ...discountOpts,
       cancel_url: `${BASE_URL}/cart`,
     })
 

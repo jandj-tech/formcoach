@@ -3,6 +3,7 @@ import { getStripe } from '@/lib/stripe'
 import { getSessionFromRequest } from '@/lib/auth'
 import { REGULAR_ANALYSIS_PRICE_CENTS, TEAM_TOKEN_PRICE_CENTS } from '@/lib/team-pricing'
 import { userHasInitiatedTeam } from '@/lib/team-tokens'
+import { isValidCompCode, getCompCouponId } from '@/lib/comp'
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://learnhoops.com'
 
@@ -13,16 +14,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Login required' }, { status: 401 })
     }
 
-    const body = await req.json().catch(() => ({})) as { region?: string }
+    const body = await req.json().catch(() => ({})) as { region?: string; compCode?: string }
     const region = body.region ?? 'US'
 
     const userInitiated = await userHasInitiatedTeam(session.userId)
     const unitAmount = userInitiated ? TEAM_TOKEN_PRICE_CENTS : REGULAR_ANALYSIS_PRICE_CENTS
-    console.log('[buy-token] player pricing', { userId: session.userId, userInitiated, unitAmount })
+
+    // A valid comp code zeroes the total via a 100%-off coupon so Stripe
+    // skips the card form. discounts / allow_promotion_codes are exclusive.
+    const comp = isValidCompCode(body.compCode)
+    const discountOpts = comp
+      ? { discounts: [{ coupon: await getCompCouponId() }] }
+      : { allow_promotion_codes: true as const }
 
     const stripeSession = await getStripe().checkout.sessions.create({
       mode: 'payment',
-      payment_method_types: ['card'],
       line_items: [{
         quantity: 1,
         price_data: {
@@ -40,7 +46,7 @@ export async function POST(req: NextRequest) {
         userId: session.userId,
       },
       success_url: `${BASE_URL}/analyze?token_purchased=1`,
-      allow_promotion_codes: true,
+      ...discountOpts,
       cancel_url: `${BASE_URL}/analyze`,
     })
 

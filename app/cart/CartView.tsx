@@ -33,6 +33,7 @@ export default function CartView() {
   const [error, setError] = useState('')
   // Logged-in account type — drives the "your credits will land here" hint.
   const [account, setAccount] = useState<{ type: string } | null>(null)
+  const [compCode, setCompCode] = useState('')
 
   useEffect(() => {
     fetch('/api/auth/session')
@@ -59,6 +60,7 @@ export default function CartView() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           region: 'US',
+          ...(compCode.trim() ? { compCode: compCode.trim() } : {}),
           items: items.map((it) => {
             if (it.productSlug === 'bundle') {
               return {
@@ -165,6 +167,18 @@ export default function CartView() {
             . You can transfer them to a team or players later from your dashboard.
           </p>
         )}
+
+        <div className="flex flex-col gap-1">
+          <label className="text-zinc-400 text-xs font-semibold">Promo / comp code (optional)</label>
+          <input
+            type="text"
+            value={compCode}
+            onChange={(e) => setCompCode(e.target.value.toUpperCase())}
+            placeholder="Enter a code"
+            className="bg-zinc-950 border border-zinc-800 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-orange-500 placeholder-zinc-600"
+          />
+          <p className="text-zinc-500 text-xs">A valid comp code makes the order free — no card needed.</p>
+        </div>
 
         <button
           onClick={handleCheckout}

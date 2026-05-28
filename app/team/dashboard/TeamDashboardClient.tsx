@@ -97,6 +97,7 @@ export default function TeamDashboardClient({
   const [buying, setBuying] = useState(false)
   const [quantity, setQuantity] = useState(10)
   const [customQty, setCustomQty] = useState('')
+  const [showBuyCredits, setShowBuyCredits] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
   const [showLeaderboard, setShowLeaderboard] = useState(false)
   const [showInvite, setShowInvite] = useState(false)
@@ -391,75 +392,84 @@ export default function TeamDashboardClient({
         </div>
       )}
 
-      {/* Buy Credits — top-level so coaches can purchase regardless of team activation */}
-      <div className="bg-orange-50 border border-orange-200 rounded-2xl p-5 space-y-4">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div>
-            <p className="text-sm text-gray-500">Upload credits remaining</p>
-            <p className="text-4xl font-black text-black">{team.credits}</p>
-          </div>
-          <p className="text-sm text-gray-600">
-            ${team.initiated ? '1.49' : '2.79'} per credit
-            {team.initiated
-              ? <span className="ml-1.5 text-xs text-green-600 font-semibold">$1.49 rate unlocked</span>
-              : <span className="ml-1.5 text-xs text-gray-500">unlocks at 8 players</span>}
-          </p>
-        </div>
-
-        <div className="space-y-2">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Buy credits</p>
-          <div className="flex gap-2">
-            {[1, 5, 10].map(q => (
-              <button
-                key={q}
-                type="button"
-                onClick={() => { setQuantity(q); setCustomQty('') }}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-colors ${
-                  quantity === q && !customQty
-                    ? 'bg-orange-500 text-white border-orange-500'
-                    : 'bg-white text-black border-gray-300 hover:border-orange-400'
-                }`}
-              >
-                {q}
-              </button>
-            ))}
-          </div>
-          <input
-            type="number"
-            min={1}
-            max={500}
-            value={customQty}
-            onChange={e => {
-              const v = e.target.value
-              setCustomQty(v)
-              const n = parseInt(v)
-              if (!Number.isNaN(n)) setQuantity(Math.min(500, Math.max(1, n)))
-            }}
-            onFocus={e => e.target.select()}
-            placeholder="Or enter a custom amount…"
-            aria-label="Custom credit amount"
-            className="w-full py-2.5 px-3 border border-gray-300 rounded-xl text-black text-sm placeholder:text-gray-400 placeholder:font-normal focus:outline-none focus:border-orange-500"
-          />
-        </div>
-
-        <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex items-center justify-between">
-          <p className="text-sm text-gray-600">
-            {quantity} credit{quantity !== 1 ? 's' : ''} × ${team.initiated ? '1.49' : '2.79'}
-          </p>
-          <p className="text-lg font-black text-black">
-            ${(quantity * (team.initiated ? 1.49 : 2.79)).toFixed(2)}
-          </p>
-        </div>
-
+      {/* Buy Credits — collapsible, top-level so coaches can purchase regardless of team activation */}
+      <div className="border border-orange-200 rounded-2xl overflow-hidden bg-orange-50">
         <button
-          onClick={buyCredits}
-          disabled={buying}
-          className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-black py-3 rounded-xl transition-colors"
+          onClick={() => setShowBuyCredits(o => !o)}
+          className="w-full flex items-center justify-between gap-4 px-5 py-4 hover:bg-orange-100 transition-colors text-left"
         >
-          {buying
-            ? 'Redirecting to checkout…'
-            : `Buy ${quantity} Credit${quantity !== 1 ? 's' : ''} — $${(quantity * (team.initiated ? 1.49 : 2.79)).toFixed(2)}`}
+          <div className="flex items-center gap-4 flex-wrap">
+            <div>
+              <p className="text-xs text-gray-500">Upload credits remaining</p>
+              <p className="text-2xl font-black text-black leading-tight">{team.credits}</p>
+            </div>
+            <p className="text-sm text-gray-600">
+              ${team.initiated ? '1.49' : '2.79'} per credit
+              {team.initiated
+                ? <span className="ml-1.5 text-xs text-green-600 font-semibold">$1.49 rate unlocked</span>
+                : <span className="ml-1.5 text-xs text-gray-500">unlocks at 8 players</span>}
+            </p>
+          </div>
+          <span className="text-gray-400 text-lg shrink-0">{showBuyCredits ? '−' : '+'}</span>
         </button>
+        {showBuyCredits && (
+          <div className="px-5 pb-5 space-y-4">
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Buy credits</p>
+              <div className="flex gap-2">
+                {[1, 5, 10].map(q => (
+                  <button
+                    key={q}
+                    type="button"
+                    onClick={() => { setQuantity(q); setCustomQty('') }}
+                    className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-colors ${
+                      quantity === q && !customQty
+                        ? 'bg-orange-500 text-white border-orange-500'
+                        : 'bg-white text-black border-gray-300 hover:border-orange-400'
+                    }`}
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+              <input
+                type="number"
+                min={1}
+                max={500}
+                value={customQty}
+                onChange={e => {
+                  const v = e.target.value
+                  setCustomQty(v)
+                  const n = parseInt(v)
+                  if (!Number.isNaN(n)) setQuantity(Math.min(500, Math.max(1, n)))
+                }}
+                onFocus={e => e.target.select()}
+                placeholder="Or enter a custom amount…"
+                aria-label="Custom credit amount"
+                className="w-full py-2.5 px-3 border border-gray-300 rounded-xl text-black text-sm placeholder:text-gray-400 placeholder:font-normal focus:outline-none focus:border-orange-500"
+              />
+            </div>
+
+            <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex items-center justify-between">
+              <p className="text-sm text-gray-600">
+                {quantity} credit{quantity !== 1 ? 's' : ''} × ${team.initiated ? '1.49' : '2.79'}
+              </p>
+              <p className="text-lg font-black text-black">
+                ${(quantity * (team.initiated ? 1.49 : 2.79)).toFixed(2)}
+              </p>
+            </div>
+
+            <button
+              onClick={buyCredits}
+              disabled={buying}
+              className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-black py-3 rounded-xl transition-colors"
+            >
+              {buying
+                ? 'Redirecting to checkout…'
+                : `Buy ${quantity} Credit${quantity !== 1 ? 's' : ''} — $${(quantity * (team.initiated ? 1.49 : 2.79)).toFixed(2)}`}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Team Information — one collapsible section wrapping everything but My Uploads */}

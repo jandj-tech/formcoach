@@ -10,6 +10,8 @@ function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const next = searchParams.get('next') || '/dashboard'
+  const claimToken = searchParams.get('claimToken') || ''
+  const pendingCredits = parseInt(searchParams.get('credits') || '0', 10)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
@@ -37,7 +39,7 @@ function LoginForm() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, ...(claimToken ? { claimToken } : {}) }),
       })
       const data = await res.json()
 
@@ -95,7 +97,13 @@ function LoginForm() {
           <div className="text-center space-y-2">
             <div className="text-4xl">🏀</div>
             <h1 className="text-2xl font-black text-black">Log in to LearnHoops</h1>
-            <p className="text-gray-500 text-sm">Players, coaches, and organizations — one login</p>
+            {pendingCredits > 0 ? (
+              <p className="text-sm font-semibold text-orange-600 bg-orange-50 border border-orange-200 rounded-xl px-4 py-2">
+                Log in and your {pendingCredits} free shot {pendingCredits === 1 ? 'analysis' : 'analyses'} from your ball order will be added to your account.
+              </p>
+            ) : (
+              <p className="text-gray-500 text-sm">Players, coaches, and organizations — one login</p>
+            )}
           </div>
 
           {teams ? (

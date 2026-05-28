@@ -6,9 +6,28 @@ import { signTeamSession, teamSessionCookieOptions } from '@/lib/team-auth'
 import { signOrgSession, orgSessionCookieOptions } from '@/lib/org-auth'
 import { clearOtherSessions, PLAYER_COOKIE, TEAM_COOKIE, ORG_COOKIE } from '@/lib/sessions'
 
+// Redeem a one-time ball-purchase claim token into a player's account.
+// Used when a logged-out existing customer buys a ball, lands on signup,
+// is told the account exists, and logs in instead — the claim carries over.
+async function redeemClaim(claimToken: string | undefined, userId: string) {
+  if (!claimToken) return
+  try {
+    const [claim] = await db`
+      SELECT tokens_to_grant FROM pending_credit_claims
+      WHERE claim_token = ${claimToken} AND redeemed_at IS NULL
+    ` as unknown as [{ tokens_to_grant: number } | undefined]
+    if (claim?.tokens_to_grant && claim.tokens_to_grant > 0) {
+      await db`UPDATE users SET analysis_tokens = COALESCE(analysis_tokens, 0) + ${claim.tokens_to_grant} WHERE id = ${userId}`
+      await db`UPDATE pending_credit_claims SET redeemed_at = NOW() WHERE claim_token = ${claimToken}`
+    }
+  } catch {
+    // Non-fatal — login still succeeds.
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const { email, password } = await req.json()
+    const { email, password, claimToken } = await req.json()
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password required' }, { status: 400 })
     }
@@ -69,6 +88,7 @@ export async function POST(req: NextRequest) {
       SELECT id, email, password_hash FROM users WHERE email = ${emailLower}
     `) as unknown as [{ id: string; email: string; password_hash: string } | undefined]
     if (user && (await bcrypt.compare(password, user.password_hash))) {
+      await redeemClaim(claimToken, user.id)
       const token = await signSession({ userId: user.id, email: user.email })
       const res = NextResponse.json({ success: true, token })
       res.cookies.set(sessionCookieOptions(token))

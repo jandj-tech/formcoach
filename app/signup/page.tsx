@@ -153,7 +153,14 @@ function SignupForm() {
 
           <p className="text-center text-sm text-gray-500">
             Already have an account?{' '}
-            <a href="/login" className="text-orange-500 hover:underline font-medium">Log in</a>
+            <a
+              href={claimToken
+                ? `/login?claimToken=${encodeURIComponent(claimToken)}&credits=${pendingCredits}`
+                : '/login'}
+              className="text-orange-500 hover:underline font-medium"
+            >
+              Log in
+            </a>
           </p>
         </div>
       </div>

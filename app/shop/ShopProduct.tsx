@@ -23,7 +23,7 @@ function formatPrice(amount: number): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)
 }
 
-export default function ShopProduct() {
+export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) {
   const { addBall } = useCart()
   const [variant, setVariant] = useState<Variant>('right')
   const [size, setSize] = useState<Size>('7')
@@ -187,7 +187,7 @@ export default function ShopProduct() {
 
         {/* 1 Shot Analysis */}
         <div className="max-w-xl">
-          <PremiumCTA dark />
+          {!isInApp && <PremiumCTA dark />}
         </div>
       </div>
     </section>

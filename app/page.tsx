@@ -116,7 +116,8 @@ export default async function HomePage() {
               <div className="font-numeric text-3xl sm:text-4xl font-medium text-chalk">
                 {stat.value}
               </div>
-              <div className="eyebrow text-chalk-dim mt-1.5">{stat.label}</div>
+              <div className="w-8 h-0.5 bg-hardwood mx-auto mt-2" aria-hidden />
+              <div className="eyebrow text-chalk-dim mt-2">{stat.label}</div>
             </div>
           ))}
         </div>
@@ -141,36 +142,38 @@ export default async function HomePage() {
         </div>
       </div>
 
-      {/* Steps */}
-      <section className="px-4 py-20 sm:py-28 max-w-6xl mx-auto w-full">
-        <div className="mb-12">
-          <p className="eyebrow text-ember-400 mb-3 select-none">01 — How it works</p>
-          <h2 className="font-display font-black uppercase text-[clamp(1.9rem,4.5vw,3.5rem)] leading-[0.95]">
-            Three steps to
-            <br />a better shot
-          </h2>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {STEPS.map((step) => (
-            <div
-              key={step.num}
-              className="fade-up card-lift bg-ink-900 rounded-2xl p-6 sm:p-8 border border-courtline"
-            >
-              <div className="font-numeric text-ember-500 text-lg mb-6 select-none">{step.num}</div>
-              <h3 className="font-display font-bold uppercase text-lg mb-2 leading-tight">
-                {step.title}
-              </h3>
-              <p className="text-chalk-dim text-sm leading-relaxed">{step.desc}</p>
-            </div>
-          ))}
+      {/* Steps — warm chalk band so the section rhythm reads dark → light → dark */}
+      <section className="bg-chalk text-ink-950">
+        <div className="px-4 py-20 sm:py-28 max-w-6xl mx-auto w-full">
+          <div className="mb-12">
+            <p className="eyebrow text-ember-600 mb-3 select-none">01 — How it works</p>
+            <h2 className="font-display font-black uppercase text-[clamp(1.9rem,4.5vw,3.5rem)] leading-[0.95]">
+              Three steps to
+              <br />a better shot
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {STEPS.map((step) => (
+              <div
+                key={step.num}
+                className="fade-up card-lift bg-white rounded-2xl p-6 sm:p-8 border border-ink-950/10 shadow-sm"
+              >
+                <div className="font-numeric text-ember-600 text-lg mb-6 select-none">{step.num}</div>
+                <h3 className="font-display font-bold uppercase text-lg mb-2 leading-tight">
+                  {step.title}
+                </h3>
+                <p className="text-ink-950/60 text-sm leading-relaxed">{step.desc}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
       {/* Teams using the software */}
-      <section className="px-4 py-16 sm:py-20 bg-ink-900 border-y border-courtline">
+      <section className="px-4 py-16 sm:py-20 bg-ink-900 border-b border-courtline">
         <div className="max-w-6xl mx-auto w-full">
           <div className="mb-10">
-            <p className="eyebrow text-ember-400 mb-3 select-none">02 — Trusted on the court</p>
+            <p className="eyebrow text-hardwood mb-3 select-none">02 — Trusted on the court</p>
             <h2 className="font-display font-black uppercase text-[clamp(1.9rem,4.5vw,3.5rem)] leading-[0.95]">
               Used by teams &amp; academies
             </h2>
@@ -208,24 +211,24 @@ export default async function HomePage() {
 
       <CriteriaShowcase criteria={criteria} videoMap={videoMap} />
 
-      {/* Closing CTA */}
-      <section className="hero-glow grain relative text-center px-4 py-20 sm:py-28">
-        <p className="eyebrow text-ember-400 mb-4 select-none">04 — Your move</p>
+      {/* Closing CTA — solid ember band for a hard color break before the footer */}
+      <section className="grain relative text-center px-4 py-20 sm:py-28 bg-ember-500 text-white">
+        <p className="eyebrow text-ink-950/70 mb-4 select-none">04 — Your move</p>
         <h2 className="font-display font-black uppercase text-[clamp(2.2rem,6vw,5rem)] leading-[0.95] max-w-3xl mx-auto">
           Ready to fix
           <br />
-          <span className="text-gradient-ember">your shot?</span>
+          <span className="text-ink-950">your shot?</span>
         </h2>
         <div className="flex flex-col sm:flex-row gap-3 mt-10 justify-center items-center">
           <Link
             href="/analyze"
-            className="bg-ember-500 hover:bg-ember-600 active:scale-[0.98] text-white font-bold px-8 py-4 rounded-full text-base transition-all text-center shadow-[0_0_40px_-8px_rgba(255,92,26,0.55)] w-full max-w-xs sm:w-auto"
+            className="bg-ink-950 hover:bg-ink-800 active:scale-[0.98] text-chalk font-bold px-8 py-4 rounded-full text-base transition-all text-center w-full max-w-xs sm:w-auto"
           >
             Analyze your shot →
           </Link>
           <Link
             href="/team"
-            className="border border-courtline hover:border-chalk-dim active:scale-[0.98] text-chalk font-bold px-8 py-4 rounded-full text-base transition-all text-center w-full max-w-xs sm:w-auto"
+            className="border border-white/50 hover:border-white active:scale-[0.98] text-white font-bold px-8 py-4 rounded-full text-base transition-all text-center w-full max-w-xs sm:w-auto"
           >
             For teams &amp; organizations
           </Link>

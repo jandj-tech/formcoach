@@ -1,4 +1,5 @@
 import TopNav from '@/components/TopNav'
+import SiteFooter from '@/components/SiteFooter'
 import CartView from './CartView'
 
 export const metadata = {
@@ -8,12 +9,10 @@ export const metadata = {
 
 export default async function CartPage() {
   return (
-    <main className="flex flex-col min-h-screen bg-black">
+    <main className="flex flex-col min-h-screen bg-ink-950 text-chalk">
       <TopNav />
       <CartView />
-      <footer className="py-5 border-t border-zinc-900 text-center text-white text-xs">
-        © {new Date().getFullYear()} LearnHoops.com. All rights reserved.
-      </footer>
+      <SiteFooter />
     </main>
   )
 }

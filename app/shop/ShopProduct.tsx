@@ -81,8 +81,8 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
               </span>
             </div>
 
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white leading-tight">
-              The LearnHoops.com <span className="text-orange-500">Training Ball</span>
+            <h1 className="font-display font-black uppercase text-[clamp(1.9rem,4.5vw,3.5rem)] text-chalk leading-[0.95]">
+              The LearnHoops <span className="text-gradient-ember">Training Ball</span>
             </h1>
 
             <p className="text-white text-base leading-relaxed">
@@ -91,7 +91,7 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
               placement and release.
             </p>
 
-            <div className="text-3xl font-black text-white">
+            <div className="font-numeric text-3xl font-medium text-chalk">
               {displayUnit}
             </div>
 
@@ -103,8 +103,8 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
                   onClick={() => setVariant('right')}
                   className={`rounded-xl border-2 px-4 py-4 text-left transition-colors ${
                     variant === 'right'
-                      ? 'border-orange-500 bg-orange-500/10'
-                      : 'border-zinc-800 hover:border-zinc-700'
+                      ? 'border-ember-500 bg-ember-500/10'
+                      : 'border-courtline hover:border-chalk-dim/60'
                   }`}
                 >
                   <div className="text-white font-bold text-base">Right-handed</div>
@@ -114,8 +114,8 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
                   onClick={() => setVariant('left')}
                   className={`rounded-xl border-2 px-4 py-4 text-left transition-colors ${
                     variant === 'left'
-                      ? 'border-orange-500 bg-orange-500/10'
-                      : 'border-zinc-800 hover:border-zinc-700'
+                      ? 'border-ember-500 bg-ember-500/10'
+                      : 'border-courtline hover:border-chalk-dim/60'
                   }`}
                 >
                   <div className="text-white font-bold text-base">Left-handed</div>
@@ -134,8 +134,8 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
                     onClick={() => setSize(s.value)}
                     className={`rounded-xl border-2 px-3 py-4 text-center transition-colors ${
                       size === s.value
-                        ? 'border-orange-500 bg-orange-500/10'
-                        : 'border-zinc-800 hover:border-zinc-700'
+                        ? 'border-ember-500 bg-ember-500/10'
+                        : 'border-courtline hover:border-chalk-dim/60'
                     }`}
                   >
                     <div className="text-white font-bold text-base">Size {s.value}</div>
@@ -154,7 +154,7 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
 
             <button
               onClick={handleAdd}
-              className="bg-orange-500 hover:bg-red-600 text-white font-bold px-8 py-4 rounded-xl text-base transition-colors w-full sm:w-auto"
+              className="bg-ember-500 hover:bg-ember-600 active:scale-[0.98] text-white font-bold px-8 py-4 rounded-full text-base transition-all w-full sm:w-auto"
             >
               Add to cart — {displayLineTotal}
             </button>
@@ -169,7 +169,7 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
                 </span>
                 <Link
                   href="/cart"
-                  className="text-orange-400 hover:text-orange-300 text-sm font-semibold underline"
+                  className="text-ember-400 hover:text-ember-500 text-sm font-semibold underline"
                 >
                   View cart →
                 </Link>
@@ -217,18 +217,18 @@ function BundleCard() {
   }
 
   return (
-    <div className="rounded-2xl border border-orange-500/40 bg-orange-500/5 p-6 sm:p-8 space-y-6">
+    <div className="rounded-2xl border border-ember-500/40 bg-ember-500/5 p-6 sm:p-8 space-y-6">
       <div className="flex flex-wrap items-start gap-4 justify-between">
         <div className="space-y-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="inline-flex items-center bg-orange-500 text-white text-xs font-bold tracking-wider uppercase px-3 py-1 rounded-full">
+            <span className="inline-flex items-center bg-ember-500 text-white text-xs font-bold tracking-wider uppercase px-3 py-1 rounded-full select-none">
               Best Value
             </span>
             <span className="inline-flex items-center bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-semibold px-3 py-1 rounded-full">
               10 Shot Analyses Included Free
             </span>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-black text-white mt-2">
+          <h2 className="font-display font-black uppercase text-2xl sm:text-3xl text-chalk mt-2">
             2-Ball Bundle
           </h2>
           <p className="text-zinc-400 text-sm">
@@ -236,7 +236,7 @@ function BundleCard() {
           </p>
         </div>
         <div className="text-right">
-          <div className="text-3xl font-black text-white">
+          <div className="font-numeric text-3xl font-medium text-chalk">
             {formatPrice(BUNDLE_PRICE)}
           </div>
           <div className="text-sm text-zinc-500 line-through">
@@ -269,7 +269,7 @@ function BundleCard() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
         <button
           onClick={handleAdd}
-          className="bg-orange-500 hover:bg-red-600 text-white font-bold px-8 py-4 rounded-xl text-base transition-colors w-full sm:w-auto"
+          className="bg-ember-500 hover:bg-ember-600 active:scale-[0.98] text-white font-bold px-8 py-4 rounded-full text-base transition-all w-full sm:w-auto"
         >
           Add Bundle to Cart — {formatPrice(BUNDLE_PRICE)}
         </button>
@@ -282,7 +282,7 @@ function BundleCard() {
             <span className="text-green-400 text-sm font-semibold">Added to cart</span>
             <Link
               href="/cart"
-              className="text-orange-400 hover:text-orange-300 text-sm font-semibold underline"
+              className="text-ember-400 hover:text-ember-500 text-sm font-semibold underline"
             >
               View cart →
             </Link>
@@ -330,8 +330,8 @@ function BallPicker({
             onClick={() => onVariant('right')}
             className={`rounded-lg border-2 px-3 py-2.5 text-left transition-colors ${
               variant === 'right'
-                ? 'border-orange-500 bg-orange-500/10'
-                : 'border-zinc-800 hover:border-zinc-700'
+                ? 'border-ember-500 bg-ember-500/10'
+                : 'border-courtline hover:border-chalk-dim/60'
             }`}
           >
             <div className="text-white font-semibold text-sm">Right</div>
@@ -341,8 +341,8 @@ function BallPicker({
             onClick={() => onVariant('left')}
             className={`rounded-lg border-2 px-3 py-2.5 text-left transition-colors ${
               variant === 'left'
-                ? 'border-orange-500 bg-orange-500/10'
-                : 'border-zinc-800 hover:border-zinc-700'
+                ? 'border-ember-500 bg-ember-500/10'
+                : 'border-courtline hover:border-chalk-dim/60'
             }`}
           >
             <div className="text-white font-semibold text-sm">Left</div>
@@ -360,8 +360,8 @@ function BallPicker({
               onClick={() => onSize(s.value)}
               className={`rounded-lg border-2 px-2 py-2 text-center transition-colors ${
                 size === s.value
-                  ? 'border-orange-500 bg-orange-500/10'
-                  : 'border-zinc-800 hover:border-zinc-700'
+                  ? 'border-ember-500 bg-ember-500/10'
+                  : 'border-courtline hover:border-chalk-dim/60'
               }`}
             >
               <div className="text-white font-semibold text-sm">Size {s.value}</div>

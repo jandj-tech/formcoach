@@ -90,72 +90,73 @@ function LoginForm() {
   }
 
   return (
-    <main className="min-h-screen bg-white flex flex-col">
+    <main className="min-h-screen bg-ink-950 text-chalk flex flex-col">
       <TopNav />
-      <div className="flex-1 flex items-center justify-center px-6 py-20">
+      <div className="hero-glow grain relative flex-1 flex items-center justify-center px-6 py-16">
         <div className="w-full max-w-sm space-y-6">
-          <div className="text-center space-y-2">
-            <div className="text-4xl">🏀</div>
-            <h1 className="text-2xl font-black text-black">Log in to LearnHoops</h1>
+          <div className="text-center space-y-3">
+            <div className="text-4xl select-none">🏀</div>
+            <h1 className="font-display font-black uppercase text-2xl leading-tight">Log in to LearnHoops</h1>
             {pendingCredits > 0 ? (
-              <p className="text-sm font-semibold text-orange-600 bg-orange-50 border border-orange-200 rounded-xl px-4 py-2">
+              <p className="text-sm font-semibold text-ember-400 bg-ember-500/10 border border-ember-500/30 rounded-xl px-4 py-2">
                 Log in and your {pendingCredits} free shot {pendingCredits === 1 ? 'analysis' : 'analyses'} from your ball order will be added to your account.
               </p>
             ) : (
-              <p className="text-gray-500 text-sm">Players, coaches, and organizations — one login</p>
+              <p className="text-chalk-dim text-sm">Players, coaches, and organizations — one login</p>
             )}
           </div>
 
           {teams ? (
             <div className="space-y-3">
-              <h2 className="text-lg font-black text-black text-center">Select your team</h2>
-              {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+              <h2 className="font-display font-black uppercase text-lg text-center">Select your team</h2>
+              {error && <p className="text-red-400 text-sm text-center">{error}</p>}
               <div className="space-y-2">
                 {teams.map(t => (
                   <button
                     key={t.id}
                     onClick={() => selectTeam(t.id)}
                     disabled={status === 'loading'}
-                    className="w-full border border-gray-200 hover:border-orange-500 rounded-xl p-4 text-left transition-colors disabled:opacity-60"
+                    className="w-full bg-ink-900 border border-courtline hover:border-ember-500/60 rounded-xl p-4 text-left transition-colors disabled:opacity-60 active:scale-[0.99]"
                   >
-                    <span className="font-semibold text-black">{t.name}</span>
+                    <span className="font-semibold text-chalk">{t.name}</span>
                   </button>
                 ))}
               </div>
             </div>
           ) : (
             <>
-              <form onSubmit={handleSubmit} className="space-y-3">
+              <form onSubmit={handleSubmit} className="space-y-3 bg-ink-900 border border-courtline rounded-2xl p-5">
                 <input
                   type="email"
                   required
                   placeholder="Email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
+                  className="w-full bg-ink-800 border border-courtline rounded-xl px-4 py-3 text-chalk placeholder-chalk-dim focus:outline-none focus:border-ember-500 transition-colors"
                 />
                 <PasswordInput
                   required
                   placeholder="Password"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
+                  className="w-full bg-ink-800 border border-courtline rounded-xl pl-4 pr-11 py-3 text-chalk placeholder-chalk-dim focus:outline-none focus:border-ember-500 transition-colors"
                 />
-                {error && <p className="text-red-500 text-sm">{error}</p>}
+                {error && <p className="text-red-400 text-sm">{error}</p>}
                 <button
                   type="submit"
                   disabled={status === 'loading'}
-                  className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold py-3 rounded-xl transition-colors"
+                  className="w-full bg-ember-500 hover:bg-ember-600 disabled:opacity-50 active:scale-[0.99] text-white font-bold py-3.5 rounded-full transition-all"
                 >
                   {status === 'loading' ? 'Logging in...' : 'Log In'}
                 </button>
               </form>
 
-              <p className="text-center text-sm text-gray-500">
-                <a href="/forgot-password" className="text-orange-500 hover:underline font-medium">Forgot your password?</a>
+              <p className="text-center text-sm text-chalk-dim">
+                <a href="/forgot-password" className="text-ember-400 hover:text-ember-500 font-medium transition-colors">Forgot your password?</a>
               </p>
-              <p className="text-center text-sm text-gray-500">
+              <p className="text-center text-sm text-chalk-dim">
                 Don&apos;t have an account?{' '}
-                <a href={`/signup?next=${encodeURIComponent(next)}`} className="text-orange-500 hover:underline font-medium">Sign up</a>
+                <a href={`/signup?next=${encodeURIComponent(next)}`} className="text-ember-400 hover:text-ember-500 font-medium transition-colors">Sign up</a>
               </p>
             </>
           )}
@@ -168,10 +169,10 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <main className="min-h-screen bg-white flex flex-col">
+      <main className="min-h-screen bg-ink-950 flex flex-col">
         <TopNav />
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-5xl animate-bounce">🏀</div>
+          <div className="text-5xl animate-bounce select-none">🏀</div>
         </div>
       </main>
     }>

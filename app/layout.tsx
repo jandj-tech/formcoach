@@ -1,5 +1,5 @@
-﻿import type { Metadata } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
+﻿import type { Metadata, Viewport } from 'next'
+import { Archivo, Geist, Geist_Mono, Space_Grotesk } from 'next/font/google'
 import { ViewTransition } from 'react'
 import './globals.css'
 import { CartProvider } from '@/lib/cart'
@@ -8,6 +8,10 @@ import CopyToast from '@/components/CopyToast'
 
 const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })
 const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] })
+// Display face for headlines — variable width axis gives the expanded, broadcast look.
+const archivo = Archivo({ variable: '--font-archivo', subsets: ['latin'], axes: ['wdth'] })
+// Numerals for scores, prices, and stats.
+const spaceGrotesk = Space_Grotesk({ variable: '--font-space-grotesk', subsets: ['latin'] })
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.learnhoops.com'),
@@ -35,9 +39,19 @@ export const metadata: Metadata = {
   },
 }
 
+// viewport-fit=cover lets the dark chrome extend under the iPhone notch inside
+// the app WebView; themeColor keeps the status bar blended with the ink canvas.
+export const viewport: Viewport = {
+  themeColor: '#0a0a0b',
+  viewportFit: 'cover',
+}
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable} ${archivo.variable} ${spaceGrotesk.variable} h-full antialiased`}
+    >
       <body className="min-h-full bg-white text-black flex flex-col">
         <CartProvider>
           <MetaPixel />

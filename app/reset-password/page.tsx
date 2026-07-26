@@ -42,41 +42,43 @@ function ResetPasswordForm() {
   }
 
   return (
-    <main className="min-h-screen bg-white flex flex-col">
+    <main className="min-h-screen bg-ink-950 text-chalk flex flex-col">
       <TopNav />
-      <div className="flex-1 flex items-center justify-center px-6 py-20">
+      <div className="hero-glow grain relative flex-1 flex items-center justify-center px-6 py-16">
         <div className="w-full max-w-sm space-y-6">
-          <div className="text-center space-y-2">
-            <div className="text-4xl">🔑</div>
-            <h1 className="text-2xl font-black text-black">Set a new password</h1>
-            <p className="text-gray-500 text-sm">Choose a new password for your account.</p>
+          <div className="text-center space-y-3">
+            <div className="text-4xl select-none">🔑</div>
+            <h1 className="font-display font-black uppercase text-2xl leading-tight">Set a new password</h1>
+            <p className="text-chalk-dim text-sm">Choose a new password for your account.</p>
           </div>
 
           {!token ? (
-            <p className="text-red-500 text-sm text-center">
+            <p className="text-red-400 text-sm text-center">
               This reset link is missing its token. Request a new one from the{' '}
-              <a href="/forgot-password" className="text-orange-500 hover:underline">forgot password</a> page.
+              <a href="/forgot-password" className="text-ember-400 hover:text-ember-500 transition-colors">forgot password</a> page.
             </p>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-3">
+            <form onSubmit={handleSubmit} className="space-y-3 bg-ink-900 border border-courtline rounded-2xl p-5">
               <PasswordInput
                 required
                 minLength={6}
                 placeholder="New password (6+ characters)"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
+                className="w-full bg-ink-800 border border-courtline rounded-xl pl-4 pr-11 py-3 text-chalk placeholder-chalk-dim focus:outline-none focus:border-ember-500 transition-colors"
               />
               <PasswordInput
                 required
                 placeholder="Confirm new password"
                 value={confirm}
                 onChange={e => setConfirm(e.target.value)}
+                className="w-full bg-ink-800 border border-courtline rounded-xl pl-4 pr-11 py-3 text-chalk placeholder-chalk-dim focus:outline-none focus:border-ember-500 transition-colors"
               />
-              {error && <p className="text-red-500 text-sm">{error}</p>}
+              {error && <p className="text-red-400 text-sm">{error}</p>}
               <button
                 type="submit"
                 disabled={status === 'loading'}
-                className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold py-3 rounded-xl transition-colors"
+                className="w-full bg-ember-500 hover:bg-ember-600 disabled:opacity-50 active:scale-[0.99] text-white font-bold py-3.5 rounded-full transition-all"
               >
                 {status === 'loading' ? 'Resetting...' : 'Reset password'}
               </button>

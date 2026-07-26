@@ -1,4 +1,5 @@
 import TopNav from '@/components/TopNav'
+import SiteFooter from '@/components/SiteFooter'
 import VideoUploader from '@/components/VideoUploader'
 import CoachSelfUploader from '@/components/CoachSelfUploader'
 import PremiumCTA from '@/components/PremiumCTA'
@@ -55,43 +56,45 @@ export default async function AnalyzePage() {
   }
 
   return (
-    <main className="flex flex-col min-h-screen bg-white">
+    <main className="flex flex-col min-h-screen bg-ink-950 text-chalk">
       <TopNav />
 
-      <section className="flex flex-col items-center text-center px-4 pt-10 pb-6">
-        <h1 className="text-3xl sm:text-4xl font-black text-black leading-tight max-w-2xl">
-          Analyze your <span className="text-orange-500">shot</span>
+      <section className="hero-glow grain relative flex flex-col items-center text-center px-4 pt-14 pb-8 sm:pt-20">
+        <p className="eyebrow text-ember-400 mb-3 select-none">AI Shot Analysis</p>
+        <h1 className="font-display font-black uppercase text-[clamp(2.2rem,6vw,4.5rem)] leading-[0.95] max-w-2xl">
+          Analyze <span className="text-gradient-ember">your shot</span>
         </h1>
-        <p className="text-black text-sm sm:text-base mt-3 max-w-md">
+        <p className="text-chalk-dim text-sm sm:text-base mt-4 max-w-md">
           Upload a video and our AI will score your form across 17 coaching criteria.
         </p>
       </section>
 
-      <section className="flex-1 flex flex-col items-center px-4 pb-16">
-        {coachSelf ? (
-          <CoachSelfUploader credits={coachSelf.credits} initiated={coachSelf.initiated} />
-        ) : (
-          <>
+      <section className="flex-1 flex flex-col items-center px-4 pb-20">
+        {/* The upload flow keeps its light panel so every state stays readable. */}
+        <div className="w-full max-w-xl bg-white rounded-3xl p-3 sm:p-5 shadow-[0_0_60px_-20px_rgba(255,92,26,0.35)]">
+          {coachSelf ? (
+            <CoachSelfUploader credits={coachSelf.credits} initiated={coachSelf.initiated} />
+          ) : (
             <VideoUploader />
-            <div className="w-full max-w-lg mt-4 px-2">
-              <PremiumCTA initiated={playerInitiated} />
-            </div>
-          </>
+          )}
+        </div>
+        {!coachSelf && (
+          <div className="w-full max-w-xl mt-4 px-2">
+            <PremiumCTA dark initiated={playerInitiated} />
+          </div>
         )}
-        <p className="text-black text-xs mt-3 text-center max-w-sm px-4">
+        <p className="text-chalk-dim text-xs mt-5 text-center max-w-sm px-4">
           Your video is never stored long-term. Frames are analyzed and then used only to generate your report.
         </p>
         <a
           href="/support"
-          className="mt-6 text-sm text-gray-500 hover:text-black underline underline-offset-2 transition-colors"
+          className="mt-6 text-sm text-chalk-dim hover:text-chalk underline underline-offset-2 transition-colors py-2"
         >
           How to take a video to get most accurate results
         </a>
       </section>
 
-      <footer className="py-5 border-t border-gray-200 text-center text-black text-xs">
-        © {new Date().getFullYear()} LearnHoops.com. All rights reserved.
-      </footer>
+      <SiteFooter />
     </main>
   )
 }

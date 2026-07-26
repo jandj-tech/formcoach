@@ -56,7 +56,7 @@ export default function MobileNav({
         aria-label="Open menu"
         aria-expanded={open}
         aria-controls="mobile-nav-drawer"
-        className="md:hidden inline-flex items-center justify-center h-10 w-10 rounded-md text-white hover:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-orange-500"
+        className="md:hidden inline-flex items-center justify-center h-11 w-11 rounded-lg text-chalk hover:bg-ink-800 active:scale-95 transition-transform focus:outline-none focus:ring-2 focus:ring-ember-500"
       >
         <MenuIcon className="h-6 w-6" />
       </button>
@@ -74,18 +74,18 @@ export default function MobileNav({
         role="dialog"
         aria-modal="true"
         aria-label="Site navigation"
-        className={`md:hidden fixed top-0 right-0 z-50 h-dvh w-72 max-w-[85vw] bg-black border-l border-zinc-800 transform transition-transform duration-200 ease-out flex flex-col ${
+        className={`md:hidden fixed top-0 right-0 z-50 h-dvh w-72 max-w-[85vw] bg-ink-950 border-l border-courtline transform transition-transform duration-200 ease-out flex flex-col ${
           open ? 'translate-x-0' : 'translate-x-full'
         }`}
-
+        style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
-        <div className="flex items-center justify-between h-16 px-4 border-b border-zinc-800">
-          <span className="text-white text-sm font-semibold">Menu</span>
+        <div className="flex items-center justify-between h-16 px-4 border-b border-courtline">
+          <span className="text-chalk-dim eyebrow select-none">Menu</span>
           <button
             type="button"
             onClick={() => setOpen(false)}
             aria-label="Close menu"
-            className="inline-flex items-center justify-center h-10 w-10 rounded-md text-white hover:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-orange-500"
+            className="inline-flex items-center justify-center h-11 w-11 rounded-lg text-chalk hover:bg-ink-800 active:scale-95 transition-transform focus:outline-none focus:ring-2 focus:ring-ember-500"
           >
             <XIcon className="h-6 w-6" />
           </button>
@@ -102,10 +102,10 @@ export default function MobileNav({
                 key={tab.href}
                 href={tab.href}
                 onClick={() => setOpen(false)}
-                className={`block px-3 py-2 rounded-md text-base font-semibold transition-colors ${
+                className={`block px-4 py-3 rounded-xl text-base font-semibold transition-colors active:scale-[0.98] ${
                   active
-                    ? 'bg-orange-500 text-white'
-                    : 'text-white hover:bg-zinc-900'
+                    ? 'bg-ember-500 text-white'
+                    : 'text-chalk hover:bg-ink-800'
                 }`}
               >
                 {tab.label}
@@ -115,7 +115,7 @@ export default function MobileNav({
         </div>
 
         {footer ? (
-          <div className="border-t border-zinc-800 px-4 py-3 text-sm">
+          <div className="border-t border-courtline px-4 py-3 text-sm">
             {footer}
           </div>
         ) : null}

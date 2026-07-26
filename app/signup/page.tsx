@@ -79,34 +79,34 @@ function SignupForm() {
   }
 
   return (
-    <main className="min-h-screen bg-white flex flex-col">
+    <main className="min-h-screen bg-ink-950 text-chalk flex flex-col">
       <TopNav />
-      <div className="flex-1 flex items-center justify-center px-6 py-20">
+      <div className="hero-glow grain relative flex-1 flex items-center justify-center px-6 py-16">
         <div className="w-full max-w-sm space-y-6">
-          <div className="text-center space-y-2">
-            <div className="text-4xl">🎉</div>
-            <h1 className="text-2xl font-black text-black">Create your account</h1>
+          <div className="text-center space-y-3">
+            <div className="text-4xl select-none">🎉</div>
+            <h1 className="font-display font-black uppercase text-2xl leading-tight">Create your account</h1>
             {pendingCredits > 0 ? (
-              <p className="text-sm font-semibold text-orange-600 bg-orange-50 border border-orange-200 rounded-xl px-4 py-2">
+              <p className="text-sm font-semibold text-ember-400 bg-ember-500/10 border border-ember-500/30 rounded-xl px-4 py-2">
                 Your ball order includes {pendingCredits} free shot {pendingCredits === 1 ? 'analysis' : 'analyses'} — they&apos;ll be added to your account automatically.
               </p>
             ) : teamInviteToken ? (
-              <p className="text-sm font-semibold text-orange-600 bg-orange-50 border border-orange-200 rounded-xl px-4 py-2">
+              <p className="text-sm font-semibold text-ember-400 bg-ember-500/10 border border-ember-500/30 rounded-xl px-4 py-2">
                 Your coach added you to the team — sign up to join.
               </p>
             ) : (
-              <p className="text-gray-500 text-sm">Track your shot progress over time</p>
+              <p className="text-chalk-dim text-sm">Track your shot progress over time</p>
             )}
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-3">
+          <form onSubmit={handleSubmit} className="space-y-3 bg-ink-900 border border-courtline rounded-2xl p-5">
             <input
               type="email"
               required
               placeholder="Email"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
+              className="w-full bg-ink-800 border border-courtline rounded-xl px-4 py-3 text-chalk placeholder-chalk-dim focus:outline-none focus:border-ember-500 transition-colors"
             />
             <input
               type="text"
@@ -114,7 +114,7 @@ function SignupForm() {
               maxLength={50}
               value={nickname}
               onChange={e => setNickname(e.target.value)}
-              className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
+              className="w-full bg-ink-800 border border-courtline rounded-xl px-4 py-3 text-chalk placeholder-chalk-dim focus:outline-none focus:border-ember-500 transition-colors"
             />
             <PasswordInput
               required
@@ -122,12 +122,14 @@ function SignupForm() {
               placeholder="Password (6+ characters)"
               value={password}
               onChange={e => setPassword(e.target.value)}
+              className="w-full bg-ink-800 border border-courtline rounded-xl pl-4 pr-11 py-3 text-chalk placeholder-chalk-dim focus:outline-none focus:border-ember-500 transition-colors"
             />
             <PasswordInput
               required
               placeholder="Confirm password"
               value={confirm}
               onChange={e => setConfirm(e.target.value)}
+              className="w-full bg-ink-800 border border-courtline rounded-xl pl-4 pr-11 py-3 text-chalk placeholder-chalk-dim focus:outline-none focus:border-ember-500 transition-colors"
             />
             <div>
               <input
@@ -135,29 +137,29 @@ function SignupForm() {
                 placeholder="Team code (optional)"
                 value={teamCode}
                 onChange={e => setTeamCode(e.target.value.toUpperCase())}
-                className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
+                className="w-full bg-ink-800 border border-courtline rounded-xl px-4 py-3 text-chalk placeholder-chalk-dim focus:outline-none focus:border-ember-500 transition-colors"
               />
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-chalk-dim mt-1.5">
                 Have a team? Enter your coach&apos;s team code to join after signing up.
               </p>
             </div>
-            {error && <p className="text-red-500 text-sm">{error}</p>}
+            {error && <p className="text-red-400 text-sm">{error}</p>}
             <button
               type="submit"
               disabled={status === 'loading'}
-              className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold py-3 rounded-xl transition-colors"
+              className="w-full bg-ember-500 hover:bg-ember-600 disabled:opacity-50 active:scale-[0.99] text-white font-bold py-3.5 rounded-full transition-all"
             >
               {status === 'loading' ? 'Creating account...' : 'Create Account →'}
             </button>
           </form>
 
-          <p className="text-center text-sm text-gray-500">
+          <p className="text-center text-sm text-chalk-dim">
             Already have an account?{' '}
             <a
               href={claimToken
                 ? `/login?claimToken=${encodeURIComponent(claimToken)}&credits=${pendingCredits}`
                 : '/login'}
-              className="text-orange-500 hover:underline font-medium"
+              className="text-ember-400 hover:text-ember-500 font-medium transition-colors"
             >
               Log in
             </a>

@@ -87,16 +87,18 @@ export default function CriteriaShowcase({
   if (criteria.length === 0) return null
 
   return (
-    <section className="bg-black py-14 sm:py-20">
+    <section className="bg-ink-950 py-20 sm:py-28">
       <div className="max-w-6xl mx-auto w-full">
-        <div className="flex flex-col items-center text-center mb-8 px-4">
-          <div className="inline-flex items-center gap-2 bg-orange-500/10 border border-orange-500/30 rounded-full px-4 py-1.5 mb-5">
-            <span className="text-orange-500 text-xs font-semibold tracking-wider uppercase">{criteria.length} Coaching Criteria</span>
-          </div>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-white leading-tight">
-            The fundamentals of <span className="text-orange-500">a great shot</span>
+        <div className="mb-10 px-4 sm:px-6">
+          <p className="eyebrow text-ember-400 mb-3 select-none">
+            03 — {criteria.length} coaching criteria
+          </p>
+          <h2 className="font-display font-black uppercase text-[clamp(1.9rem,4.5vw,3.5rem)] leading-[0.95] text-chalk">
+            The fundamentals of
+            <br />
+            <span className="text-gradient-ember">a great shot</span>
           </h2>
-          <p className="text-white text-base mt-4 max-w-xl leading-relaxed">
+          <p className="text-chalk-dim text-base mt-5 max-w-xl leading-relaxed">
             Every shot you upload is scored against these criteria. Tap any one to watch a video that breaks it down.
           </p>
         </div>
@@ -112,15 +114,15 @@ export default function CriteriaShowcase({
                   key={c.id}
                   className="shrink-0 basis-[85%] sm:basis-[48%] lg:basis-[32%]"
                 >
-                  <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-5 flex flex-col gap-3 h-full">
-                    <div className="w-8 h-8 rounded-full bg-orange-500 text-white font-bold text-sm flex items-center justify-center">
+                  <div className="card-lift bg-ink-900 rounded-2xl border border-courtline p-5 flex flex-col gap-3 h-full">
+                    <div className="font-numeric text-ember-500 text-base select-none">
                       {String(i + 1).padStart(2, '0')}
                     </div>
-                    <h3 className="text-white font-bold text-base leading-tight">{c.name}</h3>
+                    <h3 className="font-display font-bold uppercase text-chalk text-base leading-tight">{c.name}</h3>
                     {(() => {
                       const desc = SHORT_DESCRIPTIONS[c.name] ?? c.description
                       return desc ? (
-                        <p className="text-white text-xs leading-relaxed line-clamp-2 flex-1">{desc}</p>
+                        <p className="text-chalk-dim text-xs leading-relaxed line-clamp-2 flex-1">{desc}</p>
                       ) : null
                     })()}
 
@@ -129,7 +131,7 @@ export default function CriteriaShowcase({
                         type="button"
                         onClick={() => toggle(c.id)}
                         aria-expanded={isOpen}
-                        className="text-orange-500 hover:text-red-600 text-xs font-bold transition-colors mt-auto inline-flex items-center gap-1.5 self-start"
+                        className="text-ember-400 hover:text-ember-500 text-xs font-bold transition-colors mt-auto inline-flex items-center gap-1.5 self-start py-1.5"
                       >
                         {isOpen ? 'Hide video' : 'Watch video'}
                         <span
@@ -144,7 +146,7 @@ export default function CriteriaShowcase({
                         href={CHANNEL_URL}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-orange-500 hover:text-red-600 text-xs font-bold transition-colors mt-auto inline-flex items-center gap-1 self-start"
+                        className="text-ember-400 hover:text-ember-500 text-xs font-bold transition-colors mt-auto inline-flex items-center gap-1 self-start py-1.5"
                       >
                         Watch on YouTube →
                       </a>
@@ -183,7 +185,7 @@ export default function CriteriaShowcase({
           aria-label="Previous criterion"
           onClick={() => emblaApi?.scrollPrev()}
           disabled={!canPrev}
-          className="hidden md:flex absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-orange-500 hover:bg-red-600 disabled:opacity-30 text-white items-center justify-center transition-colors text-xl font-bold"
+          className="hidden md:flex absolute left-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-ink-800 border border-courtline hover:border-ember-500/60 disabled:opacity-30 text-chalk items-center justify-center transition-colors text-xl font-bold"
         >
           ‹
         </button>
@@ -192,7 +194,7 @@ export default function CriteriaShowcase({
           aria-label="Next criterion"
           onClick={() => emblaApi?.scrollNext()}
           disabled={!canNext}
-          className="hidden md:flex absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-orange-500 hover:bg-red-600 disabled:opacity-30 text-white items-center justify-center transition-colors text-xl font-bold"
+          className="hidden md:flex absolute right-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-ink-800 border border-courtline hover:border-ember-500/60 disabled:opacity-30 text-chalk items-center justify-center transition-colors text-xl font-bold"
         >
           ›
         </button>
@@ -203,7 +205,7 @@ export default function CriteriaShowcase({
             href={CHANNEL_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="bg-orange-500 hover:bg-red-600 text-white font-bold px-8 py-3 rounded-xl text-base transition-colors"
+            className="bg-ember-500 hover:bg-ember-600 active:scale-[0.98] text-white font-bold px-8 py-3.5 rounded-full text-base transition-all"
           >
             Check out our channel →
           </a>

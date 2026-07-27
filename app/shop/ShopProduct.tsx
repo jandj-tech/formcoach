@@ -49,10 +49,10 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
     <section className="flex-1 px-4 py-10 sm:py-16">
       <div className="max-w-5xl mx-auto space-y-14">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
-          {/* Video gallery */}
-          <div className="space-y-3">
+          {/* Video gallery — the clips are portrait, so give them portrait frames */}
+          <div className="grid grid-cols-2 gap-3 items-start">
             <video
-              className="w-full rounded-2xl border border-zinc-800 bg-zinc-900 aspect-video"
+              className="w-full rounded-2xl border border-courtline bg-ink-900 aspect-[9/16] object-cover"
               controls
               preload="metadata"
               playsInline
@@ -60,7 +60,7 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
               <source src="/ball-video-1.mp4#t=0.001" type="video/mp4" />
             </video>
             <video
-              className="w-full rounded-2xl border border-zinc-800 bg-zinc-900 aspect-video"
+              className="w-full rounded-2xl border border-courtline bg-ink-900 aspect-[9/16] object-cover"
               controls
               preload="metadata"
               playsInline
@@ -82,7 +82,7 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
             </div>
 
             <h1 className="font-display font-black uppercase text-[clamp(1.9rem,4.5vw,3.5rem)] text-chalk leading-[0.95]">
-              The LearnHoops <span className="text-gradient-ember">Training Ball</span>
+              The LearnHoops.com <span className="text-gradient-ember">Training Ball</span>
             </h1>
 
             <p className="text-white text-base leading-relaxed">

@@ -52,6 +52,9 @@ export default function ForgotPasswordPage() {
               <form onSubmit={handleSubmit} className="space-y-3 bg-ink-900 border border-courtline rounded-2xl p-5">
                 <input
                   type="email"
+                  name="email"
+                  autoComplete="email"
+                  aria-label="Email"
                   required
                   placeholder="Email"
                   value={email}

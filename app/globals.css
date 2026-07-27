@@ -178,9 +178,10 @@ body {
     text-transform: uppercase;
   }
 
-  /* One gradient phrase max per page. */
+  /* One gradient phrase max per page. Stays hot end-to-end so the final
+     word never reads washed out. */
   .text-gradient-ember {
-    background: linear-gradient(92deg, #ff5c1a 0%, #ff8a3d 55%, #c89b6c 100%);
+    background: linear-gradient(92deg, #ff5c1a 0%, #ff7a42 60%, #ffa04d 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;

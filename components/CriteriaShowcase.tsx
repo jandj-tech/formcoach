@@ -131,7 +131,7 @@ export default function CriteriaShowcase({
                         type="button"
                         onClick={() => toggle(c.id)}
                         aria-expanded={isOpen}
-                        className="text-ember-400 hover:text-ember-500 text-xs font-bold transition-colors mt-auto inline-flex items-center gap-1.5 self-start py-1.5"
+                        className="text-ember-400 hover:text-ember-500 text-xs font-bold transition-colors mt-auto inline-flex items-center gap-1.5 self-start py-3 -my-1"
                       >
                         {isOpen ? 'Hide video' : 'Watch video'}
                         <span
@@ -146,7 +146,7 @@ export default function CriteriaShowcase({
                         href={CHANNEL_URL}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-ember-400 hover:text-ember-500 text-xs font-bold transition-colors mt-auto inline-flex items-center gap-1 self-start py-1.5"
+                        className="text-ember-400 hover:text-ember-500 text-xs font-bold transition-colors mt-auto inline-flex items-center gap-1 self-start py-3 -my-1"
                       >
                         Watch on YouTube →
                       </a>

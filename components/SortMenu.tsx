@@ -42,7 +42,7 @@ export default function SortMenu<T extends string>({
         <span className={`text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`}>▾</span>
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-1 z-20 w-44 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden py-1">
+        <div className="absolute right-0 top-full mt-1 z-40 w-44 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden py-1">
           {options.map((opt) => (
             <button
               key={opt.value}

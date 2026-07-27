@@ -201,7 +201,7 @@ export default async function HomePage() {
             ))}
             <Link
               href="/team"
-              className="text-sm font-semibold text-ember-400 hover:text-ember-500 transition-colors px-2"
+              className="text-sm font-semibold text-ember-400 hover:text-ember-500 transition-colors px-2 py-3 inline-flex items-center"
             >
               Bring LearnHoops to your organization →
             </Link>

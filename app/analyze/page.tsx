@@ -87,10 +87,10 @@ export default async function AnalyzePage() {
           Your video is never stored long-term. Frames are analyzed and then used only to generate your report.
         </p>
         <a
-          href="/support"
+          href="/support#filming"
           className="mt-6 text-sm text-chalk-dim hover:text-chalk underline underline-offset-2 transition-colors py-2"
         >
-          How to take a video to get most accurate results
+          How to take a video to get the most accurate results
         </a>
       </section>
 

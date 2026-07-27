@@ -17,6 +17,14 @@ export default function TeamLandingPage() {
           <p className="text-chalk-dim text-lg">
             Get your whole team analyzed. AI grades every player&apos;s shot form — see who&apos;s ranked best and who&apos;s improving the most.
           </p>
+          <div className="pt-2">
+            <Link
+              href="/org/signup"
+              className="inline-block bg-ember-500 hover:bg-ember-600 active:scale-[0.98] text-white font-bold px-8 py-4 rounded-full transition-all shadow-[0_0_40px_-8px_rgba(255,92,26,0.55)]"
+            >
+              Register Organization
+            </Link>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl w-full text-left">
@@ -85,13 +93,17 @@ export default function TeamLandingPage() {
           </div>
         </div>
 
-        <div className="w-full bg-ember-500 rounded-2xl px-6 py-5 flex items-center gap-4 text-white">
+        <Link
+          href="/org/signup"
+          className="card-lift w-full bg-ember-500 hover:bg-ember-600 rounded-2xl px-6 py-5 flex items-center gap-4 text-white transition-colors"
+        >
           <span className="text-3xl shrink-0 select-none">🎓</span>
-          <div className="text-left">
+          <div className="text-left flex-1">
             <p className="font-display font-black uppercase text-base leading-tight">10-Week Shooting Class — for organizations</p>
             <p className="text-orange-100 text-sm mt-1">Each player gets a ball, 2 shot analyses, and a certificate of completion that shows their improvement. Starting at $40/player.</p>
           </div>
-        </div>
+          <span className="shrink-0 font-bold text-lg select-none" aria-hidden>→</span>
+        </Link>
       </div>
 
       <div className="flex-1" />

@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { MenuIcon, XIcon } from 'lucide-react'
@@ -21,6 +22,15 @@ export default function MobileNav({
   footer,
 }: Props) {
   const [open, setOpen] = useState(false)
+  // The drawer + scrim are portaled to <body>: the nav bar's backdrop-filter
+  // makes it a containing block for fixed descendants in WebKit, which would
+  // otherwise collapse the full-screen scrim to the height of the nav bar.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true)
+  }, [])
+  const closeRef = useRef<HTMLButtonElement>(null)
   const pathname = usePathname()
   const [prevPath, setPrevPath] = useState(pathname)
   if (pathname !== prevPath) {
@@ -46,6 +56,11 @@ export default function MobileNav({
     return () => window.removeEventListener('keydown', onKey)
   }, [open])
 
+  // Move focus into the dialog when it opens so keyboard/AT users land inside.
+  useEffect(() => {
+    if (open) closeRef.current?.focus()
+  }, [open])
+
   const LinkEl: React.ElementType = useNextLink ? Link : 'a'
 
   return (
@@ -61,15 +76,18 @@ export default function MobileNav({
         <MenuIcon className="h-6 w-6" />
       </button>
 
-      <div
-        onClick={() => setOpen(false)}
-        aria-hidden="true"
-        className={`md:hidden fixed inset-0 z-40 bg-black/60 transition-opacity duration-200 ${
-          open ? 'opacity-100' : 'opacity-0 pointer-events-none'
-        }`}
-      />
+      {mounted &&
+        createPortal(
+          <>
+            <div
+              onClick={() => setOpen(false)}
+              aria-hidden="true"
+              className={`md:hidden fixed inset-0 z-40 bg-black/60 transition-opacity duration-200 ${
+                open ? 'opacity-100' : 'opacity-0 pointer-events-none'
+              }`}
+            />
 
-      <aside
+            <aside
         id="mobile-nav-drawer"
         role="dialog"
         aria-modal="true"
@@ -82,6 +100,7 @@ export default function MobileNav({
         <div className="flex items-center justify-between h-16 px-4 border-b border-courtline">
           <span className="text-chalk-dim eyebrow select-none">Menu</span>
           <button
+            ref={closeRef}
             type="button"
             onClick={() => setOpen(false)}
             aria-label="Close menu"
@@ -120,6 +139,9 @@ export default function MobileNav({
           </div>
         ) : null}
       </aside>
+          </>,
+          document.body
+        )}
     </>
   )
 }

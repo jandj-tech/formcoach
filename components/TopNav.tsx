@@ -31,6 +31,8 @@ export default function TopNav() {
   const accountActive =
     pathname.startsWith('/login') ||
     pathname.startsWith('/signup') ||
+    pathname.startsWith('/forgot-password') ||
+    pathname.startsWith('/reset-password') ||
     pathname.startsWith('/dashboard') ||
     pathname.startsWith('/team/dashboard') ||
     pathname.startsWith('/org/dashboard')
@@ -42,7 +44,7 @@ export default function TopNav() {
 
   return (
     <nav
-      className="sticky top-0 z-50 border-b border-courtline bg-ink-950/80 backdrop-blur-md"
+      className="sticky top-0 z-50 border-b border-courtline bg-ink-950/95 backdrop-blur-md"
       style={{ paddingTop: 'env(safe-area-inset-top)' }}
     >
       <div className="h-16 flex items-center justify-between px-4 sm:px-6 max-w-7xl mx-auto w-full">

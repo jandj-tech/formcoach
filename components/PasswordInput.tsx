@@ -19,7 +19,7 @@ export default function PasswordInput({ className, ...props }: React.InputHTMLAt
         type="button"
         onClick={() => setShow((s) => !s)}
         aria-label={show ? 'Hide password' : 'Show password'}
-        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:opacity-70 transition-opacity"
       >
         {show ? (
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

@@ -102,6 +102,9 @@ function SignupForm() {
           <form onSubmit={handleSubmit} className="space-y-3 bg-ink-900 border border-courtline rounded-2xl p-5">
             <input
               type="email"
+              name="email"
+              autoComplete="email"
+              aria-label="Email"
               required
               placeholder="Email"
               value={email}
@@ -119,6 +122,9 @@ function SignupForm() {
             <PasswordInput
               required
               minLength={6}
+              name="new-password"
+              autoComplete="new-password"
+              aria-label="Password"
               placeholder="Password (6+ characters)"
               value={password}
               onChange={e => setPassword(e.target.value)}
@@ -126,6 +132,9 @@ function SignupForm() {
             />
             <PasswordInput
               required
+              name="confirm-password"
+              autoComplete="new-password"
+              aria-label="Confirm password"
               placeholder="Confirm password"
               value={confirm}
               onChange={e => setConfirm(e.target.value)}

@@ -62,6 +62,9 @@ function ResetPasswordForm() {
               <PasswordInput
                 required
                 minLength={6}
+                name="new-password"
+                autoComplete="new-password"
+                aria-label="New password"
                 placeholder="New password (6+ characters)"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
@@ -69,6 +72,9 @@ function ResetPasswordForm() {
               />
               <PasswordInput
                 required
+                name="confirm-password"
+                autoComplete="new-password"
+                aria-label="Confirm new password"
                 placeholder="Confirm new password"
                 value={confirm}
                 onChange={e => setConfirm(e.target.value)}

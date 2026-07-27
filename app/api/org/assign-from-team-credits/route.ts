@@ -4,8 +4,8 @@ import { db } from '@/lib/db'
 
 // Org-facing endpoint: spends a team's credits (teams.credits) on specific
 // players in that same team, turning team credits into per-player
-// analysis_tokens. Mirrors the coach-facing /api/team/assign-tokens but lets
-// the org act on any of their teams without first opening the team dashboard.
+// analysis_tokens. Mirrors the coach-facing /api/team/grant-all-tokens but
+// lets the org act on any of their teams without opening the team dashboard.
 // The team must belong to the org; the players must be on that team.
 export async function POST(req: NextRequest) {
   const session = await getOrgSessionFromRequest(req)

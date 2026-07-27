@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import CoachUploadForm from './CoachUploadForm'
 import TeamCoaches from './TeamCoaches'
-import PoolAssignPanel from '@/components/PoolAssignPanel'
 import TokenBalances from '@/components/TokenBalances'
 import LeaderboardTable from '@/components/LeaderboardTable'
 import PrintButton from '@/components/PrintButton'
@@ -22,7 +21,6 @@ interface Team {
   accessCode: string
   credits: number
   initiated: boolean
-  tokenPool: number
 }
 
 interface LeaderboardEntry {
@@ -494,21 +492,10 @@ export default function TeamDashboardClient({
         {showTeamInfo && (
           <div className="p-4 space-y-6">
 
-      {/* Credits & Pool */}
+      {/* Credits */}
       <div className="bg-gray-50 rounded-2xl p-5 space-y-4">
-        <h2 className="text-base font-black text-black">Credits &amp; Pool</h2>
-        {team.initiated ? (
-          <PoolAssignPanel
-            endpoint="/api/team/assign-tokens"
-            tokenPool={team.tokenPool}
-            players={members.map(m => ({
-              id: m.id,
-              label: m.first_name
-                ? `${m.first_name}${m.last_name_initial ? ' ' + m.last_name_initial + '.' : ''}`
-                : m.email,
-            }))}
-          />
-        ) : (
+        <h2 className="text-base font-black text-black">Credits</h2>
+        {!team.initiated && (
           <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm font-bold text-black">Team not yet active</p>
@@ -525,7 +512,10 @@ export default function TeamDashboardClient({
                 ? `${8 - members.length} more player${8 - members.length !== 1 ? 's' : ''} needed to activate this team.`
                 : 'Almost there!'
               }
-              {' '}Once you reach 8 players, every player on the team automatically gets <strong>1 free analysis token</strong>, and the team unlocks the ability to purchase additional tokens at $1.49 each.
+              {' '}Once you reach 8 players, every player on the team automatically gets <strong>1 free analysis token</strong>, and credits drop to $1.49 each.
+            </p>
+            <p className="text-xs text-gray-500 leading-relaxed">
+              You can still use your credits right now — upload for yourself or any player, or hand credits out below. Activation only unlocks the cheaper price.
             </p>
             <p className="text-xs text-gray-400">Share your team signup link below to invite players.</p>
           </div>
@@ -538,7 +528,6 @@ export default function TeamDashboardClient({
             tokens: m.tokens,
           }))}
           coachCredits={team.credits}
-          tokenPool={team.tokenPool}
         />
       </div>
 

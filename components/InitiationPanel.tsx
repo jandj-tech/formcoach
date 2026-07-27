@@ -59,7 +59,7 @@ export default function InitiationPanel({ endpoint, teamId, playerCount }: Props
         <p className="text-sm text-gray-600 mt-1">
           To unlock the $1.49 token price, buy a one-time initiation package — a minimum of{' '}
           {INITIATION_MIN_TOKENS} tokens for $30 (each token beyond {INITIATION_MIN_TOKENS} is $1.49).
-          Package tokens go into the team pool for you to assign to players.
+          Package tokens go into your coach credits to spend or hand to players.
         </p>
       </div>
 

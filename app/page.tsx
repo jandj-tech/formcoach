@@ -68,7 +68,7 @@ export default async function HomePage() {
       <TopNav />
 
       {session && (
-        <div className="bg-ember-600 text-white text-center text-sm font-semibold py-2 px-4">
+        <div className="bg-ember-500 text-ink-950 text-center text-sm font-bold py-2 px-4">
           Welcome: {welcomeName}
         </div>
       )}
@@ -93,7 +93,7 @@ export default async function HomePage() {
         <div className="flex flex-col sm:flex-row gap-3 mt-10 w-full max-w-md sm:w-auto px-2">
           <Link
             href="/analyze"
-            className="bg-ember-500 hover:bg-ember-600 active:scale-[0.98] text-white font-bold px-8 py-4 rounded-full text-base transition-all text-center shadow-[0_0_40px_-8px_rgba(255,92,26,0.55)]"
+            className="bg-ember-500 hover:bg-ember-400 active:scale-[0.98] text-ink-950 font-bold px-8 py-4 rounded-full text-base transition-all text-center shadow-[0_0_40px_-8px_rgba(255,92,26,0.55)]"
           >
             Analyze your shot →
           </Link>
@@ -146,7 +146,7 @@ export default async function HomePage() {
       <section className="bg-chalk text-ink-950">
         <div className="px-4 py-20 sm:py-28 max-w-6xl mx-auto w-full">
           <div className="mb-12">
-            <p className="eyebrow text-ember-600 mb-3 select-none">01 — How it works</p>
+            <p className="eyebrow text-ember-700 mb-3 select-none">01 — How it works</p>
             <h2 className="font-display font-black uppercase text-[clamp(1.9rem,4.5vw,3.5rem)] leading-[0.95]">
               Three steps to
               <br />a better shot
@@ -158,7 +158,7 @@ export default async function HomePage() {
                 key={step.num}
                 className="fade-up card-lift bg-white rounded-2xl p-6 sm:p-8 border border-ink-950/10 shadow-sm"
               >
-                <div className="font-numeric text-ember-600 text-lg mb-6 select-none">{step.num}</div>
+                <div className="font-numeric text-ember-700 text-lg mb-6 select-none">{step.num}</div>
                 <h3 className="font-display font-bold uppercase text-lg mb-2 leading-tight">
                   {step.title}
                 </h3>
@@ -213,7 +213,7 @@ export default async function HomePage() {
 
       {/* Closing CTA — solid ember band for a hard color break before the footer */}
       <section className="grain relative text-center px-4 py-20 sm:py-28 bg-ember-500 text-white">
-        <p className="eyebrow text-ink-950/70 mb-4 select-none">04 — Your move</p>
+        <p className="eyebrow text-ink-950 mb-4 select-none">04 — Your move</p>
         <h2 className="font-display font-black uppercase text-[clamp(2.2rem,6vw,5rem)] leading-[0.95] max-w-3xl mx-auto">
           Ready to fix
           <br />
@@ -228,7 +228,7 @@ export default async function HomePage() {
           </Link>
           <Link
             href="/team"
-            className="border border-white/50 hover:border-white active:scale-[0.98] text-white font-bold px-8 py-4 rounded-full text-base transition-all text-center w-full max-w-xs sm:w-auto"
+            className="border border-ink-950/50 hover:border-ink-950 active:scale-[0.98] text-ink-950 font-bold px-8 py-4 rounded-full text-base transition-all text-center w-full max-w-xs sm:w-auto"
           >
             For teams &amp; organizations
           </Link>

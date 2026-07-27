@@ -1,6 +1,14 @@
+import type { Metadata } from 'next'
 import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
 import Link from 'next/link'
+import { GraduationCapIcon, TrendingUpIcon, TrophyIcon } from 'lucide-react'
+
+export const metadata: Metadata = {
+  title: 'Organizations — LearnHoops.com',
+  description:
+    'LearnHoops Team Plan: AI shot analysis for whole organizations — player rankings, improvement tracking, and credits from $1.49 per upload.',
+}
 
 export default function TeamLandingPage() {
   return (
@@ -20,7 +28,7 @@ export default function TeamLandingPage() {
           <div className="pt-2">
             <Link
               href="/org/signup"
-              className="inline-block bg-ember-500 hover:bg-ember-600 active:scale-[0.98] text-white font-bold px-8 py-4 rounded-full transition-all shadow-[0_0_40px_-8px_rgba(255,92,26,0.55)]"
+              className="inline-block bg-ember-500 hover:bg-ember-400 active:scale-[0.98] text-ink-950 font-bold px-8 py-4 rounded-full transition-all shadow-[0_0_40px_-8px_rgba(255,92,26,0.55)]"
             >
               Register Organization
             </Link>
@@ -34,12 +42,12 @@ export default function TeamLandingPage() {
             <div className="text-chalk-dim text-sm">Buy credits and use them when you need them.</div>
           </div>
           <div className="card-lift bg-ink-900 border border-courtline rounded-2xl p-6 space-y-2">
-            <div className="text-2xl select-none">🏆</div>
+            <TrophyIcon className="w-7 h-7 text-ember-400" aria-hidden />
             <div className="font-display font-bold uppercase text-chalk">Player rankings</div>
             <div className="text-chalk-dim text-sm">Every player ranked by their best shot score so you always know where everyone stands.</div>
           </div>
           <div className="card-lift bg-ink-900 border border-courtline rounded-2xl p-6 space-y-2">
-            <div className="text-2xl select-none">📈</div>
+            <TrendingUpIcon className="w-7 h-7 text-ember-400" aria-hidden />
             <div className="font-display font-bold uppercase text-chalk">Most improved</div>
             <div className="text-chalk-dim text-sm">Track who&apos;s putting in the work with automatic improvement tracking.</div>
           </div>
@@ -54,7 +62,7 @@ export default function TeamLandingPage() {
         <div className="flex flex-col sm:flex-row gap-3 w-full max-w-md sm:w-auto">
           <Link
             href="/org/signup"
-            className="bg-ember-500 hover:bg-ember-600 active:scale-[0.98] text-white font-bold px-8 py-4 rounded-full transition-all shadow-[0_0_40px_-8px_rgba(255,92,26,0.55)]"
+            className="bg-ember-500 hover:bg-ember-400 active:scale-[0.98] text-ink-950 font-bold px-8 py-4 rounded-full transition-all shadow-[0_0_40px_-8px_rgba(255,92,26,0.55)]"
           >
             Register Organization
           </Link>
@@ -95,12 +103,12 @@ export default function TeamLandingPage() {
 
         <Link
           href="/org/signup"
-          className="card-lift w-full bg-ember-500 hover:bg-ember-600 rounded-2xl px-6 py-5 flex items-center gap-4 text-white transition-colors"
+          className="card-lift w-full bg-ember-500 hover:bg-ember-400 rounded-2xl px-6 py-5 flex items-center gap-4 text-ink-950 transition-colors"
         >
-          <span className="text-3xl shrink-0 select-none">🎓</span>
+          <GraduationCapIcon className="w-8 h-8 shrink-0" aria-hidden />
           <div className="text-left flex-1">
             <p className="font-display font-black uppercase text-base leading-tight">10-Week Shooting Class — for organizations</p>
-            <p className="text-orange-100 text-sm mt-1">Each player gets a ball, 2 shot analyses, and a certificate of completion that shows their improvement. Starting at $40/player.</p>
+            <p className="text-ink-950/80 text-sm mt-1">Each player gets a ball, 2 shot analyses, and a certificate of completion that shows their improvement. Starting at $40/player.</p>
           </div>
           <span className="shrink-0 font-bold text-lg select-none" aria-hidden>→</span>
         </Link>

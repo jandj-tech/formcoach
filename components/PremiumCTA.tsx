@@ -57,7 +57,7 @@ export default function PremiumCTA({ dark = false, initiated = false }: { dark?:
         </div>
         <button
           onClick={() => setOpen(true)}
-          className="shrink-0 bg-orange-500 hover:bg-orange-400 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
+          className="shrink-0 bg-ember-500 hover:bg-ember-400 text-ink-950 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
         >
           Buy Token →
         </button>
@@ -82,7 +82,7 @@ export default function PremiumCTA({ dark = false, initiated = false }: { dark?:
           <button
             onClick={handleBuyToken}
             disabled={loading}
-            className="shrink-0 bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
+            className="shrink-0 bg-ember-500 hover:bg-ember-400 disabled:bg-orange-300 text-ink-950 text-sm font-bold px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
           >
             {loading ? '...' : 'Buy Now →'}
           </button>

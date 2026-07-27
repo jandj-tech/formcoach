@@ -154,7 +154,7 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
 
             <button
               onClick={handleAdd}
-              className="bg-ember-500 hover:bg-ember-600 active:scale-[0.98] text-white font-bold px-8 py-4 rounded-full text-base transition-all w-full sm:w-auto"
+              className="bg-ember-500 hover:bg-ember-400 active:scale-[0.98] text-ink-950 font-bold px-8 py-4 rounded-full text-base transition-all w-full sm:w-auto"
             >
               Add to cart — {displayLineTotal}
             </button>
@@ -269,7 +269,7 @@ function BundleCard() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
         <button
           onClick={handleAdd}
-          className="bg-ember-500 hover:bg-ember-600 active:scale-[0.98] text-white font-bold px-8 py-4 rounded-full text-base transition-all w-full sm:w-auto"
+          className="bg-ember-500 hover:bg-ember-400 active:scale-[0.98] text-ink-950 font-bold px-8 py-4 rounded-full text-base transition-all w-full sm:w-auto"
         >
           Add Bundle to Cart — {formatPrice(BUNDLE_PRICE)}
         </button>

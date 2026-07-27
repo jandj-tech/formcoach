@@ -4,7 +4,7 @@ import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
 
 export const metadata: Metadata = {
-  title: 'Support — LearnHoops',
+  title: 'Support — LearnHoops.com',
   description: 'Contact LearnHoops support.',
 }
 

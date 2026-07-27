@@ -88,7 +88,7 @@ export default function TopNav() {
               href={accountHref}
               className={`ml-2 px-4 py-2 rounded-full text-sm font-bold transition-colors ${
                 accountActive
-                  ? 'bg-ember-500 text-white'
+                  ? 'bg-ember-500 text-ink-950'
                   : 'border border-courtline text-chalk hover:border-ember-500/60 hover:text-white'
               }`}
             >

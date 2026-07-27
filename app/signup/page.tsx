@@ -5,6 +5,8 @@ import { trackCompleteRegistration } from '@/lib/meta-pixel'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
 import TopNav from '@/components/TopNav'
+import SiteFooter from '@/components/SiteFooter'
+import Image from 'next/image'
 import PasswordInput from '@/components/PasswordInput'
 
 function SignupForm() {
@@ -84,7 +86,7 @@ function SignupForm() {
       <div className="hero-glow grain relative flex-1 flex items-center justify-center px-6 py-16">
         <div className="w-full max-w-sm space-y-6">
           <div className="text-center space-y-3">
-            <div className="text-4xl select-none">🎉</div>
+            <Image src="/icon.png" alt="" width={48} height={48} className="mx-auto rounded-2xl select-none" aria-hidden />
             <h1 className="font-display font-black uppercase text-2xl leading-tight">Create your account</h1>
             {pendingCredits > 0 ? (
               <p className="text-sm font-semibold text-ember-400 bg-ember-500/10 border border-ember-500/30 rounded-xl px-4 py-2">
@@ -156,7 +158,7 @@ function SignupForm() {
             <button
               type="submit"
               disabled={status === 'loading'}
-              className="w-full bg-ember-500 hover:bg-ember-600 disabled:opacity-50 active:scale-[0.99] text-white font-bold py-3.5 rounded-full transition-all"
+              className="w-full bg-ember-500 hover:bg-ember-400 disabled:opacity-50 active:scale-[0.99] text-ink-950 font-bold py-3.5 rounded-full transition-all"
             >
               {status === 'loading' ? 'Creating account...' : 'Create Account →'}
             </button>
@@ -175,6 +177,7 @@ function SignupForm() {
           </p>
         </div>
       </div>
+      <SiteFooter />
     </main>
   )
 }

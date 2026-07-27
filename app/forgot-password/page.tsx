@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import TopNav from '@/components/TopNav'
+import SiteFooter from '@/components/SiteFooter'
+import Image from 'next/image'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -29,7 +31,7 @@ export default function ForgotPasswordPage() {
         <div className="w-full max-w-sm space-y-6">
           {status === 'sent' ? (
             <div className="text-center space-y-3">
-              <div className="text-4xl select-none">📬</div>
+              <Image src="/icon.png" alt="" width={48} height={48} className="mx-auto rounded-2xl select-none" aria-hidden />
               <h1 className="font-display font-black uppercase text-2xl leading-tight">Check your email</h1>
               <p className="text-chalk-dim text-sm">
                 If <span className="text-ember-400">{email}</span> has an account, we&apos;ve sent a
@@ -43,7 +45,7 @@ export default function ForgotPasswordPage() {
           ) : (
             <>
               <div className="text-center space-y-3">
-                <div className="text-4xl select-none">🔑</div>
+                <Image src="/icon.png" alt="" width={48} height={48} className="mx-auto rounded-2xl select-none" aria-hidden />
                 <h1 className="font-display font-black uppercase text-2xl leading-tight">Forgot your password?</h1>
                 <p className="text-chalk-dim text-sm">
                   Enter your email and we&apos;ll send you a link to reset it.
@@ -64,7 +66,7 @@ export default function ForgotPasswordPage() {
                 <button
                   type="submit"
                   disabled={status === 'loading'}
-                  className="w-full bg-ember-500 hover:bg-ember-600 disabled:opacity-50 active:scale-[0.99] text-white font-bold py-3.5 rounded-full transition-all"
+                  className="w-full bg-ember-500 hover:bg-ember-400 disabled:opacity-50 active:scale-[0.99] text-ink-950 font-bold py-3.5 rounded-full transition-all"
                 >
                   {status === 'loading' ? 'Sending...' : 'Send reset link'}
                 </button>
@@ -76,6 +78,7 @@ export default function ForgotPasswordPage() {
           )}
         </div>
       </div>
+      <SiteFooter />
     </main>
   )
 }

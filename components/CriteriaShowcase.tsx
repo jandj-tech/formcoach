@@ -205,7 +205,7 @@ export default function CriteriaShowcase({
             href={CHANNEL_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="bg-ember-500 hover:bg-ember-600 active:scale-[0.98] text-white font-bold px-8 py-3.5 rounded-full text-base transition-all"
+            className="bg-ember-500 hover:bg-ember-400 active:scale-[0.98] text-ink-950 font-bold px-8 py-3.5 rounded-full text-base transition-all"
           >
             Check out our channel →
           </a>

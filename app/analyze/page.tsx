@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
 import VideoUploader from '@/components/VideoUploader'
@@ -8,6 +9,11 @@ import { getTeamSession } from '@/lib/team-auth'
 import { getOrgSession } from '@/lib/org-auth'
 import { getTeamTokenState, userHasInitiatedTeam, orgHasInitiatedTeam } from '@/lib/team-tokens'
 import { db } from '@/lib/db'
+
+export const metadata: Metadata = {
+  title: 'Analyze — LearnHoops.com',
+  description: 'Upload a video of your shot and get scored across 17 coaching criteria.',
+}
 
 export default async function AnalyzePage() {
   // Anyone can analyze here. Players use analysis tokens; coaches and org

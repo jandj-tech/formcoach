@@ -536,7 +536,7 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
               setNoShot(false)
               if (inputRef.current) inputRef.current.value = ''
             }}
-            className="flex-1 bg-orange-500 hover:bg-orange-400 text-white font-bold py-3 rounded-xl transition-colors"
+            className="flex-1 bg-ember-500 hover:bg-ember-400 text-ink-950 font-bold py-3 rounded-xl transition-colors"
           >
             Try another video
           </button>
@@ -577,7 +577,7 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
           <button
             type="button"
             onClick={continueAnyway}
-            className="flex-1 bg-orange-500 hover:bg-orange-400 text-white font-bold py-3 rounded-xl transition-colors"
+            className="flex-1 bg-ember-500 hover:bg-ember-400 text-ink-950 font-bold py-3 rounded-xl transition-colors"
           >
             Continue anyway
           </button>
@@ -687,19 +687,20 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
       {sessionUser && !sessionUser.subscribed && sessionUser.tokens > 0 && (
         sessionUser.tokens === 1 ? (
           <div className="flex items-center justify-center gap-2 bg-orange-50 border border-orange-300 rounded-xl px-4 py-2">
-            <span className="text-orange-500 text-sm font-black tracking-wide">1 ANALYSIS TOKEN REMAINING</span>
+            <span className="text-orange-700 text-sm font-black tracking-wide">1 ANALYSIS TOKEN REMAINING</span>
           </div>
         ) : (
-          <p className="text-center text-gray-400 text-xs">{sessionUser.tokens} analysis tokens remaining</p>
+          <p className="text-center text-gray-600 text-xs">{sessionUser.tokens} analysis tokens remaining</p>
         )
       )}
 
       {/* Drop zone */}
       <div className="relative">
         <div
+          aria-hidden={isLocked || undefined}
           className={`border-2 border-dashed rounded-2xl p-8 sm:p-12 text-center transition-all duration-200
             ${isLocked
-              ? 'border-gray-300 pointer-events-none select-none'
+              ? 'border-gray-300 opacity-40 pointer-events-none select-none'
               : isDragging
                 ? 'border-orange-500 bg-orange-500/5 cursor-pointer'
                 : 'border-gray-300 hover:border-orange-400 hover:bg-orange-50/50 cursor-pointer'
@@ -713,7 +714,7 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
           <p className="text-black font-semibold text-lg mb-1">Tap to upload your video</p>
           <p className="text-black text-sm hidden sm:block">or drag and drop</p>
           <p className="text-black text-xs mt-3">MP4, MOV, AVI · Max 200MB</p>
-          <button className="mt-5 bg-orange-500 hover:bg-red-600 text-white font-bold px-8 py-3 rounded-xl text-sm transition-colors w-full sm:w-auto">
+          <button className="mt-5 bg-ember-500 hover:bg-ember-400 text-ink-950 font-bold px-8 py-3 rounded-xl text-sm transition-colors w-full sm:w-auto">
             Choose Video
           </button>
         </div>
@@ -728,7 +729,7 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
               <div className="flex gap-2">
                 <a
                   href="/signup"
-                  className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-colors"
+                  className="bg-ember-500 hover:bg-ember-400 text-ink-950 font-bold px-5 py-2.5 rounded-xl text-sm transition-colors"
                 >
                   Sign Up Free
                 </a>
@@ -752,7 +753,7 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
               </p>
               <button
                 onClick={handleBuyToken}
-                className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors"
+                className="bg-ember-500 hover:bg-ember-400 text-ink-950 font-bold px-6 py-2.5 rounded-xl text-sm transition-colors"
               >
                 Buy Analysis — ${sessionUser?.onInitiatedTeam ? '1.49' : '2.79'}
               </button>
@@ -794,6 +795,7 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
         ref={inputRef}
         type="file"
         accept="video/*"
+        aria-label="Upload a video of your shot"
         className="hidden"
         onChange={onInputChange}
       />

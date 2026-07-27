@@ -123,7 +123,7 @@ export default function MobileNav({
                 onClick={() => setOpen(false)}
                 className={`block px-4 py-3 rounded-xl text-base font-semibold transition-colors active:scale-[0.98] ${
                   active
-                    ? 'bg-ember-500 text-white'
+                    ? 'bg-ember-500 text-ink-950'
                     : 'text-chalk hover:bg-ink-800'
                 }`}
               >

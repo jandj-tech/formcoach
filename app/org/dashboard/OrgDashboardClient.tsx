@@ -817,7 +817,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
           const isBuyOpen = buyOpen[team.id] ?? false
 
           return (
-            <div key={team.id} id={`team-panel-${team.id}`} className="border border-gray-200 rounded-2xl overflow-hidden">
+            <div key={team.id} id={`team-panel-${team.id}`} className="scroll-mt-24 border border-gray-200 rounded-2xl overflow-hidden">
               <button
                 onClick={() => setExpanded(isOpen ? null : team.id)}
                 className="w-full flex items-center justify-between gap-4 px-5 py-4 bg-gray-50 hover:bg-orange-50 transition-colors text-left"

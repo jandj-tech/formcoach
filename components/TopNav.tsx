@@ -31,6 +31,8 @@ export default function TopNav() {
   const accountActive =
     pathname.startsWith('/login') ||
     pathname.startsWith('/signup') ||
+    pathname.startsWith('/forgot-password') ||
+    pathname.startsWith('/reset-password') ||
     pathname.startsWith('/dashboard') ||
     pathname.startsWith('/team/dashboard') ||
     pathname.startsWith('/org/dashboard')
@@ -41,58 +43,61 @@ export default function TopNav() {
   ]
 
   return (
-    <nav className="h-20 flex items-center justify-between px-4 sm:px-6 border-b border-zinc-800 bg-black">
-      <Link href="/" aria-label="LearnHoops.com home" className="flex items-center shrink-0">
-        <Image
-          src="/learnhoops-logo.png"
-          alt="LearnHoops.com"
-          width={578}
-          height={113}
-          style={{ height: '48px', width: 'auto' }}
-          priority
-        />
-      </Link>
-      <div className="flex items-center gap-1 sm:gap-2">
-        <div className="hidden md:flex items-center gap-1 sm:gap-2">
-          {tabs.map((tab) => {
-            const active = tab.href === '/' ? pathname === '/' : pathname.startsWith(tab.href)
-            return (
-              <Link
-                key={tab.href}
-                href={tab.href}
-                className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${
-                  active
-                    ? 'bg-orange-500 text-white'
-                    : 'text-white hover:text-white hover:bg-zinc-900'
-                }`}
-              >
-                {tab.label}
-              </Link>
-            )
-          })}
-          <Link
-            href="/team"
-            className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${
-              pathname.startsWith('/team')
-                ? 'bg-orange-500 text-white'
-                : 'text-white hover:text-white hover:bg-zinc-900'
-            }`}
-          >
-            Organizations
-          </Link>
-          <Link
-            href={accountHref}
-            className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${
-              accountActive
-                ? 'bg-orange-500 text-white'
-                : 'text-white hover:text-white hover:bg-zinc-900'
-            }`}
-          >
-            {accountLabel}
-          </Link>
+    <nav
+      className="sticky top-0 z-50 border-b border-courtline bg-ink-950/95 backdrop-blur-md"
+      style={{ paddingTop: 'env(safe-area-inset-top)' }}
+    >
+      <div className="h-16 flex items-center justify-between px-4 sm:px-6 max-w-7xl mx-auto w-full">
+        <Link href="/" aria-label="LearnHoops.com home" className="flex items-center shrink-0">
+          <Image
+            src="/learnhoops-logo.png"
+            alt="LearnHoops.com"
+            width={578}
+            height={113}
+            style={{ height: '40px', width: 'auto' }}
+            priority
+          />
+        </Link>
+        <div className="flex items-center gap-1 sm:gap-2">
+          <div className="hidden md:flex items-center gap-1">
+            {tabs.map((tab) => {
+              const active = tab.href === '/' ? pathname === '/' : pathname.startsWith(tab.href)
+              return (
+                <Link
+                  key={tab.href}
+                  href={tab.href}
+                  data-active={active}
+                  className={`nav-underline px-3 py-2.5 text-sm font-semibold transition-colors ${
+                    active ? 'text-chalk' : 'text-chalk-dim hover:text-chalk'
+                  }`}
+                >
+                  {tab.label}
+                </Link>
+              )
+            })}
+            <Link
+              href="/team"
+              data-active={pathname.startsWith('/team')}
+              className={`nav-underline px-3 py-2.5 text-sm font-semibold transition-colors ${
+                pathname.startsWith('/team') ? 'text-chalk' : 'text-chalk-dim hover:text-chalk'
+              }`}
+            >
+              Organizations
+            </Link>
+            <Link
+              href={accountHref}
+              className={`ml-2 px-4 py-2 rounded-full text-sm font-bold transition-colors ${
+                accountActive
+                  ? 'bg-ember-500 text-ink-950'
+                  : 'border border-courtline text-chalk hover:border-ember-500/60 hover:text-white'
+              }`}
+            >
+              {accountLabel}
+            </Link>
+          </div>
+          <CartLink />
+          <MobileNav tabs={mobileTabs} />
         </div>
-        <CartLink />
-        <MobileNav tabs={mobileTabs} />
       </div>
     </nav>
   )

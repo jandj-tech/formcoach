@@ -25,8 +25,17 @@ export default function PremiumCTA({ dark = false, initiated = false }: { dark?:
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ region }),
       })
+      if (res.status === 401) {
+        // Logged-out visitor: send them to log in, then back here.
+        window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`
+        return
+      }
       const { url } = await res.json()
-      if (url) window.location.href = url
+      if (url) {
+        window.location.href = url
+      } else {
+        setLoading(false)
+      }
     } catch {
       setLoading(false)
     }
@@ -48,7 +57,7 @@ export default function PremiumCTA({ dark = false, initiated = false }: { dark?:
         </div>
         <button
           onClick={() => setOpen(true)}
-          className="shrink-0 bg-orange-500 hover:bg-orange-400 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
+          className="shrink-0 bg-ember-500 hover:bg-ember-400 text-ink-950 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
         >
           Buy Token →
         </button>
@@ -73,7 +82,7 @@ export default function PremiumCTA({ dark = false, initiated = false }: { dark?:
           <button
             onClick={handleBuyToken}
             disabled={loading}
-            className="shrink-0 bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
+            className="shrink-0 bg-ember-500 hover:bg-ember-400 disabled:bg-orange-300 text-ink-950 text-sm font-bold px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
           >
             {loading ? '...' : 'Buy Now →'}
           </button>
@@ -82,7 +91,7 @@ export default function PremiumCTA({ dark = false, initiated = false }: { dark?:
 
       <div className={`text-xs ${subColor} border-t ${borderColor} pt-3`}>
         <span className="font-semibold text-orange-500">Save money:</span>{' '}
-        <Link href="/shop" className="underline hover:opacity-80">Buy the training ball</Link> and get 10 free analyses included.
+        <Link href="/shop" className="underline hover:opacity-80">Buy the training ball</Link> and get 5 free analyses included — or 10 with the 2-ball bundle.
       </div>
     </div>
   )

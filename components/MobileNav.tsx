@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { MenuIcon, XIcon } from 'lucide-react'
@@ -21,6 +22,15 @@ export default function MobileNav({
   footer,
 }: Props) {
   const [open, setOpen] = useState(false)
+  // The drawer + scrim are portaled to <body>: the nav bar's backdrop-filter
+  // makes it a containing block for fixed descendants in WebKit, which would
+  // otherwise collapse the full-screen scrim to the height of the nav bar.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true)
+  }, [])
+  const closeRef = useRef<HTMLButtonElement>(null)
   const pathname = usePathname()
   const [prevPath, setPrevPath] = useState(pathname)
   if (pathname !== prevPath) {
@@ -46,6 +56,11 @@ export default function MobileNav({
     return () => window.removeEventListener('keydown', onKey)
   }, [open])
 
+  // Move focus into the dialog when it opens so keyboard/AT users land inside.
+  useEffect(() => {
+    if (open) closeRef.current?.focus()
+  }, [open])
+
   const LinkEl: React.ElementType = useNextLink ? Link : 'a'
 
   return (
@@ -56,36 +71,40 @@ export default function MobileNav({
         aria-label="Open menu"
         aria-expanded={open}
         aria-controls="mobile-nav-drawer"
-        className="md:hidden inline-flex items-center justify-center h-10 w-10 rounded-md text-white hover:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-orange-500"
+        className="md:hidden inline-flex items-center justify-center h-11 w-11 rounded-lg text-chalk hover:bg-ink-800 active:scale-95 transition-transform focus:outline-none focus:ring-2 focus:ring-ember-500"
       >
         <MenuIcon className="h-6 w-6" />
       </button>
 
-      <div
-        onClick={() => setOpen(false)}
-        aria-hidden="true"
-        className={`md:hidden fixed inset-0 z-40 bg-black/60 transition-opacity duration-200 ${
-          open ? 'opacity-100' : 'opacity-0 pointer-events-none'
-        }`}
-      />
+      {mounted &&
+        createPortal(
+          <>
+            <div
+              onClick={() => setOpen(false)}
+              aria-hidden="true"
+              className={`md:hidden fixed inset-0 z-40 bg-black/60 transition-opacity duration-200 ${
+                open ? 'opacity-100' : 'opacity-0 pointer-events-none'
+              }`}
+            />
 
-      <aside
+            <aside
         id="mobile-nav-drawer"
         role="dialog"
         aria-modal="true"
         aria-label="Site navigation"
-        className={`md:hidden fixed top-0 right-0 z-50 h-dvh w-72 max-w-[85vw] bg-black border-l border-zinc-800 transform transition-transform duration-200 ease-out flex flex-col ${
+        className={`md:hidden fixed top-0 right-0 z-50 h-dvh w-72 max-w-[85vw] bg-ink-950 border-l border-courtline transform transition-transform duration-200 ease-out flex flex-col ${
           open ? 'translate-x-0' : 'translate-x-full'
         }`}
-
+        style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
-        <div className="flex items-center justify-between h-16 px-4 border-b border-zinc-800">
-          <span className="text-white text-sm font-semibold">Menu</span>
+        <div className="flex items-center justify-between h-16 px-4 border-b border-courtline">
+          <span className="text-chalk-dim eyebrow select-none">Menu</span>
           <button
+            ref={closeRef}
             type="button"
             onClick={() => setOpen(false)}
             aria-label="Close menu"
-            className="inline-flex items-center justify-center h-10 w-10 rounded-md text-white hover:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-orange-500"
+            className="inline-flex items-center justify-center h-11 w-11 rounded-lg text-chalk hover:bg-ink-800 active:scale-95 transition-transform focus:outline-none focus:ring-2 focus:ring-ember-500"
           >
             <XIcon className="h-6 w-6" />
           </button>
@@ -102,10 +121,10 @@ export default function MobileNav({
                 key={tab.href}
                 href={tab.href}
                 onClick={() => setOpen(false)}
-                className={`block px-3 py-2 rounded-md text-base font-semibold transition-colors ${
+                className={`block px-4 py-3 rounded-xl text-base font-semibold transition-colors active:scale-[0.98] ${
                   active
-                    ? 'bg-orange-500 text-white'
-                    : 'text-white hover:bg-zinc-900'
+                    ? 'bg-ember-500 text-ink-950'
+                    : 'text-chalk hover:bg-ink-800'
                 }`}
               >
                 {tab.label}
@@ -115,11 +134,14 @@ export default function MobileNav({
         </div>
 
         {footer ? (
-          <div className="border-t border-zinc-800 px-4 py-3 text-sm">
+          <div className="border-t border-courtline px-4 py-3 text-sm">
             {footer}
           </div>
         ) : null}
       </aside>
+          </>,
+          document.body
+        )}
     </>
   )
 }

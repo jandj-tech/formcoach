@@ -4,7 +4,7 @@ import ShopProduct from './ShopProduct'
 
 export const metadata = {
   title: 'Shop — LearnHoops.com',
-  description: 'The LearnHoops.com Training Ball — built for serious players. Left and right-handed editions.',
+  description: 'The LearnHoops Training Ball — built for serious players. Left and right-handed editions.',
 }
 
 export default async function ShopPage({ searchParams }: { searchParams: Promise<{ app?: string }> }) {

@@ -719,9 +719,10 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
           </button>
         </div>
 
-        {/* Not logged in overlay — semi-transparent wash signals the zone is locked */}
+        {/* Not logged in overlay — no wash, so the dimmed drop zone shows
+            through behind the card as a teaser of what an account unlocks */}
         {notLoggedIn && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center px-6 bg-white/85 backdrop-blur-sm rounded-2xl">
+          <div className="absolute inset-0 flex flex-col items-center justify-center px-6 rounded-2xl">
             <div className="flex flex-col items-center gap-2.5 bg-white/85 backdrop-blur-sm border border-gray-200 shadow-xl rounded-2xl px-5 py-4">
               <p className="text-black font-black text-base sm:text-lg text-center leading-snug">
                 Create a free account to analyze your shot
@@ -744,9 +745,9 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
           </div>
         )}
 
-        {/* No tokens overlay */}
+        {/* No tokens overlay — same teaser treatment: the locked zone stays visible */}
         {noTokens && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center px-6 bg-white/85 backdrop-blur-sm rounded-2xl">
+          <div className="absolute inset-0 flex flex-col items-center justify-center px-6 rounded-2xl">
             <div className="flex flex-col items-center gap-2.5 bg-white/85 backdrop-blur-sm border border-gray-200 shadow-xl rounded-2xl px-5 py-4">
               <p className="text-black font-black text-base sm:text-lg text-center leading-snug">
                 Buy a token to analyze your shot

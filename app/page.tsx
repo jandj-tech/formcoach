@@ -235,6 +235,38 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* Social */}
+      <section className="px-4 py-14 sm:py-16 text-center border-t border-courtline">
+        <p className="eyebrow text-chalk-dim mb-5 select-none">Follow along</p>
+        <a
+          href="https://www.instagram.com/learnhoops_"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group inline-flex items-center gap-3 border border-courtline hover:border-ember-500/60 rounded-full px-7 py-3.5 transition-colors"
+        >
+          <svg
+            className="w-5 h-5 text-chalk group-hover:text-ember-400 transition-colors"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <rect x="2.5" y="2.5" width="19" height="19" rx="5" />
+            <circle cx="12" cy="12" r="4.2" />
+            <circle cx="17.2" cy="6.8" r="1.1" fill="currentColor" stroke="none" />
+          </svg>
+          <span className="font-bold text-chalk group-hover:text-ember-400 transition-colors">
+            @learnhoops_
+          </span>
+        </a>
+        <p className="text-chalk-dim text-sm mt-4">
+          Drills, form breakdowns and training-ball tips on Instagram.
+        </p>
+      </section>
+
       <div className="flex-1" />
 
       <SiteFooter />

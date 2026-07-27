@@ -71,7 +71,9 @@ function SignupForm() {
         // "enter your name to join" prompt.
         router.push(`/dashboard?joinTeam=${encodeURIComponent(tc)}`)
       } else {
-        const next = searchParams.get('next') || '/dashboard'
+        // Brand-new accounts land on the dashboard with the one-time
+        // starter offer popped open (welcome=1).
+        const next = searchParams.get('next') || '/dashboard?welcome=1'
         router.push(next)
       }
     } catch {

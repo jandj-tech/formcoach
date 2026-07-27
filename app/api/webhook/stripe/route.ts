@@ -162,6 +162,28 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ received: true })
     }
 
+    // --- New-account starter pack: 5 analysis tokens for $10, once per account ---
+    if (metaType === 'starter_pack') {
+      const userId = session.metadata?.userId
+      const tokens = parseInt(session.metadata?.tokens || '5', 10)
+      if (userId && tokens > 0) {
+        try {
+          // The used_at guard makes webhook redeliveries (and any attempt to
+          // buy the one-time pack twice) a no-op.
+          await db`
+            UPDATE users
+            SET analysis_tokens = COALESCE(analysis_tokens, 0) + ${tokens},
+                starter_offer_used_at = NOW()
+            WHERE id = ${userId} AND starter_offer_used_at IS NULL
+          `
+        } catch (err) {
+          console.error('Failed to credit starter pack:', err)
+          return NextResponse.json({ received: true, handled: false })
+        }
+      }
+      return NextResponse.json({ received: true })
+    }
+
     // --- Analysis token purchase ---
     if (metaType === 'analysis_token') {
       const userId = session.metadata?.userId

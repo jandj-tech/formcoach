@@ -216,7 +216,7 @@ function BallCartLine({
     <li className="flex flex-col sm:flex-row sm:items-center gap-4 rounded-xl border border-zinc-800 bg-zinc-950 p-4">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap mb-1">
-          <div className="text-white font-bold text-base">The LearnHoops.com Training Ball</div>
+          <div className="text-white font-bold text-base">The LearnHoops Training Ball</div>
           <span className="text-xs font-semibold text-blue-400 bg-blue-500/10 border border-blue-500/30 px-2 py-0.5 rounded-full">
             + {FREE_ANALYSES_PER_BALL * item.quantity} Shot Analyses Free
           </span>

@@ -46,27 +46,47 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
   }
 
   return (
-    <section className="flex-1 px-4 py-10 sm:py-16">
-      <div className="max-w-5xl mx-auto space-y-14">
+    <section className="flex-1 px-4 py-8 sm:py-12">
+      <div className="max-w-5xl mx-auto space-y-10">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
           {/* Video gallery — the clips are portrait, so give them portrait frames */}
-          <div className="grid grid-cols-2 gap-3 items-start">
-            <video
-              className="w-full rounded-2xl border border-courtline bg-ink-900 aspect-[9/16] object-cover"
-              controls
-              preload="metadata"
-              playsInline
-            >
-              <source src="/ball-video-1.mp4#t=0.001" type="video/mp4" />
-            </video>
-            <video
-              className="w-full rounded-2xl border border-courtline bg-ink-900 aspect-[9/16] object-cover"
-              controls
-              preload="metadata"
-              playsInline
-            >
-              <source src="/ball-video-2.mp4#t=0.001" type="video/mp4" />
-            </video>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3 items-start">
+              <video
+                className="w-full rounded-2xl border border-courtline bg-ink-900 aspect-[9/16] object-cover"
+                controls
+                preload="metadata"
+                playsInline
+              >
+                <source src="/ball-video-1.mp4#t=0.001" type="video/mp4" />
+              </video>
+              <video
+                className="w-full rounded-2xl border border-courtline bg-ink-900 aspect-[9/16] object-cover"
+                controls
+                preload="metadata"
+                playsInline
+              >
+                <source src="/ball-video-2.mp4#t=0.001" type="video/mp4" />
+              </video>
+            </div>
+
+            {/* Desktop only: the details column runs taller than the videos, so
+                fill the gap under them instead of leaving dead space. */}
+            <div className="hidden lg:block rounded-2xl border border-courtline bg-ink-900 p-6">
+              <p className="eyebrow text-chalk-dim mb-4 select-none">What you get</p>
+              <ul className="space-y-3">
+                {[
+                  ['🏀', 'Grip lines that mark exactly where your fingers belong — every rep grooves proper form'],
+                  ['🤝', "Left- and right-handed editions in youth, women's and men's sizes"],
+                  ...(!isInApp ? [['📊', `${FREE_ANALYSES_PER_BALL} free AI shot analyses included with every ball`]] : []),
+                ].map(([icon, text]) => (
+                  <li key={text} className="flex items-start gap-3">
+                    <span className="text-lg leading-6 select-none" aria-hidden>{icon}</span>
+                    <span className="text-chalk-dim text-sm leading-relaxed">{text}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
 
           {/* Product details */}
@@ -82,7 +102,7 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
             </div>
 
             <h1 className="font-display font-black uppercase text-[clamp(1.9rem,4.5vw,3.5rem)] text-chalk leading-[0.95]">
-              The LearnHoops.com <span className="text-gradient-ember">Training Ball</span>
+              The LearnHoops <span className="text-gradient-ember">Training Ball</span>
             </h1>
 
             <p className="text-white text-base leading-relaxed">

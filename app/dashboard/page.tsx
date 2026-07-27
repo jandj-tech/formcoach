@@ -13,6 +13,7 @@ import LeaveTeamButton from './LeaveTeamButton'
 import NicknameForm from './NicknameForm'
 import NameForm from './NameForm'
 import JoinTeamPopup from './JoinTeamPopup'
+import StarterOfferPopup from './StarterOfferPopup'
 
 type UserRow = {
   id: string
@@ -163,6 +164,19 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const tokens = user.analysis_tokens ?? 0
   const onInitiatedTeam = await userHasInitiatedTeam(user.id)
 
+  // One-time new-account starter offer (5 analyses for $10): stamped at
+  // signup, burned by the Stripe webhook on purchase.
+  let starterOfferEligible = false
+  try {
+    const [r] = (await db`
+      SELECT (starter_offer_used_at IS NULL AND starter_offer_expires_at > NOW()) AS eligible
+      FROM users WHERE id = ${user.id}
+    `) as unknown as [{ eligible: boolean } | undefined]
+    starterOfferEligible = !!r?.eligible
+  } catch {
+    // starter-offer migration not applied yet
+  }
+
   function scoreColor(score: number) {
     if (score >= 8) return 'text-green-600'
     if (score >= 6) return 'text-orange-500'
@@ -199,6 +213,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <div className="flex justify-end">
           <DeleteAccountButton />
         </div>
+
+        {/* One-time new-account offer. Stripe checkout can't be offered inside
+            the iOS app (guideline 3.1.1), so it's hidden there. */}
+        {!isInApp && !isSubscribed && <StarterOfferPopup eligible={starterOfferEligible} />}
 
         {/* Display name — set once, used on every team and certificate */}
         <details className="group border border-gray-200 rounded-lg" open={!hasName}>

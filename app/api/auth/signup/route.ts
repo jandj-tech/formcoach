@@ -40,6 +40,16 @@ export async function POST(req: NextRequest) {
     // Link any existing anonymous submissions for this email
     await db`UPDATE submissions SET user_id = ${user.id} WHERE email = ${emailLower} AND user_id IS NULL`
 
+    // Start the one-time new-account starter offer clock (5 analyses for $10).
+    try {
+      await db`
+        UPDATE users SET starter_offer_expires_at = NOW() + INTERVAL '72 hours'
+        WHERE id = ${user.id}
+      `
+    } catch {
+      // starter-offer migration not applied yet — the offer simply won't show
+    }
+
     // Redeem a one-time claim token from a ball purchase (token is independent of email)
     if (claimToken) {
       try {

@@ -42,7 +42,6 @@ interface TeamData {
   coaches: Coach[]
   coachNickname: string | null
   initiated: boolean
-  tokenPool: number
   leaderboard: LeaderboardRow[]
 }
 
@@ -238,8 +237,8 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   }
 
   async function deleteTeam(team: TeamData) {
-    const leftover = team.tokenPool > 0 || team.credits > 0
-      ? `\n\nHeads up: this team still has ${team.tokenPool} pool token${team.tokenPool !== 1 ? 's' : ''} and ${team.credits} coach credit${team.credits !== 1 ? 's' : ''} — these will be lost.`
+    const leftover = team.credits > 0
+      ? `\n\nHeads up: this team still has ${team.credits} coach credit${team.credits !== 1 ? 's' : ''} — these will be lost.`
       : ''
     if (!confirm(
       `Delete "${team.name}"? This permanently removes the team, its ${team.members.length} player${team.members.length !== 1 ? 's' : ''}, and its coaches. Players keep their own shot history.${leftover}`,
@@ -1240,7 +1239,6 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                     <TokenBalances
                       players={team.members.map(m => ({ id: m.id, label: memberDisplayName(m), tokens: m.tokens }))}
                       coachCredits={team.credits}
-                      tokenPool={team.tokenPool}
                     />
                   )}
 

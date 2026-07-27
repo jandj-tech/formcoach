@@ -64,17 +64,23 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
       sessionId: session.id, metaType, plan, hasVariant: !!variant, hasSize: !!size,
     })
 
-    // --- Team initiation package: unlocks $2.50 pricing + fills the token pool ---
+    // --- Team initiation package: unlocks $2.50 pricing + credits the coach ---
     if (metaType === 'team_initiation') {
       const teamId = session.metadata?.teamId
       const tokens = parseInt(session.metadata?.tokens || '0', 10)
       if (teamId && tokens > 0) {
         try {
           await db`
-            UPDATE teams
-            SET token_pool = COALESCE(token_pool, 0) + ${tokens},
-                initiated_at = COALESCE(initiated_at, NOW())
+            UPDATE teams SET initiated_at = COALESCE(initiated_at, NOW())
             WHERE id = ${teamId}
+          `
+          // Package tokens land in the head coach's single credit balance
+          // (the legacy per-team token_pool is gone).
+          await db`
+            INSERT INTO coach_credits (email, credits)
+            SELECT LOWER(admin_email), ${tokens} FROM teams WHERE id = ${teamId}
+            ON CONFLICT (email) DO UPDATE
+            SET credits = COALESCE(coach_credits.credits, 0) + ${tokens}
           `
         } catch (err) {
           console.error('Failed to initiate team:', err)
@@ -331,12 +337,11 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
         // teams.credits is the coach-upload budget (one credit per analysis the
         // org leader / team coach burns). Players don't get personal tokens —
         // the org leader uploads on their behalf out of this credit pool.
-        // token_pool is kept in sync for legacy displays.
         await db`
           INSERT INTO teams
-            (name, admin_email, password_hash, access_code, organization_id, class_package_id, initiated_at, token_pool, credits)
+            (name, admin_email, password_hash, access_code, organization_id, class_package_id, initiated_at, credits)
           VALUES
-            (${teamName}, ${org.admin_email}, ${null}, ${teamAccessCode}, ${orgId}, ${packageId}, NOW(), ${playerCount * 2}, ${playerCount * 2})
+            (${teamName}, ${org.admin_email}, ${null}, ${teamAccessCode}, ${orgId}, ${packageId}, NOW(), ${playerCount * 2})
         `
       } catch (err) {
         console.error('Failed to auto-create class team:', err)

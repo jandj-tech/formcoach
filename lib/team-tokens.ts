@@ -10,28 +10,24 @@ export interface TeamTokenState {
   initiated: boolean
   /** Number of joined player accounts (team_memberships). */
   playerCount: number
-  /** Unassigned tokens sitting in the team pool. */
-  tokenPool: number
 }
 
 /**
- * Initiation / token-pool status for a team. Returns null if the team does not exist.
- * Degrades gracefully if the migrate-team-tokens migration has not been run yet.
+ * Initiation status for a team. Returns null if the team does not exist.
+ * Degrades gracefully if the class-package migration has not been run yet.
  */
 export async function getTeamTokenState(teamId: string): Promise<TeamTokenState | null> {
   let name = ''
-  let tokenPool = 0
   let hasClassPackage = false
 
   try {
     const [team] = (await db`
-      SELECT name, COALESCE(token_pool, 0)::int AS token_pool,
+      SELECT name,
              (class_package_id IS NOT NULL) AS has_class_package
       FROM teams WHERE id = ${teamId}
-    `) as unknown as [{ name: string; token_pool: number; has_class_package: boolean } | undefined]
+    `) as unknown as [{ name: string; has_class_package: boolean } | undefined]
     if (!team) return null
     name = team.name
-    tokenPool = team.token_pool
     hasClassPackage = team.has_class_package
   } catch {
     const [team] = (await db`
@@ -49,7 +45,7 @@ export async function getTeamTokenState(teamId: string): Promise<TeamTokenState 
   // count or a class package was bought for it. Either path unlocks $1.49.
   const initiated = hasClassPackage || row.count >= INITIATION_MIN_PLAYERS
 
-  return { teamId, name, initiated, playerCount: row.count, tokenPool }
+  return { teamId, name, initiated, playerCount: row.count }
 }
 
 /**

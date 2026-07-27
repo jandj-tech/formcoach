@@ -5,7 +5,7 @@ export interface GrantBallCreditsInput {
   // "user:<id>"   credits users.analysis_tokens (player)
   // "coach:<email>" credits coach_credits.credits (team coach personal pool)
   // "org:<id>"    credits organizations.token_balance (org owner pool)
-  // "team:<id>"   legacy — credits teams.token_pool (kept for old sessions)
+  // "team:<id>"   legacy — credits the team's head coach (coach_credits)
   // ""            guest/email — credits by email match + email_list
   recipient: string
   tokensToGrant: number
@@ -86,12 +86,15 @@ export async function grantBallCreditsOnce(input: GrantBallCreditsInput): Promis
       updatedRows = rows.length
     } else if (recipient.startsWith('team:')) {
       // Legacy — only hit by pre-deploy sessions still being processed.
+      // The per-team token pool is gone; credit the head coach instead.
       const teamId = recipient.slice(5)
       const rows = await db`
-        UPDATE teams SET token_pool = COALESCE(token_pool, 0) + ${tokensToGrant}
-        WHERE id = ${teamId}
-        RETURNING id
-      ` as unknown as Array<{ id: string }>
+        INSERT INTO coach_credits (email, credits)
+        SELECT LOWER(admin_email), ${tokensToGrant} FROM teams WHERE id = ${teamId}
+        ON CONFLICT (email) DO UPDATE
+        SET credits = COALESCE(coach_credits.credits, 0) + ${tokensToGrant}
+        RETURNING email
+      ` as unknown as Array<{ email: string }>
       updatedRows = rows.length
     } else if (recipient.startsWith('user:')) {
       const userId = recipient.slice(5)

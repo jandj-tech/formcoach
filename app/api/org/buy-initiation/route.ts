@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
             unit_amount: initiationPriceCents(qty),
             product_data: {
               name: `Team Initiation Package — ${qty} tokens (${state.name})`,
-              description: `Unlocks the $1.49 token price for ${state.name} and adds ${qty} tokens to the team pool.`,
+              description: `Unlocks the $1.49 token price for ${state.name} and adds ${qty} credits to the coach balance.`,
             },
           },
         },

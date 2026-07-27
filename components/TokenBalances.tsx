@@ -9,27 +9,19 @@ interface Props {
   players: PlayerBalance[]
   /** Shared coach upload credits for the team. */
   coachCredits: number
-  /** Unassigned tokens in the team pool. */
-  tokenPool: number
 }
 
 // At-a-glance view of every token balance on a team.
-export default function TokenBalances({ players, coachCredits, tokenPool }: Props) {
+export default function TokenBalances({ players, coachCredits }: Props) {
   const totalPlayerTokens = players.reduce((sum, p) => sum + p.tokens, 0)
 
   return (
     <div className="border border-gray-200 rounded-2xl p-5 space-y-3">
       <p className="font-black text-black">Token balances</p>
 
-      <div className="grid grid-cols-2 gap-2">
-        <div className="bg-orange-50 border border-orange-200 rounded-xl px-3 py-2">
-          <p className="text-xs text-gray-500">Team pool (unassigned)</p>
-          <p className="text-2xl font-black text-black">{tokenPool}</p>
-        </div>
-        <div className="bg-orange-50 border border-orange-200 rounded-xl px-3 py-2">
-          <p className="text-xs text-gray-500">Coach upload credits</p>
-          <p className="text-2xl font-black text-black">{coachCredits}</p>
-        </div>
+      <div className="bg-orange-50 border border-orange-200 rounded-xl px-3 py-2">
+        <p className="text-xs text-gray-500">Coach upload credits</p>
+        <p className="text-2xl font-black text-black">{coachCredits}</p>
       </div>
 
       <div>

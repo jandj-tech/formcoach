@@ -46,7 +46,6 @@ export default async function TeamDashboardPage() {
   let coaches: Array<{ id: string; email: string; pending: boolean; nickname: string | null }> = []
   let headCoachNickname: string | null = null
   let teamInitiated = false
-  let teamTokenPool = 0
 
   try {
     // Shots come from two sources: players who joined with an account
@@ -166,12 +165,10 @@ export default async function TeamDashboardPage() {
   try {
     const [row] = (await db`
       SELECT coach_nickname,
-             COALESCE(token_pool, 0)::int AS token_pool,
              (class_package_id IS NOT NULL) AS has_class_package
       FROM teams WHERE id = ${team.id}
-    `) as unknown as [{ coach_nickname: string | null; token_pool: number; has_class_package: boolean } | undefined]
+    `) as unknown as [{ coach_nickname: string | null; has_class_package: boolean } | undefined]
     headCoachNickname = row?.coach_nickname ?? null
-    teamTokenPool = row?.token_pool ?? 0
     hasClassPackage = !!row?.has_class_package
   } catch (err) {
     console.error('[team/dashboard] team meta query failed:', err)
@@ -216,7 +213,7 @@ export default async function TeamDashboardPage() {
     <main className="min-h-screen bg-white flex flex-col">
       <TopNav />
       <TeamDashboardClient
-        team={{ id: team.id, name: team.name, accessCode: team.access_code, credits: team.credits, initiated: teamInitiated, tokenPool: teamTokenPool }}
+        team={{ id: team.id, name: team.name, accessCode: team.access_code, credits: team.credits, initiated: teamInitiated }}
         leaderboard={leaderboard}
         improved={improved}
         members={members}

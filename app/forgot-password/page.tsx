@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import TopNav from '@/components/TopNav'
+import SiteFooter from '@/components/SiteFooter'
+import Image from 'next/image'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -23,56 +25,60 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <main className="min-h-screen bg-white flex flex-col">
+    <main className="min-h-screen bg-ink-950 text-chalk flex flex-col">
       <TopNav />
-      <div className="flex-1 flex items-center justify-center px-6 py-20">
+      <div className="hero-glow grain relative flex-1 flex items-center justify-center px-6 py-16">
         <div className="w-full max-w-sm space-y-6">
           {status === 'sent' ? (
             <div className="text-center space-y-3">
-              <div className="text-4xl">📬</div>
-              <h1 className="text-2xl font-black text-black">Check your email</h1>
-              <p className="text-gray-500 text-sm">
-                If <span className="text-orange-500">{email}</span> has an account, we&apos;ve sent a
+              <Image src="/icon.png" alt="" width={48} height={48} className="mx-auto rounded-2xl select-none" aria-hidden />
+              <h1 className="font-display font-black uppercase text-2xl leading-tight">Check your email</h1>
+              <p className="text-chalk-dim text-sm">
+                If <span className="text-ember-400">{email}</span> has an account, we&apos;ve sent a
                 password reset link. It expires in 1 hour.
               </p>
-              <p className="text-gray-400 text-xs">Don&apos;t see it? Check your spam folder.</p>
-              <a href="/login" className="inline-block text-orange-500 hover:underline font-medium text-sm">
+              <p className="text-chalk-dim text-xs">Don&apos;t see it? Check your spam folder.</p>
+              <a href="/login" className="inline-block text-ember-400 hover:text-ember-500 font-medium text-sm transition-colors py-1">
                 Back to log in
               </a>
             </div>
           ) : (
             <>
-              <div className="text-center space-y-2">
-                <div className="text-4xl">🔑</div>
-                <h1 className="text-2xl font-black text-black">Forgot your password?</h1>
-                <p className="text-gray-500 text-sm">
+              <div className="text-center space-y-3">
+                <Image src="/icon.png" alt="" width={48} height={48} className="mx-auto rounded-2xl select-none" aria-hidden />
+                <h1 className="font-display font-black uppercase text-2xl leading-tight">Forgot your password?</h1>
+                <p className="text-chalk-dim text-sm">
                   Enter your email and we&apos;ll send you a link to reset it.
                 </p>
               </div>
-              <form onSubmit={handleSubmit} className="space-y-3">
+              <form onSubmit={handleSubmit} className="space-y-3 bg-ink-900 border border-courtline rounded-2xl p-5">
                 <input
                   type="email"
+                  name="email"
+                  autoComplete="email"
+                  aria-label="Email"
                   required
                   placeholder="Email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
+                  className="w-full bg-ink-800 border border-courtline rounded-xl px-4 py-3 text-chalk placeholder-chalk-dim focus:outline-none focus:border-ember-500 transition-colors"
                 />
                 <button
                   type="submit"
                   disabled={status === 'loading'}
-                  className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold py-3 rounded-xl transition-colors"
+                  className="w-full bg-ember-500 hover:bg-ember-400 disabled:opacity-50 active:scale-[0.99] text-ink-950 font-bold py-3.5 rounded-full transition-all"
                 >
                   {status === 'loading' ? 'Sending...' : 'Send reset link'}
                 </button>
               </form>
-              <p className="text-center text-sm text-gray-500">
-                <a href="/login" className="text-orange-500 hover:underline font-medium">Back to log in</a>
+              <p className="text-center text-sm text-chalk-dim">
+                <a href="/login" className="text-ember-400 hover:text-ember-500 font-medium transition-colors">Back to log in</a>
               </p>
             </>
           )}
         </div>
       </div>
+      <SiteFooter />
     </main>
   )
 }

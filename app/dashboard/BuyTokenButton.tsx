@@ -39,6 +39,10 @@ export default function BuyTokenButton({ isInApp = false, initiated = false }: {
     }
   }
 
+  // After the hooks: an early return above them changes hook order between
+  // renders if isInApp ever flips, which crashes React.
+  if (isInApp || inAppUA) return null
+
   return (
     <span className="inline-flex flex-col items-end gap-1">
       <button

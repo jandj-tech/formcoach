@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 
 export default function BuyTokenButton({ isInApp = false, initiated = false }: { isInApp?: boolean; initiated?: boolean }) {
-  if (isInApp) return null
   const [region, setRegion] = useState('US')
   const [loading, setLoading] = useState(false)
   const price = initiated ? '1.49' : '2.79'
@@ -26,6 +25,10 @@ export default function BuyTokenButton({ isInApp = false, initiated = false }: {
       setLoading(false)
     }
   }
+
+  // After the hooks: an early return above them changes hook order between
+  // renders if isInApp ever flips, which crashes React.
+  if (isInApp) return null
 
   return (
     <button

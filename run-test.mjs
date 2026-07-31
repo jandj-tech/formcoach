@@ -1,6 +1,14 @@
-const postgres = require('postgres')
-const https = require('https')
-require('dotenv').config({ path: '.env.local' })
+// Manual debugging script. Re-runs shot analysis over the frames of the two most
+// recent 20-frame analyses, so scoring changes can be compared without
+// re-uploading a video.
+//
+// Run with:  npx tsx --env-file=.env.local run-test.mjs
+//
+// tsx is required because this imports lib/analyze.ts directly; --env-file
+// supplies DATABASE_URL the same way `npm run migrate` does.
+
+import postgres from 'postgres'
+import https from 'https'
 
 function fetchAsBase64(url) {
   return new Promise((resolve, reject) => {
@@ -14,6 +22,11 @@ function fetchAsBase64(url) {
 }
 
 async function main() {
+  if (!process.env.DATABASE_URL) {
+    console.error('DATABASE_URL is not set. Run with: npx tsx --env-file=.env.local run-test.mjs')
+    process.exit(1)
+  }
+
   const db = postgres(process.env.DATABASE_URL, { ssl: 'require' })
 
   // Get the 2 most recent submissions with frame URLs
@@ -27,7 +40,7 @@ async function main() {
   for (const row of rows) {
     console.log(`\n=== Analysis ${row.analysis_id} (${new Date(row.created_at).toLocaleTimeString()}) ===`)
     console.log('Downloading', row.frame_urls.length, 'frames...')
-    
+
     const base64Frames = []
     for (let i = 0; i < row.frame_urls.length; i++) {
       process.stdout.write(`\r  Frame ${i+1}/${row.frame_urls.length}`)
@@ -36,12 +49,10 @@ async function main() {
     console.log('\n  Downloaded. Running analysis...')
 
     const mimeTypes = base64Frames.map(() => 'image/jpeg')
-    
-    // Dynamically import analyzeShot
-    const mod = await import('./lib/analyze.ts')
-    const analyzeShot = mod.analyzeShot || mod.default?.analyzeShot
+
+    const { analyzeShot } = await import('./lib/analyze.ts')
     const result = await analyzeShot(base64Frames, mimeTypes)
-    
+
     console.log(`Overall: ${result.overall_score}`)
     for (const c of result.criteria) {
       console.log(`  ID ${c.id}: ${c.score ?? 'null'} — ${c.reasoning?.slice(0, 80)}`)
@@ -50,4 +61,5 @@ async function main() {
 
   await db.end()
 }
+
 main().catch(console.error)

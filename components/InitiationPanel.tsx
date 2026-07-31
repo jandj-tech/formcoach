@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useIsInApp } from '@/lib/useIsInApp'
 import {
   INITIATION_MIN_PLAYERS,
   INITIATION_MIN_TOKENS,
@@ -18,9 +19,13 @@ interface Props {
 
 // Shown for a team that has not yet bought its initiation package.
 export default function InitiationPanel({ endpoint, teamId, playerCount }: Props) {
+  const inApp = useIsInApp()
   const [quantity, setQuantity] = useState(INITIATION_MIN_TOKENS)
   const [buying, setBuying] = useState(false)
   const [error, setError] = useState('')
+
+  // Digital purchases inside the iOS app must use native in-app purchase.
+  if (inApp) return null
 
   const enoughPlayers = playerCount >= INITIATION_MIN_PLAYERS
   const validQty = Number.isFinite(quantity) && quantity >= INITIATION_MIN_TOKENS

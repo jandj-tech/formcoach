@@ -1,13 +1,15 @@
-import { NextResponse } from 'next/server'
-import { getSession } from '@/lib/auth'
+import { NextRequest, NextResponse } from 'next/server'
+import { getSessionFromRequest } from '@/lib/auth'
 import { getTeamSession } from '@/lib/team-auth'
 import { getOrgSession } from '@/lib/org-auth'
 import { db } from '@/lib/db'
 import { userHasInitiatedTeam } from '@/lib/team-tokens'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   // 1. Player session — also returns token/subscription info used elsewhere.
-  const session = await getSession()
+  // getSessionFromRequest checks the cookie first (web unchanged) and falls
+  // back to the mobile app's Bearer JWT so native screens see login state.
+  const session = await getSessionFromRequest(req)
   if (session) {
     type UserRow = {
       id: string

@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth'
+import { isInAppRequest } from '@/lib/in-app'
 import { db } from '@/lib/db'
 import { userHasInitiatedTeam } from '@/lib/team-tokens'
 import TopNav from '@/components/TopNav'
@@ -39,7 +40,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   if (!session) redirect('/login')
 
   const params = await searchParams
-  const isInApp = params.app === 'ios'
+  // The ?app=ios param is lost on in-page navigation, so also check the
+  // app WebView's User-Agent marker.
+  const isInApp = params.app === 'ios' || (await isInAppRequest())
 
   let user: UserRow | undefined
   let submissions: SubmissionRow[] = []

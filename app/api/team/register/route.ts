@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
 import { signTeamSession, teamSessionCookieOptions } from '@/lib/team-auth'
+import { isCleanDisplayText, BLOCKED_TEXT_ERROR } from '@/lib/moderation'
 
 function generateAccessCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -15,6 +16,9 @@ function generateAccessCode(): string {
 export async function POST(req: NextRequest) {
   try {
     const { name, email, password, orgCode, ageGroup } = await req.json()
+    if (name && !isCleanDisplayText(name)) {
+      return NextResponse.json({ error: BLOCKED_TEXT_ERROR }, { status: 400 })
+    }
     if (!name || !email || !password || password.length < 6) {
       return NextResponse.json({ error: 'Team name, email, and password (6+ chars) required' }, { status: 400 })
     }

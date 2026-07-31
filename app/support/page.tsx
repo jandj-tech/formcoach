@@ -44,6 +44,9 @@ export default function SupportPage() {
             >
               {SUPPORT_EMAIL}
             </a>
+            <p className="text-gray-500 text-xs pt-1">
+              To report inappropriate content (names, team names, or videos), email us with a link to the content — reports are reviewed and acted on within 24 hours.
+            </p>
           </div>
         </div>
       </div>

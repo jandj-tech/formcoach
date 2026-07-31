@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { del } from '@vercel/blob'
 import { getSession } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { clearAllSessions } from '@/lib/sessions'
@@ -12,6 +13,25 @@ export async function DELETE() {
 
   // Capture email before deletion for confirmation email
   const [userRow] = await db`SELECT email FROM users WHERE id = ${userId}` as unknown as [{ email: string } | undefined]
+
+  // Collect blob URLs (frames + videos) BEFORE dropping the rows — deleting
+  // the analyses first would destroy the only record of the URLs and orphan
+  // the files at public URLs forever.
+  const analyses = (await db`
+    SELECT a.* FROM analyses a
+    JOIN submissions s ON s.id = a.submission_id
+    WHERE s.user_id = ${userId} OR s.email = (SELECT email FROM users WHERE id = ${userId})
+  `) as unknown as Array<Record<string, unknown>>
+
+  const blobUrls: string[] = []
+  for (const a of analyses) {
+    if (typeof a.video_url === 'string' && a.video_url) blobUrls.push(a.video_url)
+    if (Array.isArray(a.frame_urls)) {
+      for (const u of a.frame_urls as unknown[]) {
+        if (typeof u === 'string' && u) blobUrls.push(u)
+      }
+    }
+  }
 
   // Delete in FK order: scores → analyses → submissions → memberships → user
   await db`
@@ -31,7 +51,23 @@ export async function DELETE() {
   `
   await db`DELETE FROM submissions WHERE user_id = ${userId} OR email = (SELECT email FROM users WHERE id = ${userId})`
   await db`DELETE FROM team_memberships WHERE user_id = ${userId}`
+
+  // Stop all marketing email to this address — "account deleted" must mean
+  // no more mail beyond the single confirmation below.
+  if (userRow?.email) {
+    try { await db`DELETE FROM email_list WHERE email = ${userRow.email}` } catch {}
+  }
+
   await db`DELETE FROM users WHERE id = ${userId}`
+
+  // Best-effort blob cleanup — don't fail the deletion if storage is unreachable.
+  if (blobUrls.length > 0) {
+    try {
+      await del(blobUrls)
+    } catch (err) {
+      console.warn('Delete-account blob cleanup failed:', err instanceof Error ? err.message : err)
+    }
+  }
 
   if (userRow?.email) {
     try { await sendAccountDeletedEmail(userRow.email) } catch {}

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSessionFromRequest } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { grantFreeOrgTokensIfEligible } from '@/lib/team-tokens'
+import { isCleanDisplayText, BLOCKED_TEXT_ERROR } from '@/lib/moderation'
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,6 +17,9 @@ export async function POST(req: NextRequest) {
     // set, those fields are ignored — the canonical user name wins so a single
     // email can't appear under different names on different teams.
     const { teamCode, firstName, lastInitial } = await req.json()
+    if (!isCleanDisplayText(`${firstName ?? ''} ${lastInitial ?? ''}`)) {
+      return NextResponse.json({ error: BLOCKED_TEXT_ERROR }, { status: 400 })
+    }
     if (!teamCode || typeof teamCode !== 'string') {
       return NextResponse.json({ error: 'Team code required' }, { status: 400 })
     }

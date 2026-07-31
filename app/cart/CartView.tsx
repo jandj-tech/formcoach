@@ -6,6 +6,7 @@ import { Trash2Icon } from 'lucide-react'
 import { useCart } from '@/lib/cart'
 import type { CartBallItem, CartBundleItem, Variant, Size } from '@/lib/cart'
 import QuantityStepper from '@/components/QuantityStepper'
+import { useIsInApp } from '@/lib/useIsInApp'
 
 const PRICE = 49.99
 // Bundle: ball 1 full price + ball 2 at 50% off = $49.99 + $25.00 = $74.99
@@ -28,6 +29,7 @@ function variantLabel(v: Variant) {
 }
 
 export default function CartView() {
+  const inApp = useIsInApp()
   const { items, hydrated, setQuantity, removeItem } = useCart()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -156,7 +158,7 @@ export default function CartView() {
           </span>
         </div>
 
-        {account && (
+        {account && !inApp && (
           <p className="text-zinc-400 text-xs">
             Free analyses go to your{' '}
             {account.type === 'org'
@@ -168,6 +170,7 @@ export default function CartView() {
           </p>
         )}
 
+        {!inApp && (
         <div className="flex flex-col gap-1">
           <label className="text-zinc-400 text-xs font-semibold">Promo / comp code (optional)</label>
           <input
@@ -179,6 +182,7 @@ export default function CartView() {
           />
           <p className="text-zinc-500 text-xs">A valid comp code makes the order free — no card needed.</p>
         </div>
+        )}
 
         <button
           onClick={handleCheckout}
@@ -211,15 +215,18 @@ function BallCartLine({
   onChangeQty: (q: number) => void
   onRemove: () => void
 }) {
+  const inApp = useIsInApp()
   const lineTotal = Math.round(unitPrice * item.quantity * 100) / 100
   return (
     <li className="flex flex-col sm:flex-row sm:items-center gap-4 rounded-xl border border-zinc-800 bg-zinc-950 p-4">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap mb-1">
           <div className="text-white font-bold text-base">The LearnHoops.com Training Ball</div>
-          <span className="text-xs font-semibold text-blue-400 bg-blue-500/10 border border-blue-500/30 px-2 py-0.5 rounded-full">
-            + {FREE_ANALYSES_PER_BALL * item.quantity} Shot Analyses Free
-          </span>
+          {!inApp && (
+            <span className="text-xs font-semibold text-blue-400 bg-blue-500/10 border border-blue-500/30 px-2 py-0.5 rounded-full">
+              + {FREE_ANALYSES_PER_BALL * item.quantity} Shot Analyses Free
+            </span>
+          )}
         </div>
         <div className="text-white text-sm">
           {variantLabel(item.variant)} · Size {item.size} ({SIZE_INCHES[item.size]})
@@ -260,14 +267,17 @@ function BundleCartLine({
   bundlePrice: number
   onRemove: () => void
 }) {
+  const inApp = useIsInApp()
   return (
     <li className="flex flex-col sm:flex-row sm:items-start gap-4 rounded-xl border border-orange-500/30 bg-orange-500/5 p-4">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap mb-1">
           <div className="text-white font-bold text-base">2-Ball Bundle</div>
-          <span className="text-xs font-semibold text-blue-400 bg-blue-500/10 border border-blue-500/30 px-2 py-0.5 rounded-full">
-            + 10 Shot Analyses Free
-          </span>
+          {!inApp && (
+            <span className="text-xs font-semibold text-blue-400 bg-blue-500/10 border border-blue-500/30 px-2 py-0.5 rounded-full">
+              + 10 Shot Analyses Free
+            </span>
+          )}
         </div>
         <div className="text-zinc-400 text-sm">
           Ball 1: {variantLabel(item.variant1)} · Size {item.size1} ({SIZE_INCHES[item.size1]})

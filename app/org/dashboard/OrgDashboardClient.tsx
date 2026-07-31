@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
+import { useIsInApp } from '@/lib/useIsInApp'
 import Link from 'next/link'
 import OrgAddCoach from './OrgAddCoach'
 import TokenBalances from '@/components/TokenBalances'
@@ -94,6 +95,7 @@ const PLAYER_SORT_OPTIONS: SortOption<PlayerSortMode>[] = [
 
 export default function OrgDashboardClient({ teams, orgName, classPackages, myUploads, orgTokenBalance }: Props) {
   const router = useRouter()
+  const inApp = useIsInApp()
   const [expanded, setExpanded] = useState<string | null>(null)
   // destSelect: 'all' | 'coach' | userId — one dropdown replaces mode+checkboxes
   const [destSelect, setDestSelect] = useState<Record<string, string>>({})
@@ -544,7 +546,9 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   const classPricePerPlayer = classPlayerCount >= CLASS_BULK_THRESHOLD ? 36.99 : 40
   const classTotal = classPriceCents(classPlayerCount) / 100
 
-  const classProgramSection = (
+  // Whole purchase pitch hidden in the iOS app (guideline 3.1.1) — showing a
+  // priced buy form with a missing button reads as broken UI or steering.
+  const classProgramSection = inApp ? null : (
     <div className="space-y-4">
       {/* Collapsed view: slim orange bar; expanded view: full pitch + buy form. */}
       {!classProgramOpen ? (
@@ -687,13 +691,16 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
 
           {classError && <p className="text-red-200 text-sm">{classError}</p>}
 
-          <button
-            onClick={handleBuyClass}
-            disabled={buyingClass || classPlayerCount < CLASS_MIN_PLAYERS}
-            className="w-full bg-white hover:bg-orange-50 disabled:bg-white/60 disabled:text-orange-400 text-orange-600 font-black py-3 rounded-xl transition-colors"
-          >
-            {buyingClass ? 'Redirecting to checkout...' : `Buy Class Package — $${classTotal.toLocaleString()}`}
-          </button>
+          {/* Hidden in the iOS app: digital purchases there must use native in-app purchase. */}
+          {!inApp && (
+            <button
+              onClick={handleBuyClass}
+              disabled={buyingClass || classPlayerCount < CLASS_MIN_PLAYERS}
+              className="w-full bg-white hover:bg-orange-50 disabled:bg-white/60 disabled:text-orange-400 text-orange-600 font-black py-3 rounded-xl transition-colors"
+            >
+              {buyingClass ? 'Redirecting to checkout...' : `Buy Class Package — $${classTotal.toLocaleString()}`}
+            </button>
+          )}
         </div>
       </div>
       )}
@@ -1102,7 +1109,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                           style={{ width: `${Math.min(100, (team.members.length / 8) * 100)}%` }} />
                       </div>
                       <p className="text-xs text-gray-500">
-                        {Math.max(0, 8 - team.members.length)} more player{Math.max(0, 8 - team.members.length) !== 1 ? 's' : ''} needed — at 8, every player gets 1 free token and tokens unlock at $1.49 each.
+                        {Math.max(0, 8 - team.members.length)} more player{Math.max(0, 8 - team.members.length) !== 1 ? 's' : ''} needed — at 8, every player gets 1 free token{inApp ? '' : ' and tokens unlock at $1.49 each'}.
                       </p>
                       <p className="text-xs text-gray-400">Share the player signup link below to invite players to this team.</p>
                     </div>
@@ -1375,7 +1382,8 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                     )}
                   </div>
 
-                  {/* Buy tokens — collapsible */}
+                  {/* Buy tokens — collapsible. Hidden in the iOS app (guideline 3.1.1). */}
+                  {!inApp && (
                   <div className="border border-gray-200 rounded-xl overflow-hidden">
                     <button
                       onClick={() => setBuyOpen(prev => ({ ...prev, [team.id]: !isBuyOpen }))}
@@ -1420,16 +1428,20 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                           </select>
                         </div>
                         {teamError && <p className="text-red-500 text-sm">{teamError}</p>}
-                        <button
-                          onClick={() => handleBuy(team)}
-                          disabled={buying}
-                          className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold py-2.5 rounded-xl text-sm transition-colors"
-                        >
-                          {buying ? 'Redirecting...' : 'Buy Tokens'}
-                        </button>
+                        {/* Hidden in the iOS app: digital purchases there must use native in-app purchase. */}
+                        {!inApp && (
+                          <button
+                            onClick={() => handleBuy(team)}
+                            disabled={buying}
+                            className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold py-2.5 rounded-xl text-sm transition-colors"
+                          >
+                            {buying ? 'Redirecting...' : 'Buy Tokens'}
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
+                  )}
 
                   {/* Danger zone — delete this team */}
                   <div className="border-t border-gray-100 pt-4">

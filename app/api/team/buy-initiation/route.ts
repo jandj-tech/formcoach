@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getTeamSessionFromRequest } from '@/lib/team-auth'
 import { getStripe } from '@/lib/stripe'
+import { rejectInAppPurchase } from '@/lib/in-app'
 import {
   getTeamTokenState,
   initiationPriceCents,
@@ -16,6 +17,9 @@ const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL && process.env.NEXT_PUBLIC_BAS
 
 // One-time initiation package: unlocks the $1.49 token price for a team.
 export async function POST(req: NextRequest) {
+  // Digital goods cannot be sold via Stripe inside the iOS app (guideline 3.1.1).
+  const inAppBlock = rejectInAppPurchase(req)
+  if (inAppBlock) return inAppBlock
   const session = await getTeamSessionFromRequest(req)
   if (!session) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })

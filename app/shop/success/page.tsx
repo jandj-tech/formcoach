@@ -3,6 +3,7 @@ import TopNav from '@/components/TopNav'
 import ClearCart from './ClearCart'
 import { getStripe } from '@/lib/stripe'
 import { grantBallCreditsOnce } from '@/lib/grant-ball-credits'
+import { isInAppRequest } from '@/lib/in-app'
 
 export const metadata = {
   title: 'Order Confirmed — LearnHoops.com',
@@ -39,6 +40,9 @@ export default async function ShopSuccessPage({ searchParams }: { searchParams: 
   const params = await searchParams
   const sessionId = params.session_id
   const grant = await grantCreditsForSession(sessionId)
+  // Inside the iOS app, don't advertise digital credits delivered with a
+  // Stripe purchase (guideline 3.1.1) — the grant itself still happens.
+  const inApp = await isInAppRequest()
 
   return (
     <main className="min-h-screen bg-black flex flex-col">
@@ -52,12 +56,12 @@ export default async function ShopSuccessPage({ searchParams }: { searchParams: 
             Thanks for ordering The LearnHoops.com Training Ball. We&apos;ll email you a receipt and let you know
             when your order ships.
           </p>
-          {grant.tokens > 0 && grant.ok && (
+          {grant.tokens > 0 && grant.ok && !inApp && (
             <p className="text-orange-400 font-bold">
               {grant.tokens} free shot analyses credited to your account.
             </p>
           )}
-          {grant.tokens > 0 && !grant.ok && (
+          {grant.tokens > 0 && !grant.ok && !inApp && (
             <div className="space-y-1">
               <p className="text-yellow-300 font-bold">
                 {grant.tokens} free shot analyses pending.

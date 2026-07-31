@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useIsInApp } from '@/lib/useIsInApp'
 
 interface Player {
   id: string
@@ -14,10 +15,14 @@ interface Props {
 }
 
 export default function BuyPlayerTokensButton({ players, teamCode }: Props) {
+  const inApp = useIsInApp()
   const [selected, setSelected] = useState<Record<string, boolean>>({})
   const [quantity, setQuantity] = useState(1)
   const [buying, setBuying] = useState(false)
   const [error, setError] = useState('')
+
+  // Digital purchases inside the iOS app must use native in-app purchase.
+  if (inApp) return null
 
   function toggle(userId: string) {
     setSelected(prev => ({ ...prev, [userId]: !prev[userId] }))

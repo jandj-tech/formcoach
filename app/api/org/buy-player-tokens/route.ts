@@ -3,6 +3,7 @@ import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { getStripe } from '@/lib/stripe'
 import { db } from '@/lib/db'
 import { orgHasInitiatedTeam, TEAM_TOKEN_PRICE_CENTS, REGULAR_ANALYSIS_PRICE_CENTS } from '@/lib/team-tokens'
+import { rejectInAppPurchase } from '@/lib/in-app'
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL && process.env.NEXT_PUBLIC_BASE_URL !== 'http://localhost:3000'
   ? process.env.NEXT_PUBLIC_BASE_URL
@@ -11,6 +12,9 @@ const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL && process.env.NEXT_PUBLIC_BAS
     : 'http://localhost:3000'
 
 export async function POST(req: NextRequest) {
+  // Digital goods cannot be sold via Stripe inside the iOS app (guideline 3.1.1).
+  const inAppBlock = rejectInAppPurchase(req)
+  if (inAppBlock) return inAppBlock
   const session = await getOrgSessionFromRequest(req)
   if (!session) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })

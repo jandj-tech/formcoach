@@ -1,7 +1,9 @@
 import TopNav from '@/components/TopNav'
 import Link from 'next/link'
+import { isInAppRequest } from '@/lib/in-app'
 
-export default function TeamLandingPage() {
+export default async function TeamLandingPage() {
+  const inApp = await isInAppRequest()
   return (
     <main className="min-h-screen bg-white flex flex-col">
       <TopNav />
@@ -19,9 +21,19 @@ export default function TeamLandingPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-2xl w-full text-left">
           <div className="bg-orange-50 border border-orange-100 rounded-2xl p-5 space-y-2">
-            <div className="text-2xl font-black text-orange-500">$1.49</div>
-            <div className="font-semibold text-black">Per upload</div>
-            <div className="text-gray-500 text-sm">Buy credits and use them when you need them.</div>
+            {inApp ? (
+              <>
+                <div className="text-2xl">🎯</div>
+                <div className="font-semibold text-black">Pay as you go</div>
+                <div className="text-gray-500 text-sm">Use analysis credits whenever your team needs them.</div>
+              </>
+            ) : (
+              <>
+                <div className="text-2xl font-black text-orange-500">$1.49</div>
+                <div className="font-semibold text-black">Per upload</div>
+                <div className="text-gray-500 text-sm">Buy credits and use them when you need them.</div>
+              </>
+            )}
           </div>
           <div className="bg-orange-50 border border-orange-100 rounded-2xl p-5 space-y-2">
             <div className="text-2xl">🏆</div>
@@ -72,10 +84,11 @@ export default function TeamLandingPage() {
           <div className="border border-gray-200 rounded-2xl p-5 space-y-2">
             <div className="text-orange-500 font-black text-lg">Step 3</div>
             <div className="font-semibold text-black">Players upload, you track everything</div>
-            <div className="text-gray-500 text-sm">Buy credits for players, watch the leaderboard fill up, and see who&apos;s improving across every team.</div>
+            <div className="text-gray-500 text-sm">{inApp ? <>Watch the leaderboard fill up and see who&apos;s improving across every team.</> : <>Buy credits for players, watch the leaderboard fill up, and see who&apos;s improving across every team.</>}</div>
           </div>
         </div>
 
+        {!inApp && (
         <div className="max-w-2xl w-full bg-orange-500 rounded-2xl px-6 py-4 flex items-center gap-4 text-white">
           <span className="text-3xl shrink-0">🎓</span>
           <div className="text-left">
@@ -83,6 +96,7 @@ export default function TeamLandingPage() {
             <p className="text-orange-100 text-sm mt-0.5">Each player gets a ball, 2 shot analyses, and a certificate of completion that shows their improvement. Starting at $40/player.</p>
           </div>
         </div>
+        )}
       </div>
 
     </main>

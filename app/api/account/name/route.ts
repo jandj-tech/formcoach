@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getSessionFromRequest } from '@/lib/auth'
+import { isCleanDisplayText, BLOCKED_TEXT_ERROR } from '@/lib/moderation'
 
 // Sets the user's canonical display name (first name + last initial) and
 // mirrors it onto every team membership and class enrollment they have, so
@@ -16,6 +17,9 @@ export async function POST(req: NextRequest) {
   const rawFirst = body.firstName?.trim().slice(0, 100) ?? ''
   const firstName = rawFirst ? rawFirst.charAt(0).toUpperCase() + rawFirst.slice(1) : ''
   const lastInitial = body.lastInitial?.trim().charAt(0).toUpperCase() ?? ''
+  if (!isCleanDisplayText(`${rawFirst} ${lastInitial}`)) {
+    return NextResponse.json({ error: BLOCKED_TEXT_ERROR }, { status: 400 })
+  }
 
   if (!firstName) return NextResponse.json({ error: 'First name is required' }, { status: 400 })
   if (!lastInitial) return NextResponse.json({ error: 'Last initial is required' }, { status: 400 })

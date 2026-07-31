@@ -1,12 +1,17 @@
 'use client'
 
 import { useState } from 'react'
+import { useIsInApp } from '@/lib/useIsInApp'
 
 // Buys one analysis credit for a coach / org owner's own uploads —
 // $1.49 if their team is initiated, $2.79 otherwise.
 export default function BuySelfCreditsButton({ initiated }: { initiated: boolean }) {
+  const inApp = useIsInApp()
   const [loading, setLoading] = useState(false)
   const price = initiated ? '1.49' : '2.79'
+
+  // Digital purchases inside the iOS app must use native in-app purchase.
+  if (inApp) return null
 
   async function buy() {
     setLoading(true)

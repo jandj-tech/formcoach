@@ -2,33 +2,46 @@
 
 import { useState, useEffect } from 'react'
 import { trackInitiateCheckout } from '@/lib/meta-pixel'
+import { useIsInApp } from '@/lib/useIsInApp'
 import Link from 'next/link'
 
 type Region = 'US' | 'CA'
 
 export default function PremiumCTA({ dark = false, initiated = false }: { dark?: boolean; initiated?: boolean }) {
+  const inApp = useIsInApp()
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
   const [region, setRegion] = useState<Region>('US')
+  const [error, setError] = useState('')
   const price = initiated ? '1.49' : '2.79'
 
   useEffect(() => {
     fetch('/api/region').then(r => r.json()).then(({ region }) => setRegion(region)).catch(() => {})
   }, [])
 
+  // Digital purchases inside the iOS app must use native in-app purchase.
+  if (inApp) return null
+
   async function handleBuyToken() {
     trackInitiateCheckout()
     setLoading(true)
+    setError('')
     try {
       const res = await fetch('/api/buy-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ region }),
       })
-      const { url } = await res.json()
-      if (url) window.location.href = url
+      const data = await res.json().catch(() => ({}))
+      if (data.url) {
+        window.location.href = data.url
+        return
+      }
+      setLoading(false)
+      setError(data.error === 'Login required' ? 'Please log in first.' : 'Could not start checkout. Please try again.')
     } catch {
       setLoading(false)
+      setError('Could not start checkout. Please try again.')
     }
   }
 
@@ -78,11 +91,12 @@ export default function PremiumCTA({ dark = false, initiated = false }: { dark?:
             {loading ? '...' : 'Buy Now →'}
           </button>
         </div>
+        {error && <p className="text-red-500 text-xs mt-2">{error}</p>}
       </div>
 
       <div className={`text-xs ${subColor} border-t ${borderColor} pt-3`}>
         <span className="font-semibold text-orange-500">Save money:</span>{' '}
-        <Link href="/shop" className="underline hover:opacity-80">Buy the training ball</Link> and get 10 free analyses included.
+        <Link href="/shop" className="underline hover:opacity-80">Buy the training ball</Link> and get 5 free analyses included.
       </div>
     </div>
   )

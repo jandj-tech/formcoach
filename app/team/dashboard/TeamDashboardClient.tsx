@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
+import { useIsInApp } from '@/lib/useIsInApp'
 import Link from 'next/link'
 import CoachUploadForm from './CoachUploadForm'
 import TeamCoaches from './TeamCoaches'
@@ -94,6 +95,7 @@ export default function TeamDashboardClient({
 }: Props) {
   const router = useRouter()
   const { clear: clearCart } = useCart()
+  const inApp = useIsInApp()
   const [buying, setBuying] = useState(false)
   const [quantity, setQuantity] = useState(10)
   const [customQty, setCustomQty] = useState('')
@@ -394,7 +396,9 @@ export default function TeamDashboardClient({
         </div>
       )}
 
-      {/* Buy Credits — collapsible, top-level so coaches can purchase regardless of team activation */}
+      {/* Buy Credits — collapsible, top-level so coaches can purchase regardless of team activation.
+          Hidden in the iOS app: digital purchases there must use native in-app purchase. */}
+      {!inApp && (
       <div className="border border-orange-200 rounded-2xl overflow-hidden bg-orange-50">
         <button
           onClick={() => setShowBuyCredits(o => !o)}
@@ -478,6 +482,7 @@ export default function TeamDashboardClient({
           </div>
         )}
       </div>
+      )}
 
       {/* Team Information — one collapsible section wrapping everything but My Uploads */}
       <div className="border border-gray-200 rounded-2xl overflow-hidden">
@@ -525,7 +530,7 @@ export default function TeamDashboardClient({
                 ? `${8 - members.length} more player${8 - members.length !== 1 ? 's' : ''} needed to activate this team.`
                 : 'Almost there!'
               }
-              {' '}Once you reach 8 players, every player on the team automatically gets <strong>1 free analysis token</strong>, and the team unlocks the ability to purchase additional tokens at $1.49 each.
+              {' '}Once you reach 8 players, every player on the team automatically gets <strong>1 free analysis token</strong>{inApp ? '' : ', and the team unlocks the ability to purchase additional tokens at $1.49 each'}.
             </p>
             <p className="text-xs text-gray-400">Share your team signup link below to invite players.</p>
           </div>

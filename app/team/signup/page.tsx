@@ -1,5 +1,6 @@
 'use client'
 
+import { useIsInApp } from '@/lib/useIsInApp'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import TopNav from '@/components/TopNav'
@@ -7,6 +8,7 @@ import PasswordInput from '@/components/PasswordInput'
 
 export default function TeamSignupPage() {
   const router = useRouter()
+  const inApp = useIsInApp()
   const [teamName, setTeamName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -54,7 +56,7 @@ export default function TeamSignupPage() {
           <div className="text-center space-y-2">
             <div className="text-4xl">🏀</div>
             <h1 className="text-2xl font-black text-black">Create your team</h1>
-            <p className="text-gray-500 text-sm">$1.49 per upload once initiated — no monthly fee</p>
+            <p className="text-gray-500 text-sm">{inApp ? 'No monthly fee — pay as you go' : '$1.49 per upload once initiated — no monthly fee'}</p>
           </div>
 
           <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">

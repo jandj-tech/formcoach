@@ -139,6 +139,18 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
             directly face-on, as key form details are hidden from that perspective.
           </p>
         </div>
+
+        {/* Content report (guideline 1.2): every publicly viewable result can be flagged. */}
+        <p className="text-center text-xs text-gray-400">
+          See something inappropriate on this page?{' '}
+          <a
+            href={`mailto:support@learnhoops.com?subject=${encodeURIComponent('Content report')}&body=${encodeURIComponent(`Reporting content at: https://learnhoops.com/results/${token}`)}`}
+            className="underline hover:text-gray-600"
+          >
+            Report it
+          </a>
+          {' '}— we review reports within 24 hours.
+        </p>
       </div>
     </main>
   )

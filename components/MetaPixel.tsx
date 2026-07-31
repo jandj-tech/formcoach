@@ -12,6 +12,7 @@ function PageViewTracker() {
   const searchParams = useSearchParams()
 
   useEffect(() => {
+    if (navigator.userAgent.includes('LearnHoopsApp')) return
     fbq('track', 'PageView')
   }, [pathname, searchParams])
 
@@ -25,6 +26,7 @@ export default function MetaPixel() {
     <>
       <Script id="meta-pixel" strategy="afterInteractive">
         {`
+          if (navigator.userAgent.indexOf('LearnHoopsApp') === -1) {
           !function(f,b,e,v,n,t,s)
           {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
           n.callMethod.apply(n,arguments):n.queue.push(arguments)};
@@ -35,6 +37,7 @@ export default function MetaPixel() {
           'https://connect.facebook.net/en_US/fbevents.js');
           fbq('init', '${PIXEL_ID}');
           fbq('track', 'PageView');
+          }
         `}
       </Script>
       <noscript>

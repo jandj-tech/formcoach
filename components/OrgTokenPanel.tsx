@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useIsInApp } from '@/lib/useIsInApp'
 
 export interface OrgPlayerOpt {
   id: string
@@ -41,6 +42,7 @@ export default function OrgTokenPanel({
   totalCoachCredits: number
 }) {
   const router = useRouter()
+  const inApp = useIsInApp()
   const [open, setOpen] = useState(true)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
@@ -214,7 +216,8 @@ export default function OrgTokenPanel({
 
           {msg && <p className="text-sm text-orange-600 font-semibold">{msg}</p>}
 
-          {/* Buy tokens */}
+          {/* Buy tokens — hidden in the iOS app; digital purchases there must use native in-app purchase */}
+          {!inApp && (
           <div className="space-y-3">
             <p className="text-sm font-bold text-black">Buy tokens</p>
 
@@ -299,6 +302,7 @@ export default function OrgTokenPanel({
               {busy ? 'Redirecting to checkout...' : `Buy ${buyQty} Token${buyQty !== 1 ? 's' : ''} — $${buyTotal}`}
             </button>
           </div>
+          )}
 
           {/* Assign tokens to players */}
           <div className="space-y-2">

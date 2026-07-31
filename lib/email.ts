@@ -179,7 +179,7 @@ const MARKETING_EMAILS = [
     `,
   },
   {
-    subject: '🏀 It\'s here — introducing [Product Name]',
+    subject: '🏀 It\'s here — the LearnHoops Training Ball',
     getHtml: (to: string) => `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
         <div style="background:#000000;padding:24px 32px;">
@@ -188,7 +188,7 @@ const MARKETING_EMAILS = [
         <div style="padding:32px;">
           <h2 style="color:#000000;">The product we've been building is live.</h2>
           <p style="color:#000000;line-height:1.6;">
-            [Describe your product here — what it is, what it does, why it helps players improve their shot.]
+            The LearnHoops Training Ball is built to fix your shooting form — the grip lines mark exactly where your fingers belong, so every rep grooves proper hand placement and release. Every ball includes free AI shot analyses.
           </p>
           <p style="color:#000000;line-height:1.6;">
             As a LearnHoops.com user, you get exclusive early access pricing. This offer is limited to our first 100 customers.
@@ -216,7 +216,7 @@ const MARKETING_EMAILS = [
         <div style="padding:32px;">
           <h2 style="color:#000000;">This is your last chance at early access pricing.</h2>
           <p style="color:#000000;line-height:1.6;">
-            Our early access offer for [Product Name] closes soon. After that, the price goes up and availability drops.
+            Our early access offer for the LearnHoops Training Ball closes soon. After that, the price goes up and availability drops.
           </p>
           <p style="color:#000000;line-height:1.6;">
             You've already taken the first step by analyzing your shot. Don't let this be where you stop.

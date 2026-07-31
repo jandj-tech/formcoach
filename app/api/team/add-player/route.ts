@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getTeamSessionFromRequest } from '@/lib/team-auth'
 import { db } from '@/lib/db'
 import { randomBytes } from 'crypto'
+import { isCleanDisplayText, BLOCKED_TEXT_ERROR } from '@/lib/moderation'
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://learnhoops.com'
 
@@ -11,6 +12,9 @@ export async function POST(req: NextRequest) {
     if (!session) return NextResponse.json({ error: 'Login required' }, { status: 401 })
 
     const { firstName, lastInitial } = await req.json()
+    if (!isCleanDisplayText(`${firstName ?? ''} ${lastInitial ?? ''}`)) {
+      return NextResponse.json({ error: BLOCKED_TEXT_ERROR }, { status: 400 })
+    }
     if (!firstName || !firstName.trim()) {
       return NextResponse.json({ error: 'First name is required' }, { status: 400 })
     }

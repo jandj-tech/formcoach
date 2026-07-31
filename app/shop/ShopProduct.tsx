@@ -75,10 +75,12 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
               <div className="inline-flex items-center gap-2 bg-green-500/10 border border-green-500/30 rounded-full px-4 py-1.5">
                 <span className="text-green-500 text-xs font-semibold tracking-wider uppercase">In Stock</span>
               </div>
-              <span className="inline-flex items-center bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-semibold px-3 py-1.5 rounded-full">
-                {FREE_ANALYSES_PER_BALL * quantity} Shot Analyses Included Free
-                {quantity > 1 ? ` (${FREE_ANALYSES_PER_BALL} per ball)` : ''}
-              </span>
+              {!isInApp && (
+                <span className="inline-flex items-center bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-semibold px-3 py-1.5 rounded-full">
+                  {FREE_ANALYSES_PER_BALL * quantity} Shot Analyses Included Free
+                  {quantity > 1 ? ` (${FREE_ANALYSES_PER_BALL} per ball)` : ''}
+                </span>
+              )}
             </div>
 
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white leading-tight">
@@ -183,7 +185,7 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
         </div>
 
         {/* 2-Ball Bundle */}
-        <BundleCard />
+        <BundleCard isInApp={isInApp} />
 
         {/* 1 Shot Analysis */}
         <div className="max-w-xl">
@@ -194,7 +196,7 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
   )
 }
 
-function BundleCard() {
+function BundleCard({ isInApp = false }: { isInApp?: boolean }) {
   const { addBundle } = useCart()
   const [v1, setV1] = useState<Variant>('right')
   const [s1, setS1] = useState<Size>('7')
@@ -224,15 +226,17 @@ function BundleCard() {
             <span className="inline-flex items-center bg-orange-500 text-white text-xs font-bold tracking-wider uppercase px-3 py-1 rounded-full">
               Best Value
             </span>
-            <span className="inline-flex items-center bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-semibold px-3 py-1 rounded-full">
-              10 Shot Analyses Included Free
-            </span>
+            {!isInApp && (
+              <span className="inline-flex items-center bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-semibold px-3 py-1 rounded-full">
+                10 Shot Analyses Included Free
+              </span>
+            )}
           </div>
           <h2 className="text-2xl sm:text-3xl font-black text-white mt-2">
             2-Ball Bundle
           </h2>
           <p className="text-zinc-400 text-sm">
-            Get 2 training balls + 10 free AI shot analyses. Second ball 50% off.
+            {isInApp ? 'Get 2 training balls. Second ball 50% off.' : 'Get 2 training balls + 10 free AI shot analyses. Second ball 50% off.'}
           </p>
         </div>
         <div className="text-right">
@@ -290,9 +294,11 @@ function BundleCard() {
         )}
       </div>
 
-      <p className="text-zinc-500 text-xs">
-        10 shot analysis credits will be added to your account automatically after purchase.
-      </p>
+      {!isInApp && (
+        <p className="text-zinc-500 text-xs">
+          10 shot analysis credits will be added to your account automatically after purchase.
+        </p>
+      )}
     </div>
   )
 }

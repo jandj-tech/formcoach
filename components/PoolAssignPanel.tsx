@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useIsInApp } from '@/lib/useIsInApp'
 
 interface PlayerOption {
   id: string
@@ -22,6 +23,7 @@ interface Props {
 // Shown for an initiated team: assign pooled tokens to players.
 export default function PoolAssignPanel({ endpoint, teamId, tokenPool, players }: Props) {
   const router = useRouter()
+  const inApp = useIsInApp()
   const [selected, setSelected] = useState<Record<string, boolean>>({})
   const [tokensEach, setTokensEach] = useState(1)
   const [assigning, setAssigning] = useState(false)
@@ -79,7 +81,7 @@ export default function PoolAssignPanel({ endpoint, teamId, tokenPool, players }
       </p>
 
       {tokenPool === 0 ? (
-        <p className="text-sm text-gray-400">The pool is empty. Buy more tokens to refill it.</p>
+        <p className="text-sm text-gray-400">{inApp ? 'The pool is empty.' : 'The pool is empty. Buy more tokens to refill it.'}</p>
       ) : players.length === 0 ? (
         <p className="text-sm text-gray-400">No players have joined yet.</p>
       ) : (

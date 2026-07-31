@@ -78,13 +78,18 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Fire server-side Meta CAPI event (deduplicates with client-side pixel)
-    await sendMetaEvent(makeRegistrationEvent({
-      email: emailLower,
-      ip: req.headers.get('x-forwarded-for') ?? undefined,
-      userAgent: req.headers.get('user-agent') ?? undefined,
-      url: 'https://www.learnhoops.com/signup',
-    }))
+    // Fire server-side Meta CAPI event (deduplicates with client-side pixel).
+    // Skipped for signups made inside the iOS app — Apple's ATT rules forbid
+    // tracking app users without authorization, and the app never asks.
+    const signupUA = req.headers.get('user-agent') ?? ''
+    if (!signupUA.includes('LearnHoopsApp')) {
+      await sendMetaEvent(makeRegistrationEvent({
+        email: emailLower,
+        ip: req.headers.get('x-forwarded-for') ?? undefined,
+        userAgent: signupUA || undefined,
+        url: 'https://www.learnhoops.com/signup',
+      }))
+    }
 
     const token = await signSession({ userId: user.id, email: user.email })
     const res = NextResponse.json({ success: true, token })

@@ -3,6 +3,7 @@ import crypto from 'crypto'
 import { db } from '@/lib/db'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { sendCoachInviteEmail, sendCoachAddedEmail, sendTeamCreatedEmail } from '@/lib/email'
+import { isCleanDisplayText, BLOCKED_TEXT_ERROR } from '@/lib/moderation'
 
 function generateAccessCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -21,6 +22,9 @@ export async function POST(req: NextRequest) {
     }
 
     const { name, ageGroup, coachEmail, coachName } = await req.json()
+    if (!isCleanDisplayText(`${name ?? ''} ${coachName ?? ''}`)) {
+      return NextResponse.json({ error: BLOCKED_TEXT_ERROR }, { status: 400 })
+    }
     if (!name || typeof name !== 'string' || !name.trim()) {
       return NextResponse.json({ error: 'Team name is required' }, { status: 400 })
     }

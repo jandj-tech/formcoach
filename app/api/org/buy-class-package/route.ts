@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe'
 import { db } from '@/lib/db'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
+import { rejectInAppPurchase } from '@/lib/in-app'
 import {
   CLASS_MIN_PLAYERS,
   CLASS_PRICE_PER_PLAYER_CENTS,
@@ -12,6 +13,9 @@ import {
 } from '@/lib/org-class-pricing'
 
 export async function POST(req: NextRequest) {
+  // Digital goods cannot be sold via Stripe inside the iOS app (guideline 3.1.1).
+  const inAppBlock = rejectInAppPurchase(req)
+  if (inAppBlock) return inAppBlock
   const session = await getOrgSessionFromRequest(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 

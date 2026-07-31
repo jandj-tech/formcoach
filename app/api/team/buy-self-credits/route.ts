@@ -3,6 +3,7 @@ import { getTeamSessionFromRequest } from '@/lib/team-auth'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { getStripe } from '@/lib/stripe'
 import { getTeamTokenState, orgHasInitiatedTeam, TEAM_TOKEN_PRICE_CENTS, REGULAR_ANALYSIS_PRICE_CENTS } from '@/lib/team-tokens'
+import { rejectInAppPurchase } from '@/lib/in-app'
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL && process.env.NEXT_PUBLIC_BASE_URL !== 'http://localhost:3000'
   ? process.env.NEXT_PUBLIC_BASE_URL
@@ -13,6 +14,9 @@ const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL && process.env.NEXT_PUBLIC_BAS
 // A coach or org owner buys analysis credits for their own shot uploads.
 // $1.49 each once their team has 8+ players, $2.79 before.
 export async function POST(req: NextRequest) {
+  // Digital goods cannot be sold via Stripe inside the iOS app (guideline 3.1.1).
+  const inAppBlock = rejectInAppPurchase(req)
+  if (inAppBlock) return inAppBlock
   const teamSession = await getTeamSessionFromRequest(req)
   const orgSession = teamSession ? null : await getOrgSessionFromRequest(req)
   if (!teamSession && !orgSession) {

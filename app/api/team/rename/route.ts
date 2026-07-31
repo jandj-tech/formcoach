@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getTeamSessionFromRequest } from '@/lib/team-auth'
 import { db } from '@/lib/db'
+import { isCleanDisplayText, BLOCKED_TEXT_ERROR } from '@/lib/moderation'
 
 // Rename the team the coach is currently in.
 export async function POST(req: NextRequest) {
@@ -11,6 +12,9 @@ export async function POST(req: NextRequest) {
 
   try {
     const { name } = await req.json()
+    if (name && !isCleanDisplayText(name)) {
+      return NextResponse.json({ error: BLOCKED_TEXT_ERROR }, { status: 400 })
+    }
     const trimmed = typeof name === 'string' ? name.trim() : ''
     if (!trimmed) {
       return NextResponse.json({ error: 'Team name is required' }, { status: 400 })

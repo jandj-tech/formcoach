@@ -1,5 +1,6 @@
 import TopNav from '@/components/TopNav'
 import ShopProduct from './ShopProduct'
+import { isInAppRequest } from '@/lib/in-app'
 
 export const metadata = {
   title: 'Shop — LearnHoops.com',
@@ -8,7 +9,9 @@ export const metadata = {
 
 export default async function ShopPage({ searchParams }: { searchParams: Promise<{ app?: string }> }) {
   const params = await searchParams
-  const isInApp = params.app === 'ios'
+  // The ?app=ios param is lost on in-page navigation, so also check the
+  // app WebView's User-Agent marker.
+  const isInApp = params.app === 'ios' || (await isInAppRequest())
   return (
     <main className="flex flex-col min-h-screen bg-black">
       <TopNav />

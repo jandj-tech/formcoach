@@ -1,6 +1,7 @@
 'use client'
 
 import { trackInitiateCheckout } from '@/lib/meta-pixel'
+import { useIsInApp } from '@/lib/useIsInApp'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -94,6 +95,7 @@ interface TeamMode {
 }
 
 export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { teamMode?: TeamMode; coachSelf?: boolean; coachCredits?: number } = {}) {
+  const inApp = useIsInApp()
   const [isDragging, setIsDragging] = useState(false)
   const [status, setStatus] = useState<'idle' | 'extracting' | 'uploading' | 'quality-warning' | 'error'>('idle')
   const [progress, setProgress] = useState(0)
@@ -748,25 +750,28 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
           <div className="absolute inset-0 flex flex-col items-center justify-center px-6">
             <div className="flex flex-col items-center gap-2.5 bg-white/85 backdrop-blur-sm border border-gray-200 shadow-xl rounded-2xl px-5 py-4">
               <p className="text-black font-black text-base sm:text-lg text-center leading-snug">
-                Buy a token to analyze your shot
+                {inApp ? 'You need an analysis token to analyze your shot' : 'Buy a token to analyze your shot'}
               </p>
-              <button
-                onClick={handleBuyToken}
-                className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors"
-              >
-                Buy Analysis — ${sessionUser?.onInitiatedTeam ? '1.49' : '2.79'}
-              </button>
+              {/* In the iOS app, token purchases go through native in-app purchase on the Analyze tab. */}
+              {!inApp && (
+                <button
+                  onClick={handleBuyToken}
+                  className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors"
+                >
+                  Buy Analysis — ${sessionUser?.onInitiatedTeam ? '1.49' : '2.79'}
+                </button>
+              )}
               {sessionUser?.onTeam ? (
                 <p className="text-gray-500 text-xs text-center">
                   Or ask your coach to send you tokens from your team.
                 </p>
-              ) : (
+              ) : !inApp ? (
                 <p className="text-gray-400 text-xs text-center">
                   Or{' '}
                   <a href="/shop" className="underline hover:text-gray-600">buy the training ball</a>
                   {' '}and get 5 free analyses
                 </p>
-              )}
+              ) : null}
             </div>
           </div>
         )}

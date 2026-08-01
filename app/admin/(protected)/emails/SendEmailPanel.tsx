@@ -12,6 +12,84 @@ const AUDIENCES: Array<{ id: Audience; label: string; hint: string }> = [
   { id: 'single', label: 'One address', hint: 'a single email from the list' },
 ]
 
+// Ready-made email types. Picking one fills the form — everything stays
+// editable. {{name}} becomes each recipient's first name ("there" fallback).
+type Preset = {
+  id: string
+  label: string
+  subject: string
+  headline: string
+  body: string
+  ctaText: string
+  ctaUrl: string
+}
+
+const PRESETS: Preset[] = [
+  {
+    id: 'professional',
+    label: 'Professional update',
+    subject: 'An update from LearnHoops',
+    headline: 'A quick update from the LearnHoops team',
+    body: `Hi {{name}},
+
+We wanted to share a quick update on what's new at LearnHoops.
+
+[Write your update here — new features, schedule changes, announcements.]
+
+Thank you for being part of the LearnHoops community. If you have any questions, just reply to this email.
+
+— The LearnHoops Team`,
+    ctaText: '',
+    ctaUrl: '',
+  },
+  {
+    id: 'ball',
+    label: 'Training Ball',
+    subject: 'Train with the ball that fixes your shot',
+    headline: 'Meet the LearnHoops Training Ball 🏀',
+    body: `Hey {{name}},
+
+The LearnHoops Training Ball has finger-placement guide lines printed right on the surface, so every rep grooves perfect hand position. It comes in right- and left-handed versions and three sizes.
+
+Every ball also includes 5 free AI shot analyses — so you can watch your form improve week after week.`,
+    ctaText: 'Shop the Training Ball',
+    ctaUrl: 'https://www.learnhoops.com/shop',
+  },
+  {
+    id: 'marketing',
+    label: 'Marketing / promo',
+    subject: 'Your jump shot, broken down by AI',
+    headline: 'Know exactly what to fix in your shot',
+    body: `Hey {{name}},
+
+Upload one video of your jump shot and LearnHoops scores it across 17 coaching criteria — release point, elbow alignment, follow-through, and more.
+
+You'll get an overall score, what you're already doing well, and the exact fixes that will add points to your shot.`,
+    ctaText: 'Analyze my shot',
+    ctaUrl: 'https://www.learnhoops.com/analyze',
+  },
+  {
+    id: 'winback',
+    label: 'Win-back',
+    subject: 'Your next shot analysis is waiting',
+    headline: 'Ready for your next rep, {{name}}?',
+    body: `It's been a little while since your last shot analysis. Progress comes from checking in on your form regularly — one video is all it takes.
+
+Upload your latest shot and see how your score has moved.`,
+    ctaText: 'Upload a shot',
+    ctaUrl: 'https://www.learnhoops.com/analyze',
+  },
+  {
+    id: 'custom',
+    label: 'Custom (blank)',
+    subject: '',
+    headline: '',
+    body: '',
+    ctaText: '',
+    ctaUrl: '',
+  },
+]
+
 export default function SendEmailPanel() {
   const [open, setOpen] = useState(false)
   const [audience, setAudience] = useState<Audience>('all')
@@ -26,8 +104,19 @@ export default function SendEmailPanel() {
   const [busy, setBusy] = useState<'preview' | 'test' | 'send' | null>(null)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [presetId, setPresetId] = useState('')
   // Preview returned by the server — shown in a modal before sending.
-  const [preview, setPreview] = useState<{ subject: string; html: string; recipientCount: number } | null>(null)
+  const [preview, setPreview] = useState<{ subject: string; html: string; recipientCount: number; sampleName?: string } | null>(null)
+
+  function applyPreset(p: Preset) {
+    setPresetId(p.id)
+    setSubject(p.subject)
+    setHeadline(p.headline)
+    setBody(p.body)
+    setCtaText(p.ctaText)
+    setCtaUrl(p.ctaUrl)
+    setError('')
+  }
 
   function payload() {
     return {
@@ -108,7 +197,8 @@ export default function SendEmailPanel() {
               </p>
               <p className="text-zinc-400 text-sm">
                 Will be sent to <span className="text-orange-400 font-bold">{preview.recipientCount}</span> subscribed recipient{preview.recipientCount !== 1 ? 's' : ''} ({AUDIENCES.find(a => a.id === audience)?.label}).
-                Each copy gets its own unsubscribe link.
+                Each copy is personalized individually and gets its own unsubscribe link
+                {preview.sampleName ? <> — this preview shows it as &ldquo;{preview.sampleName}&rdquo; would receive it</> : null}.
               </p>
             </div>
             <div className="flex-1 overflow-auto bg-white">
@@ -190,6 +280,31 @@ export default function SendEmailPanel() {
                 className={inputCls}
               />
             )}
+          </div>
+
+          {/* Email type presets */}
+          <div className="space-y-2">
+            <span className={labelCls}>Type of email</span>
+            <div className="flex gap-2 flex-wrap">
+              {PRESETS.map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => applyPreset(p)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+                    presetId === p.id
+                      ? 'bg-orange-500 text-white'
+                      : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-zinc-500 text-xs">
+              Picking a type fills in the email below — edit anything you like. Write{' '}
+              <code className="text-orange-400">{'{{name}}'}</code> anywhere and each person gets their
+              own first name (or &ldquo;there&rdquo; if we don&rsquo;t know it).
+            </p>
           </div>
 
           {/* Content */}

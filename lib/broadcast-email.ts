@@ -21,11 +21,34 @@ export interface BroadcastContent {
   ctaUrl?: string
 }
 
+export interface BroadcastRecipient {
+  email: string
+  // First name / nickname / org name, used by the {{name}} token.
+  name?: string | null
+}
+
 function escHtml(s: string) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
-export function renderBroadcastHtml(content: BroadcastContent, to: string): string {
+// {{name}} anywhere in the subject, headline, or body becomes the
+// recipient's name, falling back to "there" ("Hey there,").
+function personalize(text: string, name?: string | null): string {
+  return text.replace(/\{\{\s*name\s*\}\}/gi, name?.trim() || 'there')
+}
+
+function personalizeContent(content: BroadcastContent, name?: string | null): BroadcastContent {
+  return {
+    ...content,
+    subject: personalize(content.subject, name),
+    headline: personalize(content.headline, name),
+    body: personalize(content.body, name),
+  }
+}
+
+export function renderBroadcastHtml(rawContent: BroadcastContent, recipient: BroadcastRecipient): string {
+  const to = recipient.email
+  const content = personalizeContent(rawContent, recipient.name)
   const unsubscribe = `${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}`
   const paragraphs = content.body
     .split(/\n\s*\n/)
@@ -70,7 +93,9 @@ export function renderBroadcastHtml(content: BroadcastContent, to: string): stri
 </html>`.trim()
 }
 
-export function renderBroadcastText(content: BroadcastContent, to: string): string {
+export function renderBroadcastText(rawContent: BroadcastContent, recipient: BroadcastRecipient): string {
+  const to = recipient.email
+  const content = personalizeContent(rawContent, recipient.name)
   const unsubscribe = `${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}`
   return [
     content.headline,
@@ -89,24 +114,26 @@ export interface BroadcastResult {
   errors: string[]
 }
 
-export async function sendBroadcast(content: BroadcastContent, recipients: string[]): Promise<BroadcastResult> {
+export async function sendBroadcast(content: BroadcastContent, recipients: BroadcastRecipient[]): Promise<BroadcastResult> {
   const resend = new Resend(process.env.RESEND_API_KEY!)
   const result: BroadcastResult = { sent: 0, failed: 0, errors: [] }
 
-  // Resend's batch endpoint accepts up to 100 emails per call.
+  // Each recipient gets their own individually rendered, personalized email
+  // ({{name}} resolved, personal unsubscribe link). Resend's batch endpoint
+  // accepts up to 100 such emails per call.
   for (let i = 0; i < recipients.length; i += 100) {
     const chunk = recipients.slice(i, i + 100)
-    const payloads = chunk.map(to => ({
+    const payloads = chunk.map(r => ({
       from: FROM,
-      to,
+      to: r.email,
       replyTo: 'noreply@learnhoops.com',
-      subject: content.subject,
+      subject: personalize(content.subject, r.name),
       headers: {
-        'List-Unsubscribe': `<${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}>`,
+        'List-Unsubscribe': `<${BASE_URL}/unsubscribe?email=${encodeURIComponent(r.email)}>`,
         'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
       },
-      text: renderBroadcastText(content, to),
-      html: renderBroadcastHtml(content, to),
+      text: renderBroadcastText(content, r),
+      html: renderBroadcastHtml(content, r),
     }))
     try {
       const { data, error } = await resend.batch.send(payloads)

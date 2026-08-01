@@ -5,6 +5,7 @@ import {
   renderBroadcastHtml,
   sendBroadcast,
   type BroadcastContent,
+  type BroadcastRecipient,
 } from '@/lib/broadcast-email'
 
 // Sending a big list takes a while even with batching — allow up to 60s.
@@ -17,54 +18,64 @@ async function isAdmin() {
 
 export type Audience = 'all' | 'players' | 'coaches' | 'orgs' | 'single'
 
-// Resolve an audience to subscribed email addresses. Everything intersects
-// email_list WHERE unsubscribed_at IS NULL, so an unsubscribe is always
-// honored no matter which audience is picked.
-async function resolveRecipients(audience: Audience, singleEmail?: string): Promise<string[]> {
+// Resolve an audience to subscribed recipients with a best-effort name for
+// the {{name}} token (player first name/nickname, coach nickname, org name).
+// Everything intersects email_list WHERE unsubscribed_at IS NULL, so an
+// unsubscribe is always honored no matter which audience is picked.
+async function resolveRecipients(audience: Audience, singleEmail?: string): Promise<BroadcastRecipient[]> {
+  type Row = { email: string; name: string | null }
+
+  // Best-effort display name for any address, in priority order:
+  // player first name → player nickname → coach nickname → org name.
+  const nameSql = db`
+    COALESCE(
+      (SELECT COALESCE(u.first_name, u.nickname) FROM users u WHERE LOWER(u.email) = el.email LIMIT 1),
+      (SELECT tc.nickname FROM team_coaches tc WHERE LOWER(tc.email) = el.email AND tc.nickname IS NOT NULL LIMIT 1),
+      (SELECT t.coach_nickname FROM teams t WHERE LOWER(t.admin_email) = el.email AND t.coach_nickname IS NOT NULL LIMIT 1),
+      (SELECT o.name FROM organizations o WHERE LOWER(o.admin_email) = el.email LIMIT 1)
+    )
+  `
+
   if (audience === 'single') {
     const email = singleEmail?.toLowerCase().trim()
     if (!email) return []
-    const rows = await db`
-      SELECT email FROM email_list
-      WHERE email = ${email} AND unsubscribed_at IS NULL
-    ` as unknown as Array<{ email: string }>
-    return rows.map(r => r.email)
+    return (await db`
+      SELECT el.email, ${nameSql} AS name FROM email_list el
+      WHERE el.email = ${email} AND el.unsubscribed_at IS NULL
+    `) as unknown as Row[]
   }
 
   if (audience === 'players') {
-    const rows = await db`
-      SELECT DISTINCT el.email FROM email_list el
+    return (await db`
+      SELECT DISTINCT el.email, ${nameSql} AS name FROM email_list el
       JOIN users u ON LOWER(u.email) = el.email
       WHERE el.unsubscribed_at IS NULL
-    ` as unknown as Array<{ email: string }>
-    return rows.map(r => r.email)
+    `) as unknown as Row[]
   }
 
   if (audience === 'coaches') {
-    const rows = await db`
-      SELECT DISTINCT el.email FROM email_list el
+    return (await db`
+      SELECT DISTINCT el.email, ${nameSql} AS name FROM email_list el
       WHERE el.unsubscribed_at IS NULL
         AND (
           EXISTS (SELECT 1 FROM teams t WHERE LOWER(t.admin_email) = el.email)
           OR EXISTS (SELECT 1 FROM team_coaches tc WHERE LOWER(tc.email) = el.email)
         )
-    ` as unknown as Array<{ email: string }>
-    return rows.map(r => r.email)
+    `) as unknown as Row[]
   }
 
   if (audience === 'orgs') {
-    const rows = await db`
-      SELECT DISTINCT el.email FROM email_list el
+    return (await db`
+      SELECT DISTINCT el.email, ${nameSql} AS name FROM email_list el
       JOIN organizations o ON LOWER(o.admin_email) = el.email
       WHERE el.unsubscribed_at IS NULL
-    ` as unknown as Array<{ email: string }>
-    return rows.map(r => r.email)
+    `) as unknown as Row[]
   }
 
-  const rows = await db`
-    SELECT email FROM email_list WHERE unsubscribed_at IS NULL
-  ` as unknown as Array<{ email: string }>
-  return rows.map(r => r.email)
+  return (await db`
+    SELECT el.email, ${nameSql} AS name FROM email_list el
+    WHERE el.unsubscribed_at IS NULL
+  `) as unknown as Row[]
 }
 
 type Body = {
@@ -106,17 +117,22 @@ export async function POST(req: NextRequest) {
 
   if (body.action === 'preview') {
     const recipients = await resolveRecipients(body.audience, body.singleEmail)
+    // Preview renders for the first real recipient when there is one, so the
+    // {{name}} personalization shown matches an actual send; sample otherwise.
+    const sample: BroadcastRecipient = recipients[0] ?? { email: 'player@example.com', name: 'Jordan' }
     return NextResponse.json({
-      subject: content.subject,
-      html: renderBroadcastHtml(content, body.singleEmail || 'player@example.com'),
+      subject: content.subject.replace(/\{\{\s*name\s*\}\}/gi, sample.name?.trim() || 'there'),
+      html: renderBroadcastHtml(content, sample),
       recipientCount: recipients.length,
+      sampleName: sample.name?.trim() || 'there',
     })
   }
 
   if (body.action === 'test') {
     const testEmail = body.testEmail?.toLowerCase().trim()
     if (!testEmail) return NextResponse.json({ error: 'Test email address required' }, { status: 400 })
-    const result = await sendBroadcast(content, [testEmail])
+    // Sample name so the tester sees the {{name}} personalization in action.
+    const result = await sendBroadcast(content, [{ email: testEmail, name: 'Jordan' }])
     if (result.failed > 0) {
       return NextResponse.json({ error: `Test send failed: ${result.errors[0] ?? 'unknown error'}` }, { status: 500 })
     }
@@ -133,8 +149,8 @@ export async function POST(req: NextRequest) {
 
   // Log sends so the history is auditable (best-effort).
   try {
-    for (const email of recipients) {
-      await db`INSERT INTO email_logs (email, email_type) VALUES (${email}, 'broadcast')`
+    for (const r of recipients) {
+      await db`INSERT INTO email_logs (email, email_type) VALUES (${r.email}, 'broadcast')`
     }
   } catch (err) {
     console.error('[broadcast] failed to log sends:', err)

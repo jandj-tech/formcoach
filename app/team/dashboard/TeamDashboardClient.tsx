@@ -296,7 +296,6 @@ export default function TeamDashboardClient({
         tipLabel="How do players join the team?"
         tip="Send players the signup link (or the team code). They create an account, enter their name, and land on your roster automatically — no approval step needed."
         summary={`Code ${team.accessCode}`}
-        defaultOpen={rosterCount === 0}
       >
         <div className="space-y-4 pt-2">
           <div>
@@ -326,7 +325,6 @@ export default function TeamDashboardClient({
         tipLabel="Who shows up on the roster?"
         tip="Players who joined with an account, plus players you added by name (they can claim their spot later with their invite link)."
         summary={`${members.length} joined${pendingMembers.length > 0 ? `, ${pendingMembers.length} pending` : ''}`}
-        defaultOpen
       >
         <div className="space-y-3 pt-2">
           <div className="flex items-center justify-between gap-4">
@@ -463,7 +461,6 @@ export default function TeamDashboardClient({
         tipLabel="What can added coaches do?"
         tip="Extra coaches log in with their own account and see this same dashboard — handy for assistant coaches or trainers."
         summary={`${coaches.length + 1} coach${coaches.length + 1 !== 1 ? 'es' : ''}`}
-        defaultOpen={false}
       >
         <div className="pt-2">
           <TeamCoaches
@@ -484,7 +481,6 @@ export default function TeamDashboardClient({
         title="Upload a shot for a player"
         tipLabel="How do coach uploads work?"
         tip="Record a player's shot and upload it here — it spends one of your credits and the analysis is filed under that player's name on the leaderboard."
-        defaultOpen
       >
         <div className="pt-2">
           <CoachUploadForm accessCode={team.accessCode} members={uploadableMembers} />
@@ -496,7 +492,6 @@ export default function TeamDashboardClient({
         tipLabel="What counts as my upload?"
         tip="Shots you analyzed for yourself (not on behalf of a player). Uploads you make for players live on each player's page instead."
         summary={`${myUploads.length} shot${myUploads.length !== 1 ? 's' : ''}`}
-        defaultOpen={false}
       >
         <div className="space-y-3 pt-2">
           <div className="flex justify-end">
@@ -527,7 +522,6 @@ export default function TeamDashboardClient({
         tipLabel="How is the leaderboard ranked?"
         tip="Every player's best analyzed score, highest first. It includes shots players uploaded themselves and shots you uploaded for them."
         summary={`${leaderboard.length} player${leaderboard.length !== 1 ? 's' : ''}`}
-        defaultOpen
       >
         {leaderboard.length === 0 ? (
           <div className="text-center py-10 text-gray-400 border-2 border-dashed border-gray-200 rounded-2xl bg-white mt-2">
@@ -555,7 +549,6 @@ export default function TeamDashboardClient({
           tipLabel="How is improvement measured?"
           tip="First analyzed score vs. latest analyzed score, for every player with at least two uploads."
           summary={`${improved.length} player${improved.length !== 1 ? 's' : ''}`}
-          defaultOpen
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
             {improved.map((entry) => {
@@ -639,7 +632,6 @@ export default function TeamDashboardClient({
           tipLabel="What do credits pay for?"
           tip="1 credit = 1 AI shot analysis. Purchases land in My credits, your personal balance. Use them for your own uploads, uploading on behalf of players, or hand them to any player as tokens."
           summary={`$${creditRate} per credit`}
-          defaultOpen
         >
           <div className="space-y-4 pt-2">
             <p className="text-sm text-gray-600">
@@ -711,7 +703,6 @@ export default function TeamDashboardClient({
         tipLabel="Which balance pays?"
         tip="Pick the balance to pay from: My credits is your personal balance, Team credits is the shared balance your organization funds, and the Token pool holds the team's unassigned tokens (like the free activation tokens). Each token is one shot analysis the player can run themselves."
         summary={`${coachCredits} personal · ${team.credits} team · ${team.tokenPool} pool`}
-        defaultOpen
       >
         <div className="pt-2">
           <CoachAssignPanel
@@ -732,7 +723,6 @@ export default function TeamDashboardClient({
         tipLabel="Pool tokens vs. player tokens?"
         tip="Pool tokens belong to the team and haven't been handed out yet. Once you assign them, they become that player's tokens — each token is one shot analysis the player can run themselves."
         summary={`${team.tokenPool} in pool`}
-        defaultOpen
       >
         <div className="space-y-4 pt-2">
           {!team.initiated && (

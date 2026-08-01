@@ -257,7 +257,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         tipLabel="What is my display name used for?"
         tip="Shown on team rosters, leaderboards, and any certificates you earn. Just your first name and last initial — never your full name."
         summary={fullName || 'Not set'}
-        defaultOpen={!hasName}
       >
         <NameForm
           currentFirstName={user.first_name ?? null}
@@ -270,7 +269,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         tipLabel="What is my nickname used for?"
         tip="Optional handle (like &ldquo;Buckets&rdquo;). It&rsquo;s shown on your account instead of your email if you haven&rsquo;t set a display name."
         summary={user.nickname || 'Not set'}
-        defaultOpen={false}
       >
         <NicknameForm current={user.nickname ?? null} />
       </Section>

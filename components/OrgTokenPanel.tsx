@@ -43,7 +43,7 @@ export default function OrgTokenPanel({
 }) {
   const router = useRouter()
   const inApp = useIsInApp()
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
 

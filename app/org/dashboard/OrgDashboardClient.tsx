@@ -112,8 +112,8 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   const [deletingTeam, setDeletingTeam] = useState<string | null>(null)
   // Both lists now live in their own tabs, so they start expanded — the tab
   // itself is the collapse; the toggle stays for minimizing within the tab.
-  const [showMyUploads, setShowMyUploads] = useState(true)
-  const [showAllPlayers, setShowAllPlayers] = useState(true)
+  const [showMyUploads, setShowMyUploads] = useState(false)
+  const [showAllPlayers, setShowAllPlayers] = useState(false)
   const [playerSort, setPlayerSort] = useState<Record<string, PlayerSortMode>>({})
   const [allPlayersSort, setAllPlayersSort] = useState<PlayerSortMode>('name')
   const [teamLbModal, setTeamLbModal] = useState<string | null>(null)
@@ -129,8 +129,8 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   const [classSize6, setClassSize6] = useState(0)
   const [classSize7, setClassSize7] = useState(CLASS_MIN_PLAYERS)
   const classPlayerCount = classSize5 + classSize6 + classSize7
-  // Collapsed by default once the org has at least one package — they've seen the pitch.
-  const [classProgramOpen, setClassProgramOpen] = useState(classPackages.length === 0)
+  // Collapsed by default, like every other dashboard section.
+  const [classProgramOpen, setClassProgramOpen] = useState(false)
   const [buyingClass, setBuyingClass] = useState(false)
   const [classError, setClassError] = useState('')
   const [enrollOpen, setEnrollOpen] = useState<string | null>(null)
@@ -1197,7 +1197,6 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                       tipLabel="What can coaches do?"
                       tip="Coaches manage this team from their own coach dashboard: they upload shots for players and can spend the team's credits. Invited coaches show as pending until they finish setting up their account."
                       summary={`${team.coaches.length + 1} coach${team.coaches.length > 0 ? 'es' : ''}`}
-                      defaultOpen={false}
                     >
                       <div className="mt-1 border border-gray-100 rounded-xl divide-y divide-gray-100">
                         <div className="flex items-center justify-between gap-3 px-3 py-2">
@@ -1457,7 +1456,6 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                     summary={team.leaderboard.length === 0
                       ? 'No shots yet'
                       : `${team.leaderboard.length} player${team.leaderboard.length !== 1 ? 's' : ''}`}
-                    defaultOpen={false}
                   >
                     <div className="space-y-2 pt-1">
                       {team.leaderboard.length > 0 && (
@@ -1540,7 +1538,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                   )}
 
                   {/* Danger zone — delete this team */}
-                  <Section title="Danger zone" summary="Delete team" defaultOpen={false}>
+                  <Section title="Danger zone" summary="Delete team">
                     <div className="mt-2 flex items-center justify-between gap-3 flex-wrap">
                       <p className="text-xs text-gray-400 max-w-sm">
                         Permanently delete this team, its roster, and its coaches.

@@ -3,6 +3,7 @@ import InfoTip from '@/components/InfoTip'
 
 // Collapsible white card used inside the account dashboards. Built on
 // <details> so it needs no client JS and every section can be minimized.
+// Sections start collapsed so dashboards load as a tidy list of headers;
 // `summary` shows the current value at a glance while collapsed
 // (e.g. "Not set", a team name, "3 coaches").
 export default function Section({
@@ -10,7 +11,7 @@ export default function Section({
   tip,
   tipLabel,
   summary,
-  defaultOpen = true,
+  defaultOpen = false,
   children,
 }: {
   title: string

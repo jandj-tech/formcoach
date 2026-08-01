@@ -12,14 +12,19 @@ import { clearOtherSessions, PLAYER_COOKIE, TEAM_COOKIE, ORG_COOKIE } from '@/li
 async function redeemClaim(claimToken: string | undefined, userId: string) {
   if (!claimToken) return
   try {
-    const [claim] = await db`
-      SELECT tokens_to_grant FROM pending_credit_claims
-      WHERE claim_token = ${claimToken} AND redeemed_at IS NULL
-    ` as unknown as [{ tokens_to_grant: number } | undefined]
-    if (claim?.tokens_to_grant && claim.tokens_to_grant > 0) {
-      await db`UPDATE users SET analysis_tokens = COALESCE(analysis_tokens, 0) + ${claim.tokens_to_grant} WHERE id = ${userId}`
-      await db`UPDATE pending_credit_claims SET redeemed_at = NOW() WHERE claim_token = ${claimToken}`
-    }
+    // Consume-and-grant in one statement so a concurrent redemption (double
+    // submit, or the webhook auto-crediting an existing account) can never
+    // grant the same claim twice.
+    await db`
+      WITH claim AS (
+        UPDATE pending_credit_claims SET redeemed_at = NOW()
+        WHERE claim_token = ${claimToken} AND redeemed_at IS NULL AND tokens_to_grant > 0
+        RETURNING tokens_to_grant
+      )
+      UPDATE users
+      SET analysis_tokens = COALESCE(analysis_tokens, 0) + (SELECT tokens_to_grant FROM claim)
+      WHERE id = ${userId} AND EXISTS (SELECT 1 FROM claim)
+    `
   } catch {
     // Non-fatal — login still succeeds.
   }

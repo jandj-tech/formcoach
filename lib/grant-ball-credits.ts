@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { claimStripeSession, releaseStripeSessionClaim } from '@/lib/stripe-idempotency'
 
 export interface GrantBallCreditsInput {
   sessionId: string
@@ -35,33 +36,17 @@ export async function grantBallCreditsOnce(input: GrantBallCreditsInput): Promis
   // Claim the session — insert wins, conflict means another caller already
   // processed it. Until the migration runs, fall through to the grant logic
   // (best-effort) so we don't silently drop credits on a missing table.
-  let claimedThisCall = false
-  try {
-    const claimed = await db`
-      INSERT INTO processed_stripe_sessions (session_id, tokens_granted, recipient)
-      VALUES (${sessionId}, ${tokensToGrant}, ${recipient || null})
-      ON CONFLICT (session_id) DO NOTHING
-      RETURNING session_id
-    ` as unknown as Array<{ session_id: string }>
-    if (claimed.length === 0) {
-      console.log('[grantBallCreditsOnce] already processed', { sessionId })
-      return { granted: false, reason: 'already_processed' }
-    }
-    claimedThisCall = true
-  } catch (err) {
-    console.warn('[grantBallCreditsOnce] processed_stripe_sessions unavailable, proceeding without idempotency lock', err)
+  const claim = await claimStripeSession(sessionId, tokensToGrant, recipient || null)
+  if (claim === 'already_processed') {
+    console.log('[grantBallCreditsOnce] already processed', { sessionId })
+    return { granted: false, reason: 'already_processed' }
   }
 
   // Helper: release the claim row if we end up not crediting anyone,
   // so a retry has a chance to actually land.
   async function releaseClaim(label: string) {
-    if (!claimedThisCall) return
-    try {
-      await db`DELETE FROM processed_stripe_sessions WHERE session_id = ${sessionId}`
-      console.warn('[grantBallCreditsOnce] released claim', { sessionId, label })
-    } catch (err) {
-      console.error('[grantBallCreditsOnce] failed to release claim:', err)
-    }
+    if (claim !== 'claimed') return
+    await releaseStripeSessionClaim(sessionId, label)
   }
 
   let updatedRows = 0
@@ -119,20 +104,28 @@ export async function grantBallCreditsOnce(input: GrantBallCreditsInput): Promis
         `
       }
     } else if (emailLower) {
-      // Guest / legacy: credit the user record by email and seed email_list
-      // so signup later picks up the credits.
-      await db`
-        INSERT INTO email_list (email, analysis_tokens)
-        VALUES (${emailLower}, ${tokensToGrant})
-        ON CONFLICT (email) DO UPDATE
-        SET analysis_tokens = COALESCE(email_list.analysis_tokens, 0) + ${tokensToGrant}
-      `
+      // Guest / legacy: credit the user account if one exists for this email.
+      // Only when there is no account do the credits park on email_list (the
+      // anonymous analyze-by-email flow spends from there). Crediting both —
+      // as this used to — handed the buyer the tokens twice.
       const rows = await db`
         UPDATE users SET analysis_tokens = COALESCE(analysis_tokens, 0) + ${tokensToGrant}
         WHERE LOWER(email) = ${emailLower}
         RETURNING id
       ` as unknown as Array<{ id: string }>
       updatedRows = rows.length
+      if (updatedRows === 0) {
+        await db`
+          INSERT INTO email_list (email, analysis_tokens)
+          VALUES (${emailLower}, ${tokensToGrant})
+          ON CONFLICT (email) DO UPDATE
+          SET analysis_tokens = COALESCE(email_list.analysis_tokens, 0) + ${tokensToGrant}
+        `
+        // The email_list write IS the grant here — count it so the session
+        // claim is kept. Releasing it (the old behavior) let every webhook
+        // redelivery pile more tokens onto email_list.
+        updatedRows = 1
+      }
     }
   } catch (err) {
     console.error('[grantBallCreditsOnce] grant failed:', err)

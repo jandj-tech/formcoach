@@ -5,15 +5,7 @@ import { db } from '@/lib/db'
 import { sendClaimCreditsEmail, sendClassPurchaseConfirmationEmail, sendTokenPurchaseConfirmationEmail } from '@/lib/email'
 import { sendClassPurchaseConfirmationSms } from '@/lib/sms'
 import { grantBallCreditsOnce } from '@/lib/grant-ball-credits'
-
-function generateTeamAccessCode(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-  let code = ''
-  for (let i = 0; i < 8; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)]
-  }
-  return code
-}
+import { claimStripeSession, releaseStripeSessionClaim } from '@/lib/stripe-idempotency'
 
 export async function POST(req: NextRequest) {
   try {
@@ -51,8 +43,13 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
 
   console.log('[stripe webhook] received', event.type, 'id=', event.id)
 
-  // --- All checkout.session.completed events ---
-  if (event.type === 'checkout.session.completed') {
+  // --- All completed/paid checkout sessions ---
+  // async_payment_succeeded covers delayed payment methods (bank debits etc.)
+  // that complete after the checkout.session.completed event fired unpaid.
+  if (
+    event.type === 'checkout.session.completed' ||
+    event.type === 'checkout.session.async_payment_succeeded'
+  ) {
     const session = event.data.object as Stripe.Checkout.Session
     const variant = session.metadata?.variant
     const size = session.metadata?.size
@@ -60,15 +57,29 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
     const metaType = session.metadata?.type
     const email = session.customer_details?.email
 
-    console.log('[stripe webhook] checkout.session.completed metadata', {
+    console.log('[stripe webhook]', event.type, 'metadata', {
       sessionId: session.id, metaType, plan, hasVariant: !!variant, hasSize: !!size,
+      paymentStatus: session.payment_status,
     })
+
+    // Never grant on money that hasn't arrived. completed fires with
+    // payment_status 'unpaid' for delayed payment methods — the grant then
+    // happens on async_payment_succeeded ('paid'). 'no_payment_required'
+    // (100%-off comp coupons) still grants.
+    if (session.payment_status === 'unpaid') {
+      console.log('[stripe webhook] payment not settled yet, skipping grant', { sessionId: session.id })
+      return NextResponse.json({ received: true })
+    }
 
     // --- Team initiation package: unlocks $2.50 pricing + fills the token pool ---
     if (metaType === 'team_initiation') {
       const teamId = session.metadata?.teamId
       const tokens = parseInt(session.metadata?.tokens || '0', 10)
       if (teamId && tokens > 0) {
+        // Stripe may deliver the same event more than once — claim first so
+        // a redelivery can't top up the pool twice.
+        const claim = await claimStripeSession(session.id, tokens, `team:${teamId}`)
+        if (claim === 'already_processed') return NextResponse.json({ received: true })
         try {
           await db`
             UPDATE teams
@@ -78,6 +89,7 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
           `
         } catch (err) {
           console.error('Failed to initiate team:', err)
+          if (claim === 'claimed') await releaseStripeSessionClaim(session.id, 'team_initiation_failed')
           return NextResponse.json({ received: true, handled: false })
         }
       }
@@ -89,6 +101,8 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
       const coachEmail = session.metadata?.coachEmail?.toLowerCase()
       const quantity = parseInt(session.metadata?.quantity || '0', 10)
       if (coachEmail && quantity > 0) {
+        const claim = await claimStripeSession(session.id, quantity, `coach:${coachEmail}`)
+        if (claim === 'already_processed') return NextResponse.json({ received: true })
         try {
           await db`
             INSERT INTO coach_credits (email, credits)
@@ -98,6 +112,7 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
           `
         } catch (err) {
           console.error('Failed to grant coach self-credits:', err)
+          if (claim === 'claimed') await releaseStripeSessionClaim(session.id, 'coach_self_credits_failed')
           return NextResponse.json({ received: true, handled: false })
         }
       }
@@ -109,24 +124,31 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
       const orgId = session.metadata?.orgId
       const quantity = parseInt(session.metadata?.quantity || '0', 10)
       if (orgId && quantity > 0) {
+        const claim = await claimStripeSession(session.id, quantity, `org:${orgId}`)
+        if (claim === 'already_processed') return NextResponse.json({ received: true })
         try {
           await db`
             UPDATE organizations
             SET token_balance = COALESCE(token_balance, 0) + ${quantity}
             WHERE id = ${orgId}
           `
+        } catch (err) {
+          console.error('Failed to credit org token balance:', err)
+          if (claim === 'claimed') await releaseStripeSessionClaim(session.id, 'org_token_purchase_failed')
+          return NextResponse.json({ received: true, handled: false })
+        }
+        // Confirmation email is best-effort — the balance is already credited,
+        // so a failure here must NOT release the claim or ask Stripe to retry.
+        try {
           const orgEmail = session.customer_details?.email
           if (orgEmail) {
             const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://learnhoops.com'
             const orgRows = await db`SELECT name FROM organizations WHERE id = ${orgId}` as unknown as { name: string }[]
             const orgName = orgRows[0]?.name || 'Your Organization'
-            try {
-              await sendTokenPurchaseConfirmationEmail(orgEmail, orgName, quantity, `${baseUrl}/org/dashboard`)
-            } catch {}
+            await sendTokenPurchaseConfirmationEmail(orgEmail, orgName, quantity, `${baseUrl}/org/dashboard`)
           }
         } catch (err) {
-          console.error('Failed to credit org token balance:', err)
-          return NextResponse.json({ received: true, handled: false })
+          console.error('Failed to send org token purchase confirmation email:', err)
         }
       }
       return NextResponse.json({ received: true })
@@ -136,13 +158,24 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
     if (metaType === 'team_token_grant') {
       const recipientIds = (session.metadata?.recipientUserIds || '').split(',').filter(Boolean)
       const tokensEach = parseInt(session.metadata?.tokensEach || '1', 10)
-      try {
-        for (const uid of recipientIds) {
-          await db`UPDATE users SET analysis_tokens = COALESCE(analysis_tokens, 0) + ${tokensEach} WHERE id = ${uid}`
+      if (recipientIds.length > 0 && tokensEach > 0) {
+        const claim = await claimStripeSession(
+          session.id,
+          tokensEach * recipientIds.length,
+          `users:${recipientIds.length}`
+        )
+        if (claim === 'already_processed') return NextResponse.json({ received: true })
+        try {
+          for (const uid of recipientIds) {
+            await db`UPDATE users SET analysis_tokens = COALESCE(analysis_tokens, 0) + ${tokensEach} WHERE id = ${uid}`
+          }
+        } catch (err) {
+          // A mid-loop failure leaves some players credited; releasing the
+          // claim here would re-credit them on retry, so keep it and log
+          // loudly for manual follow-up instead.
+          console.error('Failed to grant player tokens (PARTIAL GRANT POSSIBLE, session kept claimed):', session.id, err)
+          return NextResponse.json({ received: true, handled: false })
         }
-      } catch (err) {
-        console.error('Failed to grant player tokens:', err)
-        return NextResponse.json({ received: true, handled: false })
       }
       return NextResponse.json({ received: true })
     }
@@ -152,10 +185,13 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
       const teamId = session.metadata?.teamId
       const quantity = parseInt(session.metadata?.quantity || '0', 10)
       if (teamId && quantity > 0) {
+        const claim = await claimStripeSession(session.id, quantity, `team:${teamId}`)
+        if (claim === 'already_processed') return NextResponse.json({ received: true })
         try {
           await db`UPDATE teams SET credits = credits + ${quantity} WHERE id = ${teamId}`
         } catch (err) {
           console.error('Failed to credit team uploads:', err)
+          if (claim === 'claimed') await releaseStripeSessionClaim(session.id, 'team_credits_failed')
           return NextResponse.json({ received: true, handled: false })
         }
       }
@@ -166,14 +202,19 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
     if (metaType === 'analysis_token') {
       const userId = session.metadata?.userId
       const emailLower = session.customer_details?.email?.toLowerCase()
+      // Historically hardcoded to +1, silently dropping any multi-token buy.
+      const quantity = Math.max(1, parseInt(session.metadata?.quantity || '1', 10) || 1)
+      const claim = await claimStripeSession(session.id, quantity, userId ? `user:${userId}` : emailLower ?? null)
+      if (claim === 'already_processed') return NextResponse.json({ received: true })
       try {
         if (userId) {
-          await db`UPDATE users SET analysis_tokens = analysis_tokens + 1 WHERE id = ${userId}`
+          await db`UPDATE users SET analysis_tokens = COALESCE(analysis_tokens, 0) + ${quantity} WHERE id = ${userId}`
         } else if (emailLower) {
-          await db`UPDATE users SET analysis_tokens = analysis_tokens + 1 WHERE email = ${emailLower}`
+          await db`UPDATE users SET analysis_tokens = COALESCE(analysis_tokens, 0) + ${quantity} WHERE email = ${emailLower}`
         }
       } catch (err) {
         console.error('Failed to credit analysis token:', err)
+        if (claim === 'claimed') await releaseStripeSessionClaim(session.id, 'analysis_token_failed')
         return NextResponse.json({ received: true, handled: false })
       }
       return NextResponse.json({ received: true })
@@ -380,7 +421,13 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
     const tokensToGrant = parseInt(session.metadata?.analysis_tokens ?? '0', 10)
     const recipient = session.metadata?.token_recipient ?? ''
     const emailLower = (email ?? '').toLowerCase()
-    if (tokensToGrant > 0) {
+    const claimToken = session.metadata?.claim_token
+    // Guest purchases carry a claim token, and that claim — redeemed at
+    // signup/login — is the ONE path that grants their credits. Granting here
+    // too (the old behavior) credited the buyer twice.
+    const isGuestClaim = !!claimToken && !recipient
+
+    if (tokensToGrant > 0 && !isGuestClaim) {
       const grant = await grantBallCreditsOnce({
         sessionId: session.id,
         recipient,
@@ -390,11 +437,37 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
       console.log('[stripe webhook] ball-order grant result', { sessionId: session.id, ...grant })
     }
 
-    // For guest purchases, the claim token was generated at checkout and is in the
-    // metadata. Send a backup email so they can still claim credits if they closed
-    // the browser before finishing signup.
-    const claimToken = session.metadata?.claim_token
-    if (tokensToGrant > 0 && claimToken && !recipient.startsWith('user:') && !recipient.startsWith('team:') && emailLower) {
+    let claimConsumed = false
+    if (tokensToGrant > 0 && isGuestClaim && emailLower) {
+      // If the guest's email already belongs to an account, land the credits
+      // there now and consume the claim in the same statement, so logging in
+      // later can't redeem it a second time.
+      try {
+        const credited = (await db`
+          WITH claim AS (
+            UPDATE pending_credit_claims SET redeemed_at = NOW()
+            WHERE claim_token = ${claimToken}
+              AND redeemed_at IS NULL
+              AND EXISTS (SELECT 1 FROM users WHERE LOWER(email) = ${emailLower})
+            RETURNING tokens_to_grant
+          )
+          UPDATE users
+          SET analysis_tokens = COALESCE(analysis_tokens, 0) + (SELECT tokens_to_grant FROM claim)
+          WHERE LOWER(email) = ${emailLower} AND EXISTS (SELECT 1 FROM claim)
+          RETURNING id
+        `) as unknown as Array<{ id: string }>
+        claimConsumed = credited.length > 0
+        console.log('[stripe webhook] guest ball-order claim', {
+          sessionId: session.id, creditedExistingAccount: claimConsumed,
+        })
+      } catch (err) {
+        console.error('[stripe webhook] guest claim auto-credit failed (claim still redeemable):', err)
+      }
+    }
+
+    // Backup email so a guest who closed the browser before finishing signup
+    // can still claim their credits. Skipped when the claim was just consumed.
+    if (tokensToGrant > 0 && claimToken && !claimConsumed && !recipient.startsWith('user:') && !recipient.startsWith('team:') && emailLower) {
       try {
         await sendClaimCreditsEmail(emailLower, name || null, tokensToGrant, claimToken)
       } catch (err) {
@@ -402,13 +475,63 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
       }
     }
 
-    // Now persist the order row. If validation fails we still log it and
-    // return success — the credits were already granted above.
-    if (
-      !email ||
-      (variant !== 'left' && variant !== 'right') ||
-      (size !== '5' && size !== '6' && size !== '7')
-    ) {
+    // Now persist the order rows for the shipping queue. If validation fails
+    // we still log it and return success — the credits were already granted.
+    // metadata.cart carries the full item list; a cart of 3 balls must become
+    // rows totalling quantity 3, not one row that under-ships.
+    const isBallVariant = (v: unknown): v is 'left' | 'right' => v === 'left' || v === 'right'
+    const isBallSize = (s: unknown): s is '5' | '6' | '7' => s === '5' || s === '6' || s === '7'
+
+    type ShipmentRow = { variant: 'left' | 'right'; size: '5' | '6' | '7'; quantity: number }
+    let shipmentRows: ShipmentRow[] = []
+    try {
+      const cart = session.metadata?.cart ? JSON.parse(session.metadata.cart) : null
+      if (Array.isArray(cart)) {
+        for (const item of cart) {
+          if (item?.productSlug === 'bundle') {
+            if (isBallVariant(item.variant1) && isBallSize(item.size1)) {
+              shipmentRows.push({ variant: item.variant1, size: item.size1, quantity: 1 })
+            }
+            if (isBallVariant(item.variant2) && isBallSize(item.size2)) {
+              shipmentRows.push({ variant: item.variant2, size: item.size2, quantity: 1 })
+            }
+          } else if (isBallVariant(item?.variant) && isBallSize(item?.size)) {
+            const qty = Math.max(1, Math.floor(Number(item.quantity) || 1))
+            shipmentRows.push({ variant: item.variant, size: item.size, quantity: qty })
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[stripe webhook] ball-order: failed to parse metadata.cart:', err)
+      shipmentRows = []
+    }
+
+    // Merge duplicate variant+size lines into one row with the summed quantity.
+    const merged = new Map<string, ShipmentRow>()
+    for (const row of shipmentRows) {
+      const key = `${row.variant}|${row.size}`
+      const existing = merged.get(key)
+      if (existing) existing.quantity += row.quantity
+      else merged.set(key, { ...row })
+    }
+    shipmentRows = [...merged.values()]
+
+    // Legacy sessions / oversized carts without cart metadata: fall back to
+    // the single first-ball row. items_count > 1 means the shipping queue is
+    // missing items — flag it for manual reconciliation against Stripe.
+    if (shipmentRows.length === 0) {
+      if (isBallVariant(variant) && isBallSize(size)) {
+        shipmentRows.push({ variant, size, quantity: 1 })
+        const itemsCount = parseInt(session.metadata?.items_count || '1', 10)
+        if (itemsCount > 1) {
+          console.error('[stripe webhook] ball-order: no cart metadata but items_count > 1 — order rows are INCOMPLETE, reconcile against Stripe', {
+            sessionId: session.id, itemsCount,
+          })
+        }
+      }
+    }
+
+    if (!email || shipmentRows.length === 0) {
       console.error('[stripe webhook] ball-order: missing/invalid fields, skipping orders insert', {
         sessionId: session.id, hasEmail: !!email, variant, size,
       })
@@ -416,21 +539,29 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
     }
 
     try {
-      await db`
-        INSERT INTO orders (
-          stripe_session_id, email, customer_name, phone, variant, size,
-          amount_total, currency,
-          shipping_name, shipping_line1, shipping_line2,
-          shipping_city, shipping_state, shipping_postal_code, shipping_country
-        ) VALUES (
-          ${session.id}, ${email}, ${name ?? null}, ${phone ?? null}, ${variant}, ${size},
-          ${session.amount_total ?? 0}, ${session.currency ?? 'usd'},
-          ${ship?.name ?? null}, ${ship?.address?.line1 ?? null}, ${ship?.address?.line2 ?? null},
-          ${ship?.address?.city ?? null}, ${ship?.address?.state ?? null},
-          ${ship?.address?.postal_code ?? null}, ${ship?.address?.country ?? null}
-        )
-        ON CONFLICT (stripe_session_id) DO NOTHING
-      `
+      for (let i = 0; i < shipmentRows.length; i++) {
+        const row = shipmentRows[i]
+        // stripe_session_id is unique on orders — derive per-row keys for
+        // multi-line carts, same convention as the class-package branch.
+        // The session's amount_total goes on the first row only, so summing
+        // rows never overstates what was actually charged.
+        const orderKey = i === 0 ? session.id : `${session.id}__i${i}`
+        await db`
+          INSERT INTO orders (
+            stripe_session_id, email, customer_name, phone, variant, size,
+            amount_total, currency, quantity,
+            shipping_name, shipping_line1, shipping_line2,
+            shipping_city, shipping_state, shipping_postal_code, shipping_country
+          ) VALUES (
+            ${orderKey}, ${email}, ${name ?? null}, ${phone ?? null}, ${row.variant}, ${row.size},
+            ${i === 0 ? session.amount_total ?? 0 : 0}, ${session.currency ?? 'usd'}, ${row.quantity},
+            ${ship?.name ?? null}, ${ship?.address?.line1 ?? null}, ${ship?.address?.line2 ?? null},
+            ${ship?.address?.city ?? null}, ${ship?.address?.state ?? null},
+            ${ship?.address?.postal_code ?? null}, ${ship?.address?.country ?? null}
+          )
+          ON CONFLICT (stripe_session_id) DO NOTHING
+        `
+      }
     } catch (err) {
       console.error('Failed to save order:', err)
       // Tokens were already credited above — don't ask Stripe to retry.

@@ -40,17 +40,21 @@ export async function POST(req: NextRequest) {
     // Link any existing anonymous submissions for this email
     await db`UPDATE submissions SET user_id = ${user.id} WHERE email = ${emailLower} AND user_id IS NULL`
 
-    // Redeem a one-time claim token from a ball purchase (token is independent of email)
+    // Redeem a one-time claim token from a ball purchase (token is independent
+    // of email). Consume-and-grant in one statement so a concurrent redemption
+    // (double submit, webhook auto-credit) can never grant twice.
     if (claimToken) {
       try {
-        const [claim] = await db`
-          SELECT tokens_to_grant FROM pending_credit_claims
-          WHERE claim_token = ${claimToken} AND redeemed_at IS NULL
-        ` as unknown as [{ tokens_to_grant: number } | undefined]
-        if (claim?.tokens_to_grant && claim.tokens_to_grant > 0) {
-          await db`UPDATE users SET analysis_tokens = COALESCE(analysis_tokens, 0) + ${claim.tokens_to_grant} WHERE id = ${user.id}`
-          await db`UPDATE pending_credit_claims SET redeemed_at = NOW() WHERE claim_token = ${claimToken}`
-        }
+        await db`
+          WITH claim AS (
+            UPDATE pending_credit_claims SET redeemed_at = NOW()
+            WHERE claim_token = ${claimToken} AND redeemed_at IS NULL AND tokens_to_grant > 0
+            RETURNING tokens_to_grant
+          )
+          UPDATE users
+          SET analysis_tokens = COALESCE(analysis_tokens, 0) + (SELECT tokens_to_grant FROM claim)
+          WHERE id = ${user.id} AND EXISTS (SELECT 1 FROM claim)
+        `
       } catch {
         // Non-fatal
       }

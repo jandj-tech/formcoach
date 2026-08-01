@@ -39,20 +39,16 @@ export default function BuyTokenButton({ isInApp = false, initiated = false }: {
     }
   }
 
-  // After the hooks: an early return above them changes hook order between
-  // renders if isInApp ever flips, which crashes React.
-  if (isInApp || inAppUA) return null
-
   return (
     <span className="inline-flex flex-col items-end gap-1">
       <button
         onClick={handleClick}
         disabled={loading}
-        className="shrink-0 bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors"
+        className="shrink-0 border border-ember-500/60 text-ember-400 hover:bg-ember-500/10 disabled:opacity-50 text-sm font-bold px-5 py-2.5 rounded-full transition-colors"
       >
         {loading ? 'Loading...' : `Buy Token — $${price}`}
       </button>
-      {error && <span className="text-red-500 text-xs">{error}</span>}
+      {error && <span className="text-red-400 text-xs">{error}</span>}
     </span>
   )
 }

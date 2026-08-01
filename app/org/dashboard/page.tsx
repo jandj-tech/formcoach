@@ -3,6 +3,7 @@ import { getOrgSession } from '@/lib/org-auth'
 import { db } from '@/lib/db'
 import TopNav from '@/components/TopNav'
 import InlineEdit from '@/components/InlineEdit'
+import InfoTip from '@/components/InfoTip'
 import OrgDashboardClient from './OrgDashboardClient'
 import LogoutButton from './LogoutButton'
 import type { ClassPackage } from './OrgDashboardClient'
@@ -243,7 +244,14 @@ export default async function OrgDashboardPage() {
         </div>
 
         <div className="bg-orange-50 border border-orange-200 rounded-2xl p-6">
-          <p className="text-sm text-gray-500">Organization code</p>
+          <p className="text-sm text-gray-500 flex items-center gap-2">
+            Organization code
+            <InfoTip label="What is the organization code for?" align="left">
+              Share this code with your coaches. When a coach registers a team
+              with it, the team is linked to your organization so you can
+              assign tokens and see its leaderboard here.
+            </InfoTip>
+          </p>
           <p className="text-2xl font-black text-black font-mono tracking-wider">{org.access_code}</p>
           <p className="text-xs text-gray-400 mt-1">
             Coaches enter this code when registering a team to link it to your organization.

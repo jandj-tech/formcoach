@@ -7,13 +7,12 @@ import { useIsInApp } from '@/lib/useIsInApp'
 import Link from 'next/link'
 import CoachUploadForm from './CoachUploadForm'
 import TeamCoaches from './TeamCoaches'
-import PoolAssignPanel from '@/components/PoolAssignPanel'
+import CoachAssignPanel from '@/components/CoachAssignPanel'
 import TokenBalances from '@/components/TokenBalances'
 import LeaderboardTable from '@/components/LeaderboardTable'
 import PrintButton from '@/components/PrintButton'
 import InlineEdit from '@/components/InlineEdit'
 import PlayerShotList, { type Shot } from '@/components/PlayerShotList'
-import CoachTokenPanel from '@/components/CoachTokenPanel'
 import InfoTip from '@/components/InfoTip'
 import AccountTabs from '@/components/account/AccountTabs'
 import Section from '@/components/account/Section'
@@ -638,7 +637,7 @@ export default function TeamDashboardClient({
         <Section
           title="Buy credits"
           tipLabel="What do credits pay for?"
-          tip="1 credit = 1 AI shot analysis. Use them for your own uploads, uploading on behalf of players, or hand them to any player as tokens."
+          tip="1 credit = 1 AI shot analysis. Purchases land in My credits, your personal balance. Use them for your own uploads, uploading on behalf of players, or hand them to any player as tokens."
           summary={`$${creditRate} per credit`}
           defaultOpen
         >
@@ -708,25 +707,35 @@ export default function TeamDashboardClient({
       )}
 
       <Section
-        title="Token pool & balances"
+        title="Give tokens to players"
+        tipLabel="Which balance pays?"
+        tip="Pick the balance to pay from: My credits is your personal balance, Team credits is the shared balance your organization funds, and the Token pool holds the team's unassigned tokens (like the free activation tokens). Each token is one shot analysis the player can run themselves."
+        summary={`${coachCredits} personal · ${team.credits} team · ${team.tokenPool} pool`}
+        defaultOpen
+      >
+        <div className="pt-2">
+          <CoachAssignPanel
+            personalCredits={coachCredits}
+            teamCredits={team.credits}
+            tokenPool={team.tokenPool}
+            players={members.map(m => ({
+              id: m.id,
+              label: m.first_name ? formatPlayerName(m.first_name, m.last_name_initial) : m.email,
+              tokens: m.tokens,
+            }))}
+          />
+        </div>
+      </Section>
+
+      <Section
+        title="Balances"
         tipLabel="Pool tokens vs. player tokens?"
         tip="Pool tokens belong to the team and haven't been handed out yet. Once you assign them, they become that player's tokens — each token is one shot analysis the player can run themselves."
         summary={`${team.tokenPool} in pool`}
         defaultOpen
       >
         <div className="space-y-4 pt-2">
-          {team.initiated ? (
-            <PoolAssignPanel
-              endpoint="/api/team/assign-tokens"
-              tokenPool={team.tokenPool}
-              players={members.map(m => ({
-                id: m.id,
-                label: m.first_name
-                  ? `${m.first_name}${m.last_name_initial ? ' ' + m.last_name_initial + '.' : ''}`
-                  : m.email,
-              }))}
-            />
-          ) : (
+          {!team.initiated && (
             <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-sm font-bold text-black">Team not yet active</p>
@@ -755,19 +764,11 @@ export default function TeamDashboardClient({
               label: m.first_name ? formatPlayerName(m.first_name, m.last_name_initial) : m.email,
               tokens: m.tokens,
             }))}
-            coachCredits={team.credits}
+            teamCredits={team.credits}
             tokenPool={team.tokenPool}
           />
         </div>
       </Section>
-
-      <CoachTokenPanel
-        credits={coachCredits}
-        players={members.map(m => ({
-          id: m.id,
-          label: formatPlayerName(m.first_name || m.email, m.last_name_initial),
-        }))}
-      />
     </div>
   )
 
@@ -848,15 +849,27 @@ export default function TeamDashboardClient({
 
           <div>
             <div className="flex items-center gap-1.5">
-              <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wide">Credits</h2>
-              <InfoTip label="What are credits?" align="left">
-                Your coach balance — 1 credit = 1 AI shot analysis. Spend them
-                on your own uploads, upload on behalf of players, or hand them
-                to any player as tokens. This is your personal balance plus
-                the team&apos;s.
+              <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wide">My credits</h2>
+              <InfoTip label="What are my credits?" align="left">
+                Your personal balance — 1 credit = 1 AI shot analysis. Credits
+                you buy or that your organization gives you personally land
+                here. Spend them on your own uploads or hand them to players
+                as tokens.
               </InfoTip>
             </div>
-            <p className="text-2xl font-black text-black mt-1">{coachCredits + team.credits}</p>
+            <p className="text-2xl font-black text-black mt-1">{coachCredits}</p>
+          </div>
+
+          <div>
+            <div className="flex items-center gap-1.5">
+              <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wide">Team credits</h2>
+              <InfoTip label="What are team credits?" align="left">
+                A shared balance that belongs to the team — usually funded by
+                your organization. Spend them on this team&apos;s players (or
+                your own uploads once your personal credits run out).
+              </InfoTip>
+            </div>
+            <p className="text-2xl font-black text-black mt-1">{team.credits}</p>
           </div>
 
           <div>

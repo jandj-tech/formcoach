@@ -153,6 +153,13 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   const [teamAssignBusy, setTeamAssignBusy] = useState<string | null>(null)
   const [teamAssignMsg, setTeamAssignMsg] = useState<Record<string, string>>({})
 
+  // Quick send from the always-visible org balance banner. Recipient values
+  // are 'coach:<email>' (personal credits) or 'team:<id>' (shared credits).
+  const [quickSendTo, setQuickSendTo] = useState('')
+  const [quickSendQty, setQuickSendQty] = useState(5)
+  const [quickSendBusy, setQuickSendBusy] = useState(false)
+  const [quickSendMsg, setQuickSendMsg] = useState('')
+
   const [addOpen, setAddOpen] = useState(false)
   const [newName, setNewName] = useState('')
   const [newAgeGroup, setNewAgeGroup] = useState('')
@@ -352,6 +359,50 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
       setTeamAssignMsg(prev => ({ ...prev, [teamId]: 'Something went wrong.' }))
       setTeamAssignBusy(null)
     }
+  }
+
+  async function quickSend() {
+    if (!quickSendTo) {
+      setQuickSendMsg('Choose a coach or team first.')
+      return
+    }
+    const qty = Math.max(1, quickSendQty)
+    if (qty > orgTokenBalance) {
+      setQuickSendMsg(`Not enough tokens — need ${qty}, have ${orgTokenBalance}.`)
+      return
+    }
+    const isCoach = quickSendTo.startsWith('coach:')
+    setQuickSendBusy(true)
+    setQuickSendMsg('')
+    try {
+      const res = await fetch(
+        isCoach ? '/api/org/give-coach-credits' : '/api/org/allocate-team-credits',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(
+            isCoach
+              ? { coachEmail: quickSendTo.slice('coach:'.length), quantity: qty }
+              : { teamId: quickSendTo.slice('team:'.length), quantity: qty },
+          ),
+        },
+      )
+      const data = await res.json()
+      if (!res.ok) {
+        setQuickSendMsg(data.error || 'Could not send credits.')
+        setQuickSendBusy(false)
+        return
+      }
+      setQuickSendMsg(
+        isCoach
+          ? `Sent ${qty} personal credit${qty !== 1 ? 's' : ''} to the coach.`
+          : `Sent ${qty} team credit${qty !== 1 ? 's' : ''} to the team.`,
+      )
+      router.refresh()
+    } catch {
+      setQuickSendMsg('Something went wrong. Please try again.')
+    }
+    setQuickSendBusy(false)
   }
 
   async function openTeam(teamId: string) {
@@ -808,7 +859,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   }
 
   const totalPlayerTokens = teams.reduce((s, t) => s + t.members.reduce((ps, m) => ps + m.tokens, 0), 0)
-  const totalCoachCredits = teams.reduce((s, t) => s + t.credits, 0)
+  const totalTeamCredits = teams.reduce((s, t) => s + t.credits, 0)
   const uniquePlayerCount = new Set(teams.flatMap(t => t.members.map(m => m.id))).size
 
   // ── Tab contents ──────────────────────────────────────────────────
@@ -841,7 +892,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                   <p className="text-xs text-gray-500 mt-0.5">
                     {team.ageGroup ? `${team.ageGroup} · ` : ''}
                     {team.members.length} player{team.members.length !== 1 ? 's' : ''}
-                    {team.credits > 0 ? ` · ${team.credits} coach credit${team.credits !== 1 ? 's' : ''}` : ''}
+                    {team.credits > 0 ? ` · ${team.credits} team credit${team.credits !== 1 ? 's' : ''}` : ''}
                   </p>
                 </div>
                 <span className="text-gray-400 text-sm">{isOpen ? '−' : '+'}</span>
@@ -1284,7 +1335,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                   {!team.classPackageId && (
                     <TokenBalances
                       players={team.members.map(m => ({ id: m.id, label: memberDisplayName(m), tokens: m.tokens }))}
-                      coachCredits={team.credits}
+                      teamCredits={team.credits}
                       tokenPool={team.tokenPool}
                     />
                   )}
@@ -1455,7 +1506,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                                 {memberDisplayName(m)} — {m.tokens} token{m.tokens !== 1 ? 's' : ''}
                               </option>
                             ))}
-                            <option value="coach">Coach Credits (balance: {team.credits})</option>
+                            <option value="coach">Team Credits — shared coach balance ({team.credits})</option>
                           </select>
                         </div>
                         <div className="space-y-1">
@@ -1546,7 +1597,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
         coaches={orgCoaches}
         teams={teams.map(t => ({ id: t.id, name: t.name, coachName: t.coachNickname || t.adminEmail, ageGroup: t.ageGroup, initiated: t.initiated, memberCount: t.members.length, credits: t.credits }))}
         totalPlayerTokens={totalPlayerTokens}
-        totalCoachCredits={totalCoachCredits}
+        totalTeamCredits={totalTeamCredits}
       />
     </div>
   )
@@ -1754,29 +1805,97 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   return (
     <div className="space-y-6">
       {/* ── Org token balance — always visible above the tabs ─────────── */}
-      <section className="bg-orange-50 border border-orange-200 rounded-2xl p-5">
-        <div className="flex items-center gap-2">
-          <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wide">Org Token Balance</h2>
-          <InfoTip label="How do org tokens work?" align="left">
-            Tokens you buy land in this org balance first. From the Tokens tab
-            you can assign them to players, allocate them to teams as coach
-            credits, give a coach personal upload credits, or spend them on
-            your own uploads. 1 token = 1 AI shot analysis.
-          </InfoTip>
+      <section className="bg-orange-50 border border-orange-200 rounded-2xl p-5 space-y-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wide">Org Token Balance</h2>
+            <InfoTip label="How do org tokens work?" align="left">
+              Tokens you buy land in this org balance first. Use Quick send
+              below to move them to a coach or team, or open the Tokens tab to
+              assign them straight to players or spend them on your own
+              uploads. 1 token = 1 AI shot analysis.
+            </InfoTip>
+          </div>
+          <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
+            <div className="flex items-baseline gap-2">
+              <span className="text-4xl font-black text-black">{orgTokenBalance}</span>
+              <span className="text-gray-500 text-sm">token{orgTokenBalance !== 1 ? 's' : ''} unassigned</span>
+            </div>
+            <div className="flex items-center gap-4 text-sm text-gray-600">
+              <span>
+                <span className="font-black text-black">{totalPlayerTokens}</span> player token{totalPlayerTokens !== 1 ? 's' : ''}
+              </span>
+              <span>
+                <span className="font-black text-black">{totalTeamCredits}</span> team credit{totalTeamCredits !== 1 ? 's' : ''}
+              </span>
+            </div>
+          </div>
         </div>
-        <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
-          <div className="flex items-baseline gap-2">
-            <span className="text-4xl font-black text-black">{orgTokenBalance}</span>
-            <span className="text-gray-500 text-sm">token{orgTokenBalance !== 1 ? 's' : ''} unassigned</span>
+
+        {/* Quick send — move balance tokens to a coach or team without
+            leaving the banner. */}
+        <div className="border-t border-orange-200 pt-3 space-y-2">
+          <div className="flex items-center gap-1.5">
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Quick send</p>
+            <InfoTip label="Where do quick-sent credits go?" align="left">
+              Sending to a <strong>coach</strong> funds their personal
+              credits — only they can spend those, on their own uploads or on
+              players. Sending to a <strong>team</strong> funds its shared
+              team credits, which you and that team&apos;s coach can both
+              spend on the team.
+            </InfoTip>
           </div>
-          <div className="flex items-center gap-4 text-sm text-gray-600">
-            <span>
-              <span className="font-black text-black">{totalPlayerTokens}</span> player token{totalPlayerTokens !== 1 ? 's' : ''}
-            </span>
-            <span>
-              <span className="font-black text-black">{totalCoachCredits}</span> coach credit{totalCoachCredits !== 1 ? 's' : ''}
-            </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={quickSendTo}
+              onChange={e => { setQuickSendTo(e.target.value); setQuickSendMsg('') }}
+              className="flex-1 min-w-[12rem] border border-orange-200 rounded-xl px-3 py-2.5 text-sm text-black bg-white focus:outline-none focus:border-orange-500"
+            >
+              <option value="">Choose a coach or team…</option>
+              <optgroup label="Coaches — personal credits">
+                {orgCoaches.map(c => (
+                  <option key={c.email} value={`coach:${c.email}`}>{c.label}</option>
+                ))}
+              </optgroup>
+              <optgroup label="Teams — shared team credits">
+                {teams.map(t => (
+                  <option key={t.id} value={`team:${t.id}`}>
+                    {t.name}{t.ageGroup ? ' · ' + t.ageGroup : ''} ({t.credits} credit{t.credits !== 1 ? 's' : ''})
+                  </option>
+                ))}
+              </optgroup>
+            </select>
+            <input
+              type="number"
+              min={1}
+              value={quickSendQty || ''}
+              onChange={e => {
+                const n = parseInt(e.target.value)
+                setQuickSendQty(Number.isNaN(n) ? 0 : Math.min(10000, Math.max(0, n)))
+              }}
+              onBlur={() => { if (quickSendQty < 1) setQuickSendQty(1) }}
+              aria-label="Tokens to send"
+              className="w-20 border border-orange-200 rounded-xl px-2 py-2 text-center text-black text-sm bg-white focus:outline-none focus:border-orange-500"
+            />
+            <button
+              type="button"
+              onClick={quickSend}
+              disabled={quickSendBusy || !quickSendTo || quickSendQty < 1 || quickSendQty > orgTokenBalance}
+              className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+            >
+              {quickSendBusy ? 'Sending…' : 'Send'}
+            </button>
           </div>
+          {quickSendQty > orgTokenBalance && (
+            <p className="text-xs font-semibold text-red-500">
+              Not enough tokens — you have {orgTokenBalance}.
+            </p>
+          )}
+          {quickSendMsg && (
+            <p className={`text-sm font-semibold ${quickSendMsg.startsWith('Sent') ? 'text-green-600' : 'text-red-500'}`}>
+              {quickSendMsg}
+            </p>
+          )}
         </div>
       </section>
 

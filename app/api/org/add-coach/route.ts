@@ -3,6 +3,7 @@ import crypto from 'crypto'
 import { db } from '@/lib/db'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { sendCoachSignupEmail } from '@/lib/email'
+import { addToEmailList } from '@/lib/email-list'
 
 // Adds a coach to one of the org's teams. Two modes:
 //  - email invite: returns an invite token (and optionally emails it)
@@ -76,6 +77,7 @@ export async function POST(req: NextRequest) {
       INSERT INTO team_coaches (team_id, email, invite_token)
       VALUES (${team.id}, ${email}, ${inviteToken})
     `
+    await addToEmailList(email)
 
     let emailed = false
     if (body.sendEmail) {

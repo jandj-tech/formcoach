@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
 import { signSession, sessionCookieOptions } from '@/lib/auth'
 import { grantFreeOrgTokensIfEligible } from '@/lib/team-tokens'
+import { addToEmailList } from '@/lib/email-list'
 import { sendMetaEvent, makeRegistrationEvent } from '@/lib/meta-server'
 
 export async function POST(req: NextRequest) {
@@ -39,6 +40,10 @@ export async function POST(req: NextRequest) {
 
     // Link any existing anonymous submissions for this email
     await db`UPDATE submissions SET user_id = ${user.id} WHERE email = ${emailLower} AND user_id IS NULL`
+
+    // New accounts join the marketing list (they can unsubscribe any time;
+    // a prior unsubscribe is preserved).
+    await addToEmailList(emailLower)
 
     // Redeem a one-time claim token from a ball purchase (token is independent
     // of email). Consume-and-grant in one statement so a concurrent redemption

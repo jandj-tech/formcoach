@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
 import { signTeamSession, teamSessionCookieOptions } from '@/lib/team-auth'
 import { isCleanDisplayText, BLOCKED_TEXT_ERROR } from '@/lib/moderation'
+import { addToEmailList } from '@/lib/email-list'
 
 function generateAccessCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -60,6 +61,9 @@ export async function POST(req: NextRequest) {
       VALUES (${name.trim()}, ${emailLower}, ${hash}, ${accessCode}, ${organizationId}, ${ageGroupValue})
       RETURNING id, admin_email
     ` as unknown as [{ id: string; admin_email: string }]
+
+    // New accounts join the marketing list (unsubscribe honored/preserved).
+    await addToEmailList(emailLower)
 
     const token = await signTeamSession({ teamId: team.id, adminEmail: team.admin_email })
     const res = NextResponse.json({ success: true })

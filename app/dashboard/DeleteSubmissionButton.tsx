@@ -26,7 +26,7 @@ export default function DeleteSubmissionButton({ id }: { id: string }) {
       onClick={handleDelete}
       disabled={deleting}
       aria-label="Delete this shot"
-      className="shrink-0 text-xs font-semibold text-chalk-dim hover:text-red-400 disabled:opacity-50 transition-colors px-3 py-2"
+      className="shrink-0 text-xs font-semibold text-gray-400 hover:text-red-500 disabled:opacity-50 transition-colors px-3 py-2"
     >
       {deleting ? 'Deleting…' : 'Delete'}
     </button>

@@ -58,7 +58,7 @@ export default function InfoTip({
         onClick={() => setOpen(o => !o)}
         onFocus={() => setOpen(true)}
         onBlur={() => setOpen(false)}
-        className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-chalk-dim/60 text-chalk-dim text-[10px] font-bold leading-none select-none hover:border-ember-400 hover:text-ember-400 focus:outline-none focus-visible:border-ember-400 focus-visible:text-ember-400 transition-colors cursor-help"
+        className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-gray-400 text-gray-400 text-[10px] font-bold leading-none select-none hover:border-orange-500 hover:text-orange-500 focus:outline-none focus-visible:border-orange-500 focus-visible:text-orange-500 transition-colors cursor-help"
       >
         i
       </button>
@@ -66,7 +66,7 @@ export default function InfoTip({
         <span
           id={panelId}
           role="tooltip"
-          className={`absolute top-full ${alignClass} z-30 mt-2 w-60 max-w-[80vw] rounded-xl border border-courtline bg-ink-800 px-3 py-2.5 text-xs font-normal normal-case tracking-normal leading-relaxed text-chalk shadow-xl shadow-black/40`}
+          className={`absolute top-full ${alignClass} z-30 mt-2 w-60 max-w-[80vw] rounded-xl bg-gray-900 px-3 py-2.5 text-xs font-normal normal-case tracking-normal leading-relaxed text-white shadow-xl shadow-black/20`}
         >
           {children}
         </span>

@@ -43,8 +43,8 @@ export default function JoinTeamForm({ hasName }: { hasName: boolean }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
       {!hasName && (
-        <p className="text-sm text-ember-400 bg-ember-500/10 border border-ember-500/30 rounded-xl px-3 py-2">
-          Set your name in the Profile section above first — it’ll be used on every team you join.
+        <p className="text-sm text-orange-600 bg-orange-50 border border-orange-200 rounded-xl px-3 py-2">
+          Set your name in the Profile tab first — it’ll be used on every team you join.
         </p>
       )}
       <div className="flex gap-2">
@@ -54,18 +54,18 @@ export default function JoinTeamForm({ hasName }: { hasName: boolean }) {
           placeholder="Team code"
           value={teamCode}
           onChange={e => setTeamCode(e.target.value.toUpperCase())}
-          className="flex-1 min-w-0 bg-ink-800 border border-courtline rounded-xl px-4 py-3 text-chalk placeholder-chalk-dim focus:outline-none focus:border-ember-500 transition-colors font-mono tracking-wider"
+          className="flex-1 min-w-0 bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors font-mono tracking-wider"
         />
         <button
           type="submit"
           disabled={status === 'loading' || !hasName}
-          className="bg-ember-500 hover:bg-ember-400 disabled:opacity-50 text-ink-950 font-bold px-6 py-3 rounded-xl transition-colors"
+          className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-6 py-3 rounded-xl transition-colors"
         >
           {status === 'loading' ? 'Joining...' : 'Join'}
         </button>
       </div>
       {message && (
-        <p className={`text-sm ${status === 'error' ? 'text-red-400' : 'text-green-400'}`}>
+        <p className={`text-sm ${status === 'error' ? 'text-red-500' : 'text-green-600'}`}>
           {message}
         </p>
       )}

@@ -6,6 +6,9 @@ import { useRouter } from 'next/navigation'
 import { useIsInApp } from '@/lib/useIsInApp'
 import Link from 'next/link'
 import OrgAddCoach from './OrgAddCoach'
+import AccountTabs from '@/components/account/AccountTabs'
+import Section from '@/components/account/Section'
+import InfoTip from '@/components/InfoTip'
 import TokenBalances from '@/components/TokenBalances'
 import InlineEdit from '@/components/InlineEdit'
 import LeaderboardTable, { type LeaderboardRow } from '@/components/LeaderboardTable'
@@ -107,8 +110,10 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   const [removingCoach, setRemovingCoach] = useState<string | null>(null)
   const [removingPlayer, setRemovingPlayer] = useState<string | null>(null)
   const [deletingTeam, setDeletingTeam] = useState<string | null>(null)
-  const [showMyUploads, setShowMyUploads] = useState(false)
-  const [showAllPlayers, setShowAllPlayers] = useState(false)
+  // Both lists now live in their own tabs, so they start expanded — the tab
+  // itself is the collapse; the toggle stays for minimizing within the tab.
+  const [showMyUploads, setShowMyUploads] = useState(true)
+  const [showAllPlayers, setShowAllPlayers] = useState(true)
   const [playerSort, setPlayerSort] = useState<Record<string, PlayerSortMode>>({})
   const [allPlayersSort, setAllPlayersSort] = useState<PlayerSortMode>('name')
   const [teamLbModal, setTeamLbModal] = useState<string | null>(null)
@@ -396,6 +401,9 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
 
   // Expand a team's panel and scroll to it — used from the All Players list.
   function goToTeam(teamId: string) {
+    // The team cards live in the Teams tab; when clicking from the Players
+    // tab, switch tabs first so the panel is visible before scrolling.
+    document.querySelector<HTMLButtonElement>('[data-tab="teams"]')?.click()
     setExpanded(teamId)
     setTimeout(() => {
       document
@@ -799,19 +807,18 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
     )
   }
 
-  return (
-    <div className="space-y-4">
-      {classProgramSection}
-      {addTeamSection}
+  const totalPlayerTokens = teams.reduce((s, t) => s + t.members.reduce((ps, m) => ps + m.tokens, 0), 0)
+  const totalCoachCredits = teams.reduce((s, t) => s + t.credits, 0)
+  const uniquePlayerCount = new Set(teams.flatMap(t => t.members.map(m => m.id))).size
 
-      <OrgTokenPanel
-        balance={orgTokenBalance}
-        players={orgPlayers}
-        coaches={orgCoaches}
-        teams={teams.map(t => ({ id: t.id, name: t.name, coachName: t.coachNickname || t.adminEmail, ageGroup: t.ageGroup, initiated: t.initiated, memberCount: t.members.length, credits: t.credits }))}
-        totalPlayerTokens={teams.reduce((s, t) => s + t.members.reduce((ps, m) => ps + m.tokens, 0), 0)}
-        totalCoachCredits={teams.reduce((s, t) => s + t.credits, 0)}
-      />
+  // ── Tab contents ──────────────────────────────────────────────────
+  // JSX-only grouping: all state and handlers stay above, in this same
+  // component, so nothing loses its state when tabs switch (AccountTabs
+  // keeps inactive panels mounted).
+
+  const teamsTab = (
+    <div className="space-y-4">
+      {addTeamSection}
 
       <h2 className="text-xl font-black text-black">Your Teams</h2>
 
@@ -867,7 +874,15 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                         {/* Join code */}
                         <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
                           <div className="min-w-0">
-                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Class join code</p>
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
+                              Class join code
+                              <InfoTip label="Class join code vs organization code" align="left">
+                                Players use this code (or the join link) to
+                                join this class team. It&rsquo;s different from
+                                your organization code, which coaches use to
+                                link a new team to your organization.
+                              </InfoTip>
+                            </p>
                             <p className="text-2xl font-black text-orange-600 tracking-widest mt-0.5">{team.accessCode}</p>
                             <p className="text-xs text-gray-500 mt-1">
                               Share this with your players — up to {pkg.player_count} can join. The org leader uploads videos for each.
@@ -1101,7 +1116,16 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                   {!team.initiated && (
                     <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-2">
                       <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm font-bold text-black">Team not yet active</p>
+                        <p className="text-sm font-bold text-black flex items-center gap-1.5">
+                          Team not yet active
+                          <InfoTip label="What does active mean?" align="left">
+                            A team becomes active (&ldquo;initiated&rdquo;) at
+                            8 players, or automatically when it&rsquo;s part of
+                            a class package. Once any of your teams is active,
+                            tokens drop from $2.79 to $1.49 across your whole
+                            organization.
+                          </InfoTip>
+                        </p>
                         <span className="text-xs font-black text-orange-500">{team.members.length}/8 players</span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
@@ -1117,8 +1141,13 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
 
                   {/* Roster — coach, players, and the player signup link */}
                   <div className="space-y-3">
-                    <div>
-                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Coaches</p>
+                    <Section
+                      title="Coaches"
+                      tipLabel="What can coaches do?"
+                      tip="Coaches manage this team from their own coach dashboard: they upload shots for players and can spend the team's credits. Invited coaches show as pending until they finish setting up their account."
+                      summary={`${team.coaches.length + 1} coach${team.coaches.length > 0 ? 'es' : ''}`}
+                      defaultOpen={false}
+                    >
                       <div className="mt-1 border border-gray-100 rounded-xl divide-y divide-gray-100">
                         <div className="flex items-center justify-between gap-3 px-3 py-2">
                           <div className="min-w-0">
@@ -1160,20 +1189,22 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                       <div className="mt-2">
                         <OrgAddCoach teamId={team.id} />
                       </div>
-                    </div>
-                    <div>
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                          Players ({team.members.length})
-                        </p>
-                        {team.members.length > 1 && (
+                    </Section>
+                    <Section
+                      title="Players"
+                      tipLabel="How do players join?"
+                      tip="Players join with the signup link or team code below. Tick the boxes next to players to draft an outreach email to just those players."
+                      summary={`${team.members.length} player${team.members.length !== 1 ? 's' : ''}`}
+                    >
+                      {team.members.length > 1 && (
+                        <div className="flex items-center justify-end gap-3">
                           <SortMenu
                             value={playerSort[team.id] ?? 'name'}
                             options={PLAYER_SORT_OPTIONS}
                             onChange={v => setPlayerSort(s => ({ ...s, [team.id]: v }))}
                           />
-                        )}
-                      </div>
+                        </div>
+                      )}
                       {team.members.length === 0 ? (
                         <p className="text-sm text-gray-400 mt-0.5">No players have joined yet.</p>
                       ) : (
@@ -1218,9 +1249,16 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                           )}
                         </>
                       )}
-                    </div>
+                    </Section>
                     <div>
-                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Player signup link</p>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 flex items-center gap-1.5">
+                        Player signup link
+                        <InfoTip label="What is the player signup link?" align="left">
+                          Send this to players (or their parents). It opens the
+                          signup page with this team&rsquo;s code pre-filled, so
+                          they land on the roster automatically.
+                        </InfoTip>
+                      </p>
                       <div className="flex items-center gap-2 bg-gray-50 border border-gray-300 rounded-xl p-2.5">
                         <span className="flex-1 text-xs font-mono text-gray-600 truncate">
                           {BASE_URL}/signup?teamCode={team.accessCode}
@@ -1363,24 +1401,31 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                   })()}
 
                   {/* Team leaderboard */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Team leaderboard</p>
+                  <Section
+                    title="Team leaderboard"
+                    summary={team.leaderboard.length === 0
+                      ? 'No shots yet'
+                      : `${team.leaderboard.length} player${team.leaderboard.length !== 1 ? 's' : ''}`}
+                    defaultOpen={false}
+                  >
+                    <div className="space-y-2 pt-1">
                       {team.leaderboard.length > 0 && (
-                        <button
-                          onClick={() => setTeamLbModal(team.id)}
-                          className="shrink-0 text-xs font-bold text-orange-500 hover:text-orange-400 transition-colors"
-                        >
-                          View full &amp; print
-                        </button>
+                        <div className="flex justify-end">
+                          <button
+                            onClick={() => setTeamLbModal(team.id)}
+                            className="shrink-0 text-xs font-bold text-orange-500 hover:text-orange-400 transition-colors"
+                          >
+                            View full &amp; print
+                          </button>
+                        </div>
+                      )}
+                      {team.leaderboard.length === 0 ? (
+                        <p className="text-sm text-gray-400">No shots analyzed yet.</p>
+                      ) : (
+                        <LeaderboardTable entries={team.leaderboard} context="org" />
                       )}
                     </div>
-                    {team.leaderboard.length === 0 ? (
-                      <p className="text-sm text-gray-400">No shots analyzed yet.</p>
-                    ) : (
-                      <LeaderboardTable entries={team.leaderboard} context="org" />
-                    )}
-                  </div>
+                  </Section>
 
                   {/* Buy tokens — collapsible. Hidden in the iOS app (guideline 3.1.1). */}
                   {!inApp && (
@@ -1444,8 +1489,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                   )}
 
                   {/* Danger zone — delete this team */}
-                  <div className="border-t border-gray-100 pt-4">
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Danger zone</p>
+                  <Section title="Danger zone" summary="Delete team" defaultOpen={false}>
                     <div className="mt-2 flex items-center justify-between gap-3 flex-wrap">
                       <p className="text-xs text-gray-400 max-w-sm">
                         Permanently delete this team, its roster, and its coaches.
@@ -1459,14 +1503,56 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                         {deletingTeam === team.id ? 'Deleting…' : 'Delete team'}
                       </button>
                     </div>
-                  </div>
+                  </Section>
                 </div>
               )}
             </div>
           )
         })}
       </div>
+    </div>
+  )
 
+  const classTab = (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <h2 className="text-xl font-black text-black">10-Week Shooting Class</h2>
+        <InfoTip label="What does the 10-week class include?" align="left">
+          $40 per player ($36.99 each for 30+). Every player gets a training
+          ball, 2 AI shot analyses (start and end of the class), and a
+          personalized completion certificate. Buying a package also creates a
+          class team and unlocks the $1.49 token rate for your organization.
+        </InfoTip>
+      </div>
+      {classProgramSection}
+    </div>
+  )
+
+  const tokensTab = (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <h2 className="text-xl font-black text-black">Tokens &amp; Credits</h2>
+        <InfoTip label="What is the difference between tokens and credits?" align="left">
+          <strong>Player tokens</strong> live on a player&rsquo;s own account —
+          1 token = 1 shot analysis. <strong>Team credits</strong> are a shared
+          pool on a team that you or its coach can spend or assign to that
+          team&rsquo;s players. Your <strong>org balance</strong> holds tokens
+          you&rsquo;ve bought but not yet handed out.
+        </InfoTip>
+      </div>
+      <OrgTokenPanel
+        balance={orgTokenBalance}
+        players={orgPlayers}
+        coaches={orgCoaches}
+        teams={teams.map(t => ({ id: t.id, name: t.name, coachName: t.coachNickname || t.adminEmail, ageGroup: t.ageGroup, initiated: t.initiated, memberCount: t.members.length, credits: t.credits }))}
+        totalPlayerTokens={totalPlayerTokens}
+        totalCoachCredits={totalCoachCredits}
+      />
+    </div>
+  )
+
+  const uploadsTab = (
+    <div className="space-y-4">
       {/* My Uploads — the org owner's own analyzed shots, collapsible */}
       <div className="border border-gray-200 rounded-2xl overflow-hidden">
         <button
@@ -1501,7 +1587,11 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
           </div>
         )}
       </div>
+    </div>
+  )
 
+  const playersTab = (
+    <div className="space-y-4">
       {/* All players across the organization — collapsible */}
       <div className="border border-gray-200 rounded-2xl overflow-hidden">
         <button
@@ -1658,6 +1748,54 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
           </div>
         )}
       </div>
+    </div>
+  )
+
+  return (
+    <div className="space-y-6">
+      {/* ── Org token balance — always visible above the tabs ─────────── */}
+      <section className="bg-orange-50 border border-orange-200 rounded-2xl p-5">
+        <div className="flex items-center gap-2">
+          <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wide">Org Token Balance</h2>
+          <InfoTip label="How do org tokens work?" align="left">
+            Tokens you buy land in this org balance first. From the Tokens tab
+            you can assign them to players, allocate them to teams as coach
+            credits, give a coach personal upload credits, or spend them on
+            your own uploads. 1 token = 1 AI shot analysis.
+          </InfoTip>
+        </div>
+        <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
+          <div className="flex items-baseline gap-2">
+            <span className="text-4xl font-black text-black">{orgTokenBalance}</span>
+            <span className="text-gray-500 text-sm">token{orgTokenBalance !== 1 ? 's' : ''} unassigned</span>
+          </div>
+          <div className="flex items-center gap-4 text-sm text-gray-600">
+            <span>
+              <span className="font-black text-black">{totalPlayerTokens}</span> player token{totalPlayerTokens !== 1 ? 's' : ''}
+            </span>
+            <span>
+              <span className="font-black text-black">{totalCoachCredits}</span> coach credit{totalCoachCredits !== 1 ? 's' : ''}
+            </span>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Tabs ───────────────────────────────────────────────────────── */}
+      <AccountTabs
+        tabs={[
+          { id: 'teams', label: 'Teams', count: teams.length, content: teamsTab },
+          // The class purchase pitch is hidden in the iOS app (guideline 3.1.1).
+          ...(inApp ? [] : [{ id: 'class', label: 'Shooting Class', content: classTab }]),
+          { id: 'tokens', label: 'Tokens', content: tokensTab },
+          { id: 'players', label: 'Players', count: uniquePlayerCount, content: playersTab },
+          { id: 'uploads', label: 'My Uploads', count: myUploads.length, content: uploadsTab },
+        ]}
+        defaultTab="teams"
+      />
+
+      {/* Modals stay at the component root — outside the tab panels — so
+          they open from any tab, and the leaderboard one keeps working with
+          window.print() (globals.css targets .leaderboard-modal on <body>). */}
 
       {/* Email draft modal */}
       {emailDraftTeam && (() => {

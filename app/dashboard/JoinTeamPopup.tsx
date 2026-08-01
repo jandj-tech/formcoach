@@ -76,17 +76,17 @@ export default function JoinTeamPopup({
   // While auto-joining a name-set player, show a brief status modal.
   if (hasName) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-        <div className="bg-ink-900 border border-courtline rounded-2xl p-6 w-full max-w-sm space-y-3 text-center">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+        <div className="bg-white rounded-2xl p-6 w-full max-w-sm space-y-3 text-center">
           <div className="text-4xl">🏀</div>
-          <h2 className="font-display font-black uppercase text-xl text-chalk">
+          <h2 className="text-xl font-black text-black">
             {status === 'error' ? 'Could not join' : 'Joining your team…'}
           </h2>
-          {error && <p className="text-red-400 text-sm">{error}</p>}
+          {error && <p className="text-red-500 text-sm">{error}</p>}
           {status === 'error' && (
             <button
               onClick={dismiss}
-              className="bg-ember-500 hover:bg-ember-400 text-ink-950 font-bold py-2.5 px-5 rounded-full transition-colors"
+              className="bg-orange-500 hover:bg-orange-400 text-white font-bold py-2.5 px-5 rounded-xl transition-colors"
             >
               Close
             </button>
@@ -98,12 +98,12 @@ export default function JoinTeamPopup({
 
   // First-time player without a saved name — collect it once, then join.
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-      <div className="bg-ink-900 border border-courtline rounded-2xl p-6 w-full max-w-sm space-y-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+      <div className="bg-white rounded-2xl p-6 w-full max-w-sm space-y-4">
         <div className="text-center space-y-1">
           <div className="text-4xl">🏀</div>
-          <h2 className="font-display font-black uppercase text-xl text-chalk">Join your team</h2>
-          <p className="text-sm text-chalk-dim">
+          <h2 className="text-xl font-black text-black">Join your team</h2>
+          <p className="text-sm text-gray-500">
             Set your name once — it’ll be used on every team you join from now on.
           </p>
         </div>
@@ -118,7 +118,7 @@ export default function JoinTeamPopup({
               const v = e.target.value
               setFirstName(v ? v.charAt(0).toUpperCase() + v.slice(1) : '')
             }}
-            className="w-full bg-ink-800 border border-courtline rounded-xl px-4 py-3 text-chalk placeholder-chalk-dim focus:outline-none focus:border-ember-500 transition-colors"
+            className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
           />
           <input
             type="text"
@@ -127,21 +127,21 @@ export default function JoinTeamPopup({
             placeholder="Last name initial"
             value={lastInitial}
             onChange={(e) => setLastInitial(e.target.value.toUpperCase())}
-            className="w-full bg-ink-800 border border-courtline rounded-xl px-4 py-3 text-chalk placeholder-chalk-dim focus:outline-none focus:border-ember-500 transition-colors"
+            className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
           />
-          {error && <p className="text-red-400 text-sm">{error}</p>}
+          {error && <p className="text-red-500 text-sm">{error}</p>}
           <div className="flex gap-2">
             <button
               type="button"
               onClick={dismiss}
-              className="flex-1 text-chalk-dim hover:text-chalk font-semibold py-3 rounded-xl transition-colors"
+              className="flex-1 text-gray-500 hover:text-gray-700 font-semibold py-3 rounded-xl transition-colors"
             >
               Skip for now
             </button>
             <button
               type="submit"
               disabled={status === 'loading'}
-              className="flex-1 bg-ember-500 hover:bg-ember-400 disabled:opacity-50 text-ink-950 font-bold py-3 rounded-full transition-colors"
+              className="flex-1 bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold py-3 rounded-xl transition-colors"
             >
               {status === 'loading' ? 'Joining…' : 'Save & Join'}
             </button>

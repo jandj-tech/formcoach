@@ -25,7 +25,7 @@ export default function DeleteAccountButton() {
       type="button"
       onClick={handleDelete}
       disabled={deleting}
-      className="shrink-0 text-xs font-semibold text-red-400 border border-red-500/40 hover:bg-red-500/10 disabled:opacity-50 px-4 py-2 rounded-full transition-colors"
+      className="shrink-0 text-xs font-semibold text-red-600 border border-red-300 hover:bg-red-50 disabled:opacity-50 px-4 py-2 rounded-xl transition-colors"
     >
       {deleting ? 'Deleting account…' : 'Delete account'}
     </button>

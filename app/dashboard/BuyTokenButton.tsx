@@ -44,11 +44,11 @@ export default function BuyTokenButton({ isInApp = false, initiated = false }: {
       <button
         onClick={handleClick}
         disabled={loading}
-        className="shrink-0 border border-ember-500/60 text-ember-400 hover:bg-ember-500/10 disabled:opacity-50 text-sm font-bold px-5 py-2.5 rounded-full transition-colors"
+        className="shrink-0 border-2 border-orange-500 text-orange-600 hover:bg-orange-100 disabled:opacity-50 text-sm font-bold px-5 py-2.5 rounded-xl transition-colors"
       >
         {loading ? 'Loading...' : `Buy Token — $${price}`}
       </button>
-      {error && <span className="text-red-400 text-xs">{error}</span>}
+      {error && <span className="text-red-500 text-xs">{error}</span>}
     </span>
   )
 }

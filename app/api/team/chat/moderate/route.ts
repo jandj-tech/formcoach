@@ -5,6 +5,7 @@ import { resolveChatIdentity } from '@/lib/team-chat'
 
 // Coach moderation + everyone's self-service actions:
 //   { teamId, action: 'mode', mode: 'everyone' | 'coach-only' }   (coach)
+//   { teamId, action: 'allow' | 'disallow', userId }               (coach)
 //   { teamId, action: 'mute' | 'unmute', userId }                 (coach)
 //   { teamId, action: 'delete', messageId }                       (coach or own message)
 export async function POST(req: NextRequest) {
@@ -26,6 +27,20 @@ export async function POST(req: NextRequest) {
       const mode = p.mode === 'coach-only' ? 'coach-only' : 'everyone'
       await db`UPDATE teams SET chat_mode = ${mode} WHERE id = ${teamId}`
       return NextResponse.json({ success: true, chatMode: mode })
+    }
+
+    if (p.action === 'allow' || p.action === 'disallow') {
+      if (!identity.isCoach) return NextResponse.json({ error: 'Coach only' }, { status: 403 })
+      if (!p.userId) return NextResponse.json({ error: 'userId required' }, { status: 400 })
+      if (p.action === 'allow') {
+        await db`
+          INSERT INTO team_chat_allows (team_id, user_id) VALUES (${teamId}, ${p.userId})
+          ON CONFLICT DO NOTHING
+        `
+      } else {
+        await db`DELETE FROM team_chat_allows WHERE team_id = ${teamId} AND user_id = ${p.userId}`
+      }
+      return NextResponse.json({ success: true })
     }
 
     if (p.action === 'mute' || p.action === 'unmute') {

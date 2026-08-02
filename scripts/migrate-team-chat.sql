@@ -36,3 +36,12 @@ CREATE TABLE IF NOT EXISTS user_blocks (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   PRIMARY KEY (blocker_user_id, blocked_user_id)
 );
+
+-- Players the coach has granted chat access (used in 'coach-only' mode;
+-- 'everyone' mode lets any non-muted member post).
+CREATE TABLE IF NOT EXISTS team_chat_allows (
+  team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (team_id, user_id)
+);

@@ -5,9 +5,24 @@ export interface ChatIdentity {
   isCoach: boolean
   senderName: string
   muted: boolean
+  /** Coach granted this player chat access (matters in coach-only mode). */
+  allowed: boolean
   chatMode: 'everyone' | 'coach-only'
   teamName: string
 }
+
+/** Central posting rule: coaches always; players need the open mode or an
+ *  explicit grant, and must not be muted. */
+export function canPostInChat(identity: ChatIdentity): boolean {
+  if (identity.isCoach) return true
+  if (identity.muted) return false
+  if (identity.chatMode === 'everyone') return true
+  return identity.allowed
+}
+
+export const NO_ACCESS_MESSAGE =
+  "You don't have access to send messages. If you'd like access, ask your coach."
+
 
 // Resolves what a logged-in user is allowed to do in a team's chat.
 // Coaches are matched by account email (founding coach or added coach),
@@ -53,6 +68,14 @@ export async function resolveChatIdentity(
     muted = rows.length > 0
   } catch {}
 
+  let allowed = false
+  try {
+    const rows = (await db`
+      SELECT 1 FROM team_chat_allows WHERE team_id = ${teamId} AND user_id = ${userId} LIMIT 1
+    `) as unknown as unknown[]
+    allowed = rows.length > 0
+  } catch {}
+
   const senderName = isCoach
     ? `${coachNickname || 'Coach'} (Coach)`
     : membership?.first_name
@@ -64,6 +87,7 @@ export async function resolveChatIdentity(
     isCoach,
     senderName,
     muted,
+    allowed,
     chatMode: team.chat_mode === 'everyone' ? 'everyone' : 'coach-only',
     teamName: team.name,
   }

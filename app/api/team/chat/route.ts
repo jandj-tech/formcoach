@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSessionFromRequest } from '@/lib/auth'
 import { db } from '@/lib/db'
-import { resolveChatIdentity } from '@/lib/team-chat'
+import { resolveChatIdentity, canPostInChat, NO_ACCESS_MESSAGE } from '@/lib/team-chat'
 import { isCleanDisplayText } from '@/lib/moderation'
 
 // GET /api/team/chat?teamId=...&after=<messageId> — messages plus the
@@ -34,8 +34,9 @@ export async function GET(req: NextRequest) {
       sender_role: string; body: string; created_at: string
     }>
 
-    // Coach extras: current mutes so the moderation UI can reflect state.
+    // Coach extras: roster with per-player access state for the manage panel.
     let mutedUserIds: string[] = []
+    let members: Array<{ id: string; name: string; allowed: boolean }> = []
     if (identity.isCoach) {
       try {
         const rows = (await db`
@@ -43,9 +44,26 @@ export async function GET(req: NextRequest) {
         `) as unknown as Array<{ user_id: string }>
         mutedUserIds = rows.map(r => r.user_id)
       } catch {}
+      try {
+        const roster = (await db`
+          SELECT u.id,
+                 COALESCE(NULLIF(tm.first_name, ''), u.email) AS first_name,
+                 COALESCE(tm.last_name_initial, '') AS last_name_initial,
+                 (SELECT COUNT(*) FROM team_chat_allows a WHERE a.team_id = ${teamId} AND a.user_id = u.id)::int AS allowed
+          FROM team_memberships tm
+          JOIN users u ON u.id = tm.user_id
+          WHERE tm.team_id = ${teamId}
+          ORDER BY tm.first_name ASC NULLS LAST
+        `) as unknown as Array<{ id: string; first_name: string; last_name_initial: string; allowed: number }>
+        members = roster.map(r => ({
+          id: r.id,
+          name: r.last_name_initial ? `${r.first_name} ${r.last_name_initial.charAt(0)}.` : r.first_name,
+          allowed: r.allowed > 0,
+        }))
+      } catch {}
     }
 
-    const canPost = identity.isCoach || (identity.chatMode === 'everyone' && !identity.muted)
+    const canPost = canPostInChat(identity)
     return NextResponse.json({
       messages: messages.reverse().map(m => ({
         id: Number(m.id),
@@ -61,10 +79,11 @@ export async function GET(req: NextRequest) {
         ? null
         : identity.muted
           ? 'Your coach has turned off chat for you.'
-          : 'Only coaches can post right now.',
+          : NO_ACCESS_MESSAGE,
       chatMode: identity.chatMode,
       isCoach: identity.isCoach,
       mutedUserIds,
+      members,
       teamName: identity.teamName,
     })
   } catch (err) {
@@ -86,10 +105,9 @@ export async function POST(req: NextRequest) {
   const identity = await resolveChatIdentity(teamId, session.userId, session.email)
   if (!identity) return NextResponse.json({ error: 'Not on this team' }, { status: 403 })
 
-  const canPost = identity.isCoach || (identity.chatMode === 'everyone' && !identity.muted)
-  if (!canPost) {
+  if (!canPostInChat(identity)) {
     return NextResponse.json({
-      error: identity.muted ? 'Your coach has turned off chat for you.' : 'Only coaches can post right now.',
+      error: identity.muted ? 'Your coach has turned off chat for you.' : NO_ACCESS_MESSAGE,
     }, { status: 403 })
   }
 

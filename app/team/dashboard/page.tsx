@@ -112,14 +112,16 @@ export default async function TeamDashboardPage() {
           ROW_NUMBER() OVER (PARTITION BY player_id ORDER BY created_at DESC) AS rn_last
         FROM shots
       )
-      SELECT DISTINCT
-        player_id,
-        first_name,
-        last_name_initial,
-        MAX(CASE WHEN rn_first = 1 THEN overall_score END) OVER (PARTITION BY player_id) AS first_score,
-        MAX(CASE WHEN rn_last = 1 THEN overall_score END) OVER (PARTITION BY player_id) AS latest_score
-      FROM ranked
-      WHERE upload_count >= 2
+      SELECT * FROM (
+        SELECT DISTINCT
+          player_id,
+          first_name,
+          last_name_initial,
+          MAX(CASE WHEN rn_first = 1 THEN overall_score END) OVER (PARTITION BY player_id) AS first_score,
+          MAX(CASE WHEN rn_last = 1 THEN overall_score END) OVER (PARTITION BY player_id) AS latest_score
+        FROM ranked
+        WHERE upload_count >= 2
+      ) improved_rows
       ORDER BY (latest_score - first_score) DESC
     `) as unknown as typeof improved
   } catch (err) {

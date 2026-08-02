@@ -50,6 +50,7 @@ export async function GET(req: NextRequest) {
 
     const result = []
     for (const team of teams) {
+      try {
       // Same combined member+coach-uploaded-player shots as the coach dashboard.
       const leaderboard = (await db`
         WITH shots AS (
@@ -113,14 +114,16 @@ export async function GET(req: NextRequest) {
             ROW_NUMBER() OVER (PARTITION BY player_id ORDER BY created_at DESC) AS rn_last
           FROM shots
         )
-        SELECT DISTINCT
-          player_id,
-          first_name,
-          last_name_initial,
-          MAX(CASE WHEN rn_first = 1 THEN overall_score END) OVER (PARTITION BY player_id) AS first_score,
-          MAX(CASE WHEN rn_last = 1 THEN overall_score END) OVER (PARTITION BY player_id) AS latest_score
-        FROM ranked
-        WHERE upload_count >= 2
+        SELECT * FROM (
+          SELECT DISTINCT
+            player_id,
+            first_name,
+            last_name_initial,
+            MAX(CASE WHEN rn_first = 1 THEN overall_score END) OVER (PARTITION BY player_id) AS first_score,
+            MAX(CASE WHEN rn_last = 1 THEN overall_score END) OVER (PARTITION BY player_id) AS latest_score
+          FROM ranked
+          WHERE upload_count >= 2
+        ) improved_rows
         ORDER BY (latest_score - first_score) DESC
       `) as unknown as Array<{
         player_id: string; first_name: string; last_name_initial: string
@@ -157,6 +160,15 @@ export async function GET(req: NextRequest) {
           .filter(e => e.latestScore > e.firstScore)
           .slice(0, 5),
       })
+      } catch (err) {
+        // One team's data problem must not blank the whole tab — degrade to
+        // an empty card so the user still sees their team.
+        console.error('[team/summary] team block failed:', team.id, err)
+        result.push({
+          id: team.id, name: team.name, role: team.role,
+          memberCount: 0, roster: [], leaderboard: [], mostImproved: [],
+        })
+      }
     }
 
     return NextResponse.json({ teams: result })

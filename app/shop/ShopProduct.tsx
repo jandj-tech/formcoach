@@ -73,12 +73,14 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
             >
               Training Ball
             </a>
-            <a
-              href="#bundle"
-              className="shrink-0 bg-ink-900 border border-courtline hover:border-ember-500/60 text-chalk text-sm font-bold px-5 py-2.5 rounded-full transition-colors"
-            >
-              2-Ball Bundle
-            </a>
+            {!isInApp && (
+              <a
+                href="#shot-analysis"
+                className="shrink-0 bg-ink-900 border border-courtline hover:border-ember-500/60 text-chalk text-sm font-bold px-5 py-2.5 rounded-full transition-colors"
+              >
+                Shot Analysis
+              </a>
+            )}
             <a
               href="#portable-net"
               className="shrink-0 bg-ink-900 border border-courtline hover:border-ember-500/60 text-chalk text-sm font-bold px-5 py-2.5 rounded-full transition-colors"
@@ -211,6 +213,30 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
             <p className="text-white text-xs">
               Secure checkout powered by Stripe. Shipping address collected at checkout.
             </p>
+
+            {/* Product details — collapsible so the buy box stays compact */}
+            <div className="space-y-2 pt-1">
+              <ShopAccordion title="What's included" dark>
+                One training ball in your chosen size and edition
+                {!isInApp && (
+                  <>
+                    , plus <strong className="text-chalk">{FREE_ANALYSES_PER_BALL} free AI shot analyses</strong> added
+                    to your account after purchase
+                  </>
+                )}
+                . The printed grip lines mark exactly where your fingers belong.
+              </ShopAccordion>
+              <ShopAccordion title="Sizing guide" dark>
+                Size 5 (27.5&quot;) fits youth players, size 6 (28.5&quot;) is the
+                women&apos;s standard, and size 7 (29.5&quot;) is the men&apos;s
+                standard. When in doubt, pick the size used in your league.
+              </ShopAccordion>
+              <ShopAccordion title="Shipping" dark>
+                Your shipping address is collected securely at checkout. You&apos;ll
+                get a receipt by email right away and another email when your
+                order ships.
+              </ShopAccordion>
+            </div>
           </div>
         </div>
       </section>
@@ -237,11 +263,65 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
         </div>
       </section>
 
+      {/* AI shot analysis — light band so the product sections read as
+          distinct blocks instead of one long black page */}
+      {!isInApp && (
+        <section id="shot-analysis" className="bg-chalk text-ink-950 px-4 py-16 sm:py-20 scroll-mt-20">
+          <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-start">
+            <div className="space-y-5">
+              <p className="eyebrow text-ember-700 select-none">AI shot analysis</p>
+              <h2 className="font-display font-black uppercase text-[clamp(1.9rem,4vw,3rem)] leading-[0.95]">
+                One shot.
+                <br />
+                <span className="text-gradient-ember">Seventeen criteria.</span>
+              </h2>
+              <p className="text-ink-950/60 leading-relaxed">
+                Upload a video of your shot and our AI studies 12 frames of it,
+                scoring the same 17 fundamentals real coaches teach — then tells
+                you exactly what to fix.
+              </p>
+              <div className="space-y-2">
+                <ShopAccordion title="What do I get?">
+                  A full private breakdown: your overall score, a score and
+                  coaching tip for each of the 17 criteria, and the frames the
+                  AI studied. Your results link is emailed to you and stays
+                  private — bookmark it, it always works.
+                </ShopAccordion>
+                <ShopAccordion title="How does it work?">
+                  Film your shot from near the basket (so your arms and hands
+                  are visible), upload the clip on the Analyze page, and your
+                  results arrive by email within minutes. Any phone camera
+                  works — MP4 or MOV.
+                </ShopAccordion>
+                <ShopAccordion title="Can I get analyses for free?">
+                  Yes — the training ball includes 5 free analyses and the
+                  2-ball bundle includes 10. Players on team or organization
+                  rosters can also receive analysis tokens from their coach.
+                </ShopAccordion>
+              </div>
+            </div>
+
+            <div className="space-y-4 lg:pt-16">
+              <PremiumCTA />
+              <Link
+                href="/analyze"
+                className="block text-center bg-ink-950 hover:bg-ink-800 active:scale-[0.98] text-chalk font-bold px-8 py-4 rounded-full text-base transition-all"
+              >
+                Analyze your shot →
+              </Link>
+              <p className="text-ink-950/50 text-xs text-center">
+                Have a token already? Head straight to the analyzer.
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Portable net — full product section, coming soon */}
-      <section id="portable-net" className="px-4 py-16 sm:py-20 border-b border-courtline scroll-mt-20">
+      <section id="portable-net" className="bg-ink-900 border-y border-courtline px-4 py-16 sm:py-20 scroll-mt-20">
         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
           {/* Visual placeholder until launch photos arrive */}
-          <div className="grain relative overflow-hidden bg-ink-900 border border-courtline rounded-3xl aspect-[4/3] flex flex-col items-center justify-center gap-4 select-none">
+          <div className="grain relative overflow-hidden bg-ink-950 border border-courtline rounded-3xl aspect-[4/3] flex flex-col items-center justify-center gap-4 select-none">
             <span className="inline-flex items-center gap-2 bg-ember-500/10 border border-ember-500/30 rounded-full px-4 py-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-ember-500 animate-pulse" aria-hidden />
               <span className="text-ember-400 eyebrow">Coming soon</span>
@@ -278,16 +358,50 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
           </div>
         </div>
       </section>
-
-      {/* 1 Shot Analysis */}
-      {!isInApp && (
-        <section className="px-4 py-14 sm:py-16">
-          <div className="max-w-xl mx-auto">
-            <PremiumCTA dark />
-          </div>
-        </section>
-      )}
     </div>
+  )
+}
+
+// Collapsible description row. `dark` renders it for the ink sections;
+// otherwise it's styled for the light chalk band.
+function ShopAccordion({
+  title,
+  dark = false,
+  children,
+}: {
+  title: string
+  dark?: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <details
+      className={`group rounded-xl border ${
+        dark ? 'border-courtline bg-ink-950/60' : 'border-ink-950/10 bg-white shadow-sm'
+      }`}
+    >
+      <summary
+        className={`flex items-center justify-between gap-3 px-4 py-3 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden text-sm font-bold ${
+          dark ? 'text-chalk' : 'text-ink-950'
+        }`}
+      >
+        {title}
+        <span
+          aria-hidden
+          className={`shrink-0 transition-transform group-open:rotate-180 ${
+            dark ? 'text-chalk-dim' : 'text-ink-950/40'
+          }`}
+        >
+          ▾
+        </span>
+      </summary>
+      <div
+        className={`px-4 pb-4 text-sm leading-relaxed ${
+          dark ? 'text-chalk-dim' : 'text-ink-950/60'
+        }`}
+      >
+        {children}
+      </div>
+    </details>
   )
 }
 

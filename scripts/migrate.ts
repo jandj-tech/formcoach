@@ -8,6 +8,13 @@ const FILES = ['migrate.sql', 'migrate-teams.sql', 'migrate-organizations.sql', 
 
 async function migrate() {
   if (!process.env.DATABASE_URL) {
+    // With --skip-if-no-db (used by the build script), a missing DATABASE_URL
+    // is fine: local `npm run build` has no DB env and just builds. On Vercel
+    // the env var is injected, so deploys migrate the live database.
+    if (process.argv.includes('--skip-if-no-db')) {
+      console.log('DATABASE_URL not set — skipping migrations.')
+      return
+    }
     console.error(
       'DATABASE_URL is not set. Run `npm run migrate`, which loads .env.local via --env-file.'
     )

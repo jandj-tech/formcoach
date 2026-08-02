@@ -15,9 +15,12 @@ const TOPICS: Record<string, string> = {
 }
 
 // Spam throttle: submissions are recorded in support_requests and counted
-// before a new one is accepted.
-const MAX_PER_IP_PER_HOUR = 3
-const MAX_PER_EMAIL_PER_DAY = 5
+// before a new one is accepted. Kept loose — the honeypot is the primary bot
+// defense, and one IP can be a whole school or team on shared wifi. These
+// only stop a runaway flood.
+const MAX_PER_IP_PER_HOUR = 10
+const MAX_PER_EMAIL_PER_DAY = 10
+const MAX_TOTAL_PER_DAY = 150
 
 // Self-healing schema: the deployed database is not guaranteed to have had
 // scripts/migrate-support-requests.sql applied (Vercel's DATABASE_URL can
@@ -77,16 +80,18 @@ export async function POST(req: NextRequest) {
     const counts = (await db`
       SELECT
         COUNT(*) FILTER (WHERE ip = ${ip} AND created_at > NOW() - INTERVAL '1 hour')::int AS ip_recent,
-        COUNT(*) FILTER (WHERE email = ${cleanEmail})::int AS email_recent
+        COUNT(*) FILTER (WHERE email = ${cleanEmail})::int AS email_recent,
+        COUNT(*)::int AS total_recent
       FROM support_requests
       WHERE created_at > NOW() - INTERVAL '24 hours'
-    `) as unknown as Array<{ ip_recent: number; email_recent: number }>
+    `) as unknown as Array<{ ip_recent: number; email_recent: number; total_recent: number }>
     if (
       counts[0].ip_recent >= MAX_PER_IP_PER_HOUR ||
-      counts[0].email_recent >= MAX_PER_EMAIL_PER_DAY
+      counts[0].email_recent >= MAX_PER_EMAIL_PER_DAY ||
+      counts[0].total_recent >= MAX_TOTAL_PER_DAY
     ) {
       return NextResponse.json(
-        { error: 'You have sent several messages recently — please wait a bit before sending another.' },
+        { error: 'You have sent several messages recently — please try again in about an hour.' },
         { status: 429 },
       )
     }

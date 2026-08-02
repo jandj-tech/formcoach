@@ -1032,6 +1032,27 @@ export async function sendSupportRequestEmail(req: {
   message: string
 }) {
   const firstName = req.name.split(/\s+/)[0] || req.name
+
+  // Pre-written reply for the "Reply to X" button: greeting and sign-off
+  // around an empty middle, with the original message quoted below — the
+  // support person only types the answer. Quoted text is capped so the
+  // mailto: URL stays within client limits.
+  const quoted = req.message.length > 500 ? req.message.slice(0, 500) + '…' : req.message
+  const replyBody = [
+    `Hi ${firstName},`,
+    '',
+    '',
+    '',
+    'Best,',
+    'The LearnHoops Team',
+    'learnhoops.com',
+    '',
+    '----------------------------------------',
+    `${req.name} wrote:`,
+    ...quoted.split('\n').map((l) => `> ${l}`),
+  ].join('\n')
+  const replyHref = `mailto:${req.email}?subject=${encodeURIComponent('Re: your LearnHoops support request')}&body=${encodeURIComponent(replyBody)}`
+
   const { data, error } = await getResend().emails.send({
     // Distinct sender name so the inbox can recognize and filter these.
     from: 'LearnHoops Support Form <noreply@learnhoops.com>',
@@ -1101,10 +1122,10 @@ export async function sendSupportRequestEmail(req: {
 
         <!-- Reply CTA -->
         <tr><td style="padding:24px 32px 32px;">
-          <a href="mailto:${escHtml(req.email)}?subject=${encodeURIComponent(`Re: your LearnHoops support request`)}" style="display:inline-block;background:#F97316;color:#ffffff;padding:12px 24px;border-radius:10px;text-decoration:none;font-weight:700;font-size:14px;">
+          <a href="${escHtml(replyHref)}" style="display:inline-block;background:#F97316;color:#ffffff;padding:12px 24px;border-radius:10px;text-decoration:none;font-weight:700;font-size:14px;">
             Reply to ${escHtml(firstName)}
           </a>
-          <p style="margin:10px 0 0;color:#A1A1AA;font-size:12px;">Or just hit Reply — this email replies straight to them.</p>
+          <p style="margin:10px 0 0;color:#A1A1AA;font-size:12px;">Opens a pre-written reply — greeting and sign-off included, just type your answer in the middle.</p>
         </td></tr>
 
         <!-- Footer -->

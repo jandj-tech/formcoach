@@ -228,7 +228,16 @@ Return ONLY valid JSON, no other text:
   const response = await getAnthropic().messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 6000,
-    system: systemPrompt,
+    // The coaching rubric (~6K tokens) is identical between analyses until an
+    // admin correction lands, so cache it: repeat analyses within 5 minutes
+    // (team roster sessions especially) read it at ~10% of the input price.
+    system: [
+      {
+        type: 'text',
+        text: systemPrompt,
+        cache_control: { type: 'ephemeral' },
+      },
+    ],
     messages: [
       {
         role: 'user',

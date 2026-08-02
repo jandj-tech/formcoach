@@ -17,16 +17,16 @@ export default function OverallBadge({ score }: OverallBadgeProps) {
   const { letter, label, color, ring } = grade(score)
 
   return (
-    <div className="flex flex-col items-center gap-4">
+    <div className="flex flex-col items-center gap-3">
       <div
-        className={`w-36 h-36 rounded-full ring-4 ${ring} bg-gray-50 flex flex-col items-center justify-center`}
+        className={`w-28 h-28 rounded-full ring-[3px] ${ring} bg-gray-50 flex flex-col items-center justify-center`}
       >
-        <span className={`text-5xl font-black ${color}`}>{score.toFixed(1)}</span>
+        <span className={`text-4xl font-black ${color}`}>{score.toFixed(1)}</span>
         <span className="text-black text-xs">/10</span>
       </div>
       <div className="text-center">
-        <div className={`text-3xl font-black ${color}`}>{letter}</div>
-        <div className="text-black text-sm font-medium mt-1">{label}</div>
+        <div className={`text-2xl font-black ${color}`}>{letter}</div>
+        <div className="text-black text-sm font-medium mt-0.5">{label}</div>
       </div>
     </div>
   )

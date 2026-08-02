@@ -24,10 +24,10 @@ const FREE_ANALYSES_PER_BALL = 5
 // The product description reformatted as feature tiles — same facts as the
 // paragraph and the selectors in the buy box, no new claims.
 const FEATURES = [
-  { num: '01', title: 'Grip lines', desc: 'Mark exactly where your fingers belong on the ball.' },
-  { num: '02', title: 'Groove your release', desc: 'Every rep grooves proper hand placement and release.' },
-  { num: '03', title: 'Two editions', desc: 'Left and right-handed — pick the edition for your shooting hand.' },
-  { num: '04', title: 'Three sizes', desc: `27.5" youth, 28.5" women's, 29.5" men's.` },
+  { num: '01', title: 'Grip lines', desc: 'Printed lines show exactly where each finger belongs — no more guessing your placement.' },
+  { num: '02', title: 'Groove your release', desc: 'Land on the lines every rep and proper hand placement becomes your release.' },
+  { num: '03', title: 'Two editions', desc: 'Left and right-handed editions put the lines under your shooting hand, so the right fingers hit the right spots.' },
+  { num: '04', title: 'Three sizes', desc: `27.5" youth, 28.5" women's, 29.5" men's — the right fit keeps your fingers on the lines every shot.` },
 ]
 
 function formatPrice(amount: number): string {

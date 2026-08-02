@@ -1033,7 +1033,8 @@ export async function sendSupportRequestEmail(req: {
 }) {
   const firstName = req.name.split(/\s+/)[0] || req.name
   const { data, error } = await getResend().emails.send({
-    from: FROM,
+    // Distinct sender name so the inbox can recognize and filter these.
+    from: 'LearnHoops Support Form <noreply@learnhoops.com>',
     to: 'learnhoops8@gmail.com',
     replyTo: req.email,
     subject: `Support request from ${req.name} — ${req.topic}`,

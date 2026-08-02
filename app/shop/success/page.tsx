@@ -53,7 +53,7 @@ export default async function ShopSuccessPage({ searchParams }: { searchParams: 
           <div className="text-6xl">🏀</div>
           <h1 className="text-3xl font-black text-white">Order confirmed!</h1>
           <p className="text-white">
-            Thanks for ordering The LearnHoops.com Training Ball. We&apos;ll email you a receipt and let you know
+            Thanks for ordering The LearnHoops Training Ball. We&apos;ll email you a receipt and let you know
             when your order ships.
           </p>
           {grant.tokens > 0 && grant.ok && !inApp && (

@@ -12,7 +12,7 @@ export function getStripe(): Stripe {
 }
 
 export const PRODUCT = {
-  name: 'The LearnHoops.com Training Ball',
+  name: 'The LearnHoops Training Ball',
   priceCents: 4999,
   currency: 'usd',
 }

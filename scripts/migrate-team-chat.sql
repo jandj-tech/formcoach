@@ -16,8 +16,10 @@ CREATE TABLE IF NOT EXISTS team_messages (
 CREATE INDEX IF NOT EXISTS idx_team_messages_team_created
   ON team_messages (team_id, id DESC);
 
--- Who may post: 'everyone' (default) or 'coach-only' (announcements mode).
-ALTER TABLE teams ADD COLUMN IF NOT EXISTS chat_mode VARCHAR(20) NOT NULL DEFAULT 'everyone';
+-- Who may post: 'coach-only' (default — the chat is locked until the coach
+-- opens it) or 'everyone'.
+ALTER TABLE teams ADD COLUMN IF NOT EXISTS chat_mode VARCHAR(20) NOT NULL DEFAULT 'coach-only';
+ALTER TABLE teams ALTER COLUMN chat_mode SET DEFAULT 'coach-only';
 
 -- Coach-muted players (per team).
 CREATE TABLE IF NOT EXISTS team_chat_mutes (

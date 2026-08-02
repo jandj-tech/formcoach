@@ -19,7 +19,7 @@ export async function resolveChatIdentity(
 ): Promise<ChatIdentity | null> {
   const [team] = (await db`
     SELECT id, name, admin_email, coach_nickname,
-           COALESCE(chat_mode, 'everyone') AS chat_mode
+           COALESCE(chat_mode, 'coach-only') AS chat_mode
     FROM teams WHERE id = ${teamId}
   `) as unknown as [{ id: string; name: string; admin_email: string; coach_nickname: string | null; chat_mode: string } | undefined]
   if (!team) return null
@@ -64,7 +64,7 @@ export async function resolveChatIdentity(
     isCoach,
     senderName,
     muted,
-    chatMode: team.chat_mode === 'coach-only' ? 'coach-only' : 'everyone',
+    chatMode: team.chat_mode === 'everyone' ? 'everyone' : 'coach-only',
     teamName: team.name,
   }
 }

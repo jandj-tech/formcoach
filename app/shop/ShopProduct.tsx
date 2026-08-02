@@ -1,7 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
+import useEmblaCarousel from 'embla-carousel-react'
 import { useCart } from '@/lib/cart'
 import type { Variant, Size } from '@/lib/cart'
 import QuantityStepper from '@/components/QuantityStepper'
@@ -59,26 +61,11 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
       {/* Product hero: sticky gallery left, buy box card right */}
       <section className="hero-glow grain relative px-4 pt-10 pb-14 sm:pt-16 sm:pb-20">
         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
-          {/* Video gallery — the clips are portrait, so give them portrait
-              frames; staggered on desktop and sticky so they stay in view
-              while the buy box scrolls */}
-          <div className="lg:col-span-7 lg:sticky lg:top-24 grid grid-cols-2 gap-4 items-start">
-            <video
-              className="w-full rounded-3xl border border-courtline bg-ink-900 aspect-[9/16] object-cover"
-              controls
-              preload="metadata"
-              playsInline
-            >
-              <source src="/ball-video-1.mp4#t=0.001" type="video/mp4" />
-            </video>
-            <video
-              className="w-full rounded-3xl border border-courtline bg-ink-900 aspect-[9/16] object-cover lg:mt-10"
-              controls
-              preload="metadata"
-              playsInline
-            >
-              <source src="/ball-video-2.mp4#t=0.001" type="video/mp4" />
-            </video>
+          {/* Media gallery — product photo plus the two demo clips in one
+              even-sized carousel; sticky so it stays in view while the buy
+              box scrolls */}
+          <div className="lg:col-span-7 lg:sticky lg:top-24">
+            <MediaGallery />
           </div>
 
           {/* Buy box */}
@@ -218,6 +205,30 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
       {/* 2-Ball Bundle */}
       <BundleSection isInApp={isInApp} />
 
+      {/* Coming soon — throw-on portable net */}
+      <section className="px-4 py-14 sm:py-16 border-b border-courtline">
+        <div className="max-w-6xl mx-auto">
+          <div className="grain relative overflow-hidden bg-ink-900 border border-courtline rounded-3xl p-8 sm:p-12 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+            <div className="space-y-3 max-w-xl">
+              <span className="inline-flex items-center gap-2 bg-ember-500/10 border border-ember-500/30 rounded-full px-4 py-1.5 select-none">
+                <span className="w-1.5 h-1.5 rounded-full bg-ember-500 animate-pulse" aria-hidden />
+                <span className="text-ember-400 eyebrow">Coming soon</span>
+              </span>
+              <h2 className="font-display font-black uppercase text-[clamp(1.7rem,3.5vw,2.5rem)] text-chalk leading-[0.95]">
+                Throw-On <span className="text-gradient-ember">Portable Net</span>
+              </h2>
+              <p className="text-chalk-dim text-sm sm:text-base leading-relaxed">
+                An all-weather mesh net that throws onto any rim in seconds — no tools,
+                no ladder. Rain or shine, every outdoor hoop feels like home court.
+              </p>
+            </div>
+            <p className="text-chalk-dim text-sm shrink-0 sm:text-right">
+              Landing in the shop soon.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* 1 Shot Analysis */}
       {!isInApp && (
         <section className="px-4 py-14 sm:py-16">
@@ -226,6 +237,102 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
           </div>
         </section>
       )}
+    </div>
+  )
+}
+
+// The gallery media, in display order: hero product shot first, demo clips
+// after. All slides share one frame so the gallery reads as one even unit.
+const GALLERY_MEDIA: Array<{ type: 'image' | 'video'; src: string; label: string }> = [
+  { type: 'image', src: '/training-ball.png', label: 'Product photo' },
+  { type: 'video', src: '/ball-video-1.mp4', label: 'Demo video 1' },
+  { type: 'video', src: '/ball-video-2.mp4', label: 'Demo video 2' },
+]
+
+function MediaGallery() {
+  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, align: 'start' })
+  const [selected, setSelected] = useState(0)
+  const wrapRef = useRef<HTMLDivElement>(null)
+
+  const onSelect = useCallback(() => {
+    if (!emblaApi) return
+    setSelected(emblaApi.selectedScrollSnap())
+    // Pause any playing clip when it slides out of view.
+    wrapRef.current?.querySelectorAll('video').forEach((v) => v.pause())
+  }, [emblaApi])
+
+  useEffect(() => {
+    if (!emblaApi) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    onSelect()
+    emblaApi.on('select', onSelect)
+    emblaApi.on('reInit', onSelect)
+  }, [emblaApi, onSelect])
+
+  return (
+    <div ref={wrapRef} className="relative">
+      <div className="overflow-hidden rounded-3xl border border-courtline" ref={emblaRef}>
+        <div className="flex">
+          {GALLERY_MEDIA.map((m) => (
+            <div key={m.src} className="shrink-0 basis-full min-w-0">
+              <div className="aspect-[3/4] bg-ink-950">
+                {m.type === 'image' ? (
+                  <div className="relative w-full h-full bg-white">
+                    <Image
+                      src={m.src}
+                      alt="The LearnHoops Training Ball — grip lines show where your fingers belong"
+                      fill
+                      className="object-contain"
+                      sizes="(min-width: 1024px) 55vw, 100vw"
+                      priority
+                    />
+                  </div>
+                ) : (
+                  <video
+                    className="w-full h-full object-contain"
+                    controls
+                    preload="metadata"
+                    playsInline
+                  >
+                    <source src={`${m.src}#t=0.001`} type="video/mp4" />
+                  </video>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <button
+        type="button"
+        aria-label="Previous media"
+        onClick={() => emblaApi?.scrollPrev()}
+        className="absolute left-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-ink-900/80 backdrop-blur border border-courtline hover:border-ember-500/60 text-chalk flex items-center justify-center transition-colors text-xl font-bold"
+      >
+        ‹
+      </button>
+      <button
+        type="button"
+        aria-label="Next media"
+        onClick={() => emblaApi?.scrollNext()}
+        className="absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-ink-900/80 backdrop-blur border border-courtline hover:border-ember-500/60 text-chalk flex items-center justify-center transition-colors text-xl font-bold"
+      >
+        ›
+      </button>
+
+      <div className="flex items-center justify-center gap-2 mt-4">
+        {GALLERY_MEDIA.map((m, i) => (
+          <button
+            key={m.src}
+            type="button"
+            aria-label={`Show ${m.label}`}
+            onClick={() => emblaApi?.scrollTo(i)}
+            className={`h-2 rounded-full transition-all ${
+              selected === i ? 'w-6 bg-ember-500' : 'w-2 bg-chalk-dim/40 hover:bg-chalk-dim/70'
+            }`}
+          />
+        ))}
+      </div>
     </div>
   )
 }

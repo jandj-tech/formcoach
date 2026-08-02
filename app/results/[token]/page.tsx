@@ -118,7 +118,7 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
         </div>
 
         {/* Overall score */}
-        <section className="bg-gradient-to-b from-orange-50/70 to-white border border-orange-100 rounded-2xl py-10 flex justify-center">
+        <section className="bg-gradient-to-b from-orange-50/70 to-white border border-orange-100 rounded-2xl py-7 flex justify-center">
           <OverallBadge score={Number(analysis.overall_score)} />
         </section>
 

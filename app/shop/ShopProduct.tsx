@@ -95,8 +95,8 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
               )}
             </div>
 
-            <h1 className="font-display font-black uppercase text-[clamp(1.8rem,3.5vw,2.6rem)] text-chalk leading-[0.95]">
-              The LearnHoops.com <span className="text-gradient-ember">Training Ball</span>
+            <h1 className="font-display font-black uppercase text-[clamp(1.7rem,3vw,2.4rem)] text-chalk leading-[0.95] break-words">
+              The LearnHoops <span className="text-gradient-ember">Training Ball</span>
             </h1>
 
             <p className="text-white text-base leading-relaxed">

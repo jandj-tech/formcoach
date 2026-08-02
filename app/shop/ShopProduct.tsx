@@ -215,6 +215,10 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
         </div>
       </section>
 
+      {/* 2-Ball Bundle — directly under the single ball so the upsell is
+          the next thing a shopper sees */}
+      <BundleSection isInApp={isInApp} />
+
       {/* Feature band */}
       <section className="border-y border-courtline bg-ink-900/50">
         <div className="max-w-6xl mx-auto px-4 py-10 sm:py-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -232,9 +236,6 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
           ))}
         </div>
       </section>
-
-      {/* 2-Ball Bundle */}
-      <BundleSection isInApp={isInApp} />
 
       {/* Portable net — full product section, coming soon */}
       <section id="portable-net" className="px-4 py-16 sm:py-20 border-b border-courtline scroll-mt-20">

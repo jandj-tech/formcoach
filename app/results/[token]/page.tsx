@@ -1,10 +1,51 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import type { Metadata } from 'next'
+import TopNav from '@/components/TopNav'
+import SiteFooter from '@/components/SiteFooter'
 import { db } from '@/lib/db'
 import OverallBadge from '@/components/OverallBadge'
 import ScoreCard from '@/components/ScoreCard'
 import { getCriteriaVideoMap } from '@/lib/youtube'
 import FrameViewer from './FrameViewer'
+import ShareResultButton from './ShareResultButton'
+
+// Share-friendly metadata: when a player sends their results link to a
+// teammate, the preview shows their score (the OG image comes from the
+// colocated opengraph-image.tsx). No player names — results may belong
+// to youth players.
+export async function generateMetadata({ params }: { params: Promise<{ token: string }> }): Promise<Metadata> {
+  const { token } = await params
+  let score: number | null = null
+  try {
+    const [row] = (await db`
+      SELECT a.overall_score
+      FROM submissions s
+      JOIN analyses a ON a.submission_id = s.id
+      WHERE s.token = ${token}
+      ORDER BY a.created_at DESC
+      LIMIT 1
+    `) as unknown as [{ overall_score: string | number | null } | undefined]
+    if (row?.overall_score != null) score = Number(row.overall_score)
+  } catch {
+    // Fall back to generic metadata if the DB is unreachable.
+  }
+
+  const hasScore = score !== null && !Number.isNaN(score)
+  const title = hasScore
+    ? `I scored ${score!.toFixed(1)}/10 on LearnHoops 🏀`
+    : 'AI Shot Analysis — LearnHoops.com'
+  const description = hasScore
+    ? 'My jump shot, graded by AI across 17 shooting-form criteria. Upload yours and see if you can beat me.'
+    : 'Upload a video of your jump shot and get graded across 17 shooting-form criteria in minutes.'
+
+  return {
+    title,
+    description,
+    openGraph: { title, description, type: 'website' },
+    twitter: { card: 'summary_large_image', title, description },
+  }
+}
 
 export default async function ResultsPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
@@ -56,8 +97,9 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
     : undefined
 
   return (
-    <main className="min-h-screen bg-white">
-      <div className="max-w-3xl mx-auto w-full px-6 py-10 space-y-8">
+    <main className="min-h-screen bg-white flex flex-col">
+      <TopNav />
+      <div className="flex-1 max-w-3xl mx-auto w-full px-6 py-10 space-y-8">
         <Link
           href="/"
           className="inline-flex items-center gap-1.5 text-sm font-semibold text-orange-500 hover:text-orange-400 transition-colors"
@@ -85,6 +127,10 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
         <div className="flex justify-center">
           <OverallBadge score={Number(analysis.overall_score)} />
         </div>
+
+        <ShareResultButton
+          score={analysis.overall_score != null ? Number(analysis.overall_score) : null}
+        />
 
         <div className="space-y-3">
           {scores.map((s) => (
@@ -152,6 +198,7 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
           {' '}— we review reports within 24 hours.
         </p>
       </div>
+      <SiteFooter />
     </main>
   )
 }

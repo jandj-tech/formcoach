@@ -32,18 +32,18 @@ export default function OrgTokenPanel({
   coaches,
   teams,
   totalPlayerTokens,
-  totalCoachCredits,
+  totalTeamCredits,
 }: {
   balance: number
   players: OrgPlayerOpt[]
   coaches: OrgCoachOpt[]
   teams: OrgTeamOpt[]
   totalPlayerTokens: number
-  totalCoachCredits: number
+  totalTeamCredits: number
 }) {
   const router = useRouter()
   const inApp = useIsInApp()
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
 
@@ -209,8 +209,8 @@ export default function OrgTokenPanel({
               <p className="text-2xl font-black text-black">{totalPlayerTokens}</p>
             </div>
             <div className="bg-orange-50 border border-orange-200 rounded-xl px-3 py-2">
-              <p className="text-xs text-gray-500">Coach credits</p>
-              <p className="text-2xl font-black text-black">{totalCoachCredits}</p>
+              <p className="text-xs text-gray-500">Team credits</p>
+              <p className="text-2xl font-black text-black">{totalTeamCredits}</p>
             </div>
           </div>
 

@@ -1,5 +1,6 @@
 ﻿import Link from 'next/link'
 import TopNav from '@/components/TopNav'
+import SiteFooter from '@/components/SiteFooter'
 
 export default function UnsubscribedPage() {
   return (
@@ -15,6 +16,7 @@ export default function UnsubscribedPage() {
           </Link>
         </div>
       </div>
+      <SiteFooter />
     </main>
   )
 }

@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
       metadata: {
         type: 'analysis_token',
         userId: session.userId,
+        quantity: '1',
       },
       success_url: `${BASE_URL}/analyze?token_purchased=1`,
       ...discountOpts,

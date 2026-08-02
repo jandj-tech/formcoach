@@ -3,6 +3,7 @@
 import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import TopNav from '@/components/TopNav'
+import SiteFooter from '@/components/SiteFooter'
 import PasswordInput from '@/components/PasswordInput'
 
 function OrgSignupInner() {
@@ -127,6 +128,7 @@ function OrgSignupInner() {
             </form>
           </div>
         </div>
+        <SiteFooter />
       </main>
     )
   }
@@ -145,6 +147,7 @@ function OrgSignupInner() {
             </p>
           </div>
         </div>
+        <SiteFooter />
       </main>
     )
   }
@@ -205,6 +208,7 @@ function OrgSignupInner() {
           </form>
         </div>
       </div>
+      <SiteFooter />
     </main>
   )
 }

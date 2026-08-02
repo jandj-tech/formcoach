@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import AddEmailForm from './AddEmailForm'
 import RemoveEmailButton from './RemoveEmailButton'
+import SendEmailPanel from './SendEmailPanel'
 
 export default async function EmailsPage() {
   const emails = (await db`
@@ -28,6 +29,8 @@ export default async function EmailsPage() {
           <span><span className="text-white font-bold">{unsub.length}</span> unsubscribed</span>
         </div>
       </div>
+
+      <SendEmailPanel />
 
       <AddEmailForm />
 

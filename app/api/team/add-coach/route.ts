@@ -3,6 +3,7 @@ import crypto from 'crypto'
 import { db } from '@/lib/db'
 import { getTeamSessionFromRequest } from '@/lib/team-auth'
 import { sendCoachSignupEmail } from '@/lib/email'
+import { addToEmailList } from '@/lib/email-list'
 
 // Lets a logged-in coach add another coach to their team. Always returns an
 // invite token (for a shareable link); optionally emails the signup link too.
@@ -27,6 +28,7 @@ export async function POST(req: NextRequest) {
       INSERT INTO team_coaches (team_id, email, invite_token)
       VALUES (${session.teamId}, ${email}, ${inviteToken})
     `
+    await addToEmailList(email)
 
     // Optionally email the signup link. The coach is created either way, so a
     // failed email is non-fatal — the dashboard falls back to showing the link.

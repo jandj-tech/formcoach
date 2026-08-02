@@ -641,7 +641,7 @@ export async function sendOrgApprovalEmail(
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,
-    replyTo: 'learnhoops8@gmail.com',
+    replyTo: 'noreply@learnhoops.com',
     subject: 'Your LearnHoops organization application has been approved',
     text: [
       `Hi,`,
@@ -715,7 +715,7 @@ export async function sendClassPurchaseConfirmationEmail(
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,
-    replyTo: 'learnhoops8@gmail.com',
+    replyTo: 'noreply@learnhoops.com',
     subject: '10-Week Shooting Class — your program is confirmed',
     text: [
       `Hi ${orgName},`,
@@ -810,7 +810,7 @@ export async function sendTeamCreatedEmail(
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,
-    replyTo: 'learnhoops8@gmail.com',
+    replyTo: 'noreply@learnhoops.com',
     subject: `Team created: ${teamName}`,
     text: [
       `Hi ${orgName},`,
@@ -864,14 +864,14 @@ export async function sendPasswordChangedEmail(to: string) {
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,
-    replyTo: 'learnhoops8@gmail.com',
+    replyTo: 'noreply@learnhoops.com',
     subject: 'Your LearnHoops password was changed',
     text: [
       `Your LearnHoops password was just changed.`,
       ``,
       `If you made this change, you can ignore this email.`,
       ``,
-      `If you did NOT make this change, contact us immediately at learnhoops8@gmail.com`,
+      `If you did NOT make this change, contact us right away at ${BASE_URL}/support`,
       ``,
       `— The LearnHoops Team`,
     ].join('\n'),
@@ -891,7 +891,7 @@ export async function sendPasswordChangedEmail(to: string) {
       </td></tr>
       <tr><td style="padding:12px 32px 32px;">
         <p style="margin:0;color:#DC2626;font-size:14px;font-weight:600;">
-          If you did NOT make this change, contact us immediately at learnhoops8@gmail.com
+          If you did NOT make this change, <a href="${BASE_URL}/support" style="color:#DC2626;text-decoration:underline;">contact us right away</a>.
         </p>
       </td></tr>
     </table>
@@ -911,7 +911,7 @@ export async function sendTokenPurchaseConfirmationEmail(
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,
-    replyTo: 'learnhoops8@gmail.com',
+    replyTo: 'noreply@learnhoops.com',
     subject: `${quantity} analysis token${quantity !== 1 ? 's' : ''} added to your account`,
     text: [
       `Hi ${orgName},`,
@@ -951,13 +951,13 @@ export async function sendAccountDeletedEmail(to: string) {
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,
-    replyTo: 'learnhoops8@gmail.com',
+    replyTo: 'noreply@learnhoops.com',
     subject: 'Your LearnHoops account has been deleted',
     text: [
       `Your LearnHoops account has been permanently deleted.`,
       `All your data, submissions, and tokens have been removed.`,
       ``,
-      `If you did NOT request this, contact us immediately at learnhoops8@gmail.com`,
+      `If you did NOT request this, contact us right away at ${BASE_URL}/support`,
       ``,
       `— The LearnHoops Team`,
     ].join('\n'),
@@ -977,7 +977,7 @@ export async function sendAccountDeletedEmail(to: string) {
       </td></tr>
       <tr><td style="padding:12px 32px 32px;">
         <p style="margin:0;color:#DC2626;font-size:14px;font-weight:600;">
-          If you did NOT request this deletion, contact us immediately at learnhoops8@gmail.com
+          If you did NOT request this deletion, <a href="${BASE_URL}/support" style="color:#DC2626;text-decoration:underline;">contact us right away</a>.
         </p>
       </td></tr>
     </table>
@@ -992,12 +992,12 @@ export async function sendLeftTeamEmail(to: string, teamName: string) {
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,
-    replyTo: 'learnhoops8@gmail.com',
+    replyTo: 'noreply@learnhoops.com',
     subject: `You've left ${teamName}`,
     text: [
       `You have left the team "${teamName}" on LearnHoops.`,
       ``,
-      `If you did not do this, contact us at learnhoops8@gmail.com`,
+      `If you did not do this, contact us at ${BASE_URL}/support`,
       ``,
       `— The LearnHoops Team`,
     ].join('\n'),
@@ -1012,7 +1012,7 @@ export async function sendLeftTeamEmail(to: string, teamName: string) {
       <tr><td style="padding:36px 32px 32px;">
         <h1 style="margin:0 0 10px;color:#111;font-size:22px;font-weight:800;">You've left ${escHtml(teamName)}</h1>
         <p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;">
-          You have been removed from <strong>${escHtml(teamName)}</strong> on LearnHoops. If you did not do this, contact us at learnhoops8@gmail.com.
+          You have been removed from <strong>${escHtml(teamName)}</strong> on LearnHoops. If you did not do this, <a href="${BASE_URL}/support" style="color:#F97316;text-decoration:underline;">contact us</a>.
         </p>
       </td></tr>
     </table>
@@ -1021,4 +1021,226 @@ export async function sendLeftTeamEmail(to: string, teamName: string) {
   })
   if (error) console.error('[email] left team email failed:', error)
   console.log('[email] left team email sent:', data?.id, 'to:', to)
+}
+
+// A /support form submission, forwarded to the support inbox. Reply-to is
+// the visitor's address so replying in Gmail goes straight back to them.
+export async function sendSupportRequestEmail(req: {
+  topic: string
+  name: string
+  email: string
+  message: string
+}) {
+  const firstName = req.name.split(/\s+/)[0] || req.name
+
+  // Pre-written reply for the "Reply to X" button: greeting and sign-off
+  // around an empty middle, with the original message quoted below — the
+  // support person only types the answer. Quoted text is capped so the
+  // mailto: URL stays within client limits.
+  const quoted = req.message.length > 500 ? req.message.slice(0, 500) + '…' : req.message
+  const replyBody = [
+    `Hi ${firstName},`,
+    '',
+    '',
+    '',
+    'Best,',
+    'The LearnHoops Team',
+    'learnhoops.com',
+    '',
+    '----------------------------------------',
+    `${req.name} wrote:`,
+    ...quoted.split('\n').map((l) => `> ${l}`),
+  ].join('\n')
+  const replyHref = `mailto:${req.email}?subject=${encodeURIComponent('Re: your LearnHoops support request')}&body=${encodeURIComponent(replyBody)}`
+
+  const { data, error } = await getResend().emails.send({
+    // Distinct sender name so the inbox can recognize and filter these.
+    from: 'LearnHoops Support Form <noreply@learnhoops.com>',
+    to: 'learnhoops8@gmail.com',
+    replyTo: req.email,
+    subject: `Support request from ${req.name} — ${req.topic}`,
+    text: [
+      `New message from the LearnHoops support form`,
+      ``,
+      `From:  ${req.name}`,
+      `Email: ${req.email}`,
+      `Topic: ${req.topic}`,
+      ``,
+      `Message:`,
+      req.message,
+      ``,
+      `—`,
+      `Reply to this email to answer ${firstName} directly.`,
+      `Sent from the contact form at ${BASE_URL}/support`,
+    ].join('\n'),
+    html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /></head>
+<body style="margin:0;padding:0;background:#F4F4F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#111111;">
+  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background:#F4F4F5;">
+    <tr><td align="center" style="padding:32px 16px;">
+      <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:560px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #E4E4E7;">
+
+        <!-- Brand bar -->
+        <tr><td style="background:#000000;padding:22px 32px;">
+          <div style="color:#F97316;font-size:20px;font-weight:800;letter-spacing:-0.3px;line-height:1;">LearnHoops<span style="color:#71717A;">.com</span></div>
+          <div style="color:#A1A1AA;font-size:12px;margin-top:5px;">New support request</div>
+        </td></tr>
+
+        <!-- Heading -->
+        <tr><td style="padding:32px 32px 20px;">
+          <h1 style="margin:0;color:#111111;font-size:22px;line-height:1.3;font-weight:800;">${escHtml(req.name)} sent a message</h1>
+          <p style="margin:6px 0 0;color:#52525B;font-size:14px;line-height:1.55;">
+            From the contact form at learnhoops.com/support
+          </p>
+        </td></tr>
+
+        <!-- Details -->
+        <tr><td style="padding:0 32px;">
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="border:1px solid #E4E4E7;border-radius:10px;">
+            <tr>
+              <td style="padding:12px 16px;border-bottom:1px solid #E4E4E7;width:90px;color:#A1A1AA;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;">Topic</td>
+              <td style="padding:12px 16px;border-bottom:1px solid #E4E4E7;color:#111111;font-size:14px;font-weight:600;">${escHtml(req.topic)}</td>
+            </tr>
+            <tr>
+              <td style="padding:12px 16px;border-bottom:1px solid #E4E4E7;color:#A1A1AA;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;">Name</td>
+              <td style="padding:12px 16px;border-bottom:1px solid #E4E4E7;color:#111111;font-size:14px;font-weight:600;">${escHtml(req.name)}</td>
+            </tr>
+            <tr>
+              <td style="padding:12px 16px;color:#A1A1AA;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;">Email</td>
+              <td style="padding:12px 16px;color:#111111;font-size:14px;font-weight:600;"><a href="mailto:${escHtml(req.email)}" style="color:#F97316;text-decoration:none;">${escHtml(req.email)}</a></td>
+            </tr>
+          </table>
+        </td></tr>
+
+        <!-- Message -->
+        <tr><td style="padding:20px 32px 0;">
+          <p style="margin:0 0 8px;color:#A1A1AA;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;">Message</p>
+          <div style="background:#FAFAFA;border:1px solid #E4E4E7;border-radius:10px;padding:16px 18px;color:#3F3F46;font-size:15px;line-height:1.65;white-space:pre-wrap;">${escHtml(req.message)}</div>
+        </td></tr>
+
+        <!-- Reply CTA -->
+        <tr><td style="padding:24px 32px 32px;">
+          <a href="${escHtml(replyHref)}" style="display:inline-block;background:#F97316;color:#ffffff;padding:12px 24px;border-radius:10px;text-decoration:none;font-weight:700;font-size:14px;">
+            Reply to ${escHtml(firstName)}
+          </a>
+          <p style="margin:10px 0 0;color:#A1A1AA;font-size:12px;">Opens a pre-written reply — greeting and sign-off included, just type your answer in the middle.</p>
+        </td></tr>
+
+        <!-- Footer -->
+        <tr><td style="padding:18px 32px;background:#FAFAFA;border-top:1px solid #E4E4E7;">
+          <p style="margin:0;color:#A1A1AA;font-size:11px;line-height:1.6;">
+            Sent automatically by the support form at
+            <a href="${BASE_URL}/support" style="color:#71717A;text-decoration:underline;">learnhoops.com/support</a>.
+          </p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`.trim(),
+  })
+  if (error) {
+    console.error('[email] support request email failed:', error)
+    throw new Error('Support notification failed to send')
+  }
+  console.log('[email] support request email sent:', data?.id, 'from visitor:', req.email)
+}
+
+// Abandoned-checkout recovery: sent once when a Stripe checkout session
+// expires unpaid (the buyer entered their email at Stripe but never paid).
+// The recovery URL reopens their exact cart.
+export async function sendAbandonedCheckoutEmail(
+  to: string,
+  name: string | null,
+  recoveryUrl: string,
+) {
+  const unsubscribe = `${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}`
+  const firstName = name ? name.split(' ')[0] : null
+  const greeting = firstName ? `Hey ${firstName},` : 'Hey,'
+
+  const { data, error } = await getResend().emails.send({
+    from: FROM,
+    to,
+    replyTo: 'noreply@learnhoops.com',
+    subject: 'Your LearnHoops training ball is still waiting 🏀',
+    headers: {
+      'List-Unsubscribe': `<${unsubscribe}>`,
+      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+    },
+    text: [
+      greeting,
+      ``,
+      `You were one step away from the LearnHoops Training Ball — the ball with hand-placement guides that build consistent shooting form, plus free AI shot analyses included with every ball.`,
+      ``,
+      `Your cart is saved. Pick up right where you left off:`,
+      recoveryUrl,
+      ``,
+      `LearnHoops.com`,
+      `Unsubscribe: ${unsubscribe}`,
+    ].join('\n'),
+    html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /></head>
+<body style="margin:0;padding:0;background:#F4F4F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#111111;">
+  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background:#F4F4F5;">
+    <tr><td align="center" style="padding:32px 16px;">
+      <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:560px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #E4E4E7;">
+
+        <!-- Brand bar -->
+        <tr><td style="background:#000000;padding:22px 32px;">
+          <div style="color:#F97316;font-size:20px;font-weight:800;letter-spacing:-0.3px;line-height:1;">LearnHoops<span style="color:#71717A;">.com</span></div>
+          <div style="color:#A1A1AA;font-size:12px;margin-top:5px;">Your shot. Perfected by AI.</div>
+        </td></tr>
+
+        <!-- Hero -->
+        <tr><td style="padding:36px 32px 8px;">
+          <h1 style="margin:0 0 10px;color:#111111;font-size:24px;line-height:1.25;font-weight:800;">Your training ball is still waiting.</h1>
+          <p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;">
+            ${greeting} you were one step away from the LearnHoops Training Ball —
+            hand-placement guides that build consistent shooting form, with free AI
+            shot analyses included with every ball. Your cart is saved.
+          </p>
+        </td></tr>
+
+        <!-- Primary CTA -->
+        <tr><td style="padding:24px 32px 8px;">
+          <a href="${recoveryUrl}" style="display:inline-block;background:#F97316;color:#ffffff;padding:13px 26px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">
+            Finish my order
+          </a>
+        </td></tr>
+
+        <!-- Plain-text link fallback -->
+        <tr><td style="padding:6px 32px 32px;">
+          <p style="margin:0;color:#A1A1AA;font-size:12px;line-height:1.5;">
+            Or paste this link into your browser:<br/>
+            <a href="${recoveryUrl}" style="color:#A1A1AA;word-break:break-all;text-decoration:underline;">${recoveryUrl}</a>
+          </p>
+        </td></tr>
+
+        <!-- Footer -->
+        <tr><td style="padding:18px 32px;background:#FAFAFA;border-top:1px solid #E4E4E7;">
+          <p style="margin:0;color:#A1A1AA;font-size:11px;line-height:1.6;">
+            You're getting this because you started an order at <a href="${BASE_URL}" style="color:#71717A;text-decoration:none;font-weight:600;">LearnHoops.com</a>.
+            &nbsp;·&nbsp;
+            <a href="${unsubscribe}" style="color:#71717A;text-decoration:underline;">Unsubscribe</a>
+          </p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
+    `.trim(),
+  })
+
+  if (error) {
+    console.error('[email] abandoned-checkout email failed:', error, 'to:', to)
+    throw new Error(`Resend send failed: ${error.message || JSON.stringify(error)}`)
+  }
+  console.log('[email] sent abandoned-checkout email:', data?.id, 'to:', to)
 }

@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
 import { signOrgSession, orgSessionCookieOptions } from '@/lib/org-auth'
 import { isCleanDisplayText, BLOCKED_TEXT_ERROR } from '@/lib/moderation'
+import { addToEmailList } from '@/lib/email-list'
 
 function generateAccessCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -59,6 +60,9 @@ export async function POST(req: NextRequest) {
 
     // Mark the application as used so the token can't be reused
     await db`UPDATE org_applications SET status = 'registered' WHERE signup_token = ${token}`
+
+    // New accounts join the marketing list (unsubscribe honored/preserved).
+    await addToEmailList(emailLower)
 
     const sessionToken = await signOrgSession({ orgId: org.id, adminEmail: org.admin_email })
     const res = NextResponse.json({ success: true })

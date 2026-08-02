@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { getSession } from '@/lib/auth'
 import { db } from '@/lib/db'
 import TopNav from '@/components/TopNav'
+import SiteFooter from '@/components/SiteFooter'
 import PrintButton from '@/components/PrintButton'
 
 type LeaderboardEntry = {
@@ -172,6 +173,9 @@ export default async function TeamLeaderboardPage({
             </table>
           </div>
         )}
+      </div>
+      <div className="print:hidden">
+        <SiteFooter />
       </div>
     </main>
   )

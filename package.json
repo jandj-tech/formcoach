@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "tsx scripts/migrate.ts --skip-if-no-db && next build",
     "start": "next start",
     "lint": "eslint",
     "migrate": "npx tsx --env-file=.env.local scripts/migrate.ts"
@@ -42,6 +42,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
     "tailwindcss": "^4",
+    "tsx": "^4.23.1",
     "typescript": "^5"
   }
 }

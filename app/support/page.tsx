@@ -2,13 +2,12 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
+import SupportForm from './SupportForm'
 
 export const metadata: Metadata = {
   title: 'Support — LearnHoops.com',
   description: 'Contact LearnHoops support.',
 }
-
-const SUPPORT_EMAIL = 'learnhoops8@gmail.com'
 
 export default function SupportPage() {
   return (
@@ -24,27 +23,22 @@ export default function SupportPage() {
               Support
             </h1>
             <p className="text-chalk-dim">
-              Need help with your account, an analysis, or an order? Reach out and we&apos;ll help.
+              Need help with your account, an analysis, or an order? Fill out the form and we&apos;ll get back to you.
             </p>
           </div>
 
-          <div className="bg-ink-900 border border-courtline rounded-2xl p-6 space-y-2">
-            <p className="eyebrow text-chalk-dim select-none">Contact us</p>
-            <a
-              href={`mailto:${SUPPORT_EMAIL}`}
-              className="block text-xl font-bold text-ember-400 hover:text-ember-500 break-all transition-colors"
-            >
-              {SUPPORT_EMAIL}
-            </a>
-            <p className="text-gray-500 text-xs pt-1">
-              To report inappropriate content (names, team names, or videos), email us with a link to the content — reports are reviewed and acted on within 24 hours.
-            </p>
-          </div>
+          <SupportForm />
+
+          <p className="text-gray-500 text-xs">
+            To report inappropriate content (names, team names, or videos), choose
+            &ldquo;Report inappropriate content&rdquo; above and include a link to the
+            content — reports are reviewed and acted on within 24 hours.
+          </p>
         </div>
       </div>
 
-      {/* FAQ */}
-      <div className="flex-1 bg-ink-900 border-t border-courtline">
+      {/* FAQ — linked directly from the home page and footer as /support#faq */}
+      <div id="faq" className="flex-1 bg-ink-900 border-t border-courtline scroll-mt-20">
         <div className="flex flex-col items-center px-6 py-14 space-y-8">
           <div className="w-full max-w-3xl space-y-5">
             <h2 className="font-display font-black uppercase text-2xl text-center">

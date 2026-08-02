@@ -4,6 +4,10 @@ import { isInAppRequest } from '@/lib/in-app'
 import { db } from '@/lib/db'
 import { userHasInitiatedTeam } from '@/lib/team-tokens'
 import TopNav from '@/components/TopNav'
+import SiteFooter from '@/components/SiteFooter'
+import InfoTip from '@/components/InfoTip'
+import AccountTabs from '@/components/account/AccountTabs'
+import Section from '@/components/account/Section'
 import Link from 'next/link'
 import LogoutButton from './LogoutButton'
 import BuyTokenButton from './BuyTokenButton'
@@ -99,7 +103,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <TopNav />
         <div className="max-w-3xl mx-auto w-full px-6 py-20 space-y-4 text-center">
           <div className="text-5xl">⚠️</div>
-          <h1 className="text-2xl font-black text-black">Couldn&apos;t load your dashboard</h1>
+          <h1 className="text-2xl font-black text-black">Couldn&apos;t load your account</h1>
           <p className="text-gray-500 text-sm">
             Something went wrong reading your data. Technical detail:
           </p>
@@ -176,193 +180,230 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     ? `${user.first_name} ${user.last_initial}`
     : null
   const hasName = !!fullName
+  const tokenPrice = onInitiatedTeam ? '1.49' : '2.79'
+
+  const shotsTab = (
+    <div className="space-y-3">
+      {submissions.length === 0 ? (
+        <div className="text-center py-16 space-y-4 bg-gray-50 border border-gray-200 rounded-2xl">
+          <div className="text-5xl">🏀</div>
+          <p className="text-black font-semibold">No shots analyzed yet</p>
+          <Link
+            href="/analyze"
+            className="inline-block bg-orange-500 hover:bg-orange-400 text-white font-bold px-6 py-3 rounded-xl transition-colors"
+          >
+            Analyze Your Shot
+          </Link>
+        </div>
+      ) : (
+        <>
+          {submissions.map((sub) => {
+            const thumb = sub.frame_urls?.[Math.floor((sub.frame_urls.length || 1) / 2)]
+            const date = new Date(sub.created_at).toLocaleDateString('en-US', {
+              month: 'short', day: 'numeric', year: 'numeric',
+            })
+            // Postgres returns DECIMAL as a string — coerce before formatting.
+            const score = sub.overall_score == null ? null : Number(sub.overall_score)
+            return (
+              <div key={sub.id} className="flex items-center gap-2">
+                <Link
+                  href={`/results/${sub.token}`}
+                  className="flex-1 min-w-0 flex items-center gap-4 bg-gray-50 hover:bg-orange-50 border border-gray-200 hover:border-orange-200 rounded-xl p-4 transition-colors group"
+                >
+                  {thumb ? (
+                    <img
+                      src={thumb}
+                      alt="Shot frame"
+                      className="w-16 h-16 object-cover rounded-lg shrink-0 bg-gray-200"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 bg-gray-200 rounded-lg shrink-0 flex items-center justify-center text-2xl">🏀</div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-gray-500">{date}</p>
+                    <p className="text-black font-semibold text-sm mt-0.5 group-hover:text-orange-600 transition-colors">
+                      View Shot Breakdown →
+                    </p>
+                  </div>
+                  {score !== null && !Number.isNaN(score) ? (
+                    <div className={`text-2xl font-black shrink-0 ${scoreColor(score)}`}>
+                      {score.toFixed(1)}
+                    </div>
+                  ) : (
+                    <div className="text-gray-300 text-sm shrink-0">—</div>
+                  )}
+                </Link>
+                <DeleteSubmissionButton id={sub.id} />
+              </div>
+            )
+          })}
+          <div className="text-center pt-2">
+            <Link
+              href="/analyze"
+              className="inline-block bg-orange-500 hover:bg-orange-400 text-white font-bold px-8 py-3 rounded-xl transition-colors"
+            >
+              + Analyze Another Shot
+            </Link>
+          </div>
+        </>
+      )}
+    </div>
+  )
+
+  const profileTab = (
+    <div className="space-y-4">
+      <Section
+        title="Display name"
+        tipLabel="What is my display name used for?"
+        tip="Shown on team rosters, leaderboards, and any certificates you earn. Just your first name and last initial — never your full name."
+        summary={fullName || 'Not set'}
+      >
+        <NameForm
+          currentFirstName={user.first_name ?? null}
+          currentLastInitial={user.last_initial ?? null}
+        />
+      </Section>
+
+      <Section
+        title="Nickname"
+        tipLabel="What is my nickname used for?"
+        tip="Optional handle (like &ldquo;Buckets&rdquo;). It&rsquo;s shown on your account instead of your email if you haven&rsquo;t set a display name."
+        summary={user.nickname || 'Not set'}
+      >
+        <NicknameForm current={user.nickname ?? null} />
+      </Section>
+
+      <div className="border border-red-200 rounded-2xl p-5 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-semibold text-black">Delete account</h3>
+          <p className="text-gray-500 text-xs mt-1">
+            Permanently removes your account and all shot history. This cannot be undone.
+          </p>
+        </div>
+        <DeleteAccountButton />
+      </div>
+    </div>
+  )
+
+  const teamsTab = (
+    <div className="space-y-4">
+      {teams.map((t) => {
+        const teamCoaches = coachesByTeam[t.id] ?? []
+        return (
+          <div key={t.id} className="bg-gray-50 border border-gray-200 rounded-2xl p-4 space-y-2">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-bold text-black">{t.name}</p>
+                <p className="text-gray-500 text-xs mt-0.5">
+                  Team code:{' '}
+                  <span className="font-mono font-semibold text-gray-700">{t.access_code}</span>
+                </p>
+              </div>
+              <LeaveTeamButton teamId={t.id} teamName={t.name} />
+            </div>
+            {teamCoaches.length > 0 && (
+              <p className="text-xs text-gray-500">
+                <span className="font-semibold uppercase tracking-wide">
+                  {teamCoaches.length === 1 ? 'Coach' : 'Coaches'}:
+                </span>{' '}
+                <span className="text-gray-700">{teamCoaches.join(', ')}</span>
+              </p>
+            )}
+            <Link
+              href={`/dashboard/leaderboard?team=${t.id}`}
+              className="inline-block text-sm font-semibold text-orange-600 hover:text-orange-500 transition-colors"
+            >
+              View Team Leaderboard →
+            </Link>
+          </div>
+        )
+      })}
+
+      <div className="space-y-2">
+        <p className="text-sm text-gray-600">
+          {teams.length === 0
+            ? 'Have a team code? Enter it to join your team.'
+            : 'Have another team code? Join another team — handy for house or summer league.'}
+        </p>
+        <JoinTeamForm hasName={hasName} />
+      </div>
+    </div>
+  )
 
   return (
     <main className="min-h-screen bg-white flex flex-col">
       <TopNav />
       <JoinTeamPopup hasTeam={teams.length > 0} hasName={hasName} />
 
-      <div className="max-w-3xl mx-auto w-full px-6 py-10 space-y-4">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-black text-black">Your Shot History</h1>
-            <p className="text-gray-500 text-sm mt-1">
-              {fullName ? `${fullName} · ${user.email}` : user.nickname ? `${user.nickname} · ${user.email}` : user.email}
-            </p>
+      <div className="max-w-3xl mx-auto w-full px-6 py-10 space-y-6 flex-1">
+        {/* ── Header ─────────────────────────────────────────────── */}
+        <header className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-black text-black">
+              {fullName || user.nickname || 'Your Account'}
+            </h1>
+            <p className="text-gray-500 text-sm mt-1 truncate">{user.email}</p>
           </div>
-          <div className="flex items-center gap-2 flex-wrap justify-end">
-            <span className="bg-orange-100 text-orange-700 text-xs font-bold px-3 py-1 rounded-full">
-              {isSubscribed ? 'Unlimited analyses' : `${tokens} analysis token${tokens !== 1 ? 's' : ''}`}
-            </span>
-            {!isSubscribed && <BuyTokenButton isInApp={isInApp} initiated={onInitiatedTeam} />}
-            <LogoutButton />
-          </div>
-        </div>
-        <div className="flex justify-end">
-          <DeleteAccountButton />
-        </div>
+          <LogoutButton />
+        </header>
 
-        {/* Display name — set once, used on every team and certificate */}
-        <details className="group border border-gray-200 rounded-lg" open={!hasName}>
-          <summary className="flex items-center justify-between gap-2 px-3 py-2 cursor-pointer select-none list-none">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Display name</span>
-            <span className="flex items-center gap-2 text-sm text-gray-700">
-              <span className="truncate max-w-[10rem]">{fullName || 'Not set'}</span>
-              <span className="text-gray-400 text-xs transition-transform group-open:rotate-180">▾</span>
-            </span>
-          </summary>
-          <div className="px-3 pb-3">
-            <NameForm
-              currentFirstName={user.first_name ?? null}
-              currentLastInitial={user.last_initial ?? null}
-            />
+        {/* ── Shot tokens — always visible above the tabs ────────── */}
+        <section className="bg-orange-50 border border-orange-200 rounded-2xl p-5">
+          <div className="flex items-center gap-2">
+            <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wide">Shot Tokens</h2>
+            <InfoTip label="What are shot tokens?" align="left">
+              1 token = 1 AI shot analysis. Every training ball from the shop
+              includes 5 free tokens, or you can buy single tokens here for
+              ${tokenPrice} each.
+            </InfoTip>
           </div>
-        </details>
-
-        {/* Nickname — optional handle (e.g. "Buckets") */}
-        <details className="group border border-gray-200 rounded-lg">
-          <summary className="flex items-center justify-between gap-2 px-3 py-2 cursor-pointer select-none list-none">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Nickname</span>
-            <span className="flex items-center gap-2 text-sm text-gray-700">
-              <span className="truncate max-w-[10rem]">{user.nickname || 'Not set'}</span>
-              <span className="text-gray-400 text-xs transition-transform group-open:rotate-180">▾</span>
-            </span>
-          </summary>
-          <div className="px-3 pb-3">
-            <NicknameForm current={user.nickname ?? null} />
-          </div>
-        </details>
-
-        {/* Your Teams — collapsible to keep the shot history in view. A player
-            can be on several teams (e.g. house league + summer league). */}
-        <details className="group border border-gray-200 rounded-lg">
-          <summary className="flex items-center justify-between gap-2 px-3 py-2 cursor-pointer select-none list-none">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-              {teams.length === 1 ? 'Team' : 'Teams'}
-            </span>
-            <span className="flex items-center gap-2 text-sm text-gray-700">
-              <span className="truncate max-w-[12rem]">
-                {teams.length === 0
-                  ? 'Not on a team'
-                  : teams.length === 1
-                    ? teams[0].name
-                    : `${teams.length} teams`}
-              </span>
-              <span className="text-gray-400 text-xs transition-transform group-open:rotate-180">▾</span>
-            </span>
-          </summary>
-          <div className="px-3 pb-3 space-y-3">
-            {teams.map((t) => {
-              const teamCoaches = coachesByTeam[t.id] ?? []
-              return (
-                <div key={t.id} className="border border-gray-100 rounded-xl p-3 space-y-2">
-                  <p className="font-bold text-black text-sm">{t.name}</p>
-                  <p className="text-gray-500 text-xs">
-                    Team code:{' '}
-                    <span className="font-mono font-semibold text-gray-700">{t.access_code}</span>
-                  </p>
-                  {teamCoaches.length > 0 && (
-                    <div>
-                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                        {teamCoaches.length === 1 ? 'Coach' : 'Coaches'}
-                      </p>
-                      <ul className="mt-1 space-y-0.5">
-                        {teamCoaches.map((c, i) => (
-                          <li key={i} className="text-sm text-gray-700">{c}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <Link
-                      href={`/dashboard/leaderboard?team=${t.id}`}
-                      className="inline-block bg-orange-500 hover:bg-orange-400 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors"
-                    >
-                      View Team Leaderboard
-                    </Link>
-                    <LeaveTeamButton teamId={t.id} teamName={t.name} />
-                  </div>
-                </div>
-              )
-            })}
-            <div className="space-y-2 pt-1">
-              <p className="text-sm text-gray-600">
-                {teams.length === 0
-                  ? 'Have a team code? Enter it to join your team.'
-                  : 'Have another team code? Join another team — handy for house or summer league.'}
-              </p>
-              <JoinTeamForm hasName={hasName} />
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-baseline gap-2">
+              {isSubscribed ? (
+                <span className="text-3xl font-black text-orange-600">Unlimited</span>
+              ) : (
+                <>
+                  <span className="text-4xl font-black text-black">{tokens}</span>
+                  <span className="text-gray-500 text-sm">token{tokens !== 1 ? 's' : ''} left</span>
+                </>
+              )}
+            </div>
+            <div className="flex items-center gap-3 flex-wrap">
+              {!isSubscribed && <BuyTokenButton isInApp={isInApp} initiated={onInitiatedTeam} />}
+              <Link
+                href="/analyze"
+                className="bg-orange-500 hover:bg-orange-400 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-colors"
+              >
+                Analyze a Shot
+              </Link>
             </div>
           </div>
-        </details>
+          {!isSubscribed && !isInApp && (
+            <p className="text-gray-500 text-xs mt-3">
+              Tip: every{' '}
+              <Link href="/shop" className="text-orange-600 hover:text-orange-500 font-medium transition-colors">
+                training ball
+              </Link>{' '}
+              comes with 5 free analyses.
+            </p>
+          )}
+        </section>
 
-        {/* Shots list */}
-        {submissions.length === 0 ? (
-          <div className="text-center py-20 space-y-4">
-            <div className="text-5xl">🏀</div>
-            <p className="text-black font-semibold">No shots analyzed yet</p>
-            <Link
-              href="/analyze"
-              className="inline-block bg-orange-500 hover:bg-orange-400 text-white font-bold px-6 py-3 rounded-xl transition-colors"
-            >
-              Analyze Your Shot
-            </Link>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {submissions.map((sub) => {
-              const thumb = sub.frame_urls?.[Math.floor((sub.frame_urls.length || 1) / 2)]
-              const date = new Date(sub.created_at).toLocaleDateString('en-US', {
-                month: 'short', day: 'numeric', year: 'numeric',
-              })
-              // Postgres returns DECIMAL as a string — coerce before formatting.
-              const score = sub.overall_score == null ? null : Number(sub.overall_score)
-              return (
-                <div key={sub.id} className="flex items-center gap-2">
-                  <Link
-                    href={`/results/${sub.token}`}
-                    className="flex-1 min-w-0 flex items-center gap-4 bg-gray-50 hover:bg-orange-50 border border-gray-200 hover:border-orange-200 rounded-xl p-4 transition-colors group"
-                  >
-                    {thumb ? (
-                      <img
-                        src={thumb}
-                        alt="Shot frame"
-                        className="w-16 h-16 object-cover rounded-lg shrink-0 bg-gray-200"
-                      />
-                    ) : (
-                      <div className="w-16 h-16 bg-gray-200 rounded-lg shrink-0 flex items-center justify-center text-2xl">🏀</div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-gray-500">{date}</p>
-                      <p className="text-black font-semibold text-sm mt-0.5 group-hover:text-orange-600 transition-colors">
-                        View Shot Breakdown →
-                      </p>
-                    </div>
-                    {score !== null && !Number.isNaN(score) ? (
-                      <div className={`text-2xl font-black shrink-0 ${scoreColor(score)}`}>
-                        {score.toFixed(1)}
-                      </div>
-                    ) : (
-                      <div className="text-gray-300 text-sm shrink-0">—</div>
-                    )}
-                  </Link>
-                  <DeleteSubmissionButton id={sub.id} />
-                </div>
-              )
-            })}
-          </div>
-        )}
-
-        <div className="text-center pt-4">
-          <Link
-            href="/analyze"
-            className="inline-block bg-orange-500 hover:bg-orange-400 text-white font-bold px-8 py-3 rounded-xl transition-colors"
-          >
-            + Analyze Another Shot
-          </Link>
-        </div>
+        {/* ── Tabs ───────────────────────────────────────────────── */}
+        <AccountTabs
+          tabs={[
+            { id: 'shots', label: 'Shot History', count: submissions.length, content: shotsTab },
+            {
+              id: 'teams',
+              label: teams.length === 1 ? 'My Team' : 'My Teams',
+              count: teams.length,
+              content: teamsTab,
+            },
+            { id: 'profile', label: 'Profile', content: profileTab },
+          ]}
+        />
       </div>
+      <SiteFooter />
     </main>
   )
 }

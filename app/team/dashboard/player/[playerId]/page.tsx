@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { getTeamSession } from '@/lib/team-auth'
 import { db } from '@/lib/db'
 import TopNav from '@/components/TopNav'
+import SiteFooter from '@/components/SiteFooter'
 
 // Coach/team-admin view of a single player's analyzed shots and scores.
 export default async function TeamPlayerPage({ params }: { params: Promise<{ playerId: string }> }) {
@@ -91,6 +92,7 @@ export default async function TeamPlayerPage({ params }: { params: Promise<{ pla
           </div>
         )}
       </div>
+      <SiteFooter />
     </main>
   )
 }

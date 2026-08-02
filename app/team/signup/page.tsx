@@ -4,6 +4,7 @@ import { useIsInApp } from '@/lib/useIsInApp'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import TopNav from '@/components/TopNav'
+import SiteFooter from '@/components/SiteFooter'
 import PasswordInput from '@/components/PasswordInput'
 
 export default function TeamSignupPage() {
@@ -127,6 +128,7 @@ export default function TeamSignupPage() {
           </p>
         </div>
       </div>
+      <SiteFooter />
     </main>
   )
 }

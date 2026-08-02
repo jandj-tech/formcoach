@@ -36,12 +36,21 @@ export default function CartView() {
   // Logged-in account type — drives the "your credits will land here" hint.
   const [account, setAccount] = useState<{ type: string } | null>(null)
   const [compCode, setCompCode] = useState('')
+  // Buyer's region decides the checkout currency (CAD for Canada, else USD).
+  // Was hard-coded to 'US', which billed Canadian buyers in USD.
+  const [region, setRegion] = useState<'US' | 'CA'>('US')
 
   useEffect(() => {
     fetch('/api/auth/session')
       .then(r => r.json())
       .then(({ account }) => {
         setAccount(account ?? null)
+      })
+      .catch(() => {})
+    fetch('/api/region')
+      .then(r => r.json())
+      .then(({ region }) => {
+        if (region === 'CA') setRegion('CA')
       })
       .catch(() => {})
   }, [])
@@ -61,7 +70,7 @@ export default function CartView() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          region: 'US',
+          region,
           ...(compCode.trim() ? { compCode: compCode.trim() } : {}),
           items: items.map((it) => {
             if (it.productSlug === 'bundle') {
@@ -221,7 +230,7 @@ function BallCartLine({
     <li className="flex flex-col sm:flex-row sm:items-center gap-4 rounded-xl border border-zinc-800 bg-zinc-950 p-4">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap mb-1">
-          <div className="text-white font-bold text-base">The LearnHoops.com Training Ball</div>
+          <div className="text-white font-bold text-base">The LearnHoops Training Ball</div>
           {!inApp && (
             <span className="text-xs font-semibold text-blue-400 bg-blue-500/10 border border-blue-500/30 px-2 py-0.5 rounded-full">
               + {FREE_ANALYSES_PER_BALL * item.quantity} Shot Analyses Free

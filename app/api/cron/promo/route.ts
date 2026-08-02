@@ -4,8 +4,8 @@ import { sendPromoEmail } from '@/lib/email'
 
 export const maxDuration = 300
 
-// Biweekly promotional email to every signed-up (not unsubscribed) address.
-// Scheduled in vercel.json.
+// Monthly promotional email (1st of the month) to every signed-up (not
+// unsubscribed) address. Scheduled in vercel.json.
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization')
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {

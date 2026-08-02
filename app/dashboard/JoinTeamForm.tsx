@@ -44,7 +44,7 @@ export default function JoinTeamForm({ hasName }: { hasName: boolean }) {
     <form onSubmit={handleSubmit} className="space-y-3">
       {!hasName && (
         <p className="text-sm text-orange-600 bg-orange-50 border border-orange-200 rounded-xl px-3 py-2">
-          Set your name in the Display name section above first — it’ll be used on every team you join.
+          Set your name in the Profile tab first — it’ll be used on every team you join.
         </p>
       )}
       <div className="flex gap-2">
@@ -54,7 +54,7 @@ export default function JoinTeamForm({ hasName }: { hasName: boolean }) {
           placeholder="Team code"
           value={teamCode}
           onChange={e => setTeamCode(e.target.value.toUpperCase())}
-          className="flex-1 bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors font-mono tracking-wider"
+          className="flex-1 min-w-0 bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors font-mono tracking-wider"
         />
         <button
           type="submit"

@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getTeamSessionFromRequest } from '@/lib/team-auth'
 import { db } from '@/lib/db'
 
-// A coach hands tokens from their own credit balance to selected players on
-// their team.
+// A coach hands tokens to selected players on their team, paid from either
+// their personal credit balance (default) or the team's shared credits.
 export async function POST(req: NextRequest) {
   const session = await getTeamSessionFromRequest(req)
   if (!session) {
@@ -11,7 +11,8 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { playerUserIds, tokensEach } = await req.json()
+    const { playerUserIds, tokensEach, source } = await req.json()
+    const from: 'personal' | 'team' = source === 'team' ? 'team' : 'personal'
 
     const ids = Array.isArray(playerUserIds)
       ? playerUserIds.filter((id: unknown): id is string => typeof id === 'string' && !!id)
@@ -37,13 +38,19 @@ export async function POST(req: NextRequest) {
     const coachEmail = session.adminEmail.toLowerCase()
     const total = ids.length * each
 
-    // Deduct from the coach's credit balance and credit players atomically.
+    // Deduct from the chosen balance and credit players atomically.
     const remaining = await db.begin(async (sql) => {
-      const updated = (await sql`
-        UPDATE coach_credits SET credits = credits - ${total}
-        WHERE email = ${coachEmail} AND credits >= ${total}
-        RETURNING credits
-      `) as unknown as Array<{ credits: number }>
+      const updated = (from === 'team'
+        ? ((await sql`
+            UPDATE teams SET credits = credits - ${total}
+            WHERE id = ${session.teamId} AND COALESCE(credits, 0) >= ${total}
+            RETURNING credits
+          `) as unknown as Array<{ credits: number }>)
+        : ((await sql`
+            UPDATE coach_credits SET credits = credits - ${total}
+            WHERE email = ${coachEmail} AND credits >= ${total}
+            RETURNING credits
+          `) as unknown as Array<{ credits: number }>))
       if (updated.length === 0) return null
       for (const uid of ids) {
         await sql`UPDATE users SET analysis_tokens = COALESCE(analysis_tokens, 0) + ${each} WHERE id = ${uid}`
@@ -52,7 +59,11 @@ export async function POST(req: NextRequest) {
     })
 
     if (remaining === null) {
-      return NextResponse.json({ error: 'Not enough credits in your balance' }, { status: 400 })
+      return NextResponse.json({
+        error: from === 'team'
+          ? 'Not enough credits in the team balance'
+          : 'Not enough credits in your personal balance',
+      }, { status: 400 })
     }
 
     return NextResponse.json({ success: true, credits: remaining })

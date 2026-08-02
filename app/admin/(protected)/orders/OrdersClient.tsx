@@ -40,37 +40,42 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
   const router = useRouter()
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [shipping, setShipping] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [showTrackingModal, setShowTrackingModal] = useState(false)
   const [trackingLink, setTrackingLink] = useState('')
 
   const ballOrders = orders.filter(isBallOrder)
   const pendingBallOrders = ballOrders.filter(o => o.status !== 'shipped')
+  // Shipping only makes sense for pending ball orders; deleting works on any
+  // selected row (e.g. clearing out test purchases).
+  const selectedPendingBall = pendingBallOrders.filter(o => selected.has(o.id))
 
   function toggleAll() {
-    const pendingIds = pendingBallOrders.map(o => o.id)
-    if (pendingIds.every(id => selected.has(id))) {
+    const allIds = orders.map(o => o.id)
+    if (allIds.every(id => selected.has(id))) {
       setSelected(new Set())
     } else {
-      setSelected(new Set(pendingIds))
+      setSelected(new Set(allIds))
     }
   }
 
   function toggle(id: string) {
     setSelected(prev => {
       const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
       return next
     })
   }
 
   function openShippingModal() {
-    if (selected.size === 0) return
+    if (selectedPendingBall.length === 0) return
     setTrackingLink('')
     setShowTrackingModal(true)
   }
 
   async function confirmShipped() {
-    if (selected.size === 0) return
+    if (selectedPendingBall.length === 0) return
     setShipping(true)
     setShowTrackingModal(false)
     try {
@@ -78,7 +83,7 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          orderIds: [...selected],
+          orderIds: selectedPendingBall.map(o => o.id),
           shippingLink: trackingLink.trim() || undefined,
         }),
       })
@@ -91,8 +96,27 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
     setShipping(false)
   }
 
-  const allPendingSelected = pendingBallOrders.length > 0 &&
-    pendingBallOrders.every(o => selected.has(o.id))
+  async function deleteSelected() {
+    if (selected.size === 0) return
+    const n = selected.size
+    if (!confirm(`Permanently delete ${n} order${n !== 1 ? 's' : ''}? This only removes them from this list — any credits already granted to buyers are untouched. This cannot be undone.`)) return
+    setDeleting(true)
+    try {
+      const res = await fetch('/api/admin/orders/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderIds: [...selected] }),
+      })
+      if (!res.ok) throw new Error('Delete failed')
+      setSelected(new Set())
+      router.refresh()
+    } catch {
+      alert('Something went wrong. Please try again.')
+    }
+    setDeleting(false)
+  }
+
+  const allSelected = orders.length > 0 && orders.every(o => selected.has(o.id))
 
   return (
     <div className="space-y-4">
@@ -121,7 +145,7 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
                 disabled={shipping}
                 className="flex-1 bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-2 rounded-lg text-sm transition-colors"
               >
-                {shipping ? 'Marking shipped...' : `Mark ${selected.size} order${selected.size !== 1 ? 's' : ''} shipped`}
+                {shipping ? 'Marking shipped...' : `Mark ${selectedPendingBall.length} order${selectedPendingBall.length !== 1 ? 's' : ''} shipped`}
               </button>
               <button
                 onClick={() => setShowTrackingModal(false)}
@@ -136,14 +160,23 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
 
       {/* Bulk action bar */}
       {selected.size > 0 && (
-        <div className="flex items-center gap-4 bg-orange-500/10 border border-orange-500/30 rounded-xl px-4 py-3">
+        <div className="flex items-center gap-4 flex-wrap bg-orange-500/10 border border-orange-500/30 rounded-xl px-4 py-3">
           <span className="text-orange-400 text-sm font-semibold">{selected.size} order{selected.size !== 1 ? 's' : ''} selected</span>
+          {selectedPendingBall.length > 0 && (
+            <button
+              onClick={openShippingModal}
+              disabled={shipping || deleting}
+              className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-1.5 rounded-lg text-sm transition-colors"
+            >
+              {shipping ? 'Marking shipped...' : `Mark ${selectedPendingBall.length} as Shipped`}
+            </button>
+          )}
           <button
-            onClick={openShippingModal}
-            disabled={shipping}
-            className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-1.5 rounded-lg text-sm transition-colors"
+            onClick={deleteSelected}
+            disabled={shipping || deleting}
+            className="bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-bold px-4 py-1.5 rounded-lg text-sm transition-colors"
           >
-            {shipping ? 'Marking shipped...' : 'Mark as Shipped'}
+            {deleting ? 'Deleting...' : 'Delete'}
           </button>
           <button
             onClick={() => setSelected(new Set())}
@@ -161,7 +194,7 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
               <th className="px-4 py-3 w-8">
                 <input
                   type="checkbox"
-                  checked={allPendingSelected}
+                  checked={allSelected}
                   onChange={toggleAll}
                   className="accent-orange-500 w-4 h-4"
                 />
@@ -191,16 +224,12 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
                     className={`hover:bg-zinc-800/30 transition-colors align-top ${isChecked ? 'bg-orange-500/5' : ''}`}
                   >
                     <td className="px-4 py-3">
-                      {hasBall && !isShipped ? (
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => toggle(o.id)}
-                          className="accent-orange-500 w-4 h-4 mt-0.5"
-                        />
-                      ) : (
-                        <span className="w-4 h-4 block" />
-                      )}
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => toggle(o.id)}
+                        className="accent-orange-500 w-4 h-4 mt-0.5"
+                      />
                     </td>
                     <td className="px-4 py-3 text-white">
                       <div className="font-medium">{o.customer_name || '—'}</div>

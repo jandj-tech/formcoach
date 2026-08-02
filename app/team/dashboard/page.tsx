@@ -3,6 +3,7 @@ import { getTeamSession } from '@/lib/team-auth'
 import { getOrgSession } from '@/lib/org-auth'
 import { db } from '@/lib/db'
 import TopNav from '@/components/TopNav'
+import SiteFooter from '@/components/SiteFooter'
 import TeamDashboardClient from './TeamDashboardClient'
 
 export default async function TeamDashboardPage() {
@@ -232,6 +233,7 @@ export default async function TeamDashboardPage() {
         myUploads={myUploads}
         coachCredits={coachCredits}
       />
+      <SiteFooter />
     </main>
   )
 }

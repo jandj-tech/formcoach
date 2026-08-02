@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import TopNav from '@/components/TopNav'
+import SiteFooter from '@/components/SiteFooter'
 import ClearCart from './ClearCart'
 import { getStripe } from '@/lib/stripe'
 import { grantBallCreditsOnce } from '@/lib/grant-ball-credits'
@@ -53,7 +54,7 @@ export default async function ShopSuccessPage({ searchParams }: { searchParams: 
           <div className="text-6xl">🏀</div>
           <h1 className="text-3xl font-black text-white">Order confirmed!</h1>
           <p className="text-white">
-            Thanks for ordering The LearnHoops.com Training Ball. We&apos;ll email you a receipt and let you know
+            Thanks for ordering The LearnHoops Training Ball. We&apos;ll email you a receipt and let you know
             when your order ships.
           </p>
           {grant.tokens > 0 && grant.ok && !inApp && (
@@ -81,6 +82,7 @@ export default async function ShopSuccessPage({ searchParams }: { searchParams: 
           </Link>
         </div>
       </div>
+      <SiteFooter />
     </main>
   )
 }

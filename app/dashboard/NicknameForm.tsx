@@ -41,7 +41,7 @@ export default function NicknameForm({ current }: { current: string | null }) {
           placeholder="Nickname (e.g. Buckets, KD, Air)"
           value={nickname}
           onChange={(e) => setNickname(e.target.value)}
-          className="flex-1 bg-white border border-gray-300 rounded-xl px-4 py-2.5 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
+          className="flex-1 min-w-0 bg-white border border-gray-300 rounded-xl px-4 py-2.5 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
         />
         <button
           type="submit"

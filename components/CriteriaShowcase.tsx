@@ -87,18 +87,18 @@ export default function CriteriaShowcase({
   if (criteria.length === 0) return null
 
   return (
-    <section className="bg-ink-950 py-20 sm:py-28">
+    <section className="bg-chalk text-ink-950 py-20 sm:py-28">
       <div className="max-w-6xl mx-auto w-full">
         <div className="mb-10 px-4 sm:px-6">
-          <p className="eyebrow text-ember-400 mb-3 select-none">
+          <p className="eyebrow text-ember-700 mb-3 select-none">
             03 — {criteria.length} coaching criteria
           </p>
-          <h2 className="font-display font-black uppercase text-[clamp(1.9rem,4.5vw,3.5rem)] leading-[0.95] text-chalk">
+          <h2 className="font-display font-black uppercase text-[clamp(1.9rem,4.5vw,3.5rem)] leading-[0.95]">
             The fundamentals of
             <br />
             <span className="text-gradient-ember">a great shot</span>
           </h2>
-          <p className="text-chalk-dim text-base mt-5 max-w-xl leading-relaxed">
+          <p className="text-ink-950/60 text-base mt-5 max-w-xl leading-relaxed">
             Every shot you upload is scored against these criteria. Tap any one to watch a video that breaks it down.
           </p>
         </div>
@@ -114,15 +114,15 @@ export default function CriteriaShowcase({
                   key={c.id}
                   className="shrink-0 basis-[85%] sm:basis-[48%] lg:basis-[32%]"
                 >
-                  <div className="card-lift bg-ink-900 rounded-2xl border border-courtline p-5 flex flex-col gap-3 h-full">
-                    <div className="font-numeric text-ember-500 text-base select-none">
+                  <div className="card-lift bg-white rounded-2xl border border-ink-950/10 shadow-sm p-5 flex flex-col gap-3 h-full">
+                    <div className="font-numeric text-ember-700 text-base select-none">
                       {String(i + 1).padStart(2, '0')}
                     </div>
-                    <h3 className="font-display font-bold uppercase text-chalk text-base leading-tight">{c.name}</h3>
+                    <h3 className="font-display font-bold uppercase text-ink-950 text-base leading-tight">{c.name}</h3>
                     {(() => {
                       const desc = SHORT_DESCRIPTIONS[c.name] ?? c.description
                       return desc ? (
-                        <p className="text-chalk-dim text-xs leading-relaxed line-clamp-2 flex-1">{desc}</p>
+                        <p className="text-ink-950/60 text-xs leading-relaxed line-clamp-2 flex-1">{desc}</p>
                       ) : null
                     })()}
 
@@ -131,7 +131,7 @@ export default function CriteriaShowcase({
                         type="button"
                         onClick={() => toggle(c.id)}
                         aria-expanded={isOpen}
-                        className="text-ember-400 hover:text-ember-500 text-xs font-bold transition-colors mt-auto inline-flex items-center gap-1.5 self-start py-3 -my-1"
+                        className="text-ember-700 hover:text-ember-600 text-xs font-bold transition-colors mt-auto inline-flex items-center gap-1.5 self-start py-3 -my-1"
                       >
                         {isOpen ? 'Hide video' : 'Watch video'}
                         <span
@@ -146,7 +146,7 @@ export default function CriteriaShowcase({
                         href={CHANNEL_URL}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-ember-400 hover:text-ember-500 text-xs font-bold transition-colors mt-auto inline-flex items-center gap-1 self-start py-3 -my-1"
+                        className="text-ember-700 hover:text-ember-600 text-xs font-bold transition-colors mt-auto inline-flex items-center gap-1 self-start py-3 -my-1"
                       >
                         Watch on YouTube →
                       </a>
@@ -185,7 +185,7 @@ export default function CriteriaShowcase({
           aria-label="Previous criterion"
           onClick={() => emblaApi?.scrollPrev()}
           disabled={!canPrev}
-          className="hidden md:flex absolute left-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-ink-800 border border-courtline hover:border-ember-500/60 disabled:opacity-30 text-chalk items-center justify-center transition-colors text-xl font-bold"
+          className="hidden md:flex absolute left-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white border border-ink-950/15 hover:border-ember-500/60 disabled:opacity-30 text-ink-950 shadow-sm items-center justify-center transition-colors text-xl font-bold"
         >
           ‹
         </button>
@@ -194,7 +194,7 @@ export default function CriteriaShowcase({
           aria-label="Next criterion"
           onClick={() => emblaApi?.scrollNext()}
           disabled={!canNext}
-          className="hidden md:flex absolute right-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-ink-800 border border-courtline hover:border-ember-500/60 disabled:opacity-30 text-chalk items-center justify-center transition-colors text-xl font-bold"
+          className="hidden md:flex absolute right-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white border border-ink-950/15 hover:border-ember-500/60 disabled:opacity-30 text-ink-950 shadow-sm items-center justify-center transition-colors text-xl font-bold"
         >
           ›
         </button>

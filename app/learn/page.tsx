@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import TopNav from '@/components/TopNav'
+import SiteFooter from '@/components/SiteFooter'
 import CriteriaShowcase, { type Criterion } from '@/components/CriteriaShowcase'
 import { getCriteriaVideoMap } from '@/lib/youtube'
 import { db } from '@/lib/db'
@@ -105,9 +106,7 @@ export default async function LearnPage() {
         </div>
       </section>
 
-      <footer className="py-5 border-t border-gray-200 text-center text-gray-400 text-xs">
-        © {new Date().getFullYear()} LearnHoops.com. All rights reserved.
-      </footer>
+      <SiteFooter />
     </main>
   )
 }

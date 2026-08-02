@@ -233,6 +233,14 @@ export default async function HomePage() {
             For teams &amp; organizations
           </Link>
         </div>
+        <p className="mt-8 text-sm">
+          <Link
+            href="/support#faq"
+            className="font-semibold text-ink-950 underline underline-offset-4 hover:text-ink-800 transition-colors"
+          >
+            Questions? Read the FAQ →
+          </Link>
+        </p>
       </section>
 
       <div className="flex-1" />

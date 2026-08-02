@@ -37,8 +37,8 @@ export default function SupportPage() {
         </div>
       </div>
 
-      {/* FAQ */}
-      <div className="flex-1 bg-ink-900 border-t border-courtline">
+      {/* FAQ — linked directly from the home page and footer as /support#faq */}
+      <div id="faq" className="flex-1 bg-ink-900 border-t border-courtline scroll-mt-20">
         <div className="flex flex-col items-center px-6 py-14 space-y-8">
           <div className="w-full max-w-3xl space-y-5">
             <h2 className="font-display font-black uppercase text-2xl text-center">

@@ -20,7 +20,8 @@ const columns = [
   {
     title: 'Help',
     links: [
-      { href: '/support', label: 'Support & FAQ' },
+      { href: '/support', label: 'Contact support' },
+      { href: '/support#faq', label: 'FAQ' },
       { href: '/privacy', label: 'Privacy policy' },
       {
         href: 'https://www.youtube.com/@LearnHoopsbasketball',

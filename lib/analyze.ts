@@ -30,8 +30,11 @@ interface AnalysisResult {
 
 export async function analyzeShot(
   frameBase64Array: string[],
-  frameMimeTypes: string[]
+  frameMimeTypes: string[],
+  opts?: { model?: string; thinking?: 'disabled' | 'adaptive' }
 ): Promise<AnalysisResult> {
+  const model = opts?.model || process.env.ANALYSIS_MODEL || 'claude-sonnet-4-6'
+  const thinkingMode = opts?.thinking || 'disabled'
   const activeCriteria = await db`
     SELECT id, name, description, grading_notes, weight
     FROM criteria
@@ -226,8 +229,12 @@ Return ONLY valid JSON, no other text:
   )
 
   const response = await getAnthropic().messages.create({
-    model: 'claude-sonnet-4-6',
+    model,
     max_tokens: 6000,
+    // Explicit thinking mode: on Sonnet 5, omitting `thinking` silently
+    // enables adaptive thinking (extra cost); 'disabled' matches Sonnet
+    // 4.6's no-thinking default.
+    thinking: { type: thinkingMode },
     // The coaching rubric (~6K tokens) is identical between analyses until an
     // admin correction lands, so cache it: repeat analyses within 5 minutes
     // (team roster sessions especially) read it at ~10% of the input price.
@@ -250,6 +257,15 @@ Return ONLY valid JSON, no other text:
         ],
       },
     ],
+  })
+
+  // Cost visibility: cache_read should be high on back-to-back analyses.
+  console.log('[analyze] usage', {
+    model: response.model,
+    input: response.usage.input_tokens,
+    cacheWrite: response.usage.cache_creation_input_tokens,
+    cacheRead: response.usage.cache_read_input_tokens,
+    output: response.usage.output_tokens,
   })
 
   const textBlock = response.content.find((b) => b.type === 'text')

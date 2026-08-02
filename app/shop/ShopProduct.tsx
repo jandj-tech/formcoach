@@ -58,8 +58,39 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
 
   return (
     <div className="flex-1">
+      {/* Shop header — names every product up front with jump links, so
+          nothing further down the page gets missed */}
+      <section className="px-4 pt-10 sm:pt-14">
+        <div className="max-w-6xl mx-auto">
+          <p className="eyebrow text-ember-400 mb-3 select-none">The LearnHoops shop</p>
+          <h1 className="font-display font-black uppercase text-[clamp(2rem,5vw,3.5rem)] text-chalk leading-[0.95]">
+            Gear that fixes your shot
+          </h1>
+          <nav aria-label="Shop sections" className="flex gap-2 mt-6 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0">
+            <a
+              href="#training-ball"
+              className="shrink-0 bg-ink-900 border border-courtline hover:border-ember-500/60 text-chalk text-sm font-bold px-5 py-2.5 rounded-full transition-colors"
+            >
+              Training Ball
+            </a>
+            <a
+              href="#bundle"
+              className="shrink-0 bg-ink-900 border border-courtline hover:border-ember-500/60 text-chalk text-sm font-bold px-5 py-2.5 rounded-full transition-colors"
+            >
+              2-Ball Bundle
+            </a>
+            <a
+              href="#portable-net"
+              className="shrink-0 bg-ink-900 border border-courtline hover:border-ember-500/60 text-chalk text-sm font-bold px-5 py-2.5 rounded-full transition-colors"
+            >
+              Portable Net <span className="text-ember-400">· coming soon</span>
+            </a>
+          </nav>
+        </div>
+      </section>
+
       {/* Product hero: sticky gallery left, buy box card right */}
-      <section className="hero-glow grain relative px-4 pt-10 pb-14 sm:pt-16 sm:pb-20">
+      <section id="training-ball" className="hero-glow grain relative px-4 pt-10 pb-14 sm:pt-14 sm:pb-20 scroll-mt-20">
         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
           {/* Media gallery — product photo plus the two demo clips in one
               even-sized carousel; sticky so it stays in view while the buy
@@ -82,9 +113,9 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
               )}
             </div>
 
-            <h1 className="font-display font-black uppercase text-[clamp(1.7rem,3vw,2.4rem)] text-chalk leading-[0.95] break-words">
+            <h2 className="font-display font-black uppercase text-[clamp(1.7rem,3vw,2.4rem)] text-chalk leading-[0.95] break-words">
               The LearnHoops <span className="text-gradient-ember">Training Ball</span>
-            </h1>
+            </h2>
 
             <p className="text-white text-base leading-relaxed">
               A training ball built to fix your shooting form. Pick the edition for your shooting hand —
@@ -205,26 +236,44 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
       {/* 2-Ball Bundle */}
       <BundleSection isInApp={isInApp} />
 
-      {/* Coming soon — throw-on portable net */}
-      <section className="px-4 py-14 sm:py-16 border-b border-courtline">
-        <div className="max-w-6xl mx-auto">
-          <div className="grain relative overflow-hidden bg-ink-900 border border-courtline rounded-3xl p-8 sm:p-12 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-            <div className="space-y-3 max-w-xl">
-              <span className="inline-flex items-center gap-2 bg-ember-500/10 border border-ember-500/30 rounded-full px-4 py-1.5 select-none">
-                <span className="w-1.5 h-1.5 rounded-full bg-ember-500 animate-pulse" aria-hidden />
-                <span className="text-ember-400 eyebrow">Coming soon</span>
-              </span>
-              <h2 className="font-display font-black uppercase text-[clamp(1.7rem,3.5vw,2.5rem)] text-chalk leading-[0.95]">
-                Throw-On <span className="text-gradient-ember">Portable Net</span>
-              </h2>
-              <p className="text-chalk-dim text-sm sm:text-base leading-relaxed">
-                An all-weather mesh net that throws onto any rim in seconds — no tools,
-                no ladder. Rain or shine, every outdoor hoop feels like home court.
-              </p>
-            </div>
-            <p className="text-chalk-dim text-sm shrink-0 sm:text-right">
-              Landing in the shop soon.
+      {/* Portable net — full product section, coming soon */}
+      <section id="portable-net" className="px-4 py-16 sm:py-20 border-b border-courtline scroll-mt-20">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+          {/* Visual placeholder until launch photos arrive */}
+          <div className="grain relative overflow-hidden bg-ink-900 border border-courtline rounded-3xl aspect-[4/3] flex flex-col items-center justify-center gap-4 select-none">
+            <span className="inline-flex items-center gap-2 bg-ember-500/10 border border-ember-500/30 rounded-full px-4 py-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-ember-500 animate-pulse" aria-hidden />
+              <span className="text-ember-400 eyebrow">Coming soon</span>
+            </span>
+            <p className="wordmark-outline font-display font-black uppercase leading-none text-[clamp(2.6rem,7vw,4.5rem)]">
+              The Net
             </p>
+            <p className="text-chalk-dim text-xs">Photos land with the launch</p>
+          </div>
+
+          <div className="space-y-5">
+            <p className="eyebrow text-ember-400 select-none">Next up in the shop</p>
+            <h2 className="font-display font-black uppercase text-[clamp(1.9rem,4vw,3rem)] text-chalk leading-[0.95]">
+              Throw-On <span className="text-gradient-ember">Portable Net</span>
+            </h2>
+            <p className="text-chalk-dim leading-relaxed">
+              Bring the home-court feel to any outdoor hoop. A mesh net that throws
+              straight onto the rim and stays put — rain or shine.
+            </p>
+            <ul className="space-y-2.5">
+              {[
+                'Throws onto any rim in seconds',
+                'No tools, no ladder',
+                'All-weather, rainproof mesh',
+                'Fits standard outdoor rims',
+              ].map((item) => (
+                <li key={item} className="flex items-center gap-3 text-chalk text-sm sm:text-base">
+                  <span className="text-ember-500 font-black select-none" aria-hidden>✓</span>
+                  {item}
+                </li>
+              ))}
+            </ul>
+            <p className="text-chalk-dim text-sm">Launching soon — keep an eye on this page.</p>
           </div>
         </div>
       </section>
@@ -360,7 +409,7 @@ function BundleSection({ isInApp = false }: { isInApp?: boolean }) {
   }
 
   return (
-    <section className="bg-ink-900 border-b border-courtline">
+    <section id="bundle" className="bg-ink-900 border-b border-courtline scroll-mt-20">
       <div className="max-w-6xl mx-auto px-4 py-16 sm:py-20 space-y-8">
         <div className="flex flex-wrap items-end gap-6 justify-between">
           <div className="space-y-1">

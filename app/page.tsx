@@ -211,9 +211,94 @@ export default async function HomePage() {
 
       <CriteriaShowcase criteria={criteria} videoMap={videoMap} />
 
+      {/* Shop teaser — surfaces the gear so visitors know the shop exists */}
+      <section className="px-4 py-16 sm:py-24 border-t border-courtline">
+        <div className="max-w-6xl mx-auto w-full">
+          <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="eyebrow text-hardwood mb-3 select-none">04 — The gear</p>
+              <h2 className="font-display font-black uppercase text-[clamp(1.9rem,4.5vw,3.5rem)] leading-[0.95]">
+                Train with gear that
+                <br />
+                teaches your hands
+              </h2>
+            </div>
+            <Link
+              href="/shop"
+              className="text-sm font-semibold text-ember-400 hover:text-ember-500 transition-colors py-2"
+            >
+              Visit the shop →
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Training ball */}
+            <Link
+              href="/shop"
+              className="card-lift group bg-ink-900 border border-courtline rounded-2xl overflow-hidden flex flex-col"
+            >
+              <div className="relative aspect-[4/3] bg-white">
+                <Image
+                  src="/training-ball.png"
+                  alt="The LearnHoops Training Ball"
+                  fill
+                  className="object-contain p-4"
+                  sizes="(min-width: 640px) 50vw, 100vw"
+                />
+              </div>
+              <div className="p-6 flex items-start justify-between gap-4 flex-1">
+                <div>
+                  <h3 className="font-display font-bold uppercase text-lg text-chalk leading-tight">
+                    The Training Ball
+                  </h3>
+                  <p className="text-chalk-dim text-sm mt-1.5 leading-relaxed">
+                    Grip lines mark where your fingers belong — every rep grooves your release.
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className="font-numeric text-xl text-chalk">$49.99</div>
+                  <span className="text-ember-400 group-hover:text-ember-500 text-sm font-bold transition-colors">
+                    Shop →
+                  </span>
+                </div>
+              </div>
+            </Link>
+
+            {/* Portable net — coming soon */}
+            <Link
+              href="/shop#portable-net"
+              className="card-lift group bg-ink-900 border border-courtline rounded-2xl overflow-hidden flex flex-col"
+            >
+              <div className="grain relative aspect-[4/3] flex flex-col items-center justify-center gap-3 select-none">
+                <span className="inline-flex items-center gap-2 bg-ember-500/10 border border-ember-500/30 rounded-full px-4 py-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-ember-500 animate-pulse" aria-hidden />
+                  <span className="text-ember-400 eyebrow">Coming soon</span>
+                </span>
+                <p className="wordmark-outline font-display font-black uppercase leading-none text-[clamp(2.2rem,6vw,3.5rem)]">
+                  The Net
+                </p>
+              </div>
+              <div className="p-6 flex items-start justify-between gap-4 flex-1">
+                <div>
+                  <h3 className="font-display font-bold uppercase text-lg text-chalk leading-tight">
+                    Throw-On Portable Net
+                  </h3>
+                  <p className="text-chalk-dim text-sm mt-1.5 leading-relaxed">
+                    All-weather mesh that throws onto any rim in seconds — no tools, no ladder.
+                  </p>
+                </div>
+                <span className="text-ember-400 group-hover:text-ember-500 text-sm font-bold shrink-0 transition-colors">
+                  Preview →
+                </span>
+              </div>
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* Closing CTA — solid ember band for a hard color break before the footer */}
       <section className="grain relative text-center px-4 py-20 sm:py-28 bg-ember-500 text-white">
-        <p className="eyebrow text-ink-950 mb-4 select-none">04 — Your move</p>
+        <p className="eyebrow text-ink-950 mb-4 select-none">05 — Your move</p>
         <h2 className="font-display font-black uppercase text-[clamp(2.2rem,6vw,5rem)] leading-[0.95] max-w-3xl mx-auto">
           Ready to fix
           <br />

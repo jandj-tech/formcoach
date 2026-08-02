@@ -19,8 +19,31 @@ const TOPICS: Record<string, string> = {
 const MAX_PER_IP_PER_HOUR = 3
 const MAX_PER_EMAIL_PER_DAY = 5
 
+// Self-healing schema: the deployed database is not guaranteed to have had
+// scripts/migrate-support-requests.sql applied (Vercel's DATABASE_URL can
+// differ from .env.local), so ensure the table exists before first use.
+let tableEnsured = false
+async function ensureTable() {
+  if (tableEnsured) return
+  await db`
+    CREATE TABLE IF NOT EXISTS support_requests (
+      id SERIAL PRIMARY KEY,
+      topic VARCHAR(50) NOT NULL,
+      name VARCHAR(100) NOT NULL,
+      email VARCHAR(255) NOT NULL,
+      message TEXT NOT NULL,
+      ip VARCHAR(100),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `
+  await db`CREATE INDEX IF NOT EXISTS support_requests_ip_created_idx ON support_requests (ip, created_at)`
+  await db`CREATE INDEX IF NOT EXISTS support_requests_email_created_idx ON support_requests (email, created_at)`
+  tableEnsured = true
+}
+
 export async function POST(req: NextRequest) {
   try {
+    await ensureTable()
     const { topic, name, email, message, website } = await req.json()
 
     // Honeypot: a hidden field real visitors never see. Bots that fill every

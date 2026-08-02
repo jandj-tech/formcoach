@@ -1022,3 +1022,53 @@ export async function sendLeftTeamEmail(to: string, teamName: string) {
   if (error) console.error('[email] left team email failed:', error)
   console.log('[email] left team email sent:', data?.id, 'to:', to)
 }
+
+// A /support form submission, forwarded to the support inbox. Reply-to is
+// the visitor's address so replying in Gmail goes straight back to them.
+export async function sendSupportRequestEmail(req: {
+  topic: string
+  name: string
+  email: string
+  message: string
+}) {
+  const { data, error } = await getResend().emails.send({
+    from: FROM,
+    to: 'learnhoops8@gmail.com',
+    replyTo: req.email,
+    subject: `[Support] ${req.topic} — ${req.name}`,
+    text: [
+      `New support request from learnhoops.com/support`,
+      ``,
+      `Topic: ${req.topic}`,
+      `Name: ${req.name}`,
+      `Email: ${req.email}`,
+      ``,
+      req.message,
+    ].join('\n'),
+    html: `
+<!DOCTYPE html><html><head><meta charset="utf-8"/></head>
+<body style="margin:0;padding:0;background:#F4F4F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table role="presentation" width="100%" style="background:#F4F4F5;"><tr><td align="center" style="padding:32px 16px;">
+    <table role="presentation" width="100%" style="max-width:560px;background:#fff;border-radius:14px;border:1px solid #E4E4E7;">
+      <tr><td style="background:#000;padding:22px 32px;">
+        <div style="color:#F97316;font-size:20px;font-weight:800;">LearnHoops<span style="color:#71717A;">.com</span></div>
+        <div style="color:#A1A1AA;font-size:12px;margin-top:5px;">Support request</div>
+      </td></tr>
+      <tr><td style="padding:32px;">
+        <p style="margin:0 0 4px;color:#A1A1AA;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;font-weight:700;">${escHtml(req.topic)}</p>
+        <h1 style="margin:0 0 14px;color:#111;font-size:20px;font-weight:800;">${escHtml(req.name)} &lt;${escHtml(req.email)}&gt;</h1>
+        <p style="margin:0;color:#3F3F46;font-size:15px;line-height:1.6;white-space:pre-wrap;">${escHtml(req.message)}</p>
+      </td></tr>
+      <tr><td style="padding:16px 32px;background:#FAFAFA;border-top:1px solid #E4E4E7;">
+        <p style="margin:0;color:#A1A1AA;font-size:11px;">Reply to this email to answer them directly.</p>
+      </td></tr>
+    </table>
+  </td></tr></table>
+</body></html>`.trim(),
+  })
+  if (error) {
+    console.error('[email] support request email failed:', error)
+    throw new Error('Support notification failed to send')
+  }
+  console.log('[email] support request email sent:', data?.id, 'from visitor:', req.email)
+}

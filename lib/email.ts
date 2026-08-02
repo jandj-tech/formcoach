@@ -1148,3 +1148,99 @@ export async function sendSupportRequestEmail(req: {
   }
   console.log('[email] support request email sent:', data?.id, 'from visitor:', req.email)
 }
+
+// Abandoned-checkout recovery: sent once when a Stripe checkout session
+// expires unpaid (the buyer entered their email at Stripe but never paid).
+// The recovery URL reopens their exact cart.
+export async function sendAbandonedCheckoutEmail(
+  to: string,
+  name: string | null,
+  recoveryUrl: string,
+) {
+  const unsubscribe = `${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}`
+  const firstName = name ? name.split(' ')[0] : null
+  const greeting = firstName ? `Hey ${firstName},` : 'Hey,'
+
+  const { data, error } = await getResend().emails.send({
+    from: FROM,
+    to,
+    replyTo: 'noreply@learnhoops.com',
+    subject: 'Your LearnHoops training ball is still waiting 🏀',
+    headers: {
+      'List-Unsubscribe': `<${unsubscribe}>`,
+      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+    },
+    text: [
+      greeting,
+      ``,
+      `You were one step away from the LearnHoops Training Ball — the ball with hand-placement guides that build consistent shooting form, plus free AI shot analyses included with every ball.`,
+      ``,
+      `Your cart is saved. Pick up right where you left off:`,
+      recoveryUrl,
+      ``,
+      `LearnHoops.com`,
+      `Unsubscribe: ${unsubscribe}`,
+    ].join('\n'),
+    html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /></head>
+<body style="margin:0;padding:0;background:#F4F4F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#111111;">
+  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background:#F4F4F5;">
+    <tr><td align="center" style="padding:32px 16px;">
+      <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:560px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #E4E4E7;">
+
+        <!-- Brand bar -->
+        <tr><td style="background:#000000;padding:22px 32px;">
+          <div style="color:#F97316;font-size:20px;font-weight:800;letter-spacing:-0.3px;line-height:1;">LearnHoops<span style="color:#71717A;">.com</span></div>
+          <div style="color:#A1A1AA;font-size:12px;margin-top:5px;">Your shot. Perfected by AI.</div>
+        </td></tr>
+
+        <!-- Hero -->
+        <tr><td style="padding:36px 32px 8px;">
+          <h1 style="margin:0 0 10px;color:#111111;font-size:24px;line-height:1.25;font-weight:800;">Your training ball is still waiting.</h1>
+          <p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;">
+            ${greeting} you were one step away from the LearnHoops Training Ball —
+            hand-placement guides that build consistent shooting form, with free AI
+            shot analyses included with every ball. Your cart is saved.
+          </p>
+        </td></tr>
+
+        <!-- Primary CTA -->
+        <tr><td style="padding:24px 32px 8px;">
+          <a href="${recoveryUrl}" style="display:inline-block;background:#F97316;color:#ffffff;padding:13px 26px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">
+            Finish my order
+          </a>
+        </td></tr>
+
+        <!-- Plain-text link fallback -->
+        <tr><td style="padding:6px 32px 32px;">
+          <p style="margin:0;color:#A1A1AA;font-size:12px;line-height:1.5;">
+            Or paste this link into your browser:<br/>
+            <a href="${recoveryUrl}" style="color:#A1A1AA;word-break:break-all;text-decoration:underline;">${recoveryUrl}</a>
+          </p>
+        </td></tr>
+
+        <!-- Footer -->
+        <tr><td style="padding:18px 32px;background:#FAFAFA;border-top:1px solid #E4E4E7;">
+          <p style="margin:0;color:#A1A1AA;font-size:11px;line-height:1.6;">
+            You're getting this because you started an order at <a href="${BASE_URL}" style="color:#71717A;text-decoration:none;font-weight:600;">LearnHoops.com</a>.
+            &nbsp;·&nbsp;
+            <a href="${unsubscribe}" style="color:#71717A;text-decoration:underline;">Unsubscribe</a>
+          </p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
+    `.trim(),
+  })
+
+  if (error) {
+    console.error('[email] abandoned-checkout email failed:', error, 'to:', to)
+    throw new Error(`Resend send failed: ${error.message || JSON.stringify(error)}`)
+  }
+  console.log('[email] sent abandoned-checkout email:', data?.id, 'to:', to)
+}

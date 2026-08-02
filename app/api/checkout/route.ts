@@ -245,6 +245,12 @@ export async function POST(req: NextRequest) {
       success_url: successUrl,
       ...discountOpts,
       cancel_url: `${BASE_URL}/cart`,
+      // Abandoned-checkout recovery: the session expires after 1 hour and
+      // Stripe fires checkout.session.expired with a recovery URL that
+      // reopens this exact cart. The webhook emails it to buyers who got
+      // far enough to enter their email but never paid.
+      expires_at: Math.floor(Date.now() / 1000) + 60 * 60,
+      after_expiration: { recovery: { enabled: true } },
     })
 
     return NextResponse.json({ url: session.url })

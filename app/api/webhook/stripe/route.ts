@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import type Stripe from 'stripe'
 import { getStripe } from '@/lib/stripe'
 import { db } from '@/lib/db'
-import { sendClaimCreditsEmail, sendClassPurchaseConfirmationEmail, sendTokenPurchaseConfirmationEmail } from '@/lib/email'
+import { sendAbandonedCheckoutEmail, sendClaimCreditsEmail, sendClassPurchaseConfirmationEmail, sendTokenPurchaseConfirmationEmail } from '@/lib/email'
 import { sendClassPurchaseConfirmationSms } from '@/lib/sms'
 import { grantBallCreditsOnce } from '@/lib/grant-ball-credits'
 import { claimStripeSession, releaseStripeSessionClaim } from '@/lib/stripe-idempotency'
@@ -566,6 +566,49 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
       console.error('Failed to save order:', err)
       // Tokens were already credited above — don't ask Stripe to retry.
     }
+  }
+
+  // --- Abandoned checkout: session expired unpaid ---
+  // Only ball-shop checkouts opt into recovery (after_expiration is set at
+  // creation), and Stripe only includes customer_details when the shopper got
+  // far enough to enter an email — together those gate this to warm leads.
+  if (event.type === 'checkout.session.expired') {
+    const session = event.data.object as Stripe.Checkout.Session
+    const recoveryUrl = session.after_expiration?.recovery?.url
+    const email = session.customer_details?.email?.toLowerCase()
+
+    if (!recoveryUrl || !email) {
+      return NextResponse.json({ received: true })
+    }
+
+    // Respect unsubscribes.
+    const optedOut = await db`
+      SELECT 1 FROM email_list WHERE email = ${email} AND unsubscribed_at IS NOT NULL
+    `
+    if (optedOut.length > 0) {
+      console.log('[stripe webhook] abandoned checkout: unsubscribed, skipping', { sessionId: session.id })
+      return NextResponse.json({ received: true })
+    }
+
+    // Skip if they already completed a purchase since this session was
+    // created (e.g. restarted checkout in a new tab and paid there).
+    const purchased = await db`
+      SELECT 1 FROM orders
+      WHERE LOWER(email) = ${email} AND created_at > to_timestamp(${session.created})
+      LIMIT 1
+    `
+    if (purchased.length > 0) {
+      console.log('[stripe webhook] abandoned checkout: already purchased, skipping', { sessionId: session.id })
+      return NextResponse.json({ received: true })
+    }
+
+    try {
+      await sendAbandonedCheckoutEmail(email, session.customer_details?.name ?? null, recoveryUrl)
+    } catch (err) {
+      // Best-effort — never ask Stripe to retry a marketing email.
+      console.error('[stripe webhook] abandoned-checkout email failed:', err)
+    }
+    return NextResponse.json({ received: true })
   }
 
   // --- Subscription cancelled/expired ---

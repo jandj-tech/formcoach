@@ -16,13 +16,37 @@ export async function GET(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'Login required' }, { status: 401 })
 
   try {
-    const teams = (await db`
+    const memberTeams = (await db`
       SELECT t.id, t.name, t.admin_email
       FROM team_memberships tm
       JOIN teams t ON t.id = tm.team_id
       WHERE tm.user_id = ${session.userId}
       ORDER BY tm.joined_at DESC
     `) as unknown as Array<{ id: string; name: string; admin_email: string }>
+
+    // Teams this account owns (founding coach) or coaches — matched by the
+    // account email, so owners see their teams in the app's Team tab too.
+    let coachTeams: Array<{ id: string; name: string; admin_email: string }> = []
+    try {
+      coachTeams = (await db`
+        SELECT DISTINCT t.id, t.name, t.admin_email
+        FROM teams t
+        LEFT JOIN team_coaches tc ON tc.team_id = t.id
+        WHERE t.admin_email = ${session.email} OR tc.email = ${session.email}
+        ORDER BY t.name ASC
+      `) as unknown as typeof coachTeams
+    } catch {
+      // team_coaches table may not exist on older DBs — owners still match.
+      coachTeams = (await db`
+        SELECT id, name, admin_email FROM teams WHERE admin_email = ${session.email}
+      `) as unknown as typeof coachTeams
+    }
+
+    const memberIds = new Set(memberTeams.map(t => t.id))
+    const teams = [
+      ...memberTeams.map(t => ({ ...t, role: 'player' as const })),
+      ...coachTeams.filter(t => !memberIds.has(t.id)).map(t => ({ ...t, role: 'coach' as const })),
+    ]
 
     const result = []
     for (const team of teams) {
@@ -116,6 +140,7 @@ export async function GET(req: NextRequest) {
       result.push({
         id: team.id,
         name: team.name,
+        role: team.role,
         memberCount: roster.length,
         roster: roster.map(r => displayName(r.first_name, r.last_name_initial)),
         leaderboard: leaderboard.map(e => ({

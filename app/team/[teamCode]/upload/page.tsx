@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { db } from '@/lib/db'
 import TopNav from '@/components/TopNav'
+import SiteFooter from '@/components/SiteFooter'
 import TeamUploadClient from './TeamUploadClient'
 
 export default async function TeamUploadPage({
@@ -32,6 +33,7 @@ export default async function TeamUploadPage({
         teamCode={team.access_code}
         initialCredits={availableCredits}
       />
+      <SiteFooter />
     </main>
   )
 }

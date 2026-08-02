@@ -1,5 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import TopNav from '@/components/TopNav'
+import SiteFooter from '@/components/SiteFooter'
 import { db } from '@/lib/db'
 import OverallBadge from '@/components/OverallBadge'
 import ScoreCard from '@/components/ScoreCard'
@@ -56,8 +58,9 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
     : undefined
 
   return (
-    <main className="min-h-screen bg-white">
-      <div className="max-w-3xl mx-auto w-full px-6 py-10 space-y-8">
+    <main className="min-h-screen bg-white flex flex-col">
+      <TopNav />
+      <div className="flex-1 max-w-3xl mx-auto w-full px-6 py-10 space-y-8">
         <Link
           href="/"
           className="inline-flex items-center gap-1.5 text-sm font-semibold text-orange-500 hover:text-orange-400 transition-colors"
@@ -152,6 +155,7 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
           {' '}— we review reports within 24 hours.
         </p>
       </div>
+      <SiteFooter />
     </main>
   )
 }

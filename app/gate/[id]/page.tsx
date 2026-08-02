@@ -5,6 +5,7 @@ import { use } from 'react'
 import { useRouter } from 'next/navigation'
 import { Suspense } from 'react'
 import TopNav from '@/components/TopNav'
+import SiteFooter from '@/components/SiteFooter'
 import Link from 'next/link'
 
 function GateContent({ id }: { id: string }) {
@@ -49,6 +50,7 @@ function GateContent({ id }: { id: string }) {
           </div>
         </div>
       </div>
+      <SiteFooter />
     </main>
   )
 }

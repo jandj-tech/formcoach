@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import TopNav from '@/components/TopNav'
+import SiteFooter from '@/components/SiteFooter'
 import ClearCart from './ClearCart'
 import { getStripe } from '@/lib/stripe'
 import { grantBallCreditsOnce } from '@/lib/grant-ball-credits'
@@ -81,6 +82,7 @@ export default async function ShopSuccessPage({ searchParams }: { searchParams: 
           </Link>
         </div>
       </div>
+      <SiteFooter />
     </main>
   )
 }

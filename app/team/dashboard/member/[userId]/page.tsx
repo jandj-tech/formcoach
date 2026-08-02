@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { getTeamSession } from '@/lib/team-auth'
 import { db } from '@/lib/db'
 import TopNav from '@/components/TopNav'
+import SiteFooter from '@/components/SiteFooter'
 import PlayerShotList from '@/components/PlayerShotList'
 
 // Coach view of a roster player's analyzed shots.
@@ -58,6 +59,7 @@ export default async function TeamMemberShotsPage({ params }: { params: Promise<
 
         <PlayerShotList shots={shots} />
       </div>
+      <SiteFooter />
     </main>
   )
 }

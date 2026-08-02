@@ -3,6 +3,7 @@
 import { Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import TopNav from '@/components/TopNav'
+import SiteFooter from '@/components/SiteFooter'
 import PasswordInput from '@/components/PasswordInput'
 
 function TeamSetupForm() {
@@ -89,6 +90,7 @@ function TeamSetupForm() {
           )}
         </div>
       </div>
+      <SiteFooter />
     </main>
   )
 }

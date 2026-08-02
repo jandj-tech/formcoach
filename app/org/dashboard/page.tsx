@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { getOrgSession } from '@/lib/org-auth'
 import { db } from '@/lib/db'
 import TopNav from '@/components/TopNav'
+import SiteFooter from '@/components/SiteFooter'
 import InlineEdit from '@/components/InlineEdit'
 import InfoTip from '@/components/InfoTip'
 import OrgDashboardClient from './OrgDashboardClient'
@@ -260,6 +261,7 @@ export default async function OrgDashboardPage() {
 
         <OrgDashboardClient teams={teams} orgName={org.name} classPackages={classPackages} myUploads={myUploads} orgTokenBalance={orgTokenBalance} />
       </div>
+      <SiteFooter />
     </main>
   )
 }

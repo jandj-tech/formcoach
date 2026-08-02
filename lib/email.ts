@@ -641,7 +641,7 @@ export async function sendOrgApprovalEmail(
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,
-    replyTo: 'learnhoops8@gmail.com',
+    replyTo: 'noreply@learnhoops.com',
     subject: 'Your LearnHoops organization application has been approved',
     text: [
       `Hi,`,
@@ -715,7 +715,7 @@ export async function sendClassPurchaseConfirmationEmail(
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,
-    replyTo: 'learnhoops8@gmail.com',
+    replyTo: 'noreply@learnhoops.com',
     subject: '10-Week Shooting Class — your program is confirmed',
     text: [
       `Hi ${orgName},`,
@@ -810,7 +810,7 @@ export async function sendTeamCreatedEmail(
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,
-    replyTo: 'learnhoops8@gmail.com',
+    replyTo: 'noreply@learnhoops.com',
     subject: `Team created: ${teamName}`,
     text: [
       `Hi ${orgName},`,
@@ -864,14 +864,14 @@ export async function sendPasswordChangedEmail(to: string) {
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,
-    replyTo: 'learnhoops8@gmail.com',
+    replyTo: 'noreply@learnhoops.com',
     subject: 'Your LearnHoops password was changed',
     text: [
       `Your LearnHoops password was just changed.`,
       ``,
       `If you made this change, you can ignore this email.`,
       ``,
-      `If you did NOT make this change, contact us immediately at learnhoops8@gmail.com`,
+      `If you did NOT make this change, contact us right away at ${BASE_URL}/support`,
       ``,
       `— The LearnHoops Team`,
     ].join('\n'),
@@ -891,7 +891,7 @@ export async function sendPasswordChangedEmail(to: string) {
       </td></tr>
       <tr><td style="padding:12px 32px 32px;">
         <p style="margin:0;color:#DC2626;font-size:14px;font-weight:600;">
-          If you did NOT make this change, contact us immediately at learnhoops8@gmail.com
+          If you did NOT make this change, <a href="${BASE_URL}/support" style="color:#DC2626;text-decoration:underline;">contact us right away</a>.
         </p>
       </td></tr>
     </table>
@@ -911,7 +911,7 @@ export async function sendTokenPurchaseConfirmationEmail(
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,
-    replyTo: 'learnhoops8@gmail.com',
+    replyTo: 'noreply@learnhoops.com',
     subject: `${quantity} analysis token${quantity !== 1 ? 's' : ''} added to your account`,
     text: [
       `Hi ${orgName},`,
@@ -951,13 +951,13 @@ export async function sendAccountDeletedEmail(to: string) {
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,
-    replyTo: 'learnhoops8@gmail.com',
+    replyTo: 'noreply@learnhoops.com',
     subject: 'Your LearnHoops account has been deleted',
     text: [
       `Your LearnHoops account has been permanently deleted.`,
       `All your data, submissions, and tokens have been removed.`,
       ``,
-      `If you did NOT request this, contact us immediately at learnhoops8@gmail.com`,
+      `If you did NOT request this, contact us right away at ${BASE_URL}/support`,
       ``,
       `— The LearnHoops Team`,
     ].join('\n'),
@@ -977,7 +977,7 @@ export async function sendAccountDeletedEmail(to: string) {
       </td></tr>
       <tr><td style="padding:12px 32px 32px;">
         <p style="margin:0;color:#DC2626;font-size:14px;font-weight:600;">
-          If you did NOT request this deletion, contact us immediately at learnhoops8@gmail.com
+          If you did NOT request this deletion, <a href="${BASE_URL}/support" style="color:#DC2626;text-decoration:underline;">contact us right away</a>.
         </p>
       </td></tr>
     </table>
@@ -992,12 +992,12 @@ export async function sendLeftTeamEmail(to: string, teamName: string) {
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,
-    replyTo: 'learnhoops8@gmail.com',
+    replyTo: 'noreply@learnhoops.com',
     subject: `You've left ${teamName}`,
     text: [
       `You have left the team "${teamName}" on LearnHoops.`,
       ``,
-      `If you did not do this, contact us at learnhoops8@gmail.com`,
+      `If you did not do this, contact us at ${BASE_URL}/support`,
       ``,
       `— The LearnHoops Team`,
     ].join('\n'),
@@ -1012,7 +1012,7 @@ export async function sendLeftTeamEmail(to: string, teamName: string) {
       <tr><td style="padding:36px 32px 32px;">
         <h1 style="margin:0 0 10px;color:#111;font-size:22px;font-weight:800;">You've left ${escHtml(teamName)}</h1>
         <p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;">
-          You have been removed from <strong>${escHtml(teamName)}</strong> on LearnHoops. If you did not do this, contact us at learnhoops8@gmail.com.
+          You have been removed from <strong>${escHtml(teamName)}</strong> on LearnHoops. If you did not do this, <a href="${BASE_URL}/support" style="color:#F97316;text-decoration:underline;">contact us</a>.
         </p>
       </td></tr>
     </table>

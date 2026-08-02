@@ -1,4 +1,6 @@
+import { Fragment } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import TopNav from '@/components/TopNav'
@@ -99,64 +101,87 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
   return (
     <main className="min-h-screen bg-white flex flex-col">
       <TopNav />
-      <div className="flex-1 max-w-3xl mx-auto w-full px-6 py-10 space-y-8">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1.5 text-sm font-semibold text-orange-500 hover:text-orange-400 transition-colors"
-        >
-          <span aria-hidden>←</span> Back to LearnHoops
-        </Link>
-
-        {/* Shop CTA — moved to the top so it's the first thing players see after opening their analysis. */}
-        <div className="bg-orange-50 border border-orange-200 rounded-2xl p-6 sm:p-8 text-center">
-          <h2 className="text-black font-black text-xl sm:text-2xl mb-2">
-            Fix your form — faster.
-          </h2>
-          <p className="text-zinc-700 text-sm sm:text-base leading-relaxed mb-5 max-w-md mx-auto">
-            The LearnHoops basketball has finger placement guides on the surface and comes in
-            right- and left-handed versions. The fastest way to drill in the form your analysis is about to expose.
-          </p>
-          <Link
-            href="/shop"
-            className="inline-block bg-orange-500 hover:bg-red-600 text-white font-bold px-7 py-3 rounded-xl text-sm sm:text-base transition-colors"
-          >
-            Shop the Ball →
-          </Link>
+      <div className="flex-1 max-w-3xl mx-auto w-full px-6 py-10 space-y-10">
+        {/* Report header */}
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="text-orange-500 text-xs font-bold uppercase tracking-widest mb-1.5">
+              AI Shot Analysis
+            </p>
+            <h1 className="text-3xl sm:text-4xl font-black text-black leading-tight">
+              Your Shot Report
+            </h1>
+          </div>
+          <ShareResultButton
+            score={analysis.overall_score != null ? Number(analysis.overall_score) : null}
+          />
         </div>
 
-        <div className="flex justify-center">
+        {/* Overall score */}
+        <section className="bg-gradient-to-b from-orange-50/70 to-white border border-orange-100 rounded-2xl py-10 flex justify-center">
           <OverallBadge score={Number(analysis.overall_score)} />
-        </div>
+        </section>
 
-        <ShareResultButton
-          score={analysis.overall_score != null ? Number(analysis.overall_score) : null}
-        />
-
-        <div className="space-y-3">
-          {scores.map((s) => (
-            <ScoreCard
-              key={s.id}
-              name={s.name}
-              score={s.ai_score !== null ? Number(s.ai_score) : null}
-              reasoning={s.ai_reasoning}
-              videoId={videoMap[s.name]}
-            />
+        {/* Criteria breakdown, with a compact shop ad slotted between cards */}
+        <section className="space-y-3">
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-black font-black text-lg sm:text-xl">Criteria breakdown</h2>
+            <span className="text-xs text-gray-400">{scores.length} criteria graded</span>
+          </div>
+          {scores.map((s, i) => (
+            <Fragment key={s.id}>
+              <ScoreCard
+                name={s.name}
+                score={s.ai_score !== null ? Number(s.ai_score) : null}
+                reasoning={s.ai_reasoning}
+                videoId={videoMap[s.name]}
+              />
+              {i === 1 && (
+                <aside className="relative flex items-center gap-4 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-xl p-4 pr-5">
+                  <span className="absolute top-2 right-3 text-[9px] font-bold uppercase tracking-widest text-orange-300 select-none">
+                    From our shop
+                  </span>
+                  <Image
+                    src="/training-ball.png"
+                    alt="LearnHoops Training Ball"
+                    width={128}
+                    height={128}
+                    className="w-16 h-16 sm:w-20 sm:h-20 object-contain shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-black font-black text-sm leading-snug">
+                      Train the habits this report grades
+                    </p>
+                    <p className="text-zinc-600 text-xs leading-relaxed mt-1">
+                      The LearnHoops Training Ball&apos;s finger-placement guides drill in correct
+                      form on every rep — free shot analyses included.
+                    </p>
+                    <Link
+                      href="/shop"
+                      className="inline-block mt-2 bg-orange-500 hover:bg-red-600 text-white font-bold px-4 py-1.5 rounded-lg text-xs transition-colors"
+                    >
+                      Shop the Ball →
+                    </Link>
+                  </div>
+                </aside>
+              )}
+            </Fragment>
           ))}
-        </div>
+        </section>
 
         {(hasFrames || hasVideo) && (
-          <div
-            className={
-              hasFrames && hasVideo
-                ? 'grid grid-cols-1 md:grid-cols-2 gap-6 items-start'
-                : ''
-            }
-          >
-            {hasFrames && <FrameViewer urls={frameUrls} compact={hasVideo} />}
+          <section className="space-y-3">
+            <h2 className="text-black font-black text-lg sm:text-xl">Your shot</h2>
+            <div
+              className={
+                hasFrames && hasVideo
+                  ? 'grid grid-cols-1 md:grid-cols-2 gap-6 items-start'
+                  : ''
+              }
+            >
+              {hasFrames && <FrameViewer urls={frameUrls} compact={hasVideo} />}
 
-            {hasVideo && (
-              <div className="space-y-2">
-                <h2 className="text-black font-bold text-sm">Your Shot</h2>
+              {hasVideo && (
                 <video
                   src={analysis.video_url as string}
                   poster={videoPoster}
@@ -165,9 +190,9 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
                   preload="metadata"
                   className="w-full max-w-sm rounded-xl bg-black border border-gray-200"
                 />
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          </section>
         )}
 
         {/* Filming tips — the same guidance as the support FAQ, shown here so

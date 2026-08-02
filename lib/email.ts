@@ -1031,40 +1031,94 @@ export async function sendSupportRequestEmail(req: {
   email: string
   message: string
 }) {
+  const firstName = req.name.split(/\s+/)[0] || req.name
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to: 'learnhoops8@gmail.com',
     replyTo: req.email,
-    subject: `[Support] ${req.topic} — ${req.name}`,
+    subject: `Support request from ${req.name} — ${req.topic}`,
     text: [
-      `New support request from learnhoops.com/support`,
+      `New message from the LearnHoops support form`,
       ``,
-      `Topic: ${req.topic}`,
-      `Name: ${req.name}`,
+      `From:  ${req.name}`,
       `Email: ${req.email}`,
+      `Topic: ${req.topic}`,
       ``,
+      `Message:`,
       req.message,
+      ``,
+      `—`,
+      `Reply to this email to answer ${firstName} directly.`,
+      `Sent from the contact form at ${BASE_URL}/support`,
     ].join('\n'),
     html: `
-<!DOCTYPE html><html><head><meta charset="utf-8"/></head>
-<body style="margin:0;padding:0;background:#F4F4F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-  <table role="presentation" width="100%" style="background:#F4F4F5;"><tr><td align="center" style="padding:32px 16px;">
-    <table role="presentation" width="100%" style="max-width:560px;background:#fff;border-radius:14px;border:1px solid #E4E4E7;">
-      <tr><td style="background:#000;padding:22px 32px;">
-        <div style="color:#F97316;font-size:20px;font-weight:800;">LearnHoops<span style="color:#71717A;">.com</span></div>
-        <div style="color:#A1A1AA;font-size:12px;margin-top:5px;">Support request</div>
-      </td></tr>
-      <tr><td style="padding:32px;">
-        <p style="margin:0 0 4px;color:#A1A1AA;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;font-weight:700;">${escHtml(req.topic)}</p>
-        <h1 style="margin:0 0 14px;color:#111;font-size:20px;font-weight:800;">${escHtml(req.name)} &lt;${escHtml(req.email)}&gt;</h1>
-        <p style="margin:0;color:#3F3F46;font-size:15px;line-height:1.6;white-space:pre-wrap;">${escHtml(req.message)}</p>
-      </td></tr>
-      <tr><td style="padding:16px 32px;background:#FAFAFA;border-top:1px solid #E4E4E7;">
-        <p style="margin:0;color:#A1A1AA;font-size:11px;">Reply to this email to answer them directly.</p>
-      </td></tr>
-    </table>
-  </td></tr></table>
-</body></html>`.trim(),
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /></head>
+<body style="margin:0;padding:0;background:#F4F4F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#111111;">
+  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background:#F4F4F5;">
+    <tr><td align="center" style="padding:32px 16px;">
+      <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:560px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #E4E4E7;">
+
+        <!-- Brand bar -->
+        <tr><td style="background:#000000;padding:22px 32px;">
+          <div style="color:#F97316;font-size:20px;font-weight:800;letter-spacing:-0.3px;line-height:1;">LearnHoops<span style="color:#71717A;">.com</span></div>
+          <div style="color:#A1A1AA;font-size:12px;margin-top:5px;">New support request</div>
+        </td></tr>
+
+        <!-- Heading -->
+        <tr><td style="padding:32px 32px 20px;">
+          <h1 style="margin:0;color:#111111;font-size:22px;line-height:1.3;font-weight:800;">${escHtml(req.name)} sent a message</h1>
+          <p style="margin:6px 0 0;color:#52525B;font-size:14px;line-height:1.55;">
+            From the contact form at learnhoops.com/support
+          </p>
+        </td></tr>
+
+        <!-- Details -->
+        <tr><td style="padding:0 32px;">
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="border:1px solid #E4E4E7;border-radius:10px;">
+            <tr>
+              <td style="padding:12px 16px;border-bottom:1px solid #E4E4E7;width:90px;color:#A1A1AA;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;">Topic</td>
+              <td style="padding:12px 16px;border-bottom:1px solid #E4E4E7;color:#111111;font-size:14px;font-weight:600;">${escHtml(req.topic)}</td>
+            </tr>
+            <tr>
+              <td style="padding:12px 16px;border-bottom:1px solid #E4E4E7;color:#A1A1AA;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;">Name</td>
+              <td style="padding:12px 16px;border-bottom:1px solid #E4E4E7;color:#111111;font-size:14px;font-weight:600;">${escHtml(req.name)}</td>
+            </tr>
+            <tr>
+              <td style="padding:12px 16px;color:#A1A1AA;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;">Email</td>
+              <td style="padding:12px 16px;color:#111111;font-size:14px;font-weight:600;"><a href="mailto:${escHtml(req.email)}" style="color:#F97316;text-decoration:none;">${escHtml(req.email)}</a></td>
+            </tr>
+          </table>
+        </td></tr>
+
+        <!-- Message -->
+        <tr><td style="padding:20px 32px 0;">
+          <p style="margin:0 0 8px;color:#A1A1AA;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;">Message</p>
+          <div style="background:#FAFAFA;border:1px solid #E4E4E7;border-radius:10px;padding:16px 18px;color:#3F3F46;font-size:15px;line-height:1.65;white-space:pre-wrap;">${escHtml(req.message)}</div>
+        </td></tr>
+
+        <!-- Reply CTA -->
+        <tr><td style="padding:24px 32px 32px;">
+          <a href="mailto:${escHtml(req.email)}?subject=${encodeURIComponent(`Re: your LearnHoops support request`)}" style="display:inline-block;background:#F97316;color:#ffffff;padding:12px 24px;border-radius:10px;text-decoration:none;font-weight:700;font-size:14px;">
+            Reply to ${escHtml(firstName)}
+          </a>
+          <p style="margin:10px 0 0;color:#A1A1AA;font-size:12px;">Or just hit Reply — this email replies straight to them.</p>
+        </td></tr>
+
+        <!-- Footer -->
+        <tr><td style="padding:18px 32px;background:#FAFAFA;border-top:1px solid #E4E4E7;">
+          <p style="margin:0;color:#A1A1AA;font-size:11px;line-height:1.6;">
+            Sent automatically by the support form at
+            <a href="${BASE_URL}/support" style="color:#71717A;text-decoration:underline;">learnhoops.com/support</a>.
+          </p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`.trim(),
   })
   if (error) {
     console.error('[email] support request email failed:', error)

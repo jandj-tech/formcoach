@@ -15,21 +15,34 @@ export async function GET(req: NextRequest) {
   const identity = actor.identity
 
   try {
-    const messages = (await db`
-      SELECT m.id, m.sender_user_id, m.sender_name, m.sender_role, m.body, m.created_at
-      FROM team_messages m
-      WHERE m.team_id = ${teamId}
-        AND m.deleted = FALSE
-        AND m.id > ${after}
-        AND (m.sender_user_id IS NULL OR ${actor.userId} IS NULL OR m.sender_user_id NOT IN (
-          SELECT blocked_user_id FROM user_blocks WHERE blocker_user_id = ${actor.userId}
-        ))
-      ORDER BY m.id DESC
-      LIMIT 50
-    `) as unknown as Array<{
+    type MessageRow = {
       id: number; sender_user_id: string | null; sender_name: string
       sender_role: string; body: string; created_at: string
-    }>
+    }
+    // Personal blocks only exist for player accounts — coach/org sessions
+    // have no users row, so they read the unfiltered feed.
+    const messages = (actor.userId
+      ? await db`
+          SELECT m.id, m.sender_user_id, m.sender_name, m.sender_role, m.body, m.created_at
+          FROM team_messages m
+          WHERE m.team_id = ${teamId}
+            AND m.deleted = FALSE
+            AND m.id > ${after}
+            AND (m.sender_user_id IS NULL OR m.sender_user_id NOT IN (
+              SELECT blocked_user_id FROM user_blocks WHERE blocker_user_id = ${actor.userId}
+            ))
+          ORDER BY m.id DESC
+          LIMIT 50
+        `
+      : await db`
+          SELECT m.id, m.sender_user_id, m.sender_name, m.sender_role, m.body, m.created_at
+          FROM team_messages m
+          WHERE m.team_id = ${teamId}
+            AND m.deleted = FALSE
+            AND m.id > ${after}
+          ORDER BY m.id DESC
+          LIMIT 50
+        `) as unknown as MessageRow[]
 
     // Coach extras: roster with per-player access state for the manage panel.
     let mutedUserIds: string[] = []

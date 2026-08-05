@@ -128,7 +128,7 @@ export async function resolveChatActorFromRequest(
   const coachIdentity = (name: string): ChatIdentity => ({
     isMember: false,
     isCoach: true,
-    senderName: `${name} (Coach)`,
+    senderName: name.toLowerCase().includes('coach') ? name : `${name} (Coach)`,
     muted: false,
     allowed: true,
     chatMode: team.chat_mode === 'everyone' ? 'everyone' : 'coach-only',

@@ -1,4 +1,8 @@
+import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
+import { getSessionFromRequest } from '@/lib/auth'
+import { getTeamSessionFromRequest } from '@/lib/team-auth'
+import { getOrgSessionFromRequest } from '@/lib/org-auth'
 
 export interface ChatIdentity {
   isMember: boolean
@@ -91,4 +95,68 @@ export async function resolveChatIdentity(
     chatMode: team.chat_mode === 'everyone' ? 'everyone' : 'coach-only',
     teamName: team.name,
   }
+}
+
+export interface ChatActor {
+  /** users.id when authenticated as a player account; null for team/org sessions. */
+  userId: string | null
+  email: string
+  identity: ChatIdentity
+}
+
+// Resolves chat identity from ANY of the site's session types:
+// player user session, coach team session, or organization session.
+// The website's coach/org dashboards authenticate with the latter two.
+export async function resolveChatActorFromRequest(
+  req: NextRequest,
+  teamId: string,
+): Promise<ChatActor | null> {
+  // 1. Player (or coach using a player account) — the app's path.
+  const user = await getSessionFromRequest(req)
+  if (user) {
+    const identity = await resolveChatIdentity(teamId, user.userId, user.email)
+    return identity ? { userId: user.userId, email: user.email, identity } : null
+  }
+
+  const [team] = (await db`
+    SELECT id, name, admin_email, coach_nickname, organization_id,
+           COALESCE(chat_mode, 'coach-only') AS chat_mode
+    FROM teams WHERE id = ${teamId}
+  `) as unknown as [{ id: string; name: string; admin_email: string; coach_nickname: string | null; organization_id: string | null; chat_mode: string } | undefined]
+  if (!team) return null
+
+  const coachIdentity = (name: string): ChatIdentity => ({
+    isMember: false,
+    isCoach: true,
+    senderName: name.toLowerCase().includes('coach') ? name : `${name} (Coach)`,
+    muted: false,
+    allowed: true,
+    chatMode: team.chat_mode === 'everyone' ? 'everyone' : 'coach-only',
+    teamName: team.name,
+  })
+
+  // 2. Coach team session (web team dashboard).
+  const teamSession = await getTeamSessionFromRequest(req)
+  if (teamSession) {
+    let isThisTeamsCoach = teamSession.teamId === teamId || teamSession.adminEmail === team.admin_email
+    if (!isThisTeamsCoach) {
+      try {
+        const rows = (await db`
+          SELECT 1 FROM team_coaches WHERE team_id = ${teamId} AND email = ${teamSession.adminEmail} LIMIT 1
+        `) as unknown as unknown[]
+        isThisTeamsCoach = rows.length > 0
+      } catch {}
+    }
+    if (isThisTeamsCoach) {
+      return { userId: null, email: teamSession.adminEmail, identity: coachIdentity(team.coach_nickname || 'Coach') }
+    }
+  }
+
+  // 3. Organization session (web org dashboard) — coach powers over org teams.
+  const orgSession = await getOrgSessionFromRequest(req)
+  if (orgSession && team.organization_id && team.organization_id === orgSession.orgId) {
+    return { userId: null, email: orgSession.adminEmail, identity: coachIdentity('Organization') }
+  }
+
+  return null
 }

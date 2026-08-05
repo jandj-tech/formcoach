@@ -14,6 +14,8 @@ import InlineEdit from '@/components/InlineEdit'
 import LeaderboardTable, { type LeaderboardRow } from '@/components/LeaderboardTable'
 import SortMenu, { type SortOption } from '@/components/SortMenu'
 import OrgTokenPanel from '@/components/OrgTokenPanel'
+import TeamChatPanel from '@/components/TeamChatPanel'
+import EmailTeamPanel from '@/components/EmailTeamPanel'
 import PlayerShotList, { type Shot } from '@/components/PlayerShotList'
 import PrintButton from '@/components/PrintButton'
 import { CLASS_MIN_PLAYERS, CLASS_BULK_THRESHOLD, classPriceCents } from '@/lib/org-class-pricing'
@@ -1536,6 +1538,17 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                     )}
                   </div>
                   )}
+
+                  {/* Team chat — org has coach powers over its teams' chats */}
+                  <div className="border-t border-gray-100 pt-4">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">💬 Team Chat</p>
+                    <TeamChatPanel teamId={team.id} />
+                  </div>
+
+                  {/* Email blast to this team's registered players */}
+                  <div className="border-t border-gray-100 pt-4">
+                    <EmailTeamPanel teamId={team.id} playerCount={team.members.length} />
+                  </div>
 
                   {/* Danger zone — delete this team */}
                   <Section title="Danger zone" summary="Delete team">

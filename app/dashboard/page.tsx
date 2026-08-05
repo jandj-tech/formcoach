@@ -18,6 +18,7 @@ import LeaveTeamButton from './LeaveTeamButton'
 import NicknameForm from './NicknameForm'
 import NameForm from './NameForm'
 import JoinTeamPopup from './JoinTeamPopup'
+import TeamChatPanel from '@/components/TeamChatPanel'
 
 type UserRow = {
   id: string
@@ -39,7 +40,7 @@ type SubmissionRow = {
   frame_urls: string[] | null
 }
 
-export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ app?: string }> }) {
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ app?: string; tab?: string }> }) {
   const session = await getSession()
   if (!session) redirect('/login')
 
@@ -315,6 +316,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             >
               View Team Leaderboard →
             </Link>
+
+            {/* Team chat — same rules as the app: coach controls who can post */}
+            <div className="pt-2 border-t border-gray-200">
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">💬 Team Chat</p>
+              <TeamChatPanel teamId={t.id} />
+            </div>
           </div>
         )
       })}
@@ -391,6 +398,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
         {/* ── Tabs ───────────────────────────────────────────────── */}
         <AccountTabs
+          defaultTab={params.tab}
           tabs={[
             { id: 'shots', label: 'Shot History', count: submissions.length, content: shotsTab },
             {

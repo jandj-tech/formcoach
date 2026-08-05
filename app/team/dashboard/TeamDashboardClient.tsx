@@ -15,6 +15,8 @@ import InlineEdit from '@/components/InlineEdit'
 import PlayerShotList, { type Shot } from '@/components/PlayerShotList'
 import InfoTip from '@/components/InfoTip'
 import AccountTabs from '@/components/account/AccountTabs'
+import TeamChatPanel from '@/components/TeamChatPanel'
+import EmailTeamPanel from '@/components/EmailTeamPanel'
 import Section from '@/components/account/Section'
 import { copyToClipboard } from '@/lib/copy'
 import { useCart } from '@/lib/cart'
@@ -813,13 +815,21 @@ export default function TeamDashboardClient({
             </div>
           )}
         </div>
-        <button
-          onClick={logout}
-          disabled={loggingOut}
-          className="bg-orange-500 hover:bg-red-500 disabled:opacity-60 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors shrink-0"
-        >
-          {loggingOut ? 'Logging out...' : 'Log out'}
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <Link
+            href="/team"
+            className="border border-orange-300 text-orange-600 hover:bg-orange-50 font-bold text-sm px-4 py-2 rounded-xl transition-colors"
+          >
+            🏢 Organization Hub
+          </Link>
+          <button
+            onClick={logout}
+            disabled={loggingOut}
+            className="bg-orange-500 hover:bg-red-500 disabled:opacity-60 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors"
+          >
+            {loggingOut ? 'Logging out...' : 'Log out'}
+          </button>
+        </div>
       </header>
 
       {/* ── Key stats — always visible above the tabs ───────────── */}
@@ -898,6 +908,8 @@ export default function TeamDashboardClient({
       <AccountTabs
         tabs={[
           { id: 'players', label: 'Players', count: rosterCount, content: playersTab },
+          { id: 'chat', label: 'Chat', content: <TeamChatPanel teamId={team.id} /> },
+          { id: 'email', label: 'Email Team', content: <EmailTeamPanel teamId={team.id} playerCount={members.length} /> },
           { id: 'uploads', label: 'Uploads', content: uploadsTab },
           { id: 'leaderboard', label: 'Leaderboard', count: leaderboard.length, content: leaderboardTab },
           { id: 'credits', label: 'Tokens & Credits', content: creditsTab },

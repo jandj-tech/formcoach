@@ -815,13 +815,21 @@ export default function TeamDashboardClient({
             </div>
           )}
         </div>
-        <button
-          onClick={logout}
-          disabled={loggingOut}
-          className="bg-orange-500 hover:bg-red-500 disabled:opacity-60 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors shrink-0"
-        >
-          {loggingOut ? 'Logging out...' : 'Log out'}
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <Link
+            href="/team"
+            className="border border-orange-300 text-orange-600 hover:bg-orange-50 font-bold text-sm px-4 py-2 rounded-xl transition-colors"
+          >
+            🏢 Organization Hub
+          </Link>
+          <button
+            onClick={logout}
+            disabled={loggingOut}
+            className="bg-orange-500 hover:bg-red-500 disabled:opacity-60 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors"
+          >
+            {loggingOut ? 'Logging out...' : 'Log out'}
+          </button>
+        </div>
       </header>
 
       {/* ── Key stats — always visible above the tabs ───────────── */}

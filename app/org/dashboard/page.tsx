@@ -9,6 +9,7 @@ import OrgDashboardClient from './OrgDashboardClient'
 import LogoutButton from './LogoutButton'
 import type { ClassPackage } from './OrgDashboardClient'
 import type { LeaderboardRow } from '@/components/LeaderboardTable'
+import Link from 'next/link'
 
 interface Member {
   id: string
@@ -241,7 +242,15 @@ export default async function OrgDashboardPage() {
             />
             <p className="text-gray-500 text-sm mt-1">Organization Dashboard</p>
           </div>
-          <LogoutButton />
+          <div className="flex items-center gap-2">
+            <Link
+              href="/team"
+              className="border border-orange-300 text-orange-600 hover:bg-orange-50 font-bold text-sm px-4 py-2 rounded-xl transition-colors"
+            >
+              🏢 Organization Hub
+            </Link>
+            <LogoutButton />
+          </div>
         </div>
 
         <div className="bg-orange-50 border border-orange-200 rounded-2xl p-6">

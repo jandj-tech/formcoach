@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSessionFromRequest } from '@/lib/auth'
 import { db } from '@/lib/db'
-import { resolveChatIdentity } from '@/lib/team-chat'
+import { resolveChatActorFromRequest } from '@/lib/team-chat'
 
 // Coach moderation + everyone's self-service actions:
 //   { teamId, action: 'mode', mode: 'everyone' | 'coach-only' }   (coach)
@@ -9,17 +8,15 @@ import { resolveChatIdentity } from '@/lib/team-chat'
 //   { teamId, action: 'mute' | 'unmute', userId }                 (coach)
 //   { teamId, action: 'delete', messageId }                       (coach or own message)
 export async function POST(req: NextRequest) {
-  const session = await getSessionFromRequest(req)
-  if (!session) return NextResponse.json({ error: 'Login required' }, { status: 401 })
-
   const p = await req.json().catch(() => ({})) as {
     teamId?: string; action?: string; mode?: string; userId?: string; messageId?: number
   }
   const teamId = (p.teamId ?? '').toString()
   if (!teamId || !p.action) return NextResponse.json({ error: 'Bad request' }, { status: 400 })
 
-  const identity = await resolveChatIdentity(teamId, session.userId, session.email)
-  if (!identity) return NextResponse.json({ error: 'Not on this team' }, { status: 403 })
+  const actor = await resolveChatActorFromRequest(req, teamId)
+  if (!actor) return NextResponse.json({ error: 'Login required' }, { status: 401 })
+  const identity = actor.identity
 
   try {
     if (p.action === 'mode') {
@@ -62,7 +59,7 @@ export async function POST(req: NextRequest) {
       // Coaches can remove any message on their team; players only their own.
       const result = identity.isCoach
         ? await db`UPDATE team_messages SET deleted = TRUE WHERE id = ${p.messageId} AND team_id = ${teamId}`
-        : await db`UPDATE team_messages SET deleted = TRUE WHERE id = ${p.messageId} AND team_id = ${teamId} AND sender_user_id = ${session.userId}`
+        : await db`UPDATE team_messages SET deleted = TRUE WHERE id = ${p.messageId} AND team_id = ${teamId} AND sender_user_id = ${actor.userId}`
       void result
       return NextResponse.json({ success: true })
     }

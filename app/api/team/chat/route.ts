@@ -1,21 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSessionFromRequest } from '@/lib/auth'
 import { db } from '@/lib/db'
-import { resolveChatIdentity, canPostInChat, NO_ACCESS_MESSAGE } from '@/lib/team-chat'
+import { resolveChatActorFromRequest, canPostInChat, NO_ACCESS_MESSAGE } from '@/lib/team-chat'
 import { isCleanDisplayText } from '@/lib/moderation'
 
 // GET /api/team/chat?teamId=...&after=<messageId> — messages plus the
 // caller's permissions. Messages from users the caller blocked are hidden.
 export async function GET(req: NextRequest) {
-  const session = await getSessionFromRequest(req)
-  if (!session) return NextResponse.json({ error: 'Login required' }, { status: 401 })
-
   const teamId = req.nextUrl.searchParams.get('teamId') ?? ''
   const after = parseInt(req.nextUrl.searchParams.get('after') ?? '0', 10) || 0
   if (!teamId) return NextResponse.json({ error: 'teamId required' }, { status: 400 })
 
-  const identity = await resolveChatIdentity(teamId, session.userId, session.email)
-  if (!identity) return NextResponse.json({ error: 'Not on this team' }, { status: 403 })
+  const actor = await resolveChatActorFromRequest(req, teamId)
+  if (!actor) return NextResponse.json({ error: 'Login required' }, { status: 401 })
+  const identity = actor.identity
 
   try {
     const messages = (await db`
@@ -24,8 +21,8 @@ export async function GET(req: NextRequest) {
       WHERE m.team_id = ${teamId}
         AND m.deleted = FALSE
         AND m.id > ${after}
-        AND (m.sender_user_id IS NULL OR m.sender_user_id NOT IN (
-          SELECT blocked_user_id FROM user_blocks WHERE blocker_user_id = ${session.userId}
+        AND (m.sender_user_id IS NULL OR ${actor.userId} IS NULL OR m.sender_user_id NOT IN (
+          SELECT blocked_user_id FROM user_blocks WHERE blocker_user_id = ${actor.userId}
         ))
       ORDER BY m.id DESC
       LIMIT 50
@@ -72,7 +69,9 @@ export async function GET(req: NextRequest) {
         senderRole: m.sender_role,
         body: m.body,
         createdAt: m.created_at,
-        mine: m.sender_user_id === session.userId,
+        mine: actor.userId
+          ? m.sender_user_id === actor.userId
+          : identity.isCoach && m.sender_user_id === null && m.sender_name === identity.senderName,
       })),
       canPost,
       postBlockedReason: canPost
@@ -94,16 +93,14 @@ export async function GET(req: NextRequest) {
 
 // POST /api/team/chat { teamId, body } — send a message.
 export async function POST(req: NextRequest) {
-  const session = await getSessionFromRequest(req)
-  if (!session) return NextResponse.json({ error: 'Login required' }, { status: 401 })
-
   const payload = await req.json().catch(() => ({})) as { teamId?: string; body?: string }
   const teamId = (payload.teamId ?? '').toString()
   const body = (payload.body ?? '').toString().trim().slice(0, 1000)
   if (!teamId || !body) return NextResponse.json({ error: 'Message required' }, { status: 400 })
 
-  const identity = await resolveChatIdentity(teamId, session.userId, session.email)
-  if (!identity) return NextResponse.json({ error: 'Not on this team' }, { status: 403 })
+  const actor = await resolveChatActorFromRequest(req, teamId)
+  if (!actor) return NextResponse.json({ error: 'Login required' }, { status: 401 })
+  const identity = actor.identity
 
   if (!canPostInChat(identity)) {
     return NextResponse.json({
@@ -119,14 +116,14 @@ export async function POST(req: NextRequest) {
   try {
     const [msg] = (await db`
       INSERT INTO team_messages (team_id, sender_user_id, sender_name, sender_role, body)
-      VALUES (${teamId}, ${session.userId}, ${identity.senderName}, ${identity.isCoach ? 'coach' : 'player'}, ${body})
+      VALUES (${teamId}, ${actor.userId}, ${identity.senderName}, ${identity.isCoach ? 'coach' : 'player'}, ${body})
       RETURNING id, created_at
     `) as unknown as [{ id: number; created_at: string }]
 
     return NextResponse.json({
       message: {
         id: Number(msg.id),
-        senderUserId: session.userId,
+        senderUserId: actor.userId,
         senderName: identity.senderName,
         senderRole: identity.isCoach ? 'coach' : 'player',
         body,

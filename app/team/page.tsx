@@ -3,6 +3,11 @@ import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
 import Link from 'next/link'
 import { isInAppRequest } from '@/lib/in-app'
+import { getSession } from '@/lib/auth'
+import { getTeamSession } from '@/lib/team-auth'
+import { getOrgSession } from '@/lib/org-auth'
+import { db } from '@/lib/db'
+import TeamChatPanel from '@/components/TeamChatPanel'
 import { GraduationCapIcon, TrendingUpIcon, TrophyIcon } from 'lucide-react'
 
 export const metadata: Metadata = {
@@ -13,10 +18,78 @@ export const metadata: Metadata = {
 
 export default async function TeamLandingPage() {
   const inApp = await isInAppRequest()
+
+  // Signed-in visitors see THEIR team here — this page is the "Teams" home,
+  // not just the org sales pitch.
+  const session = await getSession()
+  let myTeams: Array<{ id: string; name: string; access_code: string }> = []
+  if (session) {
+    try {
+      myTeams = (await db`
+        SELECT t.id, t.name, t.access_code
+        FROM team_memberships tm JOIN teams t ON t.id = tm.team_id
+        WHERE tm.user_id = ${session.userId}
+        ORDER BY tm.joined_at DESC
+      `) as unknown as typeof myTeams
+    } catch {}
+  }
+  const teamSession = myTeams.length === 0 ? await getTeamSession() : null
+  const orgSession = myTeams.length === 0 && !teamSession ? await getOrgSession() : null
+
   return (
     <main className="min-h-screen bg-ink-950 text-chalk flex flex-col">
       <TopNav />
 
+      {/* Coach / org: jump straight to the admin dashboard */}
+      {(teamSession || orgSession) && (
+        <div className="bg-ink-900 border-b border-courtline px-6 py-4 flex items-center justify-center gap-4 flex-wrap">
+          <p className="text-chalk-dim text-sm">You&apos;re signed in as a {orgSession ? 'organization' : 'coach'} —</p>
+          <Link
+            href={orgSession ? '/org/dashboard' : '/team/dashboard'}
+            className="bg-ember-500 hover:bg-ember-400 text-ink-950 font-bold px-5 py-2 rounded-full text-sm transition-colors"
+          >
+            Open your dashboard →
+          </Link>
+        </div>
+      )}
+
+      {/* Player: your teams live right here */}
+      {myTeams.length > 0 && (
+        <div className="px-6 pt-12 pb-4 max-w-3xl mx-auto w-full space-y-6">
+          <div>
+            <p className="eyebrow text-ember-400 select-none">Your teams</p>
+            <h1 className="font-display font-black uppercase text-[clamp(1.8rem,4vw,3rem)] leading-[0.95] mt-1">
+              My <span className="text-gradient-ember">Teams</span>
+            </h1>
+          </div>
+          {myTeams.map(t => (
+            <div key={t.id} className="bg-ink-900 border border-courtline rounded-2xl p-5 space-y-4">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div>
+                  <p className="font-display font-bold uppercase text-chalk text-lg">{t.name}</p>
+                  <p className="text-chalk-dim text-xs mt-0.5">Team code: <span className="font-mono">{t.access_code}</span></p>
+                </div>
+                <Link
+                  href={`/dashboard/leaderboard?team=${t.id}`}
+                  className="text-ember-400 hover:text-ember-300 text-sm font-semibold transition-colors"
+                >
+                  Leaderboard →
+                </Link>
+              </div>
+              <div className="bg-white rounded-xl p-4">
+                <TeamChatPanel teamId={t.id} />
+              </div>
+            </div>
+          ))}
+          <p className="text-chalk-dim text-xs text-center pb-6">
+            Shot history and account settings live on your{' '}
+            <Link href="/dashboard" className="text-ember-400 underline">dashboard</Link>.
+          </p>
+        </div>
+      )}
+
+      {/* Org marketing — only for visitors not on a team */}
+      {myTeams.length === 0 && (<>
       {/* Hero */}
       <div className="hero-glow grain relative flex flex-col items-center text-center px-6 pt-16 pb-14 space-y-10">
         <div className="space-y-5 max-w-2xl">
@@ -78,12 +151,14 @@ export default async function TeamLandingPage() {
           >
             Register Organization
           </Link>
-          <Link
-            href="/login"
-            className="border border-courtline hover:border-chalk-dim active:scale-[0.98] text-chalk font-bold px-8 py-4 rounded-full transition-all"
-          >
-            Log In
-          </Link>
+          {!session && !teamSession && !orgSession && (
+            <Link
+              href="/login"
+              className="border border-courtline hover:border-chalk-dim active:scale-[0.98] text-chalk font-bold px-8 py-4 rounded-full transition-all"
+            >
+              Log In
+            </Link>
+          )}
         </div>
       </div>
 
@@ -127,6 +202,8 @@ export default async function TeamLandingPage() {
         </Link>
         )}
       </div>
+
+      </>)}
 
       <div className="flex-1" />
       <SiteFooter />

@@ -40,7 +40,7 @@ type SubmissionRow = {
   frame_urls: string[] | null
 }
 
-export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ app?: string }> }) {
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ app?: string; tab?: string }> }) {
   const session = await getSession()
   if (!session) redirect('/login')
 
@@ -398,6 +398,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
         {/* ── Tabs ───────────────────────────────────────────────── */}
         <AccountTabs
+          defaultTab={params.tab}
           tabs={[
             { id: 'shots', label: 'Shot History', count: submissions.length, content: shotsTab },
             {

@@ -17,11 +17,11 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://www.learnhoops.com'),
   title: 'LearnHoops.com',
   description:
-    'AI basketball shot analysis. Upload a video, get a private breakdown across 17 form criteria in minutes — find what is holding your shot back.',
+    'AI basketball shot analysis. Upload a video, get a private breakdown across 18 form criteria in minutes — find what is holding your shot back.',
   alternates: { canonical: '/' },
   openGraph: {
     title: 'LearnHoops.com',
-    description: 'AI basketball shot analysis. Upload a video, get scored across 17 form criteria.',
+    description: 'AI basketball shot analysis. Upload a video, get scored across 18 form criteria.',
     siteName: 'LearnHoops.com',
     url: 'https://www.learnhoops.com',
     type: 'website',

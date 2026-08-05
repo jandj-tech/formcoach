@@ -103,6 +103,7 @@ KEY FORM PRINCIPLES (use these to evaluate):
 - Release: ball rolls off index and middle fingertips with backspin — palm contact reduces control
 - Power: flows from legs upward through core, not arm-muscled
 - One-hand release: shooting hand controls everything at release — two-hand push is a clear flaw
+- Stance: feet approximately shoulder width apart is the most efficient base for power and connection — small deviations are normal and fine; only a clearly narrow (unstable) or clearly excessive (leg-drive-restricting) stance is a flaw
 - Dominant foot: the shooting-side foot being SLIGHTLY ahead is CORRECT form — this should score 9–10, not be penalized. Only deduct if feet are completely even or the wrong foot is leading.
 
 You will receive ${n} sequential frames. Frame guide:

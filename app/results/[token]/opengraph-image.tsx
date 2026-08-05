@@ -136,7 +136,7 @@ export default async function Image({ params }: { params: Promise<{ token: strin
             display: 'flex',
           }}
         >
-          Scored across 17 shooting-form criteria · LearnHoops.com
+          Scored across 18 shooting-form criteria · LearnHoops.com
         </div>
       </div>
     ),

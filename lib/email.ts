@@ -34,7 +34,7 @@ export async function sendResultsEmail(to: string, token: string) {
     text: [
       `Your shot analysis is ready.`,
       ``,
-      `We studied 12 frames across 17 coaching criteria. View your full breakdown here:`,
+      `We studied 12 frames across 18 coaching criteria. View your full breakdown here:`,
       link,
       ``,
       `This link is private to you — bookmark it, it'll always work.`,
@@ -61,7 +61,7 @@ export async function sendResultsEmail(to: string, token: string) {
         <tr><td style="padding:36px 32px 8px;">
           <h1 style="margin:0 0 10px;color:#111111;font-size:24px;line-height:1.25;font-weight:800;">Your shot analysis is ready.</h1>
           <p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;">
-            We studied 12 frames of your shot across 17 coaching criteria.
+            We studied 12 frames of your shot across 18 coaching criteria.
             Your full breakdown — overall score, what you're doing well, and exactly what to fix — is one tap away.
           </p>
         </td></tr>
@@ -403,7 +403,7 @@ export async function sendPromoEmail(to: string) {
     text: [
       `Your jump shot, broken down by AI.`,
       ``,
-      `Upload a video at LearnHoops.com and get your shooting form scored across 17 coaching criteria.`,
+      `Upload a video at LearnHoops.com and get your shooting form scored across 18 coaching criteria.`,
       `Analyze your shot: ${BASE_URL}/analyze`,
       ``,
       `Train the right way with the right ball — the LearnHoops basketball has finger placement guides on the surface and comes in right- and left-handed versions, so you groove the correct hand position on every rep.`,
@@ -425,7 +425,7 @@ export async function sendPromoEmail(to: string) {
       <tr><td style="padding:36px 32px 8px;">
         <h1 style="margin:0 0 10px;color:#111;font-size:23px;line-height:1.25;font-weight:800;">Your jump shot, broken down by AI.</h1>
         <p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;">
-          Upload a video and LearnHoops scores your shooting form across 17 coaching criteria — so you know
+          Upload a video and LearnHoops scores your shooting form across 18 coaching criteria — so you know
           exactly what to fix.
         </p>
       </td></tr>

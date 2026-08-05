@@ -82,7 +82,7 @@ export default function PremiumCTA({ dark = false, initiated = false }: { dark?:
       </div>
 
       <div>
-        <p className={`text-xs ${subColor} mb-2`}>Each token gives you one full AI shot analysis across 17 coaching criteria.</p>
+        <p className={`text-xs ${subColor} mb-2`}>Each token gives you one full AI shot analysis across 18 coaching criteria.</p>
         <div className="flex items-center justify-between gap-3">
           <div>
             <span className="text-orange-500 font-black text-2xl">${price}</span>

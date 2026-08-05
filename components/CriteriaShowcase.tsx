@@ -15,6 +15,7 @@ const CHANNEL_URL = 'https://www.youtube.com/@LearnHoopsbasketball'
 // are coaching-rubric copy (LOOK FOR / AVOID) meant for the AI analyzer — too
 // long for cards. Falls back to DB description for any criterion not listed.
 const SHORT_DESCRIPTIONS: Record<string, string> = {
+  'Feet Shoulder Width Apart': 'A shoulder-width base for balance and power.',
   'Thumb is Spread Wide': 'Thumb spread wide for grip and control.',
   'Guide Hand Placement': 'Guide hand sits on the side, never on top.',
   'Palm Non-Contact with Ball': 'Ball on the fingertips, not the palm.',

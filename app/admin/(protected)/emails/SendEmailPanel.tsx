@@ -62,7 +62,7 @@ Every ball also includes 5 free AI shot analyses — so you can watch your form 
     headline: 'Know exactly what to fix in your shot',
     body: `Hey {{name}},
 
-Upload one video of your jump shot and LearnHoops scores it across 17 coaching criteria — release point, elbow alignment, follow-through, and more.
+Upload one video of your jump shot and LearnHoops scores it across 18 coaching criteria — release point, elbow alignment, follow-through, and more.
 
 You'll get an overall score, what you're already doing well, and the exact fixes that will add points to your shot.`,
     ctaText: 'Analyze my shot',

@@ -38,8 +38,8 @@ export async function generateMetadata({ params }: { params: Promise<{ token: st
     ? `I scored ${score!.toFixed(1)}/10 on LearnHoops 🏀`
     : 'AI Shot Analysis — LearnHoops.com'
   const description = hasScore
-    ? 'My jump shot, graded by AI across 17 shooting-form criteria. Upload yours and see if you can beat me.'
-    : 'Upload a video of your jump shot and get graded across 17 shooting-form criteria in minutes.'
+    ? 'My jump shot, graded by AI across 18 shooting-form criteria. Upload yours and see if you can beat me.'
+    : 'Upload a video of your jump shot and get graded across 18 shooting-form criteria in minutes.'
 
   return {
     title,

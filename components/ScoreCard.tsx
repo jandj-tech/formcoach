@@ -4,6 +4,8 @@ import LearnVideo from './LearnVideo'
 const CHANNEL_URL = 'https://www.youtube.com/@LearnHoopsbasketball'
 
 const IMPROVEMENT_TIPS: Record<string, string> = {
+  'Feet Shoulder Width Apart':
+    'Before every shot, set your feet approximately shoulder width apart — wide enough to feel planted, narrow enough that your knees can bend freely. Check yourself in a mirror or on the court lines: your feet should sit roughly under your shoulders. Practice stepping into this stance 20 times without the ball until it becomes your automatic base, then keep checking it before each catch. A consistent shoulder-width base gives you the most efficient platform for power and a connected shot.',
   'Thumb is Spread Wide':
     'Actively spread your thumb as wide as possible away from your fingers every time you grip the ball. In practice, check your thumb position before each shot — it should look like you are trying to palm the ball. Do 50 slow-motion form shots focusing only on thumb spread until it becomes automatic.',
   'Guide Hand Placement':

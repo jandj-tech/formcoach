@@ -99,9 +99,14 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS nickname VARCHAR(50);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token VARCHAR(64);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires TIMESTAMP;
 
+-- Per-criterion grading rubric used by the AI analyzer (lib/analyze.ts).
+-- Existed in production before being captured here.
+ALTER TABLE criteria ADD COLUMN IF NOT EXISTS grading_notes TEXT;
+
 -- Seed custom criteria (only if table is empty)
 INSERT INTO criteria (name, description, weight, order_index)
 SELECT * FROM (VALUES
+  ('Feet Shoulder Width Apart', 'Feet are set approximately shoulder width apart, creating a stable base for balance, power transfer, and a connected shot', 1.0, 1),
   ('Thumb is Spread Wide', 'The shooting hand thumb is spread wide for proper grip and control of the ball', 1.0, 2),
   ('Guide Hand Placement', 'Guide hand is positioned correctly on the side of the ball, not interfering with the shot', 1.0, 3),
   ('Palm Non-Contact with Ball', 'The ball rests on the finger pads, not the palm — palm should not contact the ball', 1.0, 4),
@@ -121,3 +126,14 @@ SELECT * FROM (VALUES
   ('Connected Shot', 'All elements of the shot flow together in one connected, fluid motion from legs through release', 1.0, 18)
 ) AS v(name, description, weight, order_index)
 WHERE NOT EXISTS (SELECT 1 FROM criteria LIMIT 1);
+
+-- Add the stance criterion to databases seeded before it existed. Placed
+-- before every current criterion (order_index 1 was never used by the seed).
+INSERT INTO criteria (name, description, grading_notes, weight, order_index)
+SELECT
+  'Feet Shoulder Width Apart',
+  'Feet are set approximately shoulder width apart, creating a stable base for balance, power transfer, and a connected shot',
+  'Assess stance width during the SETUP frames, before the player rises into the shot. LOOK FOR: feet planted approximately shoulder width apart — a stable, balanced base roughly under the shoulders. Slightly wider or narrower than exact shoulder width is normal and scores 9-10 as long as the player looks balanced. AVOID / DEDUCT FOR: feet clearly too narrow (inside hip width, ankles nearly together, unstable base) or excessively wide (well beyond the shoulders, restricting the knees and leg drive). Only deduct when the stance-width flaw is clearly visible; if the stance looks roughly shoulder width and balanced, score 10. If the feet are never clearly visible in the setup frames, return null.',
+  1.0,
+  (SELECT COALESCE(MIN(order_index), 2) - 1 FROM criteria)
+WHERE NOT EXISTS (SELECT 1 FROM criteria WHERE name = 'Feet Shoulder Width Apart');

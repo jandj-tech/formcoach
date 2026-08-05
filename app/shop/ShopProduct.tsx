@@ -273,17 +273,17 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
               <h2 className="font-display font-black uppercase text-[clamp(1.9rem,4vw,3rem)] leading-[0.95]">
                 One shot.
                 <br />
-                <span className="text-gradient-ember">Seventeen criteria.</span>
+                <span className="text-gradient-ember">Eighteen criteria.</span>
               </h2>
               <p className="text-ink-950/60 leading-relaxed">
                 Upload a video of your shot and our AI studies 12 frames of it,
-                scoring the same 17 fundamentals real coaches teach — then tells
+                scoring the same 18 fundamentals real coaches teach — then tells
                 you exactly what to fix.
               </p>
               <div className="space-y-2">
                 <ShopAccordion title="What do I get?">
                   A full private breakdown: your overall score, a score and
-                  coaching tip for each of the 17 criteria, and the frames the
+                  coaching tip for each of the 18 criteria, and the frames the
                   AI studied. Your results link is emailed to you and stays
                   private — bookmark it, it always works.
                 </ShopAccordion>

@@ -12,7 +12,7 @@ import { db } from '@/lib/db'
 
 export const metadata: Metadata = {
   title: 'Analyze — LearnHoops.com',
-  description: 'Upload a video of your shot and get scored across 17 coaching criteria.',
+  description: 'Upload a video of your shot and get scored across 18 coaching criteria.',
 }
 
 export default async function AnalyzePage() {
@@ -71,7 +71,7 @@ export default async function AnalyzePage() {
           Analyze <span className="text-gradient-ember">your shot</span>
         </h1>
         <p className="text-chalk-dim text-sm sm:text-base mt-4 max-w-md">
-          Upload a video and our AI will score your form across 17 coaching criteria.
+          Upload a video and our AI will score your form across 18 coaching criteria.
         </p>
       </section>
 

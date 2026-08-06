@@ -17,6 +17,7 @@ import InfoTip from '@/components/InfoTip'
 import AccountTabs from '@/components/account/AccountTabs'
 import TeamChatPanel from '@/components/TeamChatPanel'
 import EmailTeamPanel from '@/components/EmailTeamPanel'
+import TeamSchedulePanel from '@/components/TeamSchedulePanel'
 import Section from '@/components/account/Section'
 import { copyToClipboard } from '@/lib/copy'
 import { useCart } from '@/lib/cart'
@@ -900,6 +901,15 @@ export default function TeamDashboardClient({
       <AccountTabs
         tabs={[
           { id: 'players', label: 'Players', count: rosterCount, content: playersTab },
+          {
+            id: 'schedule',
+            label: 'Schedule',
+            content: (
+              <Section title="Team Schedule" defaultOpen>
+                <TeamSchedulePanel teamId={team.id} theme="light" />
+              </Section>
+            ),
+          },
           { id: 'chat', label: 'Chat', content: <TeamChatPanel teamId={team.id} /> },
           { id: 'email', label: 'Email Team', content: <EmailTeamPanel teamId={team.id} playerCount={members.length} /> },
           { id: 'uploads', label: 'Uploads', content: uploadsTab },

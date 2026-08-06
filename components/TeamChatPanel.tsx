@@ -32,7 +32,7 @@ function timeLabel(iso: string): string {
 // Team chat for the website. Same rules as the app — chats start locked,
 // the coach opens posting or grants access per player — with the admin
 // controls laid out plainly so coach work is one click.
-export default function TeamChatPanel({ teamId }: { teamId: string }) {
+export default function TeamChatPanel({ teamId, tall = false }: { teamId: string; tall?: boolean }) {
   const [state, setState] = useState<ChatState | null | 'error'>(null)
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
@@ -178,7 +178,7 @@ export default function TeamChatPanel({ teamId }: { teamId: string }) {
       )}
 
       {/* Messages */}
-      <div ref={scrollRef} className="h-80 overflow-y-auto border border-gray-200 rounded-xl bg-white p-4 space-y-2">
+      <div ref={scrollRef} className={`${tall ? 'h-[60vh]' : 'h-80'} overflow-y-auto border border-gray-200 rounded-xl bg-white p-4 space-y-2`}>
         {state.messages.length === 0 ? (
           <p className="text-sm text-gray-400 text-center pt-24">No messages yet.</p>
         ) : (

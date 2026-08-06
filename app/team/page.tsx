@@ -13,7 +13,7 @@ import { GraduationCapIcon, TrendingUpIcon, TrophyIcon } from 'lucide-react'
 export const metadata: Metadata = {
   title: 'Organizations — LearnHoops.com',
   description:
-    'LearnHoops Team Plan: AI shot analysis for whole organizations — player rankings, improvement tracking, and credits from $1.49 per upload.',
+    'LearnHoops Team Plan: AI shot analysis for whole organizations — player rankings, improvement tracking, and credits from $0.99 per upload.',
 }
 
 export default async function TeamLandingPage() {
@@ -120,7 +120,7 @@ export default async function TeamLandingPage() {
               </>
             ) : (
               <>
-                <div className="font-numeric text-3xl text-ember-500">$1.49</div>
+                <div className="font-numeric text-3xl text-ember-500">$0.99</div>
                 <div className="font-display font-bold uppercase text-chalk">Per upload</div>
                 <div className="text-chalk-dim text-sm">Buy credits and use them when you need them.</div>
               </>

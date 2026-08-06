@@ -181,7 +181,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     ? `${user.first_name} ${user.last_initial}`
     : null
   const hasName = !!fullName
-  const tokenPrice = onInitiatedTeam ? '1.49' : '2.79'
+  const tokenPrice = onInitiatedTeam ? '0.99' : '1.79'
 
   const shotsTab = (
     <div className="space-y-3">

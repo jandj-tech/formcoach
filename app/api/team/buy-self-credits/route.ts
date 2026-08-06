@@ -12,7 +12,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL && process.env.NEXT_PUBLIC_BAS
     : 'http://localhost:3000'
 
 // A coach or org owner buys analysis credits for their own shot uploads.
-// $1.49 each once their team has 8+ players, $2.79 before.
+// $0.99 each once their team has 8+ players, $1.79 before.
 export async function POST(req: NextRequest) {
   // Digital goods cannot be sold via Stripe inside the iOS app (guideline 3.1.1).
   const inAppBlock = rejectInAppPurchase(req)
@@ -30,8 +30,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid quantity' }, { status: 400 })
     }
 
-    // A team coach (no org) only gets $1.49 if their own team is initiated.
-    // An org owner gets $1.49 once any team in their org is initiated.
+    // A team coach (no org) only gets $0.99 if their own team is initiated.
+    // An org owner gets $0.99 once any team in their org is initiated.
     let liveTeam = false
     if (teamSession) {
       const state = await getTeamTokenState(teamSession.teamId)

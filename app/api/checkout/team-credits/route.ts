@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid quantity' }, { status: 400 })
     }
 
-    // Coach credits: $1.49 once the team is initiated, $2.79 before.
+    // Coach credits: $0.99 once the team is initiated, $1.79 before.
     const state = await getTeamTokenState(session.teamId)
     const unitAmount = state?.initiated ? TEAM_TOKEN_PRICE_CENTS : REGULAR_ANALYSIS_PRICE_CENTS
 

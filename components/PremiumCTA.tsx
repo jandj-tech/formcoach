@@ -13,7 +13,7 @@ export default function PremiumCTA({ dark = false, initiated = false }: { dark?:
   const [open, setOpen] = useState(false)
   const [region, setRegion] = useState<Region>('US')
   const [error, setError] = useState('')
-  const price = initiated ? '1.49' : '2.79'
+  const price = initiated ? '0.99' : '1.79'
 
   useEffect(() => {
     fetch('/api/region').then(r => r.json()).then(({ region }) => setRegion(region)).catch(() => {})

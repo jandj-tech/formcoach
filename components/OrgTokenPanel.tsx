@@ -68,7 +68,7 @@ export default function OrgTokenPanel({
   const [allocQty, setAllocQty] = useState(10)
 
   const anyInitiated = teams.some(t => t.initiated)
-  const pricePerToken = anyInitiated ? 1.49 : 2.79
+  const pricePerToken = anyInitiated ? 0.99 : 1.79
   const buyTotal = (buyQty * pricePerToken).toFixed(2)
 
   const teamPlayers = players.filter(p => p.teamId === assignTeamId)
@@ -224,8 +224,8 @@ export default function OrgTokenPanel({
             {/* Pricing notice when no team has reached 8 players */}
             {!anyInitiated && teams.length > 0 && (
               <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-4 space-y-3">
-                <p className="text-sm font-black text-orange-900">Tokens drop to $1.49 once a team reaches 8 players</p>
-                <p className="text-xs text-orange-700">Currently $2.79 each — get more players to unlock the lower price.</p>
+                <p className="text-sm font-black text-orange-900">Tokens drop to $0.99 once a team reaches 8 players</p>
+                <p className="text-xs text-orange-700">Currently $1.79 each — get more players to unlock the lower price.</p>
                 <div className="space-y-2 pt-1">
                   {teams.map(t => {
                     const pct = Math.min(100, (t.memberCount / 8) * 100)
@@ -240,7 +240,7 @@ export default function OrgTokenPanel({
                           <div className="bg-orange-500 h-1.5 rounded-full transition-all" style={{ width: `${pct}%` }} />
                         </div>
                         {left > 0 && (
-                          <p className="text-xs text-orange-600">{left} more player{left !== 1 ? 's' : ''} to unlock $1.49</p>
+                          <p className="text-xs text-orange-600">{left} more player{left !== 1 ? 's' : ''} to unlock $0.99</p>
                         )}
                       </div>
                     )
@@ -288,7 +288,7 @@ export default function OrgTokenPanel({
             <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 flex items-center justify-between">
               <p className="text-sm text-gray-600">
                 {buyQty} token{buyQty !== 1 ? 's' : ''} × ${pricePerToken}
-                {anyInitiated && <span className="ml-1.5 text-xs text-green-600 font-semibold">$1.49 rate unlocked</span>}
+                {anyInitiated && <span className="ml-1.5 text-xs text-green-600 font-semibold">$0.99 rate unlocked</span>}
               </p>
               <p className="text-lg font-black text-black">${buyTotal}</p>
             </div>

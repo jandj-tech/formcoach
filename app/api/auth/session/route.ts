@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
       }
 
       // If any of their teams has reached the initiated player count, the
-      // per-analysis price is $1.49 instead of $2.79.
+      // per-analysis price is $0.99 instead of $1.79.
       const onInitiatedTeam = onTeam && (await userHasInitiatedTeam(user.id))
 
       return NextResponse.json({

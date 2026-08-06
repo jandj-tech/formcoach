@@ -8,7 +8,7 @@ export default function BuyTokenButton({ isInApp = false, initiated = false }: {
   const [region, setRegion] = useState('US')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const price = initiated ? '1.49' : '2.79'
+  const price = initiated ? '0.99' : '1.79'
 
   useEffect(() => {
     fetch('/api/region').then(r => r.json()).then(({ region: r }) => setRegion(r)).catch(() => {})

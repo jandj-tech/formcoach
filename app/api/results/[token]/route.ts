@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { humanizeReasoning } from '@/lib/sanitize'
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
@@ -43,7 +44,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
       id: s.id,
       name: s.name,
       score: s.ai_score !== null ? Number(s.ai_score) : null,
-      reasoning: s.ai_reasoning,
+      // Same sanitizing the web ScoreCard applies — this feeds the mobile app,
+      // so raw internal wording must not reach players here either.
+      reasoning: humanizeReasoning(s.ai_reasoning),
     })),
   })
 }

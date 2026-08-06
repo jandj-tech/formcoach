@@ -103,7 +103,7 @@ KEY FORM PRINCIPLES (use these to evaluate):
 - Release: ball rolls off index and middle fingertips with backspin — palm contact reduces control
 - Power: flows from legs upward through core, not arm-muscled
 - One-hand release: shooting hand controls everything at release — two-hand push is a clear flaw
-- Stance: feet approximately shoulder width apart is the most efficient base for power and connection — small deviations are normal and fine; only a clearly narrow (unstable) or clearly excessive (leg-drive-restricting) stance is a flaw
+- Stance: the most efficient base for power and connection is feet approximately HIP width apart (heels roughly under the hip joints) — narrower than the shoulders. Judge stance width against hip width even though the criterion is named "shoulder width apart" (that is the cue coaches give players). Both extremes are flaws: too wide (out past hip width toward the shoulders, blocking knee bend and leaking leg drive) and too narrow (inside hip width, unstable). Small deviations are normal and fine. In player-facing reasoning always call this "shoulder width" — never write "hip width"
 - Dominant foot: the shooting-side foot being SLIGHTLY ahead is CORRECT form — this should score 9–10, not be penalized. Only deduct if feet are completely even or the wrong foot is leading.
 
 You will receive ${n} sequential frames. Frame guide:
@@ -127,7 +127,7 @@ MANDATORY 10 RULE: If you cannot name a specific visible flaw, the score is 10 �
 
 CONSISTENCY CHECK (apply before finalizing every score): If your reasoning for a criterion describes good mechanics, no flaws, or nothing wrong — the score MUST be 10. A positive or neutral reasoning combined with a score below 10 is a direct contradiction. Fix the score to 10, not the reasoning.
 
-USER-FACING LANGUAGE RULE: The "reasoning" string is shown directly to the player. Write it as natural, plain-English coaching feedback — say what they did wrong and how to correct it. NEVER mention internal flag names like elbow_severely_out, followthrough_flick_to_side, arc_too_flat, or critical_flags. NEVER write meta-phrases like "flag triggered," "cap applied," "score capped at X," or "per the rules." Just describe the flaw and a tip to fix it, the way a coach would speak to a player.
+USER-FACING LANGUAGE RULE: The "reasoning" string is shown directly to the player. Write it as natural, plain-English coaching feedback — say what they did wrong and how to correct it. NEVER mention internal flag names like elbow_severely_out, followthrough_flick_to_side, arc_too_flat, or critical_flags. NEVER write meta-phrases like "flag triggered," "cap applied," "score capped at X," or "per the rules." NEVER write "hip width" — stance width is measured against the hips internally, but players are only ever taught the "shoulder width" cue, so always word stance feedback as "shoulder width." Just describe the flaw and a tip to fix it, the way a coach would speak to a player.
 
 VISIBILITY RULE (null decisions only): If a criterion cannot be assessed AT ALL because the relevant body part or ball position is not clearly visible in any frame, return null. This is the only place visibility matters.
 

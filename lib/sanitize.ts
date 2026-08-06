@@ -14,6 +14,10 @@ const INTERNAL_TERMS: Array<[RegExp, string]> = [
   [/\b(?:score\s+)?capped?\s+at\s+\d+(?:\.\d+)?\b/gi, ''],
   [/\bcap(?:ped)?\s+applied\b/gi, ''],
   [/\bper\s+the\s+rules?\b/gi, ''],
+  // Stance width is graded against hip width internally, but players are only
+  // ever taught the "shoulder width" cue — never surface the internal measure.
+  [/\b(?:the\s+)?width\s+of\s+(?:the\s+|their\s+|his\s+|her\s+)?hips\b/gi, 'shoulder width'],
+  [/\bhips?[-\s]width\b/gi, 'shoulder width'],
 ]
 
 export function humanizeReasoning(text: string | null | undefined): string {

@@ -3,10 +3,14 @@
 import { useState } from 'react'
 import { useIsInApp } from '@/lib/useIsInApp'
 import {
+  INITIATION_BASE_PRICE_CENTS,
   INITIATION_MIN_PLAYERS,
   INITIATION_MIN_TOKENS,
+  TEAM_TOKEN_PRICE_CENTS,
   initiationPriceCents,
 } from '@/lib/team-pricing'
+
+const usd = (cents: number) => `$${(cents / 100).toFixed(2)}`
 
 interface Props {
   /** API route that creates the initiation checkout session. */
@@ -62,8 +66,8 @@ export default function InitiationPanel({ endpoint, teamId, playerCount }: Props
       <div>
         <p className="font-black text-black">Initiate this team</p>
         <p className="text-sm text-gray-600 mt-1">
-          To unlock the $0.99 token price, buy a one-time initiation package — a minimum of{' '}
-          {INITIATION_MIN_TOKENS} tokens for $30 (each token beyond {INITIATION_MIN_TOKENS} is $0.99).
+          To unlock the {usd(TEAM_TOKEN_PRICE_CENTS)} token price, buy a one-time initiation package — a minimum of{' '}
+          {INITIATION_MIN_TOKENS} tokens for {usd(INITIATION_BASE_PRICE_CENTS)} (each token beyond {INITIATION_MIN_TOKENS} is {usd(TEAM_TOKEN_PRICE_CENTS)}).
           Package tokens go into the team pool for you to assign to players.
         </p>
       </div>

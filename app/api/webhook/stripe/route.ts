@@ -71,7 +71,7 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ received: true })
     }
 
-    // --- Team initiation package: unlocks $2.50 pricing + fills the token pool ---
+    // --- Team initiation package: fills the token pool and stamps initiated_at ---
     if (metaType === 'team_initiation') {
       const teamId = session.metadata?.teamId
       const tokens = parseInt(session.metadata?.tokens || '0', 10)

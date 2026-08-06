@@ -7,8 +7,13 @@ export const INITIATION_MIN_PLAYERS = 8
 /** The one-time initiation package must include at least this many tokens. */
 export const INITIATION_MIN_TOKENS = 10
 
-/** Flat price (cents) of the initiation package — covers the first INITIATION_MIN_TOKENS tokens. */
-export const INITIATION_BASE_PRICE_CENTS = 3000
+/**
+ * Flat price (cents) of the initiation package — covers the first
+ * INITIATION_MIN_TOKENS tokens. Set to the regular price of those tokens plus a
+ * small premium for the permanent unlock, so the package never costs wildly
+ * more than simply buying the same tokens at the regular rate.
+ */
+export const INITIATION_BASE_PRICE_CENTS = 2000
 
 /** Regular per-analysis price (cents) — players, and coaches/orgs before their team is initiated. */
 export const REGULAR_ANALYSIS_PRICE_CENTS = 179

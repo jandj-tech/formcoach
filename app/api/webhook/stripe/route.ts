@@ -71,31 +71,6 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ received: true })
     }
 
-    // --- Team initiation package: fills the token pool and stamps initiated_at ---
-    if (metaType === 'team_initiation') {
-      const teamId = session.metadata?.teamId
-      const tokens = parseInt(session.metadata?.tokens || '0', 10)
-      if (teamId && tokens > 0) {
-        // Stripe may deliver the same event more than once — claim first so
-        // a redelivery can't top up the pool twice.
-        const claim = await claimStripeSession(session.id, tokens, `team:${teamId}`)
-        if (claim === 'already_processed') return NextResponse.json({ received: true })
-        try {
-          await db`
-            UPDATE teams
-            SET token_pool = COALESCE(token_pool, 0) + ${tokens},
-                initiated_at = COALESCE(initiated_at, NOW())
-            WHERE id = ${teamId}
-          `
-        } catch (err) {
-          console.error('Failed to initiate team:', err)
-          if (claim === 'claimed') await releaseStripeSessionClaim(session.id, 'team_initiation_failed')
-          return NextResponse.json({ received: true, handled: false })
-        }
-      }
-      return NextResponse.json({ received: true })
-    }
-
     // --- Coach self-upload credits ---
     if (metaType === 'coach_self_credits') {
       const coachEmail = session.metadata?.coachEmail?.toLowerCase()

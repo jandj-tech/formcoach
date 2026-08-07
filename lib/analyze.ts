@@ -103,11 +103,11 @@ KEY FORM PRINCIPLES (use these to evaluate):
 - Release: ball rolls off index and middle fingertips with backspin — palm contact reduces control
 - Power: flows from legs upward through core, not arm-muscled
 - One-hand release: shooting hand controls everything at release — two-hand push is a clear flaw
-- Stance: a correct base puts the feet anywhere between hip width and shoulder width — anything inside that band is good form and scores 9-10. Too narrow (feet inside the hips, ankles nearly together, legs reading as one column) and too wide (feet clearly outside the shoulders, straddled, knees splaying outward) are equally real flaws and belong in the 3-4 band, NOT 7-8. Stance width is directly measurable whenever the feet are visible, so never default to a high score on it. In player-facing reasoning always call this "shoulder width" — never write "hip width"
+- Stance: measure the feet at the START OF THE SHOOTING MOTION — the gather and rise, once the player has loaded into the knee bend — never in the idle frames before the shot begins. Players commonly stand with their feet close together and step out into their base as they go up, so a narrow reading taken before the shot starts is a grading error, not a flaw. A correct base puts the feet anywhere between hip width and shoulder width — anything inside that band is good form and scores 9-10. Too narrow (feet inside the hips, ankles nearly together, legs reading as one column) and too wide (feet clearly outside the shoulders, straddled, knees splaying outward) are equally real flaws and belong in the 3-4 band, NOT 7-8. Stance width is directly measurable whenever the feet are visible, so never default to a high score on it. In player-facing reasoning always call this "shoulder width" — never write "hip width"
 - Dominant foot: the shooting-side foot being SLIGHTLY ahead is CORRECT form — this should score 9–10, not be penalized. Only deduct if feet are completely even or the wrong foot is leading.
 
 You will receive ${n} sequential frames. Frame guide:
-- Frames 1–${earlyEnd}: SETUP — stance, knees, shot pocket, elbow, guide hand, thumb, palm
+- Frames 1–${earlyEnd}: SETUP AND GATHER — knees, shot pocket, elbow, guide hand, thumb, palm. Stance is measured at the END of this block, once the player has loaded and begun to rise — not in the first frames, where the feet are often not set yet
 - Frames ${earlyEnd + 1}–${midEnd}: RELEASE — power, one-hand release, two-finger release, guide hand separation
 - Frames ${midEnd + 1}–${n}: FOLLOW-THROUGH — wrist snap, guide hand finish, arc, forward motion
 

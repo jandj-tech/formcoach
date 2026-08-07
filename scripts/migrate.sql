@@ -148,9 +148,16 @@ WHERE NOT EXISTS (SELECT 1 FROM criteria WHERE name = 'Feet Shoulder Width Apart
 -- said how far to deduct, so the model read a visibly pinched stance as a
 -- "minor issue" and scored it 8 when the expert wanted 4.
 UPDATE criteria
-SET grading_notes = 'STANCE RUBRIC v6 — assess feet width in the SETUP frames, before the player rises into the shot.
+SET grading_notes = 'STANCE RUBRIC v7 — assess feet width at the START OF THE SHOOTING MOTION, not in the earliest frames.
 
-HOW TO MEASURE — THE CORRIDOR TEST. Never judge stance width by general impression; your first impression on this criterion is usually wrong. Run this exact procedure on a frame where the player is square to the camera:
+WHICH FRAME TO MEASURE — DO THIS FIRST, BEFORE MEASURING ANYTHING. Getting the frame wrong is the single biggest cause of a wrong score on this criterion.
+  Scan the frames in order and find the moment the shot actually begins: the player has the ball under control, has dipped into the knee bend, and is starting to rise. Measure the stance THERE — from the gather through the start of the upward drive. That is the base the player shoots from, and it is the only base that matters.
+  IGNORE every frame before that: standing idle, catching or receiving a pass, dribbling, walking or turning into position, resetting the feet. Players routinely stand with their feet close together while waiting and then STEP OUT into their base as they load into the shot. Measuring one of those earlier frames and calling the stance narrow is a grading error, not a finding.
+  If the feet are close early and correctly set by the time the player rises, the stance is CORRECT — score it on the rise. Feet that were narrow a moment before the shot are not a flaw.
+  If the feet move during the shot, use the widest set position between the gather and the moment the feet leave the floor.
+  Once the player leaves the floor, stop measuring — the feet coming together in the air is normal and is never a deduction.
+
+HOW TO MEASURE — THE CORRIDOR TEST. Never judge stance width by general impression; your first impression on this criterion is usually wrong. Run this exact procedure on a shooting-motion frame where the player is square to the camera:
   STEP 1. Find four points: the outer edge of each HIP, and the outer edge of each SHOULDER. If the arms are raised overhead, take the shoulder points at the widest part of the torso at the deltoids.
   STEP 2. Mentally drop a vertical plumb line straight down to the floor from all four points. On each side of the body this gives an inner line (from the hip) and an outer line (from the shoulder). The space between them is that side CORRIDOR.
   STEP 3. Look at where the OUTER edge of each shoe lands.
@@ -171,12 +178,15 @@ Convert to a ratio if it helps: shoe span divided by shoulder span. The same ban
 
 THE MOST COMMON GRADING ERROR IS MISSING A TOO-WIDE STANCE. A player in a loaded, knees-bent, hips-back posture reads as "athletic", "stable" and "balanced" even when the shoes are far outside the shoulder line. That impression is wrong. If the outer edges of the shoes are clearly OUTSIDE the outer edges of the shoulders, the stance is too wide no matter how balanced it looks — a shoe span half again the shoulder span is a 3-4, not a 9. Check the shoes against the shoulder line every single time, especially when the player is crouched or the ball is low.
 
-THE SECOND MOST COMMON ERROR IS MISSING A NARROW STANCE IN AN OTHERWISE TIDY SHOOTING POSE. A player standing tall and square, arms up in a clean shooting motion, looks like textbook form at a glance — and that glance will tell you the stance is fine when the feet are actually close together. It is not fine. Ignore the upper body entirely and look only at where the shoes sit against the plumb lines. Feet a few inches apart with the ankles nearly touching, legs reading as a single column, is a 3-4 — not a 6, not a 9. This is especially easy to miss when the player is far from the camera and small in the frame; when that happens, look harder at the feet rather than falling back on the overall impression.
+THE SECOND MOST COMMON ERROR IS SCORING A NARROW STANCE OFF A PRE-SHOT FRAME. Before you deduct for a narrow base, confirm the frame you measured is one where the player is actually loading and rising into the shot. If the only narrow frames are before the shot begins and the feet are set correctly once the player rises, the score is 9-10 and there is no flaw to report.
+
+THE THIRD MOST COMMON ERROR IS MISSING A NARROW STANCE IN AN OTHERWISE TIDY SHOOTING POSE. A player standing tall and square, arms up in a clean shooting motion, looks like textbook form at a glance — and that glance will tell you the stance is fine when the feet are actually close together. It is not fine. Ignore the upper body entirely and look only at where the shoes sit against the plumb lines. Feet a few inches apart with the ankles nearly touching, legs reading as a single column, is a 3-4 — not a 6, not a 9. This is especially easy to miss when the player is far from the camera and small in the frame; when that happens, look harder at the feet rather than falling back on the overall impression.
 
 THIS CRITERION IS DIRECTLY MEASURABLE, SO DO NOT DEFAULT TO A HIGH SCORE. Whenever both feet and both shoulders are visible you can measure the ratio, which makes a bad stance a specific, clearly visible flaw. The general burden-of-proof and default-to-10 rules do NOT soften this criterion.
 
-EXPERT CALIBRATION EXAMPLES — all three are real graded cases:
-- Player standing tall mid-shot, arms extended overhead, shoes only a few inches apart and well inside both plumb lines (ratio around 0.3): score 4. This was scored 8 and then 9 on review, and the expert corrected it to 4 both times. The clean upper body is what causes the mistake.
+EXPERT CALIBRATION EXAMPLES — all four are real graded cases:
+- Player squared to the camera in the gather, knees bent, ball at chest height, rising into the shot, shoes set at roughly shoulder width with the toes level: score 9-10. This was scored 4, and the expert corrected it to 9 or better. The model measured an earlier frame where the player was still standing with the feet close together before stepping out into the base. Measuring the wrong frame is the entire error — the shooting stance itself was correct.
+- Player standing tall mid-shot, arms extended overhead, shoes only a few inches apart and well inside both plumb lines (ratio around 0.3): score 4. This was scored 8 and then 9 on review, and the expert corrected it to 4 both times. The clean upper body is what causes the mistake. Note the difference from the case above: here the feet are still narrow DURING the shooting motion, so the narrow reading is real.
 - Player crouched with the ball low, thighs splayed, shoes clearly outside both plumb lines (ratio around 1.6): score 4. This was scored 9, and the expert corrected it to 4. The loaded posture is what causes the mistake.
 - Player standing square with the shoes level, inside the shoulder lines but at or outside the hip lines (ratio around 0.8-0.9): score 9. This was scored 6 on review and the expert corrected it to 9. It is the target, and calling it "a bit narrower than shoulder width" is the error — a shoe anywhere in the corridor is correct.
 
@@ -184,6 +194,6 @@ BOTH EXTREMES COUNT EQUALLY. Too wide is exactly as much a flaw as too narrow. P
 
 PLAYER-FACING WORDING: always say "shoulder width" — tell the player the stance is too narrow, too wide, or a good shoulder-width base. NEVER write "hip width", and never mention ratios or measurements in the reasoning.
 
-If the feet are never clearly visible in any setup frame, return null.'
+If the feet are never clearly visible in any frame of the shooting motion, return null.'
 WHERE name = 'Feet Shoulder Width Apart'
-  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'STANCE RUBRIC v6%');
+  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'STANCE RUBRIC v7%');

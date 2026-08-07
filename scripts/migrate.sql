@@ -148,28 +148,42 @@ WHERE NOT EXISTS (SELECT 1 FROM criteria WHERE name = 'Feet Shoulder Width Apart
 -- said how far to deduct, so the model read a visibly pinched stance as a
 -- "minor issue" and scored it 8 when the expert wanted 4.
 UPDATE criteria
-SET grading_notes = 'STANCE RUBRIC v3 — assess feet width in the SETUP frames, before the player rises into the shot.
+SET grading_notes = 'STANCE RUBRIC v6 — assess feet width in the SETUP frames, before the player rises into the shot.
 
-ACCEPTABLE BAND: the feet should land somewhere between hip width and shoulder width — heels roughly under the hips at the narrow end, under the outside of the shoulders at the wide end. Anywhere inside that band is correct form and scores 9-10. The ideal sits nearer the hip-width end, but do NOT penalise a player whose feet are out at shoulder width. The criterion is NAMED "shoulder width apart" because that is the cue coaches give players.
+HOW TO MEASURE — THE CORRIDOR TEST. Never judge stance width by general impression; your first impression on this criterion is usually wrong. Run this exact procedure on a frame where the player is square to the camera:
+  STEP 1. Find four points: the outer edge of each HIP, and the outer edge of each SHOULDER. If the arms are raised overhead, take the shoulder points at the widest part of the torso at the deltoids.
+  STEP 2. Mentally drop a vertical plumb line straight down to the floor from all four points. On each side of the body this gives an inner line (from the hip) and an outer line (from the shoulder). The space between them is that side CORRIDOR.
+  STEP 3. Look at where the OUTER edge of each shoe lands.
+  STEP 4. Score from what you see:
+    - Each shoe lands anywhere INSIDE ITS CORRIDOR, or on either line: CORRECT. Score 9-10.
+    - Each shoe lands a little short of the hip line, or a little past the shoulder line: 7-8.
+    - Shoes are clearly INSIDE the hip lines, bunched in toward the centre of the body: TOO NARROW. Score 3-4.
+    - Shoes are clearly OUTSIDE the shoulder lines: TOO WIDE. Score 3-4.
 
-THIS CRITERION IS DIRECTLY MEASURABLE — DO NOT DEFAULT TO A HIGH SCORE. Whenever both feet are visible you can see exactly how far apart they are, so a narrow or wide stance is a specific, clearly visible flaw. The general burden-of-proof and default-to-10 rules do NOT soften this criterion: if the feet are obviously pinched together or obviously straddled, score the 3-4 band. Giving a visibly bad stance a 7 or 8 is a grading error, and it is the most common mistake made on this criterion.
+THE CORRIDOR IS WIDE ON PURPOSE. A stance at hip width and a stance at shoulder width are BOTH fully correct and both score 9-10. Never mark a player down for sitting at the narrow end of the corridor — do not write that a hip-width stance is "a bit narrow" or "could be wider". Only go below 9 when a shoe is outside its corridor entirely.
 
-SCORE BANDS:
-- 9-10: feet between hip width and shoulder width, level, balanced, knees free to bend out over the feet.
-- 7-8: just outside that band one way or the other, but the base still looks stable. Name the specific deviation.
-- 5-6: clearly outside the band — visibly pinched in or spread out, base compromised.
-- 3-4: OBVIOUSLY WRONG. TOO NARROW — the feet are close together, the gap is roughly one foot width or less, the ankles are nearly touching, the legs read as a single column and there is no lateral balance. TOO WIDE — the feet are clearly outside the shoulder line, the stance looks straddled or sumo-like, the thighs splay and the knees track outward instead of over the feet, leaking leg drive sideways.
-- 1-2: extreme — feet touching, or a stance so wide the player cannot rise straight up.
+Convert to a ratio if it helps: shoe span divided by shoulder span. The same bands expressed that way:
+- 0.70 to 1.15 — CORRECT. Score 9-10. The feet sit between hip width and shoulder width. Anywhere in this band is good form; do not nitpick a player who is inside it.
+- 0.55 to 0.70, or 1.15 to 1.30 — slightly off but still stable. Score 7-8. Name the specific deviation.
+- 0.40 to 0.55, or 1.30 to 1.50 — clearly off. Score 5-6.
+- Below 0.40, or above 1.50 — OBVIOUSLY WRONG. Score 3-4.
+- Feet touching, or so wide the player cannot rise straight up. Score 1-2.
 
-EXPERT CALIBRATION EXAMPLES:
-- Player shooting with the feet only a few inches apart, clearly inside the hips: score 4. A case like this was scored 8, which the expert corrected to 4.
-- Player set in a wide straddled stance, feet well outside the shoulders with the knees splayed outward: score 4.
-- Player with the feet level and somewhere between hip and shoulder width, balanced under the body: score 8-10.
+THE MOST COMMON GRADING ERROR IS MISSING A TOO-WIDE STANCE. A player in a loaded, knees-bent, hips-back posture reads as "athletic", "stable" and "balanced" even when the shoes are far outside the shoulder line. That impression is wrong. If the outer edges of the shoes are clearly OUTSIDE the outer edges of the shoulders, the stance is too wide no matter how balanced it looks — a shoe span half again the shoulder span is a 3-4, not a 9. Check the shoes against the shoulder line every single time, especially when the player is crouched or the ball is low.
 
-BOTH EXTREMES COUNT EQUALLY. Too wide is exactly as much a flaw as too narrow — never treat a very wide base as "stable" or "athletic". Past shoulder width it blocks the knee bend and costs power.
+THE SECOND MOST COMMON ERROR IS MISSING A NARROW STANCE IN AN OTHERWISE TIDY SHOOTING POSE. A player standing tall and square, arms up in a clean shooting motion, looks like textbook form at a glance — and that glance will tell you the stance is fine when the feet are actually close together. It is not fine. Ignore the upper body entirely and look only at where the shoes sit against the plumb lines. Feet a few inches apart with the ankles nearly touching, legs reading as a single column, is a 3-4 — not a 6, not a 9. This is especially easy to miss when the player is far from the camera and small in the frame; when that happens, look harder at the feet rather than falling back on the overall impression.
 
-PLAYER-FACING WORDING: always say "shoulder width" — tell the player the stance is too narrow, too wide, or a good shoulder-width base. NEVER write "hip width" in the reasoning.
+THIS CRITERION IS DIRECTLY MEASURABLE, SO DO NOT DEFAULT TO A HIGH SCORE. Whenever both feet and both shoulders are visible you can measure the ratio, which makes a bad stance a specific, clearly visible flaw. The general burden-of-proof and default-to-10 rules do NOT soften this criterion.
+
+EXPERT CALIBRATION EXAMPLES — all three are real graded cases:
+- Player standing tall mid-shot, arms extended overhead, shoes only a few inches apart and well inside both plumb lines (ratio around 0.3): score 4. This was scored 8 and then 9 on review, and the expert corrected it to 4 both times. The clean upper body is what causes the mistake.
+- Player crouched with the ball low, thighs splayed, shoes clearly outside both plumb lines (ratio around 1.6): score 4. This was scored 9, and the expert corrected it to 4. The loaded posture is what causes the mistake.
+- Player standing square with the shoes level, inside the shoulder lines but at or outside the hip lines (ratio around 0.8-0.9): score 9. This was scored 6 on review and the expert corrected it to 9. It is the target, and calling it "a bit narrower than shoulder width" is the error — a shoe anywhere in the corridor is correct.
+
+BOTH EXTREMES COUNT EQUALLY. Too wide is exactly as much a flaw as too narrow. Past the shoulder line it blocks the knee bend and leaks leg drive sideways.
+
+PLAYER-FACING WORDING: always say "shoulder width" — tell the player the stance is too narrow, too wide, or a good shoulder-width base. NEVER write "hip width", and never mention ratios or measurements in the reasoning.
 
 If the feet are never clearly visible in any setup frame, return null.'
 WHERE name = 'Feet Shoulder Width Apart'
-  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'STANCE RUBRIC v3%');
+  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'STANCE RUBRIC v6%');

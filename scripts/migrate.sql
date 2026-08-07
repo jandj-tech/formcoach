@@ -199,3 +199,40 @@ PLAYER-FACING WORDING: always say "shoulder width" — tell the player the base 
 If the feet are never clearly visible during the shooting motion, return null. A landing you cannot see is never a reason to return null.'
 WHERE name = 'Feet Shoulder Width Apart'
   AND (grading_notes IS NULL OR grading_notes NOT LIKE 'STANCE RUBRIC v10%');
+
+-- Canonical "Square to the Basket" rubric, same versioned-guard pattern as the
+-- stance rubric above. Added because the criterion shipped with only its
+-- one-line description, and the model read "square" off the upper body alone:
+-- a player whose arms and shoulders looked clean scored high while his feet
+-- were planted pointing somewhere else entirely. It also returned null when
+-- the rim was out of frame, which is never necessary — foot-versus-torso
+-- alignment is visible within the player's own body.
+UPDATE criteria
+SET grading_notes = 'SQUARE RUBRIC v1 — do the feet, hips and shoulders all aim the same way the shot is going?
+
+YOU DO NOT NEED TO SEE THE RIM. This criterion is about whether the player''s own body agrees with itself. The feet, the hips, the shoulders and the arms should all point along the same line. When the feet point one way and the upper body points another, the player is not square — and you can see that entirely within the player, with the basket completely out of frame. Never return null because the rim is not visible, and never skip a deduction because you could not confirm where the basket is.
+
+HOW TO CHECK:
+  STEP 1. Find the SHOT LINE — the direction the shot is going. Read it off the upper body: where the shoulders face, and where the arms and ball are aimed.
+  STEP 2. Find the FOOT LINE — the direction the toes point. Use both feet; if they disagree with each other, that is itself a fault.
+  STEP 3. Compare the two lines and score the mismatch:
+    - Feet, hips and shoulders all aimed along the shot line: SQUARE. Score 9-10.
+    - Feet a little off the shot line, or one foot turned slightly while the other is straight: 7-8.
+    - Feet CLEARLY pointing a different direction from the torso and arms — the mismatch is obvious at a glance: NOT SQUARE. Score 5-6.
+    - Feet turned so far they are close to sideways to the shot line, or the torso is visibly twisting to compensate for where the feet are planted: 3-4.
+
+SQUARE DOES NOT MEAN PERFECT. Feet naturally sit at a small outward angle, and a shooter is square as long as the feet and the upper body are working along the same line. When they agree, score 9-10 — do not shave points for a few degrees, for one foot angled slightly out, or for a stance that merely looks casual. The 5-6 band is for a mismatch obvious at a glance, not for ordinary imperfection.
+
+A STAGGERED STANCE IS NOT A TURNED STANCE. The shooting-side foot being slightly AHEAD of the other is correct form and belongs to a different criterion — do not deduct here for it. What matters is the direction the toes POINT, not which foot is forward.
+
+THE MOST COMMON ERROR IS SCORING THIS OFF THE UPPER BODY ALONE. A player whose shoulders are square to the camera and whose arms look clean reads as "square" at a glance, and that glance ignores the feet entirely. Look down at the toes every time. Feet aimed away from where the ball is going is a real, visible flaw worth a 5-6 even when everything above the waist looks correct.
+
+EXPERT CALIBRATION — a real graded case:
+  - Player mid-shot with the ball at the set point, upper body and arms aimed one way, both feet clearly planted pointing a different direction, rim not visible in frame: score 5-6. The expert graded this 5-6. Scoring it high because the arms looked fine, or returning null because the basket was out of shot, are both the error.
+
+WHEN TO RETURN NULL: only when the feet are not visible at all during the shooting motion. Not being able to see the basket is never a reason.
+
+PLAYER-FACING WORDING: tell them to point their toes where they want the ball to go and get their feet, hips and shoulders lined up on the basket. Never mention lines, angles or degrees in the reasoning.'
+WHERE name = 'Square to the Basket'
+  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'SQUARE RUBRIC v1%');
+

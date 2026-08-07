@@ -24,6 +24,7 @@ interface AnalysisResult {
     elbow_severely_out: boolean
     followthrough_flick_to_side: boolean
     arc_too_flat: boolean
+    chest_pass_hands: boolean
   }
   criteria: CriterionResult[]
 }
@@ -139,7 +140,7 @@ MANDATORY 10 RULE: If you cannot name a specific visible flaw, the score is 10 �
 
 CONSISTENCY CHECK (apply before finalizing every score): If your reasoning for a criterion describes good mechanics, no flaws, or nothing wrong — the score MUST be 10. A positive or neutral reasoning combined with a score below 10 is a direct contradiction. Fix the score to 10, not the reasoning.
 
-USER-FACING LANGUAGE RULE: The "reasoning" string is shown directly to the player. Write it as natural, plain-English coaching feedback — say what they did wrong and how to correct it. NEVER mention internal flag names like elbow_severely_out, followthrough_flick_to_side, arc_too_flat, or critical_flags. NEVER write meta-phrases like "flag triggered," "cap applied," "score capped at X," or "per the rules." NEVER write "hip width" — stance width is measured against the hips internally, but players are only ever taught the "shoulder width" cue, so always word stance feedback as "shoulder width." Just describe the flaw and a tip to fix it, the way a coach would speak to a player.
+USER-FACING LANGUAGE RULE: The "reasoning" string is shown directly to the player. Write it as natural, plain-English coaching feedback — say what they did wrong and how to correct it. NEVER mention internal flag names like elbow_severely_out, followthrough_flick_to_side, arc_too_flat, chest_pass_hands, or critical_flags. NEVER write meta-phrases like "flag triggered," "cap applied," "score capped at X," or "per the rules." NEVER write "hip width" — stance width is measured against the hips internally, but players are only ever taught the "shoulder width" cue, so always word stance feedback as "shoulder width." Just describe the flaw and a tip to fix it, the way a coach would speak to a player.
 
 VISIBILITY RULE (null decisions only): If a criterion cannot be assessed AT ALL because the relevant body part or ball position is not clearly visible in any frame, return null. This is the only place visibility matters.
 
@@ -195,6 +196,10 @@ CRITICAL FLAGS — these operate on their own detection standard, independent of
   MINOR FLICK (do NOT set flag): if the shooting hand shows only a small, brief lateral movement at release that does not amount to significant convergence or near-crossing — mention it in the reasoning for the relevant criterion and score around 7–8, but leave this flag false.
   CHECK EVERY RELEASE FRAME carefully — not just the final follow-through frame. Look at the 2–3 frames right at release for any lateral hand deviation or arm convergence.
 
+- chest_pass_hands: in any frame from the shot pocket through the rise, the hands are on the ball like a CHEST PASS instead of a shot — both hands symmetrically on the SIDES of the ball, thumbs behind it, elbows flared out away from the body, and no hand underneath supporting the ball. The tell is SYMMETRY: in a real shot the two hands do visibly different jobs, the shooting hand sitting UNDER the ball carrying its weight while the guide hand rests on the side. In a chest-pass grip they mirror each other and the ball is pushed out from the chest by both arms together.
+  DO NOT set this flag just because both hands are on the ball — every shot starts that way and two hands on the ball during the gather is completely normal. Set it only when the shooting hand is clearly NOT under the ball AND the two hands mirror each other as the player rises into the shot.
+  When true: "Shot Pocket — Elbow", "Source of Shot Power" and "Shooting Through Guide Hand / One Hand Release" MUST each score 4 or below. Pushing the ball from the chest with both hands means it is not loaded in a shot pocket, the power is coming from the arms rather than the legs, and the release cannot be one-handed.
+
 - arc_too_flat: the ball travels on a low, flat trajectory rather than a proper high arc (45–60 degrees). If the ball visibly shoots out nearly flat or at a shallow angle with little height, set true. A flat shot has almost no arc and the ball comes in at a low angle toward the basket. Do NOT apply benefit-of-the-doubt here. When true: the shot arc criterion MUST score 4 or below.
 
 NOTE: These flags are the most important flaws to detect. Missing them is a bigger error than a false positive. When in doubt, flag it.
@@ -218,7 +223,8 @@ Return ONLY valid JSON, no other text:
   "critical_flags": {
     "elbow_severely_out": <true|false>,
     "followthrough_flick_to_side": <true|false>,
-    "arc_too_flat": <true|false>
+    "arc_too_flat": <true|false>,
+    "chest_pass_hands": <true|false>
   },
   "criteria": [
     { "id": <criterion_id>, "score": <1-10 or null>, "reasoning": "<1-2 sentences>" },
@@ -297,6 +303,7 @@ Return ONLY valid JSON, no other text:
 
   // Ensure new flag fields default to false if missing from response
   result.critical_flags.arc_too_flat = result.critical_flags.arc_too_flat ?? false
+  result.critical_flags.chest_pass_hands = result.critical_flags.chest_pass_hands ?? false
 
   // Hard-enforce arc null rule in TypeScript — prompt instructions alone are not reliable enough.
   // If the reasoning doesn't contain a confirmed outcome phrase, or contains uncertain language,
@@ -350,6 +357,25 @@ Return ONLY valid JSON, no other text:
     return result
   }
 
+  // A chest-pass grip is three flaws at once: the ball was never loaded in a
+  // pocket, the power came from the arms, and the release cannot be one-handed.
+  // Resolved by name because these ids come from the DB, not the seed order.
+  if (result.critical_flags.chest_pass_hands) {
+    const chestPassCriteria = [
+      'Shot Pocket — Elbow',
+      'Source of Shot Power',
+      'Shooting Through Guide Hand / One Hand Release',
+    ]
+    const capIds = activeCriteria
+      .filter((c) => chestPassCriteria.includes(c.name as string))
+      .map((c) => c.id as number)
+    for (const c of result.criteria) {
+      if (capIds.includes(c.id) && c.score !== null) {
+        c.score = Math.min(c.score as number, 4)
+      }
+    }
+  }
+
   // Recalculate overall using weighted average (weight column from DB)
   const activeCriteriaRows = activeCriteria as unknown as Array<{ id: number; weight: unknown }>
   const weightMap: Record<number, number> = Object.fromEntries(
@@ -363,8 +389,8 @@ Return ONLY valid JSON, no other text:
   }
 
   // Apply critical flag caps FIRST — stacking penalties for multiple flaws
-  const { elbow_severely_out, followthrough_flick_to_side, arc_too_flat } = result.critical_flags
-  const flagCount = [elbow_severely_out, followthrough_flick_to_side, arc_too_flat].filter(Boolean).length
+  const { elbow_severely_out, followthrough_flick_to_side, arc_too_flat, chest_pass_hands } = result.critical_flags
+  const flagCount = [elbow_severely_out, followthrough_flick_to_side, arc_too_flat, chest_pass_hands].filter(Boolean).length
   const flagsTriggered = flagCount > 0
   if (flagCount >= 3) {
     result.overall_score = Math.min(result.overall_score, 5.0)

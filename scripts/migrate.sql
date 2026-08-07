@@ -155,9 +155,14 @@ WHERE NOT EXISTS (SELECT 1 FROM criteria WHERE name = 'Feet Shoulder Width Apart
 -- them to 1280 before evaluating — at screenshot size the model misreads the
 -- feet and you end up tuning against your own proxy's noise.
 UPDATE criteria
-SET grading_notes = 'STANCE RUBRIC v9 — how wide is the player''s base at the moment they shoot?
+SET grading_notes = 'STANCE RUBRIC v10 — how wide is the player''s base at the moment they shoot?
 
-WHICH MOMENT TO MEASURE. Find the frame where the shot begins: ball under control, knees dipped, player starting to rise. Measure there. Ignore earlier frames — players stand with their feet together while waiting and step out into their base as they load, so a narrow reading taken before the shot starts is not a finding. But if the feet are STILL close together at the gather and rise, that IS the finding — never excuse it by assuming they were about to step out.
+WHICH MOMENT TO MEASURE. The window opens when the player starts driving upward into the shot and closes on the LAST frame where both feet are still touching the floor — that is, as they go up and at the top of the lift, before the ball is released and before the feet leave the ground. Measure inside that window and nowhere else.
+  Ignore everything before the window. Players stand with their feet together while waiting and step out into their base as they load, so a narrow reading taken before the shot starts is not a finding.
+  But if the feet are STILL close together inside the window, that IS the finding — never excuse it by assuming they were about to step out.
+  If the feet shift during the window, use the widest set position they hold while both feet are still down.
+  Once the feet leave the floor, stop. Feet coming together in the air is normal and is never a deduction.
+  A good base has a decent amount of daylight between the feet — a clearly separated, roughly shoulder-width stance held all the way up to takeoff. Both failures are real and score the same: too close together is bad, and too far apart is bad.
 
 THE MEASUREMENT — THE CORRIDOR TEST. Never judge the base by general impression; your first impression is usually wrong, and it is wrong in the generous direction far more often than not. On a frame where the player is square to the camera:
   STEP 1. Find four points: the outer edge of each HIP, and the outer edge of each SHOULDER. If the arms are overhead, take the shoulder points at the widest part of the torso at the deltoids.
@@ -193,4 +198,4 @@ PLAYER-FACING WORDING: always say "shoulder width" — tell the player the base 
 
 If the feet are never clearly visible during the shooting motion, return null. A landing you cannot see is never a reason to return null.'
 WHERE name = 'Feet Shoulder Width Apart'
-  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'STANCE RUBRIC v9%');
+  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'STANCE RUBRIC v10%');

@@ -129,21 +129,47 @@ WHERE NOT EXISTS (SELECT 1 FROM criteria LIMIT 1);
 
 -- Add the stance criterion to databases seeded before it existed. Placed
 -- before every current criterion (order_index 1 was never used by the seed).
-INSERT INTO criteria (name, description, grading_notes, weight, order_index)
+-- grading_notes is deliberately left NULL here; the UPDATE below owns it, so
+-- the rubric text lives in exactly one place and stays tunable.
+INSERT INTO criteria (name, description, weight, order_index)
 SELECT
   'Feet Shoulder Width Apart',
   'Feet are set approximately shoulder width apart, creating a stable base for balance, power transfer, and a connected shot',
-  'Stance width — assess during the SETUP frames, before the player rises into the shot. INTERNAL MEASUREMENT IS HIP WIDTH: correct, efficient stance places the feet approximately hip width apart, heels roughly under the hip joints. That is narrower than the shoulders. The criterion is NAMED "shoulder width apart" because that is the cue coaches give players and it produces the right result — but when you look at the frames, judge the stance against HIP width. LOOK FOR: feet planted about hip width apart, a balanced base with the knees free to bend straight out over the feet. Small deviations either side of exact hip width are normal and score 9-10 when the player looks balanced. DEDUCT FOR EITHER EXTREME — both are real flaws: (a) TOO WIDE — feet noticeably beyond hip width, out toward or past the outside of the shoulders, which flattens the base, blocks the knees from bending over the feet, and leaks leg drive; (b) TOO NARROW — feet inside hip width, ankles close together, an unstable base with no lateral balance. Only deduct when the flaw is clearly visible; if the stance looks about hip width and balanced, score 10. PLAYER-FACING WORDING: in your reasoning, always describe this to the player as "shoulder width" — say the stance is too wide, too narrow, or a good shoulder-width base. NEVER write "hip width" in the reasoning text; hip width is the internal measurement only. If the feet are never clearly visible in the setup frames, return null.',
   1.0,
   (SELECT COALESCE(MIN(order_index), 2) - 1 FROM criteria)
 WHERE NOT EXISTS (SELECT 1 FROM criteria WHERE name = 'Feet Shoulder Width Apart');
 
--- Retarget the stance rubric from shoulder width to hip width. The criterion
--- name and player-facing description intentionally keep saying "shoulder
--- width" (the coaching cue); only the internal grading measurement changes.
--- Guarded on the original text so it applies once and never overwrites later
--- edits. Also fills in a fresh-DB seed, where grading_notes starts NULL.
+-- Canonical stance rubric. Re-applied whenever the stored copy is not the
+-- current version, so tuning it means editing this one block and deploying.
+-- The criterion name and player-facing description keep saying "shoulder
+-- width" (the coaching cue) regardless of what the rubric measures.
+--
+-- v3 adds explicit score bands. v2 described both extremes as flaws but never
+-- said how far to deduct, so the model read a visibly pinched stance as a
+-- "minor issue" and scored it 8 when the expert wanted 4.
 UPDATE criteria
-SET grading_notes = 'Stance width — assess during the SETUP frames, before the player rises into the shot. INTERNAL MEASUREMENT IS HIP WIDTH: correct, efficient stance places the feet approximately hip width apart, heels roughly under the hip joints. That is narrower than the shoulders. The criterion is NAMED "shoulder width apart" because that is the cue coaches give players and it produces the right result — but when you look at the frames, judge the stance against HIP width. LOOK FOR: feet planted about hip width apart, a balanced base with the knees free to bend straight out over the feet. Small deviations either side of exact hip width are normal and score 9-10 when the player looks balanced. DEDUCT FOR EITHER EXTREME — both are real flaws: (a) TOO WIDE — feet noticeably beyond hip width, out toward or past the outside of the shoulders, which flattens the base, blocks the knees from bending over the feet, and leaks leg drive; (b) TOO NARROW — feet inside hip width, ankles close together, an unstable base with no lateral balance. Only deduct when the flaw is clearly visible; if the stance looks about hip width and balanced, score 10. PLAYER-FACING WORDING: in your reasoning, always describe this to the player as "shoulder width" — say the stance is too wide, too narrow, or a good shoulder-width base. NEVER write "hip width" in the reasoning text; hip width is the internal measurement only. If the feet are never clearly visible in the setup frames, return null.'
+SET grading_notes = 'STANCE RUBRIC v3 — assess feet width in the SETUP frames, before the player rises into the shot.
+
+ACCEPTABLE BAND: the feet should land somewhere between hip width and shoulder width — heels roughly under the hips at the narrow end, under the outside of the shoulders at the wide end. Anywhere inside that band is correct form and scores 9-10. The ideal sits nearer the hip-width end, but do NOT penalise a player whose feet are out at shoulder width. The criterion is NAMED "shoulder width apart" because that is the cue coaches give players.
+
+THIS CRITERION IS DIRECTLY MEASURABLE — DO NOT DEFAULT TO A HIGH SCORE. Whenever both feet are visible you can see exactly how far apart they are, so a narrow or wide stance is a specific, clearly visible flaw. The general burden-of-proof and default-to-10 rules do NOT soften this criterion: if the feet are obviously pinched together or obviously straddled, score the 3-4 band. Giving a visibly bad stance a 7 or 8 is a grading error, and it is the most common mistake made on this criterion.
+
+SCORE BANDS:
+- 9-10: feet between hip width and shoulder width, level, balanced, knees free to bend out over the feet.
+- 7-8: just outside that band one way or the other, but the base still looks stable. Name the specific deviation.
+- 5-6: clearly outside the band — visibly pinched in or spread out, base compromised.
+- 3-4: OBVIOUSLY WRONG. TOO NARROW — the feet are close together, the gap is roughly one foot width or less, the ankles are nearly touching, the legs read as a single column and there is no lateral balance. TOO WIDE — the feet are clearly outside the shoulder line, the stance looks straddled or sumo-like, the thighs splay and the knees track outward instead of over the feet, leaking leg drive sideways.
+- 1-2: extreme — feet touching, or a stance so wide the player cannot rise straight up.
+
+EXPERT CALIBRATION EXAMPLES:
+- Player shooting with the feet only a few inches apart, clearly inside the hips: score 4. A case like this was scored 8, which the expert corrected to 4.
+- Player set in a wide straddled stance, feet well outside the shoulders with the knees splayed outward: score 4.
+- Player with the feet level and somewhere between hip and shoulder width, balanced under the body: score 8-10.
+
+BOTH EXTREMES COUNT EQUALLY. Too wide is exactly as much a flaw as too narrow — never treat a very wide base as "stable" or "athletic". Past shoulder width it blocks the knee bend and costs power.
+
+PLAYER-FACING WORDING: always say "shoulder width" — tell the player the stance is too narrow, too wide, or a good shoulder-width base. NEVER write "hip width" in the reasoning.
+
+If the feet are never clearly visible in any setup frame, return null.'
 WHERE name = 'Feet Shoulder Width Apart'
-  AND (grading_notes IS NULL OR grading_notes LIKE 'Assess stance width during the SETUP frames%');
+  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'STANCE RUBRIC v3%');

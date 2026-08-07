@@ -103,7 +103,7 @@ KEY FORM PRINCIPLES (use these to evaluate):
 - Release: ball rolls off index and middle fingertips with backspin — palm contact reduces control
 - Power: flows from legs upward through core, not arm-muscled
 - One-hand release: shooting hand controls everything at release — two-hand push is a clear flaw
-- Stance: the most efficient base for power and connection is feet approximately HIP width apart (heels roughly under the hip joints) — narrower than the shoulders. Judge stance width against hip width even though the criterion is named "shoulder width apart" (that is the cue coaches give players). Both extremes are flaws: too wide (out past hip width toward the shoulders, blocking knee bend and leaking leg drive) and too narrow (inside hip width, unstable). Small deviations are normal and fine. In player-facing reasoning always call this "shoulder width" — never write "hip width"
+- Stance: a correct base puts the feet anywhere between hip width and shoulder width — anything inside that band is good form and scores 9-10. Too narrow (feet inside the hips, ankles nearly together, legs reading as one column) and too wide (feet clearly outside the shoulders, straddled, knees splaying outward) are equally real flaws and belong in the 3-4 band, NOT 7-8. Stance width is directly measurable whenever the feet are visible, so never default to a high score on it. In player-facing reasoning always call this "shoulder width" — never write "hip width"
 - Dominant foot: the shooting-side foot being SLIGHTLY ahead is CORRECT form — this should score 9–10, not be penalized. Only deduct if feet are completely even or the wrong foot is leading.
 
 You will receive ${n} sequential frames. Frame guide:

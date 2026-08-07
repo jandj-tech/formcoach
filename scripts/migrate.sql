@@ -155,17 +155,23 @@ WHERE NOT EXISTS (SELECT 1 FROM criteria WHERE name = 'Feet Shoulder Width Apart
 -- them to 1280 before evaluating — at screenshot size the model misreads the
 -- feet and you end up tuning against your own proxy's noise.
 UPDATE criteria
-SET grading_notes = 'STANCE RUBRIC v10 — how wide is the player''s base at the moment they shoot?
+SET grading_notes = 'STANCE RUBRIC v11 — score the base TWICE: once before the release, once at and after it.
 
-WHICH MOMENT TO MEASURE. The window opens when the player starts driving upward into the shot and closes on the LAST frame where both feet are still touching the floor — that is, as they go up and at the top of the lift, before the ball is released and before the feet leave the ground. Measure inside that window and nowhere else.
+SCORE TWO SECTIONS, THEN COMBINE THEM. A base that is set correctly on the way up and then collapses at the release is two different facts about the shot, and the player needs to hear both.
+  SECTION 1 — BEFORE RELEASE. The base they build and shoot from.
+  SECTION 2 — AT AND AFTER RELEASE. Whether they hold that base through the shot.
+  Score each section 1-10 with the corridor test below. The FINAL SCORE is the average of the two, rounded DOWN. A 9 before release and a 4 at release is a 6, not a 9 — and the reasoning must say the base started well and came apart at the release, naming both halves.
+  NEVER AVERAGE AGAINST A SECTION YOU DID NOT OBSERVE. If you cannot see the release — the clip ends before it, the feet are out of frame or blurred past reading, or you only have frames from before the ball leaves the hand — then SECTION 1 IS THE FINAL SCORE. Do not guess what the feet did later, do not assume they collapsed, and do not average a real SECTION 1 against an imagined SECTION 2. A well-set base with no visible release frame scores exactly what SECTION 1 scored: a 9 stays a 9.
+
+SECTION 1 — BEFORE RELEASE. The window opens when the player starts driving upward into the shot and closes on the LAST frame where both feet are still touching the floor — that is, as they go up and at the top of the lift, before the ball is released and before the feet leave the ground. Measure inside that window and nowhere else.
   Ignore everything before the window. Players stand with their feet together while waiting and step out into their base as they load, so a narrow reading taken before the shot starts is not a finding.
   But if the feet are STILL close together inside the window, that IS the finding — never excuse it by assuming they were about to step out.
   If the feet shift during the window, use the widest set position they hold while both feet are still down.
-  Once the feet leave the floor, stop. Feet coming together in the air is normal and is never a deduction.
+  SECTION 1 closes at the release. What happens from there belongs to SECTION 2, not here.
   A good base has a decent amount of daylight between the feet — a clearly separated, roughly shoulder-width stance held all the way up to takeoff. Both failures are real and score the same: too close together is bad, and too far apart is bad.
 
 THE MEASUREMENT — THE CORRIDOR TEST. Never judge the base by general impression; your first impression is usually wrong, and it is wrong in the generous direction far more often than not. On a frame where the player is square to the camera:
-  STEP 1. Find four points: the outer edge of each HIP, and the outer edge of each SHOULDER. If the arms are overhead, take the shoulder points at the widest part of the torso at the deltoids.
+  STEP 1. Find four points: the outer edge of each HIP, and the outer edge of each SHOULDER. Take the shoulder points at the SHOULDER JOINTS — the outer edge of the torso itself. NEVER include an arm, elbow, hand or the ball. An arm reaching out to the side or across the body is not part of the shoulder span, and counting it inflates that span and makes a perfectly good base read as narrow.
   STEP 2. Drop a vertical plumb line to the floor from all four. On each side this gives an inner line from the hip and an outer line from the shoulder; the space between them is that side CORRIDOR.
   STEP 3. See where the OUTER edge of each shoe lands:
     - Inside its corridor, or on either line: CORRECT. Score 9-10.
@@ -175,7 +181,9 @@ THE MEASUREMENT — THE CORRIDOR TEST. Never judge the base by general impressio
 
 THE CORRIDOR IS WIDE ON PURPOSE, AT BOTH ENDS. A base at hip width and a base at shoulder width are equally correct and both score 9-10 — never mark a player down for sitting at the hip end, and never write that a hip-width base is "a bit narrow" or "could be wider". Equally, never let that generosity cover a shoe that is outside its corridor: past the shoulder line or bunched inside the hip line is 3-4 no matter how athletic or tidy the rest of the shot looks.
 
-BEFORE YOU SCORE 3-4 FOR A NARROW BASE, CONFIRM THE SHOES ARE ACTUALLY BUNCHED. The 3-4 narrow band is for feet with almost no daylight between them — ankles close, the two legs reading as one column. If there is a clear gap between the inner edges of the shoes, one you could fit a shoe into, the base is NOT in that band: it is 9-10 if the shoes are inside their corridors and at worst 7-8 if they fall a little short of the hip lines. Being strict about bunched feet does not mean doubting a base that plainly has room in it.
+JUDGE THE SHOES ON THE FLOOR, NOT THE LEGS. Knees or thighs that converge while the shoes stay apart is NOT a narrow base — it is a knee-bend question and belongs to another criterion. Measure only the gap between the two shoes where they meet the floor.
+
+BEFORE YOU SCORE 3-4 FOR A NARROW BASE, CONFIRM THE SHOES ARE ACTUALLY BUNCHED. The 3-4 narrow band is for feet with almost no daylight between them — the shoes almost touching. If there is a clear gap between the inner edges of the shoes, one you could fit a shoe into, the base is NOT in that band: it is 9-10 if the shoes are inside their corridors and at worst 7-8 if they fall a little short of the hip lines. Being strict about bunched feet does not mean doubting a base that plainly has room in it.
 
 WHEN THE PLAYER IS SMALL IN THE FRAME the hip and shoulder edges are too soft to place accurately and the plumb lines will mislead you — usually into a generous score. Fall back on the daylight between the shoes: a correct base has a clear gap between the inner edges roughly as wide as one shoe or more. Shoes nearly touching with almost no daylight is 3-4, whatever the plumb lines seemed to say.
 
@@ -185,20 +193,29 @@ THE TWO WAYS THIS GETS GRADED WRONG, BOTH OF THEM GENEROUS:
   1. A NARROW BASE UNDER A TIDY SHOOTING POSE. A player standing tall and square with the ball up at the set point looks like textbook form at a glance, and that glance says the stance is fine when the feet are actually close together. It is not fine — it is a 3-4. This is easiest to miss when the player is far from the camera and small in the frame. When that happens, look harder at the feet; do not fall back on overall impression.
   2. A WIDE BASE UNDER A LOADED CROUCH. Knees bent and hips back reads as "athletic" and "stable" even when the shoes are far outside the shoulder line. That impression is wrong. A foot span half again the shoulder span is a 3-4, not a 9.
 
-EXPERT CALIBRATION — five real graded cases:
+EXPERT CALIBRATION — six real graded cases:
   - Distant, small in frame, square, ball at the set point, feet almost touching with barely any daylight between the shoes: 3. Repeat runs scored this 8, 9, 9 and 4 before the expert set it at 3.
   - Standing tall mid-shot, arms extended overhead, shoes a few inches apart and well inside the shoulders: 4. Scored 8 then 9 on review; the expert corrected it to 4 both times.
   - Crouched with the ball low, thighs splayed, shoes clearly outside the shoulders: 4. Scored 9; the expert corrected it to 4.
   - Squared up in the gather, knees bent, ball at chest, shoes set at roughly shoulder width: 9. Scored 4 because an earlier standing frame was measured instead of the gather.
+  - Square to the camera, ball up beside the head, KNEES and thighs close together but the SHOES clearly separated at roughly shoulder width with obvious daylight between them: 9. Repeat runs split between 9 and 4 on this one, the low runs calling it "bunched, legs reading as one column". That reading is wrong: the thighs converge, the shoes do not. Score the shoes on the floor and nothing above them.
   - Standing square, shoes level, inside the shoulders but at or outside the hips: 9. Scored 6 on review; the expert corrected it to 9. Calling this "a bit narrower than shoulder width" is the error.
 
-THE LANDING. If the player jumps AND you can clearly see both feet back on the floor afterward, they should land in the same base they shot from. Landing clearly narrower or wider costs 1 point, or 2 when it is drastic (feet nearly touching, or a wide straddle). Never more than 2, never below 6 on this alone, and never stacked on a base already scored 3-4. Skip this entirely for set shots, clips that end mid-air, or feet not visible at touchdown — never guess at a landing you cannot see. Feet coming together IN THE AIR is normal and is never a deduction. When you do deduct, say it is the landing and tell them to land in the stance they shot from.
+SECTION 2 IS A COMPARISON, NOT A STANDALONE JUDGEMENT. You can only score it if you have actually SEEN the SECTION 1 base and can hold it next to the release. If you have one frame, or cannot identify which frame is the release, or never saw the base that was set beforehand, do not score SECTION 2 at all — score SECTION 1 on what is in front of you and stop there. Never conclude that the feet collapsed from a single frame; a collapse is a CHANGE, and one frame cannot show a change.
+
+SECTION 2 — AT AND AFTER RELEASE. Run the same corridor test on the frame where the ball leaves the hand, and again on the landing if the feet come back down before the clip ends. Score the WORST of what you see across those frames.
+  Holding the same base they shot from, or close to it: score 9-10. This is what good looks like.
+  Feet noticeably closer together or wider than the base they set: score 5-6.
+  Feet bunched at the release — the shoes almost touching — or a wide sideways straddle: score 3-4.
+  A small drift inward as the player extends upward is normal and is not a deduction. SECTION 2 is about a clear collapse or splay, not about a couple of inches.
+  On a genuine high jump some narrowing in mid-air is expected; judge SECTION 2 at the moment of release and at touchdown, not at the peak of the flight.
+  When SECTION 2 scores below SECTION 1, the reasoning must tell the player to HOLD the base through the shot and land in the stance they shot from — not that their stance was wrong to begin with, because it was not.
 
 PLAYER-FACING WORDING: always say "shoulder width" — tell the player the base is too narrow, too wide, or a good shoulder-width base. NEVER write "hip width", and never mention spans, ratios or measurements in the reasoning.
 
 If the feet are never clearly visible during the shooting motion, return null. A landing you cannot see is never a reason to return null.'
 WHERE name = 'Feet Shoulder Width Apart'
-  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'STANCE RUBRIC v10%');
+  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'STANCE RUBRIC v11%');
 
 -- Canonical "Square to the Basket" rubric, same versioned-guard pattern as the
 -- stance rubric above. Added because the criterion shipped with only its
@@ -235,4 +252,66 @@ WHEN TO RETURN NULL: only when the feet are not visible at all during the shooti
 PLAYER-FACING WORDING: tell them to point their toes where they want the ball to go and get their feet, hips and shoulders lined up on the basket. Never mention lines, angles or degrees in the reasoning.'
 WHERE name = 'Square to the Basket'
   AND (grading_notes IS NULL OR grading_notes NOT LIKE 'SQUARE RUBRIC v1%');
+
+-- "Elbow L-Shape" rubric. The criterion shipped with only its one-line
+-- description and had no language for the failure that actually happens: the
+-- arm opening into a wide V beside the head instead of folding into an L under
+-- the ball. A V is a different shape, not a slightly imperfect L, and belongs
+-- in the bottom bands.
+UPDATE criteria
+SET grading_notes = 'ELBOW RUBRIC v1 — is the arm folded into an L under the ball, or opened into a V beside it?
+
+WHAT AN L LOOKS LIKE. The forearm points straight UP toward the ceiling, the elbow points straight DOWN toward the floor, and the elbow sits directly UNDER the ball, stacked ball-over-hand-over-forearm-over-elbow. The angle at the elbow is roughly 90 degrees. That is the whole target.
+
+WHAT A V LOOKS LIKE — THIS IS THE FAILURE TO CATCH. The elbow angle is opened up well past 90 degrees, so the upper arm and forearm form a wide V instead of a folded L. The ball ends up beside the head or out to the side rather than stacked above the elbow, and the arm is reaching or pushing rather than lifting. A V is not a slightly imperfect L — it is a different shape, and it scores in the bottom bands.
+
+HOW TO SCORE:
+  - Forearm vertical, elbow pointing down and sitting under the ball, angle near 90 degrees: 9-10.
+  - Recognisably an L, forearm close to vertical, elbow a little outside the ball line: 7-8.
+  - Angle clearly opened past 90 into a V, or the elbow visibly outside the ball rather than under it: 3-4.
+  - No L at all — the arm reaching out to the side, a sideways L with the forearm travelling sideways instead of up, or the ball pushed from beside the shoulder: 1-2.
+
+A SIDEWAYS L IS NOT AN L. An arm bent at 90 degrees but rotated so the forearm points sideways rather than up scores the same as an elbow that is completely out. Only a VERTICAL forearm counts.
+
+JUDGE IT FROM THE RISE THROUGH THE SET POINT, before the arm extends to release. At full extension every shooter''s arm is straight — a straight arm at the apex is not a V and is not a flaw. If the only frames you have are at or after release, return null rather than scoring the extension.
+
+CAMERA ANGLE. Filmed from the side, an elbow can look further out than it is. If the arm still forms a clear L with the elbow under the ball allowing for the angle, give full credit. But a wide-open V is visible from any angle — do not excuse one as a camera artifact.
+
+EXPERT CALIBRATION — a real graded case:
+  - Player square to the camera with the ball up beside his head, upper arm and forearm opened into a wide V, elbow out to the side rather than under the ball, pushing the shot from the side of his body: the expert said this player "did not have an L shape at all". Score it 1-3, not 5 or 6. A shot pushed from beside the head with an open arm angle has no L in it.
+
+PLAYER-FACING WORDING: tell them to get the ball stacked over a vertical forearm with the elbow pointing at the floor, directly under the ball. Never mention degrees or angles in the reasoning.'
+WHERE name = 'Elbow L-Shape — Under the Ball'
+  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'ELBOW RUBRIC v1%');
+
+-- "Source of Shot Power" rubric. Power was being read off the legs alone, so a
+-- visible knee bend carried the score even when the arms were plainly doing the
+-- work. The elbow angle is the evidence of where the force came from: a folded
+-- L rides the leg drive, a wide-open V means the hands are pushing. A V caps
+-- this criterion at 4 regardless of how good the knee bend looks.
+UPDATE criteria
+SET grading_notes = 'POWER RUBRIC v1 — is the shot driven by the legs, or pushed by the arms?
+
+READ THIS OFF TWO THINGS: the legs, and the ELBOW ANGLE. The elbow tells you where the power is coming from, so check it every time — do not score this criterion off the legs alone.
+
+THE ELBOW TEST. A shooter who is driving with their legs loads the arm into a folded L, roughly 90 degrees at the elbow with the forearm vertical, and lets the leg drive travel up through that stacked arm. A shooter who is pushing with their arms opens the elbow into a wide V — the angle well past 90 degrees, the arm reaching and extending rather than folded and lifting. A V means the hands and arms are supplying the force, and the score must come down for it even if the knees are bent, because bent knees the player never actually drives through do not put power into the ball.
+
+THE LEG TEST. Look for a real dip and a real drive: knees bent in the gather, then visibly extending as the ball goes up, with the whole body rising as one motion. A player who stays upright, or who dips and then shoots without ever extending the legs, is not getting power from the ground.
+
+HOW TO SCORE:
+  - Clear knee bend driving into a full extension, arm folded into an L and riding that drive upward: 9-10.
+  - Legs contributing but the arm doing more than it should, or a shallow dip: 6-7.
+  - Elbow opened into a V with the arms visibly supplying the force, or almost no leg drive: 3-4.
+  - Ball pushed or shoved entirely by the arms with the legs static: 1-2.
+
+THE ELBOW CAN CAP THIS CRITERION ON ITS OWN. If the arm is in a wide-open V at the set point, this criterion cannot score above 4 no matter how good the knee bend looks. The shape of the arm is the evidence of where the force came from.
+
+DO NOT CONFUSE FULL EXTENSION AT RELEASE WITH A V. Every shooter''s arm straightens as the ball leaves the hand — that is the finish of a good shot, not an arm push. Judge the arm shape at the SET POINT, on the way up, before the extension.
+
+IF THE ONLY FRAMES YOU HAVE ARE AT OR AFTER THE RELEASE, the evidence for this criterion is not present — you cannot see the gather, the knee bend, or the set point, and legs already extended at release tell you nothing about whether they drove the shot. Return null rather than scoring a shot you never saw loaded.
+
+PLAYER-FACING WORDING: tell them to load their legs and let the power come up from the ground through a folded arm, instead of pushing the ball with their hands. Never mention degrees or angles in the reasoning.'
+WHERE name = 'Source of Shot Power'
+  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'POWER RUBRIC v1%');
+
 

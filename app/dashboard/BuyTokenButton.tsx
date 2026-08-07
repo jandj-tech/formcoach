@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useIsInApp } from '@/lib/useIsInApp'
 import { useAnalysisPrice } from '@/lib/useAnalysisPrice'
-import { orderPricing, usd } from '@/lib/team-pricing'
+import { orderPricing, usd, MAX_TOKENS_PER_ORDER } from '@/lib/team-pricing'
 import QuantityStepper from '@/components/QuantityStepper'
 
 export default function BuyTokenButton({ isInApp = false, initiated = false }: { isInApp?: boolean; initiated?: boolean }) {
@@ -47,7 +47,7 @@ export default function BuyTokenButton({ isInApp = false, initiated = false }: {
   return (
     <span className="inline-flex flex-col items-end gap-1.5">
       <span className="inline-flex items-center gap-2">
-        <QuantityStepper value={qty} onChange={setQty} min={1} max={99} size="sm" ariaLabel="Number of analysis tokens" />
+        <QuantityStepper value={qty} onChange={setQty} min={1} max={MAX_TOKENS_PER_ORDER} size="sm" ariaLabel="Number of analysis tokens" />
         <button
           onClick={handleClick}
           disabled={loading}

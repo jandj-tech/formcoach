@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useIsInApp } from '@/lib/useIsInApp'
-import { analysisUnitCents, orderPricing, usd } from '@/lib/team-pricing'
+import { analysisUnitCents, orderPricing, usd, MAX_COACH_CREDITS_PER_ORDER } from '@/lib/team-pricing'
 import QuantityStepper from '@/components/QuantityStepper'
 
 // Buys analysis credits for a coach / org owner's own uploads —
@@ -39,7 +39,7 @@ export default function BuySelfCreditsButton({ initiated }: { initiated: boolean
   return (
     <span className="inline-flex flex-col items-end gap-1.5">
       <span className="inline-flex items-center gap-2">
-        <QuantityStepper value={qty} onChange={setQty} min={1} max={99} size="sm" ariaLabel="Number of credits" />
+        <QuantityStepper value={qty} onChange={setQty} min={1} max={MAX_COACH_CREDITS_PER_ORDER} size="sm" ariaLabel="Number of credits" />
         <button
           onClick={buy}
           disabled={loading}

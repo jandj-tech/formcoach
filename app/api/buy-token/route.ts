@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe'
 import { getSessionFromRequest } from '@/lib/auth'
-import { analysisUnitCents, discountedUnitCents } from '@/lib/team-pricing'
+import { analysisUnitCents, discountedUnitCents, MAX_TOKENS_PER_ORDER } from '@/lib/team-pricing'
 import { userHasInitiatedTeam } from '@/lib/team-tokens'
 import { isValidCompCode, getCompCouponId } from '@/lib/comp'
 import { rejectInAppPurchase } from '@/lib/in-app'
@@ -21,11 +21,10 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({})) as { region?: string; compCode?: string; quantity?: unknown }
     const region = body.region ?? 'US'
 
-    // Players can buy in bulk like coaches and orgs already could. Clamped to
-    // the same 1–99 range the cart uses, and floored so a fractional quantity
-    // cannot bill a fraction of a token.
+    // Players can buy in bulk like coaches and orgs already could. Floored so
+    // a fractional quantity cannot bill a fraction of a token.
     const rawQty = Number(body.quantity ?? 1)
-    const quantity = Math.min(99, Math.max(1, Math.floor(Number.isFinite(rawQty) ? rawQty : 1)))
+    const quantity = Math.min(MAX_TOKENS_PER_ORDER, Math.max(1, Math.floor(Number.isFinite(rawQty) ? rawQty : 1)))
 
     const userInitiated = await userHasInitiatedTeam(session.userId)
     // Volume tiers stack on whichever base rate this player is on, matching

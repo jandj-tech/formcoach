@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { trackInitiateCheckout } from '@/lib/meta-pixel'
 import { useIsInApp } from '@/lib/useIsInApp'
 import { useAnalysisPrice } from '@/lib/useAnalysisPrice'
-import { orderPricing, nextVolumeTier, usd } from '@/lib/team-pricing'
+import { orderPricing, nextVolumeTier, usd, MAX_TOKENS_PER_ORDER } from '@/lib/team-pricing'
 import QuantityStepper from '@/components/QuantityStepper'
 import Link from 'next/link'
 
@@ -93,7 +93,7 @@ export default function PremiumCTA({ dark = false, initiated = false }: { dark?:
 
         <div className="flex items-center justify-between gap-3 mb-3">
           <span className={`text-sm font-medium ${labelColor}`}>How many?</span>
-          <QuantityStepper value={qty} onChange={setQty} min={1} max={99} size="sm" ariaLabel="Number of analysis tokens" />
+          <QuantityStepper value={qty} onChange={setQty} min={1} max={MAX_TOKENS_PER_ORDER} size="sm" ariaLabel="Number of analysis tokens" />
         </div>
 
         <div className="flex items-center justify-between gap-3">

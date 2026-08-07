@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { MinusIcon, PlusIcon } from 'lucide-react'
 
 type Props = {
@@ -19,17 +20,39 @@ export default function QuantityStepper({
   ariaLabel = 'Quantity',
   size = 'md',
 }: Props) {
-  const dec = () => onChange(Math.max(min, value - 1))
-  const inc = () => onChange(Math.min(max, value + 1))
+  // The field is free text while being edited so a partial entry ("1" on the
+  // way to "150") is not clamped out from under the person typing it. The
+  // committed value is only ever a clamped number.
+  const [draft, setDraft] = useState(String(value))
+  useEffect(() => {
+    setDraft(String(value))
+  }, [value])
 
-  const btn =
-    size === 'sm'
-      ? 'h-8 w-8'
-      : 'h-10 w-10'
-  const text =
-    size === 'sm'
-      ? 'text-sm min-w-[2ch]'
-      : 'text-base min-w-[2ch]'
+  const clamp = (n: number) => Math.min(max, Math.max(min, n))
+
+  const dec = () => onChange(clamp(value - 1))
+  const inc = () => onChange(clamp(value + 1))
+
+  function handleType(raw: string) {
+    const digits = raw.replace(/[^0-9]/g, '')
+    setDraft(digits)
+    const n = parseInt(digits, 10)
+    // Only push upward while the typed number is already in range; anything
+    // out of range waits for blur so backspacing to retype does not snap.
+    if (Number.isFinite(n) && n >= min && n <= max) onChange(n)
+  }
+
+  function commit() {
+    const n = parseInt(draft, 10)
+    const next = Number.isFinite(n) ? clamp(n) : value
+    setDraft(String(next))
+    if (next !== value) onChange(next)
+  }
+
+  const btn = size === 'sm' ? 'h-8 w-8' : 'h-10 w-10'
+  const text = size === 'sm' ? 'text-sm' : 'text-base'
+  // Wide enough for the largest allowed quantity without reflowing the pill.
+  const field = `${String(max).length + 1}ch`
 
   return (
     <div
@@ -46,12 +69,25 @@ export default function QuantityStepper({
       >
         <MinusIcon className="h-4 w-4" />
       </button>
-      <span
-        aria-live="polite"
-        className={`px-3 text-center text-white font-bold ${text}`}
-      >
-        {value}
-      </span>
+      <input
+        type="text"
+        inputMode="numeric"
+        pattern="[0-9]*"
+        value={draft}
+        onChange={(e) => handleType(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault()
+            commit()
+            e.currentTarget.blur()
+          }
+        }}
+        onFocus={(e) => e.currentTarget.select()}
+        aria-label={ariaLabel}
+        style={{ width: field }}
+        className={`bg-transparent px-1 text-center text-white font-bold outline-none focus:ring-2 focus:ring-ember-500/60 rounded ${text}`}
+      />
       <button
         type="button"
         onClick={inc}

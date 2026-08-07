@@ -14,6 +14,14 @@ export const REGULAR_ANALYSIS_PRICE_CENTS = 179
 export const TEAM_TOKEN_PRICE_CENTS = 99
 
 /**
+ * Per-order quantity ceilings, shared by the buy UI and the routes that
+ * charge, so a stepper can never offer a quantity checkout would reject.
+ * These match the caps the equivalent coach and org routes already used.
+ */
+export const MAX_TOKENS_PER_ORDER = 1000
+export const MAX_COACH_CREDITS_PER_ORDER = 500
+
+/**
  * The per-analysis base price for one buyer, before volume discounts.
  *
  * Every surface that shows or charges an analysis price goes through here —

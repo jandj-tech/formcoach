@@ -103,13 +103,25 @@ KEY FORM PRINCIPLES (use these to evaluate):
 - Release: ball rolls off index and middle fingertips with backspin — palm contact reduces control
 - Power: flows from legs upward through core, not arm-muscled
 - One-hand release: shooting hand controls everything at release — two-hand push is a clear flaw
-- Stance: measure the feet at the START OF THE SHOOTING MOTION — the gather and rise, once the player has loaded into the knee bend — never in the idle frames before the shot begins. Players commonly stand with their feet close together and step out into their base as they go up, so a narrow reading taken before the shot starts is a grading error, not a flaw. The reverse does not hold: if the feet are STILL close together at the gather and rise, that IS the finding and it scores 3-4 — never excuse a narrow base by assuming the player was about to step out or widened in a frame you cannot see. Then, only if the player jumps and you can clearly see them land, check that they come down in the same base — a clearly collapsed or splayed landing costs 1-2 points off the set-base score, never more, and a landing you cannot see is never a deduction. A correct base puts the feet anywhere between hip width and shoulder width — anything inside that band is good form and scores 9-10. Too narrow (feet inside the hips, ankles nearly together, legs reading as one column) and too wide (feet clearly outside the shoulders, straddled, knees splaying outward) are equally real flaws and belong in the 3-4 band, NOT 7-8. Stance width is directly measurable whenever the feet are visible, so never default to a high score on it. In player-facing reasoning always call this "shoulder width" — never write "hip width"
+- Stance: a correct base puts the feet between hip width and shoulder width; clearly narrower or clearly wider are both real flaws. Judge it only as the player rises into the shot, never before. Its grading guide below carries the full method — follow that. In player-facing reasoning always call this "shoulder width" — never write "hip width"
 - Dominant foot: the shooting-side foot being SLIGHTLY ahead is CORRECT form — this should score 9–10, not be penalized. Only deduct if feet are completely even or the wrong foot is leading.
 
-You will receive ${n} sequential frames. Frame guide:
-- Frames 1–${earlyEnd}: SETUP AND GATHER — knees, shot pocket, elbow, guide hand, thumb, palm. Stance is measured at the END of this block, once the player has loaded and begun to rise — not in the first frames, where the feet are often not set yet
-- Frames ${earlyEnd + 1}–${midEnd}: RELEASE — power, one-hand release, two-finger release, guide hand separation
-- Frames ${midEnd + 1}–${n}: FOLLOW-THROUGH — wrist snap, guide hand finish, arc, forward motion, and the landing if the feet come back down before the clip ends
+You will receive ${n} sequential frames covering one shot. They are NOT split evenly between the phases of that shot, so never assume a fixed frame range is a given phase. Read the sequence and locate these three moments yourself:
+
+  MOMENT 1 — THE RISE. Starts when the player has the ball under control, knees dipped, and begins driving upward. Runs to the top of the lift. Everything BEFORE this — standing still, catching a pass, dribbling, walking or turning into position — is not part of the shot and must never be scored.
+  MOMENT 2 — THE APEX. The arm at full extension, the ball at the top of the release, leaving the fingertips.
+  MOMENT 3 — THE FOLLOW-THROUGH. The two or three frames immediately AFTER the ball has left the hand. Not later than that.
+
+JUDGE EACH CRITERION ONLY AT ITS OWN MOMENT — a criterion scored off the wrong moment is the single most common cause of a wrong score:
+- Feet shoulder width apart, knees bent, dominant foot forward, square to the basket: MOMENT 1 ONLY. The base and the lower body are judged as the player goes up, never from an earlier frame where they are still standing around.
+- Shot pocket, elbow L-shape, guide hand placement, thumb spread, palm off the ball: MOMENT 1 THROUGH MOMENT 2 — the hands and arms as they rise, and again at the apex.
+- Source of power, one-hand release, two-finger release, guide hand separation: MOMENT 2.
+- Shooting hand follow-through, guide hand follow-through, forward motion and toes: MOMENT 3 — right after the ball leaves the hand and the next couple of frames.
+- Shot arc, ball rotation: the ball in flight after release.
+- Connected shot: the sequence as a whole.
+- The landing, which only affects the stance criterion: the first frames where both feet are back on the floor, if that happens before the clip ends.
+
+Frames ${earlyEnd + 1}–${midEnd} usually contain the apex and frames ${midEnd + 1}–${n} usually contain the follow-through, but treat that only as a rough hint — what the player is actually doing in the frame always wins over its number.
 
 Scoring criteria (read each carefully before scoring):
 ${criteriaText}

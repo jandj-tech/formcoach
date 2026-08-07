@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { getStripe } from '@/lib/stripe'
-import { orgHasInitiatedTeam, TEAM_TOKEN_PRICE_CENTS, REGULAR_ANALYSIS_PRICE_CENTS } from '@/lib/team-tokens'
+import { orgHasInitiatedTeam, TEAM_TOKEN_PRICE_CENTS, REGULAR_ANALYSIS_PRICE_CENTS, discountedUnitCents } from '@/lib/team-tokens'
 import { rejectInAppPurchase } from '@/lib/in-app'
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL && process.env.NEXT_PUBLIC_BASE_URL !== 'http://localhost:3000'
@@ -31,8 +31,10 @@ export async function POST(req: NextRequest) {
 
     // Discounted price unlocks once any team in the org has 8+ players.
     const orgInitiated = await orgHasInitiatedTeam(session.orgId)
-    const unitAmount = orgInitiated ? TEAM_TOKEN_PRICE_CENTS : REGULAR_ANALYSIS_PRICE_CENTS
-    console.log('[buy-tokens] org pricing', { orgId: session.orgId, orgInitiated, unitAmount, qty })
+    const baseAmount = orgInitiated ? TEAM_TOKEN_PRICE_CENTS : REGULAR_ANALYSIS_PRICE_CENTS
+    // Volume discount comes off whichever base rate applies to this buyer.
+    const unitAmount = discountedUnitCents(baseAmount, qty)
+    console.log('[buy-tokens] org pricing', { orgId: session.orgId, orgInitiated, baseAmount, unitAmount, qty })
 
     const checkout = await getStripe().checkout.sessions.create({
       mode: 'payment',

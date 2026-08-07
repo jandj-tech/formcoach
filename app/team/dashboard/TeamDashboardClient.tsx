@@ -18,6 +18,13 @@ import AccountTabs from '@/components/account/AccountTabs'
 import TeamChatPanel from '@/components/TeamChatPanel'
 import EmailTeamPanel from '@/components/EmailTeamPanel'
 import Section from '@/components/account/Section'
+import VolumeSavings, { VolumeTierList } from '@/components/VolumeSavings'
+import {
+  REGULAR_ANALYSIS_PRICE_CENTS,
+  TEAM_TOKEN_PRICE_CENTS,
+  orderPricing,
+  usd,
+} from '@/lib/team-pricing'
 import { copyToClipboard } from '@/lib/copy'
 import { useCart } from '@/lib/cart'
 
@@ -287,6 +294,7 @@ export default function TeamDashboardClient({
     })),
   ]
 
+  const creditBaseCents = team.initiated ? TEAM_TOKEN_PRICE_CENTS : REGULAR_ANALYSIS_PRICE_CENTS
   const creditRate = team.initiated ? '0.99' : '1.79'
   const rosterCount = members.length + pendingMembers.length
 
@@ -678,14 +686,9 @@ export default function TeamDashboardClient({
               />
             </div>
 
-            <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 flex items-center justify-between">
-              <p className="text-sm text-gray-600">
-                {quantity} credit{quantity !== 1 ? 's' : ''} × ${creditRate}
-              </p>
-              <p className="text-lg font-black text-black">
-                ${(quantity * (team.initiated ? 0.99 : 1.79)).toFixed(2)}
-              </p>
-            </div>
+            <VolumeTierList className="px-1" />
+
+            <VolumeSavings baseUnitCents={creditBaseCents} quantity={quantity} label="credit" />
 
             <button
               onClick={buyCredits}
@@ -694,7 +697,7 @@ export default function TeamDashboardClient({
             >
               {buying
                 ? 'Redirecting to checkout…'
-                : `Buy ${quantity} Credit${quantity !== 1 ? 's' : ''} — $${(quantity * (team.initiated ? 0.99 : 1.79)).toFixed(2)}`}
+                : `Buy ${quantity} Credit${quantity !== 1 ? 's' : ''} — ${usd(orderPricing(creditBaseCents, quantity).totalCents)}`}
             </button>
           </div>
         </Section>

@@ -3,6 +3,13 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useIsInApp } from '@/lib/useIsInApp'
+import VolumeSavings, { VolumeTierList } from '@/components/VolumeSavings'
+import {
+  REGULAR_ANALYSIS_PRICE_CENTS,
+  TEAM_TOKEN_PRICE_CENTS,
+  orderPricing,
+  usd,
+} from '@/lib/team-pricing'
 
 export interface OrgPlayerOpt {
   id: string
@@ -69,7 +76,8 @@ export default function OrgTokenPanel({
 
   const anyInitiated = teams.some(t => t.initiated)
   const pricePerToken = anyInitiated ? 0.99 : 1.79
-  const buyTotal = (buyQty * pricePerToken).toFixed(2)
+  const buyBaseCents = anyInitiated ? TEAM_TOKEN_PRICE_CENTS : REGULAR_ANALYSIS_PRICE_CENTS
+  const buyTotal = usd(orderPricing(buyBaseCents, buyQty).totalCents)
 
   const teamPlayers = players.filter(p => p.teamId === assignTeamId)
   const selectedTeam = teams.find(t => t.id === assignTeamId)
@@ -285,13 +293,13 @@ export default function OrgTokenPanel({
               />
             </div>
 
-            <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 flex items-center justify-between">
-              <p className="text-sm text-gray-600">
-                {buyQty} token{buyQty !== 1 ? 's' : ''} × ${pricePerToken}
-                {anyInitiated && <span className="ml-1.5 text-xs text-green-600 font-semibold">$0.99 rate unlocked</span>}
-              </p>
-              <p className="text-lg font-black text-black">${buyTotal}</p>
-            </div>
+            {anyInitiated && (
+              <p className="text-xs text-green-600 font-semibold px-1">$0.99 team rate unlocked</p>
+            )}
+
+            <VolumeTierList className="px-1" />
+
+            <VolumeSavings baseUnitCents={buyBaseCents} quantity={buyQty} label="token" />
 
             <button
               type="button"
@@ -299,7 +307,7 @@ export default function OrgTokenPanel({
               disabled={busy}
               className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-black py-3 rounded-xl transition-colors"
             >
-              {busy ? 'Redirecting to checkout...' : `Buy ${buyQty} Token${buyQty !== 1 ? 's' : ''} — $${buyTotal}`}
+              {busy ? 'Redirecting to checkout...' : `Buy ${buyQty} Token${buyQty !== 1 ? 's' : ''} — ${buyTotal}`}
             </button>
           </div>
           )}

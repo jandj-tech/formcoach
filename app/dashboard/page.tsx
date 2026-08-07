@@ -3,6 +3,7 @@ import { getSession } from '@/lib/auth'
 import { isInAppRequest } from '@/lib/in-app'
 import { db } from '@/lib/db'
 import { userHasInitiatedTeam } from '@/lib/team-tokens'
+import { analysisUnitCents } from '@/lib/team-pricing'
 import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
 import InfoTip from '@/components/InfoTip'
@@ -181,7 +182,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     ? `${user.first_name} ${user.last_initial}`
     : null
   const hasName = !!fullName
-  const tokenPrice = onInitiatedTeam ? '0.99' : '1.79'
+  const tokenPrice = (analysisUnitCents(onInitiatedTeam) / 100).toFixed(2)
 
   const shotsTab = (
     <div className="space-y-3">

@@ -2,6 +2,7 @@
 
 import { trackInitiateCheckout } from '@/lib/meta-pixel'
 import { useIsInApp } from '@/lib/useIsInApp'
+import { analysisUnitCents, usd } from '@/lib/team-pricing'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -759,7 +760,7 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
                   onClick={handleBuyToken}
                   className="bg-ember-500 hover:bg-ember-400 text-ink-950 font-bold px-6 py-2.5 rounded-xl text-sm transition-colors"
                 >
-                  Buy Analysis — ${sessionUser?.onInitiatedTeam ? '0.99' : '1.79'}
+                  Buy Analysis — {usd(analysisUnitCents(!!sessionUser?.onInitiatedTeam))}
                 </button>
               )}
               {sessionUser?.onTeam ? (

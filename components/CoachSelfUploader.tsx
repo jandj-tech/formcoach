@@ -3,6 +3,7 @@
 import VideoUploader from './VideoUploader'
 import BuySelfCreditsButton from './BuySelfCreditsButton'
 import { useIsInApp } from '@/lib/useIsInApp'
+import { analysisUnitCents, usd } from '@/lib/team-pricing'
 
 // The analyze-page uploader for coaches and org owners. The upload zone is
 // always shown — with a transparent "0 credits" overlay when empty — and the
@@ -27,7 +28,7 @@ export default function CoachSelfUploader({
               {credits} analysis credit{credits !== 1 ? 's' : ''} remaining
             </p>
             <p className="text-xs text-gray-500 mt-0.5">
-              {initiated ? '$0.99 per analysis.' : '$1.79 per analysis until your team has 8+ players.'}
+              {initiated ? `${usd(analysisUnitCents(true))} per analysis.` : `${usd(analysisUnitCents(false))} per analysis until your team has 8+ players.`}
             </p>
           </div>
           <BuySelfCreditsButton initiated={initiated} />

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe'
 import { getSessionFromRequest } from '@/lib/auth'
-import { REGULAR_ANALYSIS_PRICE_CENTS, TEAM_TOKEN_PRICE_CENTS } from '@/lib/team-pricing'
+import { analysisUnitCents, discountedUnitCents } from '@/lib/team-pricing'
 import { userHasInitiatedTeam } from '@/lib/team-tokens'
 import { isValidCompCode, getCompCouponId } from '@/lib/comp'
 import { rejectInAppPurchase } from '@/lib/in-app'
@@ -18,11 +18,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Login required' }, { status: 401 })
     }
 
-    const body = await req.json().catch(() => ({})) as { region?: string; compCode?: string }
+    const body = await req.json().catch(() => ({})) as { region?: string; compCode?: string; quantity?: unknown }
     const region = body.region ?? 'US'
 
+    // Players can buy in bulk like coaches and orgs already could. Clamped to
+    // the same 1–99 range the cart uses, and floored so a fractional quantity
+    // cannot bill a fraction of a token.
+    const rawQty = Number(body.quantity ?? 1)
+    const quantity = Math.min(99, Math.max(1, Math.floor(Number.isFinite(rawQty) ? rawQty : 1)))
+
     const userInitiated = await userHasInitiatedTeam(session.userId)
-    const unitAmount = userInitiated ? TEAM_TOKEN_PRICE_CENTS : REGULAR_ANALYSIS_PRICE_CENTS
+    // Volume tiers stack on whichever base rate this player is on, matching
+    // every other buy flow.
+    const unitAmount = discountedUnitCents(analysisUnitCents(userInitiated), quantity)
 
     // A valid comp code zeroes the total via a 100%-off coupon so Stripe
     // skips the card form. discounts / allow_promotion_codes are exclusive.
@@ -34,12 +42,12 @@ export async function POST(req: NextRequest) {
     const stripeSession = await getStripe().checkout.sessions.create({
       mode: 'payment',
       line_items: [{
-        quantity: 1,
+        quantity,
         price_data: {
           currency: region === 'CA' ? 'cad' : 'usd',
           unit_amount: unitAmount,
           product_data: {
-            name: '1 Shot Analysis',
+            name: quantity === 1 ? '1 Shot Analysis' : 'Shot Analysis',
             description: 'One AI-powered basketball shot analysis on LearnHoops.com',
           },
         },
@@ -48,7 +56,7 @@ export async function POST(req: NextRequest) {
       metadata: {
         type: 'analysis_token',
         userId: session.userId,
-        quantity: '1',
+        quantity: String(quantity),
       },
       success_url: `${BASE_URL}/analyze?token_purchased=1`,
       ...discountOpts,

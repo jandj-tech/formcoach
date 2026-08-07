@@ -2,13 +2,17 @@
 
 import { useState } from 'react'
 import { useIsInApp } from '@/lib/useIsInApp'
+import { analysisUnitCents, orderPricing, usd } from '@/lib/team-pricing'
+import QuantityStepper from '@/components/QuantityStepper'
 
-// Buys one analysis credit for a coach / org owner's own uploads —
-// $0.99 if their team is initiated, $1.79 otherwise.
+// Buys analysis credits for a coach / org owner's own uploads —
+// $0.99 each if their team is initiated, $1.79 otherwise, with the same
+// volume tiers every other buy flow uses.
 export default function BuySelfCreditsButton({ initiated }: { initiated: boolean }) {
   const inApp = useIsInApp()
   const [loading, setLoading] = useState(false)
-  const price = initiated ? '0.99' : '1.79'
+  const [qty, setQty] = useState(1)
+  const { percentOff, totalCents } = orderPricing(analysisUnitCents(initiated), qty)
 
   // Digital purchases inside the iOS app must use native in-app purchase.
   if (inApp) return null
@@ -19,7 +23,7 @@ export default function BuySelfCreditsButton({ initiated }: { initiated: boolean
       const res = await fetch('/api/team/buy-self-credits', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ quantity: 1 }),
+        body: JSON.stringify({ quantity: qty }),
       })
       const data = await res.json()
       if (data.url) {
@@ -33,12 +37,20 @@ export default function BuySelfCreditsButton({ initiated }: { initiated: boolean
   }
 
   return (
-    <button
-      onClick={buy}
-      disabled={loading}
-      className="shrink-0 bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors"
-    >
-      {loading ? 'Redirecting…' : `Buy credit — $${price}`}
-    </button>
+    <span className="inline-flex flex-col items-end gap-1.5">
+      <span className="inline-flex items-center gap-2">
+        <QuantityStepper value={qty} onChange={setQty} min={1} max={99} size="sm" ariaLabel="Number of credits" />
+        <button
+          onClick={buy}
+          disabled={loading}
+          className="shrink-0 bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors"
+        >
+          {loading ? 'Redirecting…' : `Buy ${qty > 1 ? `${qty} credits` : 'credit'} — ${usd(totalCents)}`}
+        </button>
+      </span>
+      {percentOff > 0 && (
+        <span className="text-green-600 text-xs font-semibold">{percentOff}% volume discount applied</span>
+      )}
+    </span>
   )
 }

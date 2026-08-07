@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react'
 import { trackInitiateCheckout } from '@/lib/meta-pixel'
 import { useIsInApp } from '@/lib/useIsInApp'
+import { useAnalysisPrice } from '@/lib/useAnalysisPrice'
+import { orderPricing, nextVolumeTier, usd } from '@/lib/team-pricing'
+import QuantityStepper from '@/components/QuantityStepper'
 import Link from 'next/link'
 
 type Region = 'US' | 'CA'
@@ -13,7 +16,11 @@ export default function PremiumCTA({ dark = false, initiated = false }: { dark?:
   const [open, setOpen] = useState(false)
   const [region, setRegion] = useState<Region>('US')
   const [error, setError] = useState('')
-  const price = initiated ? '0.99' : '1.79'
+  const [qty, setQty] = useState(1)
+  const { baseUnitCents } = useAnalysisPrice(initiated)
+  const { percentOff, unitCents, totalCents, savingsCents } = orderPricing(baseUnitCents, qty)
+  const price = (baseUnitCents / 100).toFixed(2)
+  const upsell = nextVolumeTier(qty)
 
   useEffect(() => {
     fetch('/api/region').then(r => r.json()).then(({ region }) => setRegion(region)).catch(() => {})
@@ -30,7 +37,7 @@ export default function PremiumCTA({ dark = false, initiated = false }: { dark?:
       const res = await fetch('/api/buy-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ region }),
+        body: JSON.stringify({ region, quantity: qty }),
       })
       if (res.status === 401) {
         // Logged-out visitor: send them to log in, then back here.
@@ -82,11 +89,26 @@ export default function PremiumCTA({ dark = false, initiated = false }: { dark?:
       </div>
 
       <div>
-        <p className={`text-xs ${subColor} mb-2`}>Each token gives you one full AI shot analysis across 18 coaching criteria.</p>
+        <p className={`text-xs ${subColor} mb-3`}>Each token gives you one full AI shot analysis across 18 coaching criteria.</p>
+
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <span className={`text-sm font-medium ${labelColor}`}>How many?</span>
+          <QuantityStepper value={qty} onChange={setQty} min={1} max={99} size="sm" ariaLabel="Number of analysis tokens" />
+        </div>
+
         <div className="flex items-center justify-between gap-3">
           <div>
-            <span className="text-orange-500 font-black text-2xl">${price}</span>
-            <p className={`text-xs ${subColor} mt-0.5`}>per analysis · one-time payment</p>
+            <span className="text-orange-500 font-black text-2xl">{usd(totalCents)}</span>
+            <p className={`text-xs ${subColor} mt-0.5`}>
+              {qty === 1
+                ? 'per analysis · one-time payment'
+                : `${qty} analyses · ${usd(unitCents)} each`}
+            </p>
+            {percentOff > 0 && (
+              <p className="text-xs text-green-500 font-semibold mt-0.5">
+                {percentOff}% volume discount — you save {usd(savingsCents)}
+              </p>
+            )}
           </div>
           <button
             onClick={handleBuyToken}
@@ -96,6 +118,11 @@ export default function PremiumCTA({ dark = false, initiated = false }: { dark?:
             {loading ? '...' : 'Buy Now →'}
           </button>
         </div>
+        {upsell && (
+          <p className={`text-xs ${subColor} mt-2`}>
+            Buy {upsell.minQty - qty} more to save {upsell.percentOff}% on the whole order.
+          </p>
+        )}
         {error && <p className="text-red-500 text-xs mt-2">{error}</p>}
       </div>
 

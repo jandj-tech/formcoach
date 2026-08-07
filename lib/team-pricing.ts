@@ -14,6 +14,17 @@ export const REGULAR_ANALYSIS_PRICE_CENTS = 179
 export const TEAM_TOKEN_PRICE_CENTS = 99
 
 /**
+ * The per-analysis base price for one buyer, before volume discounts.
+ *
+ * Every surface that shows or charges an analysis price goes through here —
+ * players, coaches and orgs alike. Reading the two constants directly is what
+ * let the same player see $1.79 on one page and $0.99 on another.
+ */
+export function analysisUnitCents(initiated: boolean): number {
+  return initiated ? TEAM_TOKEN_PRICE_CENTS : REGULAR_ANALYSIS_PRICE_CENTS
+}
+
+/**
  * Volume discount tiers, applied to a SINGLE order.
  *
  * The percentage comes off every token in the order, not just the ones above

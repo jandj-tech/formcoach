@@ -19,9 +19,7 @@ import TeamChatPanel from '@/components/TeamChatPanel'
 import EmailTeamPanel from '@/components/EmailTeamPanel'
 import Section from '@/components/account/Section'
 import VolumeSavings, { VolumeTierList } from '@/components/VolumeSavings'
-import {
-  REGULAR_ANALYSIS_PRICE_CENTS,
-  TEAM_TOKEN_PRICE_CENTS,
+import {  analysisUnitCents,
   orderPricing,
   usd,
 } from '@/lib/team-pricing'
@@ -294,8 +292,8 @@ export default function TeamDashboardClient({
     })),
   ]
 
-  const creditBaseCents = team.initiated ? TEAM_TOKEN_PRICE_CENTS : REGULAR_ANALYSIS_PRICE_CENTS
-  const creditRate = team.initiated ? '0.99' : '1.79'
+  const creditBaseCents = analysisUnitCents(team.initiated)
+  const creditRate = (analysisUnitCents(team.initiated) / 100).toFixed(2)
   const rosterCount = members.length + pendingMembers.length
 
   /* ── Players tab ──────────────────────────────────────────────── */

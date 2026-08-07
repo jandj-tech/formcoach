@@ -4,9 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useIsInApp } from '@/lib/useIsInApp'
 import VolumeSavings, { VolumeTierList } from '@/components/VolumeSavings'
-import {
-  REGULAR_ANALYSIS_PRICE_CENTS,
-  TEAM_TOKEN_PRICE_CENTS,
+import {  analysisUnitCents,
   orderPricing,
   usd,
 } from '@/lib/team-pricing'
@@ -75,8 +73,8 @@ export default function OrgTokenPanel({
   const [allocQty, setAllocQty] = useState(10)
 
   const anyInitiated = teams.some(t => t.initiated)
-  const pricePerToken = anyInitiated ? 0.99 : 1.79
-  const buyBaseCents = anyInitiated ? TEAM_TOKEN_PRICE_CENTS : REGULAR_ANALYSIS_PRICE_CENTS
+  const pricePerToken = analysisUnitCents(anyInitiated) / 100
+  const buyBaseCents = analysisUnitCents(anyInitiated)
   const buyTotal = usd(orderPricing(buyBaseCents, buyQty).totalCents)
 
   const teamPlayers = players.filter(p => p.teamId === assignTeamId)

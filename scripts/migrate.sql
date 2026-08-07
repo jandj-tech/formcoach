@@ -144,74 +144,53 @@ WHERE NOT EXISTS (SELECT 1 FROM criteria WHERE name = 'Feet Shoulder Width Apart
 -- The criterion name and player-facing description keep saying "shoulder
 -- width" (the coaching cue) regardless of what the rubric measures.
 --
--- v3 adds explicit score bands. v2 described both extremes as flaws but never
--- said how far to deduct, so the model read a visibly pinched stance as a
--- "minor issue" and scored it 8 when the expert wanted 4.
+-- v9 is a rewrite that cut the rubric roughly in half. v8 had grown to ~90
+-- lines of layered warnings and started diluting itself: adding STRICTER text
+-- twice in a row made scores MORE generous, and a distant narrow stance came
+-- out 9/9/4 across repeat runs. Shortening it fixed that. When tuning this,
+-- prefer replacing text over appending to it.
+--
+-- Eval note: reference screenshots are ~200px wide, but the pipeline sends
+-- frames up to 1280px (MAX_FRAME_DIM in components/VideoUploader.tsx). Upscale
+-- them to 1280 before evaluating — at screenshot size the model misreads the
+-- feet and you end up tuning against your own proxy's noise.
 UPDATE criteria
-SET grading_notes = 'STANCE RUBRIC v8 — score the SET BASE at the start of the shooting motion, then apply a small landing check.
+SET grading_notes = 'STANCE RUBRIC v9 — how wide is the player''s base at the moment they shoot?
 
-TWO PARTS, IN THIS ORDER:
-  PART A — the set base. Measure the feet at the start of the shooting motion and score them with the corridor test. This is where almost all of the score comes from.
-  PART B — the landing. If the player jumps and you can clearly see them come back down, check whether they land in the same base they shot from, and take a small deduction if they do not.
-Do PART A first and finish it completely. PART B only ever adjusts the number PART A produced.
+WHICH MOMENT TO MEASURE. Find the frame where the shot begins: ball under control, knees dipped, player starting to rise. Measure there. Ignore earlier frames — players stand with their feet together while waiting and step out into their base as they load, so a narrow reading taken before the shot starts is not a finding. But if the feet are STILL close together at the gather and rise, that IS the finding — never excuse it by assuming they were about to step out.
 
-PART A — WHICH FRAME TO MEASURE. DO THIS FIRST, BEFORE MEASURING ANYTHING. Getting the frame wrong is the single biggest cause of a wrong score on this criterion.
-  Scan the frames in order and find the moment the shot actually begins: the player has the ball under control, has dipped into the knee bend, and is starting to rise. Measure the stance THERE — from the gather through the start of the upward drive. That is the base the player shoots from, and it is the only base that matters.
-  IGNORE every frame before that: standing idle, catching or receiving a pass, dribbling, walking or turning into position, resetting the feet. Players routinely stand with their feet close together while waiting and then STEP OUT into their base as they load into the shot. Measuring one of those earlier frames and calling the stance narrow is a grading error, not a finding.
-  If the feet are close early and correctly set by the time the player rises, the stance is CORRECT — score it on the rise. Feet that were narrow a moment before the shot are not a flaw.
-  If the feet move during the shot, use the widest set position between the gather and the moment the feet leave the floor.
-  Once the player leaves the floor, stop measuring for PART A — the feet coming together IN THE AIR is normal and is never a deduction.
+THE MEASUREMENT — THE CORRIDOR TEST. Never judge the base by general impression; your first impression is usually wrong, and it is wrong in the generous direction far more often than not. On a frame where the player is square to the camera:
+  STEP 1. Find four points: the outer edge of each HIP, and the outer edge of each SHOULDER. If the arms are overhead, take the shoulder points at the widest part of the torso at the deltoids.
+  STEP 2. Drop a vertical plumb line to the floor from all four. On each side this gives an inner line from the hip and an outer line from the shoulder; the space between them is that side CORRIDOR.
+  STEP 3. See where the OUTER edge of each shoe lands:
+    - Inside its corridor, or on either line: CORRECT. Score 9-10.
+    - A little short of the hip line, or a little past the shoulder line: 7-8.
+    - Clearly INSIDE the hip line, bunched toward the centre: TOO NARROW. Score 3-4, and 3 when the shoes are nearly touching.
+    - Clearly OUTSIDE the shoulder line: TOO WIDE. Score 3-4.
 
-HOW TO MEASURE — THE CORRIDOR TEST. Never judge stance width by general impression; your first impression on this criterion is usually wrong. Run this exact procedure on a shooting-motion frame where the player is square to the camera:
-  STEP 1. Find four points: the outer edge of each HIP, and the outer edge of each SHOULDER. If the arms are raised overhead, take the shoulder points at the widest part of the torso at the deltoids.
-  STEP 2. Mentally drop a vertical plumb line straight down to the floor from all four points. On each side of the body this gives an inner line (from the hip) and an outer line (from the shoulder). The space between them is that side CORRIDOR.
-  STEP 3. Look at where the OUTER edge of each shoe lands.
-  STEP 4. Score from what you see:
-    - Each shoe lands anywhere INSIDE ITS CORRIDOR, or on either line: CORRECT. Score 9-10.
-    - Each shoe lands a little short of the hip line, or a little past the shoulder line: 7-8.
-    - Shoes are clearly INSIDE the hip lines, bunched in toward the centre of the body: TOO NARROW. Score 3-4.
-    - Shoes are clearly OUTSIDE the shoulder lines: TOO WIDE. Score 3-4.
+THE CORRIDOR IS WIDE ON PURPOSE, AT BOTH ENDS. A base at hip width and a base at shoulder width are equally correct and both score 9-10 — never mark a player down for sitting at the hip end, and never write that a hip-width base is "a bit narrow" or "could be wider". Equally, never let that generosity cover a shoe that is outside its corridor: past the shoulder line or bunched inside the hip line is 3-4 no matter how athletic or tidy the rest of the shot looks.
 
-THE CORRIDOR IS WIDE ON PURPOSE. A stance at hip width and a stance at shoulder width are BOTH fully correct and both score 9-10. Never mark a player down for sitting at the narrow end of the corridor — do not write that a hip-width stance is "a bit narrow" or "could be wider". Only go below 9 when a shoe is outside its corridor entirely.
-THIS IS NOT A LICENCE TO PASS A WIDE STANCE. The corridor has an OUTER edge too. A shoe sitting clearly past its shoulder line is outside the corridor, and outside the corridor is 3-4 — no matter how athletic, loaded or balanced the posture reads. Being generous inside the corridor and being strict about its edges are the same rule.
+BEFORE YOU SCORE 3-4 FOR A NARROW BASE, CONFIRM THE SHOES ARE ACTUALLY BUNCHED. The 3-4 narrow band is for feet with almost no daylight between them — ankles close, the two legs reading as one column. If there is a clear gap between the inner edges of the shoes, one you could fit a shoe into, the base is NOT in that band: it is 9-10 if the shoes are inside their corridors and at worst 7-8 if they fall a little short of the hip lines. Being strict about bunched feet does not mean doubting a base that plainly has room in it.
 
-Convert to a ratio if it helps: shoe span divided by shoulder span. The same bands expressed that way:
-- 0.70 to 1.15 — CORRECT. Score 9-10. The feet sit between hip width and shoulder width. Anywhere in this band is good form; do not nitpick a player who is inside it.
-- 0.55 to 0.70, or 1.15 to 1.30 — slightly off but still stable. Score 7-8. Name the specific deviation.
-- 0.40 to 0.55, or 1.30 to 1.50 — clearly off. Score 5-6.
-- Below 0.40, or above 1.50 — OBVIOUSLY WRONG. Score 3-4.
-- Feet touching, or so wide the player cannot rise straight up. Score 1-2.
+WHEN THE PLAYER IS SMALL IN THE FRAME the hip and shoulder edges are too soft to place accurately and the plumb lines will mislead you — usually into a generous score. Fall back on the daylight between the shoes: a correct base has a clear gap between the inner edges roughly as wide as one shoe or more. Shoes nearly touching with almost no daylight is 3-4, whatever the plumb lines seemed to say.
 
-THE MOST COMMON GRADING ERROR IS MISSING A TOO-WIDE STANCE. A player in a loaded, knees-bent, hips-back posture reads as "athletic", "stable" and "balanced" even when the shoes are far outside the shoulder line. That impression is wrong. If the outer edges of the shoes are clearly OUTSIDE the outer edges of the shoulders, the stance is too wide no matter how balanced it looks — a shoe span half again the shoulder span is a 3-4, not a 9. Check the shoes against the shoulder line every single time, especially when the player is crouched or the ball is low.
+THIS CRITERION IS DIRECTLY MEASURABLE, SO NEVER DEFAULT TO A HIGH SCORE. Whenever the feet and shoulders are both visible you can compare the two spans, which makes a bad base a specific, clearly visible flaw. The general burden-of-proof and default-to-10 rules do NOT soften this criterion. Judge the feet and nothing else: a square torso, a clean rise, good balance and a tidy upper body tell you nothing about the base and must never pull a narrow or wide stance back up toward 9.
 
-THE SECOND MOST COMMON ERROR IS SCORING A NARROW STANCE OFF A PRE-SHOT FRAME. Before you deduct for a narrow base, confirm the frame you measured is one where the player is actually loading and rising into the shot. If the only narrow frames are before the shot begins and the feet are set correctly once the player rises, the score is 9-10 and there is no flaw to report.
+THE TWO WAYS THIS GETS GRADED WRONG, BOTH OF THEM GENEROUS:
+  1. A NARROW BASE UNDER A TIDY SHOOTING POSE. A player standing tall and square with the ball up at the set point looks like textbook form at a glance, and that glance says the stance is fine when the feet are actually close together. It is not fine — it is a 3-4. This is easiest to miss when the player is far from the camera and small in the frame. When that happens, look harder at the feet; do not fall back on overall impression.
+  2. A WIDE BASE UNDER A LOADED CROUCH. Knees bent and hips back reads as "athletic" and "stable" even when the shoes are far outside the shoulder line. That impression is wrong. A foot span half again the shoulder span is a 3-4, not a 9.
 
-THE THIRD MOST COMMON ERROR IS MISSING A NARROW STANCE IN AN OTHERWISE TIDY SHOOTING POSE. A player standing tall and square, arms up in a clean shooting motion, looks like textbook form at a glance — and that glance will tell you the stance is fine when the feet are actually close together. It is not fine. Ignore the upper body entirely and look only at where the shoes sit against the plumb lines. Feet a few inches apart with the ankles nearly touching, legs reading as a single column, is a 3-4 — not a 6, not a 9. This is especially easy to miss when the player is far from the camera and small in the frame; when that happens, look harder at the feet rather than falling back on the overall impression.
+EXPERT CALIBRATION — five real graded cases:
+  - Distant, small in frame, square, ball at the set point, feet almost touching with barely any daylight between the shoes: 3. Repeat runs scored this 8, 9, 9 and 4 before the expert set it at 3.
+  - Standing tall mid-shot, arms extended overhead, shoes a few inches apart and well inside the shoulders: 4. Scored 8 then 9 on review; the expert corrected it to 4 both times.
+  - Crouched with the ball low, thighs splayed, shoes clearly outside the shoulders: 4. Scored 9; the expert corrected it to 4.
+  - Squared up in the gather, knees bent, ball at chest, shoes set at roughly shoulder width: 9. Scored 4 because an earlier standing frame was measured instead of the gather.
+  - Standing square, shoes level, inside the shoulders but at or outside the hips: 9. Scored 6 on review; the expert corrected it to 9. Calling this "a bit narrower than shoulder width" is the error.
 
-PART B — THE LANDING CHECK. A shooter should land in essentially the same base they shot from. Landing with the feet collapsed together is a real balance flaw and the player should hear about it — but it is a smaller flaw than a bad set base, so it costs less.
-  WHEN THIS APPLIES: only when the player actually leaves the floor AND you can clearly see both feet back down on the floor in a later frame. If it is a set shot with the feet never leaving the ground, or the clip ends while the player is still in the air, or the feet are out of frame or not visible at touchdown, SKIP PART B ENTIRELY and report the PART A score unchanged. Never guess at a landing you cannot see, and never deduct for one.
-  HOW TO CHECK: find the first frame where both feet are back in contact with the floor. Run the same corridor test on that frame and compare it to the base from PART A.
-    - Landing inside the corridor, or only slightly off, or basically the same width they shot from: NO deduction. This is what good looks like.
-    - Landing clearly narrower than the base they shot from — feet bunched in toward the centre, ankles close or touching: subtract 1 or 2.
-    - Landing clearly wider than the base they shot from — feet splayed out past the shoulders: subtract 1 or 2.
-    - Take the full 2 only when the landing is drastically different from the set base: feet nearly touching, or a wide sideways straddle. Otherwise take 1.
-  HARD LIMITS ON PART B: never subtract more than 2 for the landing, and never let the landing check alone drop a score below 6. A player who sets a correct base and lands sloppy has a small flaw, not a broken stance. If PART A already scored 3-4 for a bad set base, do not stack a landing deduction on top — the set base is the finding, report that.
-  DO NOT deduct for the natural drift and shuffle a player makes AFTER they have landed and are relaxing or walking off. Only the first frames of floor contact count.
-  WHEN YOU DEDUCT FOR THE LANDING, SAY SO IN THE REASONING. Name it as a landing issue and tell them to land in the same stance they shot from — do not word it as if their shooting stance was wrong, because it was not.
-  WORKED EXAMPLE: player sets a correct shoulder-width base, rises straight up, and comes down with the feet a few inches apart and the ankles nearly touching. PART A gives 10. PART B subtracts 2 because the landing is drastically narrower than the base. Final score 8, and the reasoning tells them the shooting base was good and to stick the landing in that same stance.
+THE LANDING. If the player jumps AND you can clearly see both feet back on the floor afterward, they should land in the same base they shot from. Landing clearly narrower or wider costs 1 point, or 2 when it is drastic (feet nearly touching, or a wide straddle). Never more than 2, never below 6 on this alone, and never stacked on a base already scored 3-4. Skip this entirely for set shots, clips that end mid-air, or feet not visible at touchdown — never guess at a landing you cannot see. Feet coming together IN THE AIR is normal and is never a deduction. When you do deduct, say it is the landing and tell them to land in the stance they shot from.
 
-THIS CRITERION IS DIRECTLY MEASURABLE, SO DO NOT DEFAULT TO A HIGH SCORE. Whenever both feet and both shoulders are visible you can measure the ratio, which makes a bad stance a specific, clearly visible flaw. The general burden-of-proof and default-to-10 rules do NOT soften this criterion.
+PLAYER-FACING WORDING: always say "shoulder width" — tell the player the base is too narrow, too wide, or a good shoulder-width base. NEVER write "hip width", and never mention spans, ratios or measurements in the reasoning.
 
-EXPERT CALIBRATION EXAMPLES — all four are real graded cases. These are PART A scores for the set base, before any landing adjustment:
-- Player squared to the camera in the gather, knees bent, ball at chest height, rising into the shot, shoes set at roughly shoulder width with the toes level: score 9-10. This was scored 4, and the expert corrected it to 9 or better. The model measured an earlier frame where the player was still standing with the feet close together before stepping out into the base. Measuring the wrong frame is the entire error — the shooting stance itself was correct.
-- Player standing tall mid-shot, arms extended overhead, shoes only a few inches apart and well inside both plumb lines (ratio around 0.3): score 4. This was scored 8 and then 9 on review, and the expert corrected it to 4 both times. The clean upper body is what causes the mistake. Note the difference from the case above: here the feet are still narrow DURING the shooting motion, so the narrow reading is real.
-- Player crouched with the ball low, thighs splayed, shoes clearly outside both plumb lines (ratio around 1.6): score 4. This was scored 9, and the expert corrected it to 4. The loaded posture is what causes the mistake.
-- Player standing square with the shoes level, inside the shoulder lines but at or outside the hip lines (ratio around 0.8-0.9): score 9. This was scored 6 on review and the expert corrected it to 9. It is the target, and calling it "a bit narrower than shoulder width" is the error — a shoe anywhere in the corridor is correct.
-
-BOTH EXTREMES COUNT EQUALLY. Too wide is exactly as much a flaw as too narrow. Past the shoulder line it blocks the knee bend and leaks leg drive sideways.
-
-PLAYER-FACING WORDING: always say "shoulder width" — tell the player the stance is too narrow, too wide, or a good shoulder-width base. NEVER write "hip width", and never mention ratios or measurements in the reasoning.
-
-If the feet are never clearly visible in any frame of the shooting motion, return null. A landing you cannot see is never a reason to return null — score PART A on its own.'
+If the feet are never clearly visible during the shooting motion, return null. A landing you cannot see is never a reason to return null.'
 WHERE name = 'Feet Shoulder Width Apart'
-  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'STANCE RUBRIC v8%');
+  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'STANCE RUBRIC v9%');

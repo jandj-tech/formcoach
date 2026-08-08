@@ -319,4 +319,40 @@ PLAYER-FACING WORDING: tell them to load their legs and let the power come up fr
 WHERE name = 'Source of Shot Power'
   AND (grading_notes IS NULL OR grading_notes NOT LIKE 'POWER RUBRIC v1%');
 
+-- "Guide Hand Follow Through" rubric. The criterion had only its one-line
+-- description, which named the flick but not the two faults the expert cares
+-- most about: the hands closing up toward each other at any point after the
+-- release, and a flimsy finish where the hands and elbows sit in visibly
+-- different places frame to frame instead of holding their shape. The target is
+-- a flat vertical guide hand with a passive thumb that the ball is shot
+-- straight through, hands finishing clearly apart.
+UPDATE criteria
+SET grading_notes = 'GUIDE HAND FOLLOW THROUGH RUBRIC v1 — did the shot go THROUGH a flat, still guide hand that stayed clear of the shooting hand?
+
+WHAT GOOD LOOKS LIKE. At the finish the two hands are clearly APART and never touch. The guide hand is FLAT — fingers together and extended, the hand reading like a flat vertical board rather than a cup, a claw or a fist. The thumb is passive and flat against the hand, not flicking or pushing. The hand simply stays where it was and the ball is shot THROUGH it: it peels away cleanly and adds nothing to the shot. A guide hand that finishes flat, still and separated is 9-10.
+
+CAMERA ANGLE COMPRESSES SEPARATION. Filmed from the front the two hands can look closer together than they are. What matters is whether they actually TOUCH or converge. Hands that look a little close from that angle but plainly keep a gap between them are correct — score them 9-10 and do not deduct for the angle.
+
+FAULT 1 — THE HANDS COME TOO CLOSE. If at ANY point from the release onward the guide hand drifts in toward the shooting hand — the two closing up, meeting, touching or crossing — that is a real flaw. Check every frame of the release and finish, not just the last one. Hands ending up together is a 3-4, and touching or crossing is 1-2.
+
+FAULT 2 — A FLIMSY, THRASHING FINISH. If the hands or the elbows are in noticeably different places from one frame to the next, flying around rather than holding a position, the finish is not controlled. A good follow-through is STILL: the arms hold their shape after the ball is gone. Hands and elbows that jump around frame to frame, with no held finish, score 3-4 even if no single frame looks terrible on its own. Judge this across the sequence, not from one image.
+
+FAULT 3 — THE GUIDE HAND IS NOT FLAT. A cupped palm, curled or splayed fingers, or a thumb that drives, flicks or pushes at the ball all mean the guide hand acted on the shot instead of riding along. Score 4-5. The thumb is the usual culprit — look at it directly.
+
+NEVER DEDUCT FOR SOMETHING YOU CANNOT SEE. In particular, do not shave points because the finish could have been "held a beat longer" or the hand could have been "a little flatter" — that is coaching advice, not an observed flaw. If the hands are apart, the guide hand reads flat and the thumb is passive, the score is 9-10. Reserve everything below that for a fault you can actually point at in a frame.
+
+HOW TO SCORE:
+  - Hands clearly apart, guide hand flat and vertical, thumb passive, finish held still: 9-10.
+  - Correct but slightly imperfect — the hand a touch angled, or a small settle after the finish: 7-8.
+  - Guide hand cupped, or the thumb visibly driving: 4-5.
+  - Hands closing up together at the finish, or hands and elbows thrashing between frames: 3-4.
+  - Hands actually touching or crossing: 1-2.
+
+DO NOT PENALISE THE ARMS COMING DOWN. After the ball is gone it is normal for both arms to lower and separate as the player returns to rest. That is not a flaw and is not thrashing. Only the frames at and just after release count.
+
+PLAYER-FACING WORDING: tell them to keep the guide hand flat like a board, thumb relaxed, and let the ball go straight through it — hands finishing apart, and hold the finish instead of dropping the hands straight away. Never mention frames or scoring bands in the reasoning.'
+WHERE name = 'Guide Hand Follow Through'
+  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'GUIDE HAND FOLLOW THROUGH RUBRIC v1%');
+
+
 

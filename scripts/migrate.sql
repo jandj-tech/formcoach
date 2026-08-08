@@ -155,7 +155,11 @@ WHERE NOT EXISTS (SELECT 1 FROM criteria WHERE name = 'Feet Shoulder Width Apart
 -- them to 1280 before evaluating — at screenshot size the model misreads the
 -- feet and you end up tuning against your own proxy's noise.
 UPDATE criteria
-SET grading_notes = 'STANCE RUBRIC v11 — score the base TWICE: once before the release, once at and after it.
+SET grading_notes = 'STANCE RUBRIC v12 — score the base TWICE: once before the release, once at and after it.
+
+THE TARGET IS HIP WIDTH. "Shoulder width apart" is the phrase coaches say and the phrase you write back to the player, but it is a cue, not a measurement — taken literally it is wider than anyone actually shoots from. When you ANALYSE the base, the target you are grading against is HIP WIDTH: the feet under the hips, straight down from the hip joints.
+THE TOE-TOUCH TEST is the plain-English version of the same thing. A correct base is one the player could bend straight down from and touch their toes without shifting their feet. Feet bunched together will not let them balance; feet splayed wide will not let them fold straight down. Hip width is where they can.
+This is the target BOTH times you score it — the base they go up from and the base they come down on.
 
 SCORE TWO SECTIONS, THEN COMBINE THEM. A base that is set correctly on the way up and then collapses at the release is two different facts about the shot, and the player needs to hear both.
   SECTION 1 — BEFORE RELEASE. The base they build and shoot from.
@@ -174,12 +178,13 @@ THE MEASUREMENT — THE CORRIDOR TEST. Never judge the base by general impressio
   STEP 1. Find four points: the outer edge of each HIP, and the outer edge of each SHOULDER. Take the shoulder points at the SHOULDER JOINTS — the outer edge of the torso itself. NEVER include an arm, elbow, hand or the ball. An arm reaching out to the side or across the body is not part of the shoulder span, and counting it inflates that span and makes a perfectly good base read as narrow.
   STEP 2. Drop a vertical plumb line to the floor from all four. On each side this gives an inner line from the hip and an outer line from the shoulder; the space between them is that side CORRIDOR.
   STEP 3. See where the OUTER edge of each shoe lands:
-    - Inside its corridor, or on either line: CORRECT. Score 9-10.
+    - Landing on or near the HIP line — the shoes under the hips: IDEAL. Score 10.
+    - Anywhere else inside its corridor, out as far as the shoulder line: CORRECT. Score 9-10.
     - A little short of the hip line, or a little past the shoulder line: 7-8.
     - Clearly INSIDE the hip line, bunched toward the centre: TOO NARROW. Score 3-4, and 3 when the shoes are nearly touching.
     - Clearly OUTSIDE the shoulder line: TOO WIDE. Score 3-4.
 
-THE CORRIDOR IS WIDE ON PURPOSE, AT BOTH ENDS. A base at hip width and a base at shoulder width are equally correct and both score 9-10 — never mark a player down for sitting at the hip end, and never write that a hip-width base is "a bit narrow" or "could be wider". Equally, never let that generosity cover a shoe that is outside its corridor: past the shoulder line or bunched inside the hip line is 3-4 no matter how athletic or tidy the rest of the shot looks.
+HIP WIDTH IS THE TARGET, NOT THE NARROW END. A base with the shoes under the hips is exactly right and scores 10 — never mark it down, never call it "a bit narrow", and never tell that player to widen their feet. The corridor runs out to the shoulder line because a base anywhere between the hips and the shoulders still works, but the hip end is the ideal and the shoulder line is the OUTER limit of correct, not the goal. Past the shoulder line, or bunched inside the hip line, is 3-4 no matter how athletic or tidy the rest of the shot looks.
 
 JUDGE THE SHOES ON THE FLOOR, NOT THE LEGS. Knees or thighs that converge while the shoes stay apart is NOT a narrow base — it is a knee-bend question and belongs to another criterion. Measure only the gap between the two shoes where they meet the floor.
 
@@ -204,7 +209,7 @@ EXPERT CALIBRATION — six real graded cases:
 SECTION 2 IS A COMPARISON, NOT A STANDALONE JUDGEMENT. You can only score it if you have actually SEEN the SECTION 1 base and can hold it next to the release. If you have one frame, or cannot identify which frame is the release, or never saw the base that was set beforehand, do not score SECTION 2 at all — score SECTION 1 on what is in front of you and stop there. Never conclude that the feet collapsed from a single frame; a collapse is a CHANGE, and one frame cannot show a change.
 
 SECTION 2 — AT AND AFTER RELEASE. Run the same corridor test on the frame where the ball leaves the hand, and again on the landing if the feet come back down before the clip ends. Score the WORST of what you see across those frames.
-  Holding the same base they shot from, or close to it: score 9-10. This is what good looks like.
+  Holding the same base they shot from, or close to it, with the feet still about hip width: score 9-10. This is what good looks like — they should land on the base they shot from.
   Feet noticeably closer together or wider than the base they set: score 5-6.
   Feet bunched at the release — the shoes almost touching — or a wide sideways straddle: score 3-4.
   A small drift inward as the player extends upward is normal and is not a deduction. SECTION 2 is about a clear collapse or splay, not about a couple of inches.
@@ -215,7 +220,7 @@ PLAYER-FACING WORDING: always say "shoulder width" — tell the player the base 
 
 If the feet are never clearly visible during the shooting motion, return null. A landing you cannot see is never a reason to return null.'
 WHERE name = 'Feet Shoulder Width Apart'
-  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'STANCE RUBRIC v11%');
+  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'STANCE RUBRIC v12%');
 
 -- Canonical "Square to the Basket" rubric, same versioned-guard pattern as the
 -- stance rubric above. Added because the criterion shipped with only its

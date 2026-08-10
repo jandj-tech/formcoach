@@ -130,6 +130,53 @@ export async function GET(req: NextRequest) {
         first_score: number | string; latest_score: number | string
       }>
 
+      // Schedule glance: next upcoming event + how many events still need
+      // this caller's RSVP. Wrapped separately — the schedule tables may not
+      // exist yet on older databases.
+      let nextEvent: {
+        id: string; type: string; startsAt: string; timeTbd: boolean
+        location: string; status: string
+      } | null = null
+      let pendingRsvpCount = 0
+      try {
+        const [ev] = (await db`
+          SELECT id, type, starts_at, time_tbd, location, status
+          FROM team_events
+          WHERE team_id = ${team.id}
+            AND status = 'active'
+            AND starts_at >= NOW() - interval '3 hours'
+          ORDER BY starts_at ASC
+          LIMIT 1
+        `) as unknown as [{
+          id: string; type: string; starts_at: string | Date; time_tbd: boolean
+          location: string; status: string
+        } | undefined]
+        if (ev) {
+          nextEvent = {
+            id: ev.id,
+            type: ev.type,
+            startsAt: new Date(ev.starts_at).toISOString(),
+            timeTbd: ev.time_tbd,
+            location: ev.location,
+            status: ev.status,
+          }
+        }
+        if (team.role === 'player') {
+          const [pending] = (await db`
+            SELECT COUNT(*)::int AS n
+            FROM team_events e
+            WHERE e.team_id = ${team.id}
+              AND e.status = 'active'
+              AND e.starts_at >= NOW()
+              AND NOT EXISTS (
+                SELECT 1 FROM team_event_rsvps r
+                WHERE r.event_id = e.id AND r.user_id = ${session.userId}
+              )
+          `) as unknown as [{ n: number }]
+          pendingRsvpCount = Number(pending?.n ?? 0)
+        }
+      } catch {}
+
       // Roster: names only — the app shows the roster without any scores.
       const roster = (await db`
         SELECT COALESCE(NULLIF(tm.first_name, ''), u.email) AS first_name,
@@ -144,6 +191,8 @@ export async function GET(req: NextRequest) {
         id: team.id,
         name: team.name,
         role: team.role,
+        nextEvent,
+        pendingRsvpCount,
         memberCount: roster.length,
         roster: roster.map(r => displayName(r.first_name, r.last_name_initial)),
         leaderboard: leaderboard.map(e => ({
@@ -166,6 +215,7 @@ export async function GET(req: NextRequest) {
         console.error('[team/summary] team block failed:', team.id, err)
         result.push({
           id: team.id, name: team.name, role: team.role,
+          nextEvent: null, pendingRsvpCount: 0,
           memberCount: 0, roster: [], leaderboard: [], mostImproved: [],
         })
       }

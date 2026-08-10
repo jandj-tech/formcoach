@@ -1,0 +1,139 @@
+'use client'
+
+import { useState, type ReactNode } from 'react'
+import Link from 'next/link'
+import HubSection from '@/components/HubSection'
+import TeamChatPanel from '@/components/TeamChatPanel'
+import TeamSchedulePanel from '@/components/TeamSchedulePanel'
+
+export interface HubTeam {
+  id: string
+  name: string
+  accessCode: string
+  memberCount: number
+  coaches: string[]
+  players: string[]
+}
+
+function TeamHubBody({
+  team,
+  eyebrow,
+  switcher,
+}: {
+  team: HubTeam
+  eyebrow: string
+  switcher?: ReactNode
+}) {
+  // BIG team name, last word in the ember gradient.
+  const words = team.name.trim().split(/\s+/)
+  const lastWord = words[words.length - 1]
+  const leadWords = words.slice(0, -1).join(' ')
+
+  return (
+    <div className="space-y-4">
+      {/* Hero — the team name IS the headline */}
+      <div className="pb-2">
+        <p className="eyebrow text-ember-400 select-none">{eyebrow}</p>
+        <h1 className="font-display font-black uppercase text-[clamp(2.4rem,7vw,4.5rem)] leading-[0.95] mt-1">
+          {leadWords && <>{leadWords} </>}
+          <span className="text-gradient-ember">{lastWord}</span>
+        </h1>
+        <p className="text-chalk-dim text-sm font-mono mt-3">
+          Team code {team.accessCode} · {team.memberCount} player{team.memberCount === 1 ? '' : 's'}
+          {team.coaches[0] ? ` · Coach ${team.coaches[0]}` : ''}
+        </p>
+        {switcher}
+      </div>
+
+      {/* Schedule — the everyday section, open by default and visually dominant */}
+      <HubSection icon="📅" label="Schedule" defaultOpen>
+        <TeamSchedulePanel teamId={team.id} theme="dark" />
+      </HubSection>
+
+      {/* Roster — coaches first with a COACH mini-badge, then player chips */}
+      <HubSection icon="👥" label="Roster" summary={`${team.memberCount} player${team.memberCount === 1 ? '' : 's'}`}>
+        {team.coaches.length === 0 && team.players.length === 0 ? (
+          <p className="text-chalk-dim text-sm">No players have joined yet.</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {team.coaches.map((c, i) => (
+              <span
+                key={`coach-${c}-${i}`}
+                className="bg-ink-950 border border-courtline rounded-full px-3 py-1.5 text-xs font-semibold text-chalk inline-flex items-center gap-1.5"
+              >
+                {c}
+                <span className="bg-ember-500 text-ink-950 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase leading-none">
+                  Coach
+                </span>
+              </span>
+            ))}
+            {team.players.map((p, i) => (
+              <span
+                key={`player-${p}-${i}`}
+                className="bg-ink-950 border border-courtline rounded-full px-3 py-1.5 text-xs font-semibold text-chalk"
+              >
+                {p}
+              </span>
+            ))}
+          </div>
+        )}
+      </HubSection>
+
+      {/* Leaderboard — a link row, not an embed. It lives where it lives. */}
+      <Link
+        href={`/dashboard/leaderboard?team=${team.id}`}
+        className="w-full bg-ink-900 border border-courtline rounded-2xl px-5 py-4 flex items-center justify-between gap-3 hover:border-chalk-dim/40 transition-colors"
+      >
+        <span className="flex items-center gap-3">
+          <span aria-hidden className="text-lg leading-none select-none">🏆</span>
+          <span className="font-display font-bold uppercase text-chalk tracking-wide">Leaderboard</span>
+        </span>
+        <span aria-hidden className="text-chalk-dim font-bold select-none">→</span>
+      </Link>
+
+      {/* Chat — always last, closed on load; expands large and owns the
+          viewport when opened. The white island inside dark is the shipped
+          pattern for the light-themed TeamChatPanel. */}
+      <HubSection icon="💬" label="Chat" summary="Talk to your team" scrollOnOpen>
+        <div className="min-h-[70vh] bg-white rounded-xl p-4">
+          <TeamChatPanel teamId={team.id} tall />
+        </div>
+      </HubSection>
+    </div>
+  )
+}
+
+// Signed-in /team hub. Multiple teams get a pill switcher under the hero;
+// everything scopes to the selected team. keyed TeamHubBody remounts per team
+// so schedule/chat state never bleeds across teams.
+export default function TeamHubClient({ teams }: { teams: HubTeam[] }) {
+  const [selectedId, setSelectedId] = useState(teams[0]?.id ?? '')
+  const team = teams.find(t => t.id === selectedId) ?? teams[0]
+  if (!team) return null
+
+  const index = teams.findIndex(t => t.id === team.id)
+  const eyebrow = teams.length > 1 ? `Team ${index + 1} of ${teams.length}` : 'Your team'
+
+  const switcher =
+    teams.length > 1 ? (
+      <div className="flex flex-wrap gap-2 mt-4">
+        {teams.map(t => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setSelectedId(t.id)}
+            aria-pressed={t.id === team.id}
+            className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide border transition-colors ${
+              t.id === team.id
+                ? 'bg-ember-500 border-ember-500 text-ink-950'
+                : 'border-courtline text-chalk-dim hover:border-chalk-dim'
+            }`}
+          >
+            {t.name}
+          </button>
+        ))}
+      </div>
+    ) : undefined
+
+  return <TeamHubBody key={team.id} team={team} eyebrow={eyebrow} switcher={switcher} />
+}

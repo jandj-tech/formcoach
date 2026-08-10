@@ -7,7 +7,7 @@ import { getSession } from '@/lib/auth'
 import { getTeamSession } from '@/lib/team-auth'
 import { getOrgSession } from '@/lib/org-auth'
 import { db } from '@/lib/db'
-import TeamChatPanel from '@/components/TeamChatPanel'
+import TeamHubClient, { type HubTeam } from './TeamHubClient'
 import { GraduationCapIcon, TrendingUpIcon, TrophyIcon } from 'lucide-react'
 
 export const metadata: Metadata = {
@@ -22,16 +22,64 @@ export default async function TeamLandingPage() {
   // Signed-in visitors see THEIR team here — this page is the "Teams" home,
   // not just the org sales pitch.
   const session = await getSession()
-  let myTeams: Array<{ id: string; name: string; access_code: string }> = []
+  let myTeams: Array<{ id: string; name: string; access_code: string; admin_email: string }> = []
   if (session) {
     try {
       myTeams = (await db`
-        SELECT t.id, t.name, t.access_code
+        SELECT t.id, t.name, t.access_code, t.admin_email
         FROM team_memberships tm JOIN teams t ON t.id = tm.team_id
         WHERE tm.user_id = ${session.userId}
         ORDER BY tm.joined_at DESC
       `) as unknown as typeof myTeams
     } catch {}
+  }
+
+  // Roster + coach names for the hub (server-rendered; the schedule and chat
+  // are client-fetched). Any per-team query failing degrades to an empty list
+  // instead of breaking the page.
+  const hubTeams: HubTeam[] = []
+  for (const t of myTeams) {
+    let coaches: string[] = []
+    try {
+      const [head] = (await db`
+        SELECT coach_nickname FROM teams WHERE id = ${t.id}
+      `) as unknown as [{ coach_nickname: string | null } | undefined]
+      coaches = [head?.coach_nickname || t.admin_email]
+    } catch {
+      coaches = [t.admin_email]
+    }
+    try {
+      const extra = (await db`
+        SELECT email, nickname FROM team_coaches WHERE team_id = ${t.id} ORDER BY created_at ASC
+      `) as unknown as Array<{ email: string; nickname: string | null }>
+      coaches.push(...extra.map(c => c.nickname || c.email))
+    } catch {}
+
+    let players: string[] = []
+    try {
+      const roster = (await db`
+        SELECT COALESCE(NULLIF(tm.first_name, ''), u.email) AS first_name,
+               COALESCE(tm.last_name_initial, '') AS last_initial
+        FROM team_memberships tm JOIN users u ON u.id = tm.user_id
+        WHERE tm.team_id = ${t.id}
+        ORDER BY tm.first_name ASC NULLS LAST
+      `) as unknown as Array<{ first_name: string; last_initial: string }>
+      players = roster.map(r => {
+        const f = (r.first_name || '').trim()
+        const l = (r.last_initial || '').trim()
+        if (!l) return f
+        return l.length === 1 ? `${f} ${l}.` : `${f} ${l}`
+      })
+    } catch {}
+
+    hubTeams.push({
+      id: t.id,
+      name: t.name,
+      accessCode: t.access_code,
+      memberCount: players.length,
+      coaches,
+      players,
+    })
   }
   const teamSession = myTeams.length === 0 ? await getTeamSession() : null
   const orgSession = myTeams.length === 0 && !teamSession ? await getOrgSession() : null
@@ -53,34 +101,12 @@ export default async function TeamLandingPage() {
         </div>
       )}
 
-      {/* Player: your teams live right here */}
+      {/* Player: the team hub — big team name, schedule with one-tap RSVP,
+          roster, leaderboard link, and chat behind a dropdown that expands
+          large. Schedule is the everyday section; chat is a destination. */}
       {myTeams.length > 0 && (
-        <div className="px-6 pt-12 pb-4 max-w-3xl mx-auto w-full space-y-6">
-          <div>
-            <p className="eyebrow text-ember-400 select-none">Your teams</p>
-            <h1 className="font-display font-black uppercase text-[clamp(1.8rem,4vw,3rem)] leading-[0.95] mt-1">
-              My <span className="text-gradient-ember">Teams</span>
-            </h1>
-          </div>
-          {myTeams.map(t => (
-            <div key={t.id} className="bg-ink-900 border border-courtline rounded-2xl p-5 space-y-4">
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <div>
-                  <p className="font-display font-bold uppercase text-chalk text-lg">{t.name}</p>
-                  <p className="text-chalk-dim text-xs mt-0.5">Team code: <span className="font-mono">{t.access_code}</span></p>
-                </div>
-                <Link
-                  href={`/dashboard/leaderboard?team=${t.id}`}
-                  className="text-ember-400 hover:text-ember-300 text-sm font-semibold transition-colors"
-                >
-                  Leaderboard →
-                </Link>
-              </div>
-              <div className="bg-white rounded-xl p-4">
-                <TeamChatPanel teamId={t.id} />
-              </div>
-            </div>
-          ))}
+        <div className="px-6 pt-10 pb-4 max-w-3xl mx-auto w-full space-y-6">
+          <TeamHubClient teams={hubTeams} />
           <p className="text-chalk-dim text-xs text-center pb-6">
             Shot history and account settings live on your{' '}
             <Link href="/dashboard" className="text-ember-400 underline">dashboard</Link>.

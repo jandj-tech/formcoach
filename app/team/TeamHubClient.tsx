@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import HubSection from '@/components/HubSection'
 import TeamChatPanel from '@/components/TeamChatPanel'
@@ -18,11 +18,9 @@ export interface HubTeam {
 function TeamHubBody({
   team,
   eyebrow,
-  switcher,
 }: {
   team: HubTeam
   eyebrow: string
-  switcher?: ReactNode
 }) {
   // BIG team name, last word in the ember gradient.
   const words = team.name.trim().split(/\s+/)
@@ -42,7 +40,6 @@ function TeamHubBody({
           Team code {team.accessCode} · {team.memberCount} player{team.memberCount === 1 ? '' : 's'}
           {team.coaches[0] ? ` · Coach ${team.coaches[0]}` : ''}
         </p>
-        {switcher}
       </div>
 
       {/* Schedule — the everyday section, open by default and visually dominant */}
@@ -111,29 +108,37 @@ export default function TeamHubClient({ teams }: { teams: HubTeam[] }) {
   const team = teams.find(t => t.id === selectedId) ?? teams[0]
   if (!team) return null
 
-  const index = teams.findIndex(t => t.id === team.id)
-  const eyebrow = teams.length > 1 ? `Team ${index + 1} of ${teams.length}` : 'Your team'
+  const eyebrow = 'Your team'
 
-  const switcher =
-    teams.length > 1 ? (
-      <div className="flex flex-wrap gap-2 mt-4">
-        {teams.map(t => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setSelectedId(t.id)}
-            aria-pressed={t.id === team.id}
-            className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide border transition-colors ${
-              t.id === team.id
-                ? 'bg-ember-500 border-ember-500 text-ink-950'
-                : 'border-courtline text-chalk-dim hover:border-chalk-dim'
-            }`}
-          >
-            {t.name}
-          </button>
-        ))}
-      </div>
-    ) : undefined
-
-  return <TeamHubBody key={team.id} team={team} eyebrow={eyebrow} switcher={switcher} />
+  return (
+    <div>
+      {/* Team switcher — sticky so switching is one tap from anywhere on the page */}
+      {teams.length > 1 && (
+        <div className="sticky top-0 z-20 -mx-6 px-6 py-3 bg-ink-950/95 backdrop-blur border-b border-courtline mb-5">
+          <div className="flex items-center gap-3 overflow-x-auto">
+            <span className="eyebrow text-chalk-dim shrink-0 select-none">Switch team</span>
+            {teams.map(t => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setSelectedId(t.id)}
+                aria-pressed={t.id === team.id}
+                className={`shrink-0 px-5 py-2.5 rounded-full text-sm font-bold border transition-colors ${
+                  t.id === team.id
+                    ? 'bg-ember-500 border-ember-500 text-ink-950'
+                    : 'border-courtline text-chalk hover:border-ember-400 hover:text-ember-400'
+                }`}
+              >
+                {t.name}
+                <span className={`ml-2 text-xs font-semibold ${t.id === team.id ? 'text-ink-950/70' : 'text-chalk-dim'}`}>
+                  {t.memberCount}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      <TeamHubBody key={team.id} team={team} eyebrow={eyebrow} />
+    </div>
+  )
 }

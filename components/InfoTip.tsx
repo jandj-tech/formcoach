@@ -47,8 +47,8 @@ export default function InfoTip({
     <span
       ref={wrapRef}
       className="relative inline-flex"
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
+      onPointerEnter={e => { if (e.pointerType === 'mouse') setOpen(true) }}
+      onPointerLeave={e => { if (e.pointerType === 'mouse') setOpen(false) }}
     >
       <button
         type="button"
@@ -56,8 +56,6 @@ export default function InfoTip({
         aria-expanded={open}
         aria-describedby={open ? panelId : undefined}
         onClick={() => setOpen(o => !o)}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setOpen(false)}
         className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-gray-400 text-gray-400 text-[10px] font-bold leading-none select-none hover:border-orange-500 hover:text-orange-500 focus:outline-none focus-visible:border-orange-500 focus-visible:text-orange-500 transition-colors cursor-help"
       >
         i

@@ -111,7 +111,11 @@ function LoginForm() {
           {teams ? (
             <div className="space-y-3">
               <h2 className="font-display font-black uppercase text-lg text-center">Select your team</h2>
-              {error && <p className="text-red-400 text-sm text-center">{error}</p>}
+              {error && (
+                <div role="alert" className="bg-red-500/15 border-2 border-red-500 rounded-xl px-4 py-3">
+                  <p className="text-red-400 text-sm font-bold text-center">❌ {error}</p>
+                </div>
+              )}
               <div className="space-y-2">
                 {teams.map(t => (
                   <button

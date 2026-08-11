@@ -1,7 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import Link from 'next/link'
+import { ChevronDownIcon } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
 // Team schedule — one component, three faces:
@@ -165,9 +166,31 @@ function repeatCaption(v: FormValues): string | null {
   return `Creates ${v.repeatWeeks} ${noun}, every ${first.toLocaleDateString(undefined, { weekday: 'short' })} through ${last.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
 }
 
+// Parse a typed time: "7:30", "7:30pm", "730", "7pm", "19:30", "1930".
+// 1–12 with no am/pm keeps the currently selected period — typing "7:30"
+// while PM is lit means 7:30 PM; 13–23 is unambiguous 24-hour.
+function parseTypedTime(raw: string, fallbackPM: boolean): string | null {
+  const s = raw.trim().toLowerCase().replace(/[\s.]/g, '')
+  const m = s.match(/^(\d{1,2})(?::?([0-5]\d))?(am?|pm?)?$/)
+  if (!m) return null
+  let h = parseInt(m[1], 10)
+  const min = m[2] ? parseInt(m[2], 10) : 0
+  const suffix = m[3]
+  if (suffix) {
+    if (h < 1 || h > 12) return null
+    h = (h % 12) + (suffix.startsWith('p') ? 12 : 0)
+  } else if (h > 23) {
+    return null
+  } else if (h >= 1 && h <= 12) {
+    h = (h % 12) + (fallbackPM ? 12 : 0)
+  }
+  return `${pad2(h)}:${pad2(min)}`
+}
+
 function TimeSelect({ value, onChange, dark }: { value: string; onChange: (v: string) => void; dark: boolean }) {
   const t = themeClasses(dark)
-  // value is 24h "HH:MM"; render as tap-only hour/minute/AM-PM controls.
+  // value is 24h "HH:MM"; a typed field plus tap-only hour/minute/AM-PM
+  // controls, kept in sync both ways. Type OR tap — whichever is faster.
   const [hh, mm] = value ? value.split(':').map(n => parseInt(n, 10)) : [18, 0]
   const isPM = hh >= 12
   const hour12 = hh % 12 === 0 ? 12 : hh % 12
@@ -175,9 +198,32 @@ function TimeSelect({ value, onChange, dark }: { value: string; onChange: (v: st
     const h24 = pm ? (h12 % 12) + 12 : h12 % 12
     onChange(`${String(h24).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`)
   }
+  // Uncontrolled + keyed by value: commits on blur/Enter; a dropdown tap
+  // remounts it with the canonical text, so the two never disagree.
+  const commitTyped = (el: HTMLInputElement) => {
+    const parsed = parseTypedTime(el.value, isPM)
+    if (parsed && parsed !== value) onChange(parsed)
+    else el.value = `${hour12}:${pad2(mm)}`
+  }
   const selCls = `rounded-xl px-2.5 py-2.5 text-sm font-bold focus:outline-none cursor-pointer ${t.input}`
   return (
-    <span className="inline-flex items-center gap-1.5">
+    <span className="inline-flex items-center gap-1.5 flex-wrap">
+      <input
+        key={value}
+        type="text"
+        defaultValue={`${hour12}:${pad2(mm)}`}
+        onFocus={e => e.currentTarget.select()}
+        onBlur={e => commitTyped(e.currentTarget)}
+        onKeyDown={e => {
+          if (e.key === 'Enter') {
+            e.preventDefault()
+            commitTyped(e.currentTarget)
+          }
+        }}
+        placeholder="7:30"
+        aria-label="Type a time, e.g. 7:30"
+        className={`w-[4.5rem] text-center rounded-xl px-2 py-2.5 text-sm font-bold focus:outline-none ${t.input}`}
+      />
       <select value={hour12} onChange={e => apply(parseInt(e.target.value, 10), mm, isPM)} className={selCls} aria-label="Hour">
         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(h => <option key={h} value={h}>{h}</option>)}
       </select>
@@ -257,7 +303,7 @@ function EventForm({
         ))}
       </div>
 
-      {/* When — date plus tap-only time dropdowns (native time inputs are fiddly) */}
+      {/* When — date plus a typed time field with tap dropdowns as backup */}
       <div>
         <p className={`text-xs font-bold uppercase tracking-wide mb-1.5 ${t.dim}`}>When</p>
         <div className="flex flex-wrap items-center gap-2">
@@ -791,6 +837,125 @@ function EventCard({
 }
 
 // ---------------------------------------------------------------------------
+// Weekly view — upcoming events grouped into collapsible week sections, each
+// headed by a mini calendar strip (the 7 days, lit where something happens).
+// The first two weeks open by default; further-out weeks start folded.
+// ---------------------------------------------------------------------------
+
+function startOfWeekLocal(d: Date): Date {
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+  x.setDate(x.getDate() - x.getDay()) // Sunday-start, device-local
+  return x
+}
+
+function sameLocalDay(a: Date, b: Date): boolean {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
+}
+
+function weekTitle(weekStart: Date): string {
+  const thisWeek = startOfWeekLocal(new Date())
+  // Local-midnight anchors can differ by an hour across a DST switch — round.
+  const diffWeeks = Math.round((weekStart.getTime() - thisWeek.getTime()) / (7 * 24 * 60 * 60 * 1000))
+  if (diffWeeks === 0) return 'This week'
+  if (diffWeeks === 1) return 'Next week'
+  const end = new Date(weekStart)
+  end.setDate(end.getDate() + 6)
+  const startStr = weekStart.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  const endStr = end.toLocaleDateString(
+    undefined,
+    weekStart.getMonth() === end.getMonth() ? { day: 'numeric' } : { month: 'short', day: 'numeric' },
+  )
+  return `${startStr} – ${endStr}`
+}
+
+interface WeekGroup {
+  key: string
+  start: Date
+  events: ScheduleEvent[]
+}
+
+function groupByWeek(events: ScheduleEvent[]): WeekGroup[] {
+  const map = new Map<string, WeekGroup>()
+  for (const e of events) {
+    const start = startOfWeekLocal(new Date(e.startsAt))
+    const key = `${start.getFullYear()}-${pad2(start.getMonth() + 1)}-${pad2(start.getDate())}`
+    const group = map.get(key)
+    if (group) group.events.push(e)
+    else map.set(key, { key, start, events: [e] })
+  }
+  return [...map.values()].sort((a, b) => a.start.getTime() - b.start.getTime())
+}
+
+function WeekSection({
+  weekStart,
+  events,
+  dark,
+  defaultOpen,
+  children,
+}: {
+  weekStart: Date
+  events: ScheduleEvent[]
+  dark: boolean
+  defaultOpen: boolean
+  children: ReactNode
+}) {
+  const t = themeClasses(dark)
+  const [open, setOpen] = useState(defaultOpen)
+  const today = new Date()
+  const eventDows = new Set(events.filter(e => e.status !== 'cancelled').map(e => new Date(e.startsAt).getDay()))
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(weekStart)
+    d.setDate(d.getDate() + i)
+    return d
+  })
+  const count = events.length
+
+  return (
+    <section className={`rounded-2xl ${dark ? 'border border-courtline' : 'border border-gray-200 bg-white'}`}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+        className={`w-full flex items-center justify-between gap-3 px-4 py-3 text-left transition-colors ${
+          dark ? 'hover:bg-ink-900' : 'hover:bg-gray-50'
+        } ${open ? '' : 'rounded-2xl'} rounded-t-2xl`}
+      >
+        <span className="flex items-baseline gap-2 min-w-0">
+          <span className={`font-display font-black uppercase text-sm tracking-wide ${t.text}`}>
+            {weekTitle(weekStart)}
+          </span>
+          <span className={`text-xs whitespace-nowrap ${t.dim}`}>
+            {count} event{count === 1 ? '' : 's'}
+          </span>
+        </span>
+        <span className="flex items-center gap-2.5 shrink-0">
+          {/* Mini week strip — filled cells are days with something on */}
+          <span className="hidden sm:flex items-center gap-1" aria-hidden>
+            {days.map((d, i) => (
+              <span
+                key={i}
+                className={`w-6 h-6 rounded-md inline-flex items-center justify-center text-[10px] font-bold ${
+                  eventDows.has(i)
+                    ? dark ? 'bg-ember-500 text-ink-950' : 'bg-orange-500 text-white'
+                    : t.faint
+                } ${sameLocalDay(d, today) ? (dark ? 'ring-1 ring-chalk-dim' : 'ring-1 ring-gray-400') : ''}`}
+              >
+                {d.getDate()}
+              </span>
+            ))}
+          </span>
+          <ChevronDownIcon
+            aria-hidden
+            className={`w-4 h-4 shrink-0 transition-transform ${t.dim} ${open ? 'rotate-180' : ''}`}
+          />
+        </span>
+      </button>
+      {open && <div className="px-3 pb-3 space-y-2.5">{children}</div>}
+    </section>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // The panel
 // ---------------------------------------------------------------------------
 
@@ -1135,15 +1300,23 @@ export default function TeamSchedulePanel({
         />
       )}
 
-      {/* Upcoming events */}
+      {/* Upcoming events — weekly sections in the full view, flat next-3 in compact */}
       {events.length === 0 ? (
         <p className={`text-sm py-4 text-center ${t.dim}`}>
           {isCoach
             ? 'No events yet — schedule your first practice.'
             : 'No upcoming events. Your coach hasn’t scheduled anything yet.'}
         </p>
-      ) : (
+      ) : compact ? (
         <div className="space-y-2.5">{events.map(e => renderCard(e, false))}</div>
+      ) : (
+        <div className="space-y-3">
+          {groupByWeek(events).map((g, i) => (
+            <WeekSection key={g.key} weekStart={g.start} events={g.events} dark={dark} defaultOpen={i < 2}>
+              {g.events.map(e => renderCard(e, false))}
+            </WeekSection>
+          ))}
+        </div>
       )}
 
       {compact ? (

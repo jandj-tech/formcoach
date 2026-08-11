@@ -44,15 +44,20 @@ export default function SupportPage() {
             <h2 className="font-display font-black uppercase text-2xl text-center">
               Frequently asked questions
             </h2>
-            <details id="filming" className="bg-ink-800 border border-courtline rounded-2xl group" open>
+            <details id="filming" className="bg-ink-800 border border-courtline rounded-2xl group scroll-mt-24" open>
               <summary className="flex items-center justify-between gap-3 px-5 py-4 cursor-pointer list-none font-bold text-chalk select-none">
                 What angle should I film from to get the best results?
                 <span className="text-chalk-dim text-lg group-open:rotate-180 transition-transform select-none" aria-hidden>
                   ›
                 </span>
               </summary>
-              <div className="px-5 pb-5 text-sm text-chalk-dim leading-relaxed">
-                For the most accurate analysis, film from under or near the net — either directly behind the basket or slightly to the side at an angle where the shooter&apos;s elbow, arms, and hands are all clearly visible throughout the shot. This gives the AI a clear view of arm mechanics, elbow alignment, and release. If you also want arc to be evaluated, choose an angle where the ball&apos;s flight path is visible. Avoid filming directly face-on, as key form details are hidden from that perspective. Video examples for each angle are coming soon.
+              <div className="px-5 pb-5 text-sm text-chalk-dim leading-relaxed space-y-3">
+                <p>
+                  For the most accurate analysis, film from under or near the net — either directly behind the basket or slightly to the side at an angle where the shooter&apos;s elbow, arms, and hands are all clearly visible throughout the shot. This gives the AI a clear view of arm mechanics, elbow alignment, and release. Avoid filming directly face-on, as key form details are hidden from that perspective. Video examples for each angle are coming soon.
+                </p>
+                <p>
+                  <strong className="text-chalk">To get shot arc and ball rotation graded</strong>, the ball itself has to stay in frame and in focus from the moment it leaves your hand until it reaches the rim. Keep the whole flight path in shot, stay close enough that the ball isn&apos;t a tiny blur, and film in good light so the seams are readable in the air. If the ball leaves the frame, goes out of focus, or the basket isn&apos;t visible, we leave those two criteria ungraded rather than guessing — a guessed score would drag your overall number and your feedback off, so a blank is more honest than a bad estimate.
+                </p>
               </div>
             </details>
           </div>

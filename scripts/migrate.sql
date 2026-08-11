@@ -186,8 +186,16 @@ WHERE NOT EXISTS (SELECT 1 FROM criteria WHERE name = 'Feet Shoulder Width Apart
 -- gather was misread as "too close together" and dragged to a 4 overall when
 -- a-little-close is a 7 — and a check that both shoes are actually visible
 -- in the frames being measured before either section is scored.
+--
+-- v17: the STAGGERED stance defense. A set-point frame with the feet at
+-- perfect shoulder width scored a 3 "too close" because the dominant foot
+-- was ahead of the other — correct form that the front-on camera compresses
+-- into apparently overlapping shoes. v17 adds the floor-between-the-legs
+-- tell (floor visible between the lower legs = a separated base, full stop),
+-- requires that tell to be checked before ANY "too close" call, and adds the
+-- misread frame as an anchor.
 UPDATE criteria
-SET grading_notes = 'STANCE RUBRIC v16 — score the base TWICE: once before the release, once at and after it. The base they shot from carries three quarters of the score.
+SET grading_notes = 'STANCE RUBRIC v17 — score the base TWICE: once before the release, once at and after it. The base they shot from carries three quarters of the score.
 
 THE TARGET IS HIP WIDTH. "Shoulder width apart" is the phrase coaches say and the phrase you write back to the player, but it is a cue, not a measurement — taken literally it is wider than anyone actually shoots from. When you ANALYSE the base, the target you are grading against is HIP WIDTH: the feet under the hips, straight down from the hip joints.
 THE TOE-TOUCH TEST is the plain-English version of the same thing. A correct base is one the player could bend straight down from and touch their toes without shifting their feet. Feet bunched together will not let them balance; feet splayed wide will not let them fold straight down. Hip width is where they can.
@@ -221,9 +229,11 @@ HIP WIDTH IS THE TARGET, NOT THE NARROW END. A base with the shoes under the hip
 
 JUDGE THE SHOES ON THE FLOOR, NOT THE LEGS. Knees or thighs that converge while the shoes stay apart is NOT a narrow base — it is a knee-bend question and belongs to another criterion. Measure only the gap between the two shoes where they meet the floor.
 
+A STAGGERED STANCE COMPRESSES ON CAMERA — CHECK THE FLOOR BETWEEN THE LEGS BEFORE ANY "TOO CLOSE" CALL. Correct form puts the shooting-side foot slightly AHEAD of the other, and a front-on camera flattens that depth offset: the near shoe visually overlaps the far one, and a base at perfect shoulder width can read as shoes nearly touching. The apparent shoe gap is NOT trustworthy on a staggered base. The tell that is trustworthy: CAN YOU SEE THE FLOOR BETWEEN THE LOWER LEGS? If a strip of floor shows between the two legs anywhere from the ankles up to the knees — the legs reading as two separate columns, an A rather than a single post — the base IS separated: score it off the corridor as usual and never call it too close. A truly bunched base shows the legs as ONE column with no floor visible between them at any height. You are FORBIDDEN from scoring below 7 for a narrow base without first running this check and stating in your head which of the two you saw: floor between the legs, or one column.
+
 BEFORE YOU SCORE BELOW 7 FOR A NARROW BASE, MEASURE THE DAYLIGHT. The tiebreaker between the bands is the gap between the INNER edges of the shoes, measured in shoe widths. One shoe width of daylight or more: never below 7. Clearly less than one shoe width but a visible gap: 5-6. No real daylight — the shoes nearly or actually touching: 3-4. Being strict about bunched feet does not mean doubting a base that plainly has room in it, and "inside the hip line" alone is never grounds for the failing band.
 
-WHEN THE PLAYER IS SMALL IN THE FRAME the hip and shoulder edges are too soft to place accurately and the plumb lines will mislead you — usually into a generous score. Fall back on the same daylight ladder: a shoe width or more of gap is a correct base, visibly less is 5-6, and shoes nearly touching with almost no daylight is 3-4, whatever the plumb lines seemed to say.
+WHEN THE PLAYER IS SMALL IN THE FRAME the hip and shoulder edges are too soft to place accurately and the plumb lines will mislead you — usually into a generous score. Fall back on the same daylight ladder: a shoe width or more of gap is a correct base, visibly less is 5-6, and shoes nearly touching with almost no daylight is 3-4, whatever the plumb lines seemed to say. If the stance is staggered, the shoe gap misleads at ANY size — use the floor-between-the-legs tell instead.
 
 THIS CRITERION IS DIRECTLY MEASURABLE, SO NEVER DEFAULT TO A HIGH SCORE. Whenever the feet and shoulders are both visible you can compare the two spans, which makes a bad base a specific, clearly visible flaw. The general burden-of-proof and default-to-10 rules do NOT soften this criterion. Judge the feet and nothing else: a square torso, a clean rise, good balance and a tidy upper body tell you nothing about the base and must never pull a narrow or wide stance back up toward 9.
 
@@ -232,7 +242,8 @@ THE THREE WAYS THIS GETS GRADED WRONG:
   2. A WIDE BASE UNDER A LOADED CROUCH (generous). Knees bent and hips back reads as "athletic" and "stable" even when the shoes are far outside the shoulder line. That impression is wrong. A foot span half again the shoulder span is a 3-4, not a 9.
   3. A WORKABLE BASE CALLED A FAILURE (harsh). A stance with a clear shoe width of daylight that sits a little inside hip width is a 7-8 — room to improve, not a flaw that fails the criterion. Skipping the 7-8 and 5-6 bands and dropping straight to 3-4 because the feet read "narrow" is as wrong as the generous mistakes above.
 
-EXPERT CALIBRATION — eleven real graded cases:
+EXPERT CALIBRATION — twelve real graded cases:
+  - Set point, ball raised overhead in both hands, square to a front-on camera, shooting-side foot slightly ahead so the shoes partly overlap in the image — but clear floor visible between the lower legs and the feet plainly about shoulder width apart: 9-10. Scored 3 "too close" on review; the expert called it "perfect shoulder width apart". The staggered foot compressed the apparent gap — the floor between the legs was the truth.
   - A TWO-FRAME PAIR. Gather frame before release: square to the camera, ball up in both hands, shoes plainly separated with visible daylight, a little inside hip width — SECTION 1 = 7. On review this frame was called "feet too close together to begin with" and the shot dragged to a 4 overall; the expert rejected that reading — a-little-close with real daylight is a 7, not a failing base. Landing frame after release: the shoes have swung nearly together, almost touching — SECTION 2 = 2. FINAL = (21 + 2) / 4 = 5.75, so 6. The feedback names both halves: the base they shot from was fine, the landing collapsed.
   - Facing the camera in the gather, ball held at the chest, shoes plainly separated with about a shoe width of daylight between them, sitting just inside hip width: 7. Scored 5 on review; the expert corrected it — a base with that much room in it is never in the failing bands.
   - Standing tall early in the gather, ball held low in front of the shorts, arms hanging straight down, shoes nearly touching with no real daylight — the legs reading as one column: 3. Way too close, whatever the tidy upright posture suggests.
@@ -262,7 +273,7 @@ CONFIRM YOU CAN ACTUALLY SEE THE FEET. Before scoring either section, check that
 
 If the feet are never clearly visible during the shooting motion, return null. A landing you cannot see is never a reason to return null.'
 WHERE name = 'Feet Shoulder Width Apart'
-  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'STANCE RUBRIC v16%');
+  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'STANCE RUBRIC v17%');
 
 -- Canonical "Square to the Basket" rubric, same versioned-guard pattern as the
 -- stance rubric above. Added because the criterion shipped with only its

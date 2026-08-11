@@ -165,6 +165,44 @@ function repeatCaption(v: FormValues): string | null {
   return `Creates ${v.repeatWeeks} ${noun}, every ${first.toLocaleDateString(undefined, { weekday: 'short' })} through ${last.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
 }
 
+function TimeSelect({ value, onChange, dark }: { value: string; onChange: (v: string) => void; dark: boolean }) {
+  const t = themeClasses(dark)
+  // value is 24h "HH:MM"; render as tap-only hour/minute/AM-PM controls.
+  const [hh, mm] = value ? value.split(':').map(n => parseInt(n, 10)) : [18, 0]
+  const isPM = hh >= 12
+  const hour12 = hh % 12 === 0 ? 12 : hh % 12
+  const apply = (h12: number, minutes: number, pm: boolean) => {
+    const h24 = pm ? (h12 % 12) + 12 : h12 % 12
+    onChange(`${String(h24).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`)
+  }
+  const selCls = `rounded-xl px-2.5 py-2.5 text-sm font-bold focus:outline-none cursor-pointer ${t.input}`
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <select value={hour12} onChange={e => apply(parseInt(e.target.value, 10), mm, isPM)} className={selCls} aria-label="Hour">
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(h => <option key={h} value={h}>{h}</option>)}
+      </select>
+      <span className={`font-bold ${t.dim}`}>:</span>
+      <select value={mm} onChange={e => apply(hour12, parseInt(e.target.value, 10), isPM)} className={selCls} aria-label="Minutes">
+        {Array.from(new Set([0, 15, 30, 45, mm])).sort((a, b) => a - b).map(m => (
+          <option key={m} value={m}>{String(m).padStart(2, '0')}</option>
+        ))}
+      </select>
+      <span className={`inline-flex rounded-xl overflow-hidden ${t.segBorder}`}>
+        {(['AM', 'PM'] as const).map(ap => (
+          <button
+            key={ap}
+            type="button"
+            onClick={() => apply(hour12, mm, ap === 'PM')}
+            className={`px-3 py-2.5 text-xs font-bold transition-colors ${(ap === 'PM') === isPM ? t.segActive : t.segIdle}`}
+          >
+            {ap}
+          </button>
+        ))}
+      </span>
+    </span>
+  )
+}
+
 function EventForm({
   mode,
   initial,
@@ -198,12 +236,6 @@ function EventForm({
 
   const caption = repeatCaption(v)
   const inputCls = `rounded-xl px-3.5 py-2.5 text-sm focus:outline-none ${t.input}`
-  const REPEATS = [
-    { weeks: 1, label: 'Just once' },
-    { weeks: 4, label: '4 weeks' },
-    { weeks: 8, label: '8 weeks' },
-    { weeks: 12, label: '12 weeks' },
-  ]
 
   return (
     <div className={`rounded-xl p-4 space-y-4 ${t.form}`}>
@@ -225,13 +257,13 @@ function EventForm({
         ))}
       </div>
 
-      {/* When — pre-filled with tomorrow 6 PM so most coaches only adjust */}
+      {/* When — date plus tap-only time dropdowns (native time inputs are fiddly) */}
       <div>
         <p className={`text-xs font-bold uppercase tracking-wide mb-1.5 ${t.dim}`}>When</p>
         <div className="flex flex-wrap items-center gap-2">
           <input type="date" value={v.date} onChange={e => set('date', e.target.value)} className={inputCls} />
           {!v.timeTbd && (
-            <input type="time" value={v.time} onChange={e => set('time', e.target.value)} className={inputCls} />
+            <TimeSelect value={v.time} onChange={time => set('time', time)} dark={dark} />
           )}
           <button
             type="button"
@@ -256,21 +288,43 @@ function EventForm({
         />
       </div>
 
-      {/* How often — plain-English chips instead of a numeric stepper */}
+      {/* How often — once, or repeat weekly with a typed number of weeks */}
       {mode === 'create' && (
         <div>
           <p className={`text-xs font-bold uppercase tracking-wide mb-1.5 ${t.dim}`}>How often</p>
-          <div className="flex flex-wrap gap-2">
-            {REPEATS.map(r => (
-              <button
-                key={r.weeks}
-                type="button"
-                onClick={() => set('repeatWeeks', r.weeks)}
-                className={`rounded-full px-4 py-2 text-xs font-bold transition-colors ${v.repeatWeeks === r.weeks ? t.segActive : t.segIdle}`}
-              >
-                {r.weeks === 1 ? r.label : `Weekly × ${r.label}`}
-              </button>
-            ))}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => set('repeatWeeks', 1)}
+              className={`rounded-xl px-4 py-2.5 text-sm font-bold transition-colors ${v.repeatWeeks <= 1 ? t.segActive : t.segIdle}`}
+            >
+              Just once
+            </button>
+            <button
+              type="button"
+              onClick={() => { if (v.repeatWeeks <= 1) set('repeatWeeks', 8) }}
+              className={`rounded-xl px-4 py-2.5 text-sm font-bold transition-colors ${v.repeatWeeks > 1 ? t.segActive : t.segIdle}`}
+            >
+              🔁 Repeat weekly
+            </button>
+            {v.repeatWeeks > 1 && (
+              <span className={`inline-flex items-center gap-2 text-sm font-semibold ${t.text}`}>
+                for
+                <input
+                  type="number"
+                  min={2}
+                  max={16}
+                  value={v.repeatWeeks}
+                  onChange={e => {
+                    const n = parseInt(e.target.value, 10)
+                    set('repeatWeeks', Number.isNaN(n) ? 2 : Math.min(16, Math.max(2, n)))
+                  }}
+                  onFocus={e => e.target.select()}
+                  className={`w-16 text-center font-bold ${inputCls}`}
+                />
+                weeks
+              </span>
+            )}
           </div>
           {caption && <p className={`text-xs mt-1.5 font-semibold ${t.dim}`}>📅 {caption}</p>}
         </div>

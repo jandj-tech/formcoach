@@ -154,18 +154,27 @@ WHERE NOT EXISTS (SELECT 1 FROM criteria WHERE name = 'Feet Shoulder Width Apart
 -- frames up to 1280px (MAX_FRAME_DIM in components/VideoUploader.tsx). Upscale
 -- them to 1280 before evaluating — at screenshot size the model misreads the
 -- feet and you end up tuning against your own proxy's noise.
+--
+-- v13 weights the two sections 3:1 instead of averaging them. The base the
+-- player actually shot from is what the shot was taken on; what the feet do
+-- after the ball is gone matters less, and a 50/50 average let a collapse at
+-- the landing pull a well-set base down to a 6. FINAL = (3 x S1 + S2) / 4,
+-- rounded down, so a 9 before release with a 4 after is a 7. The five
+-- single-frame reference cases are SECTION 1 only and are unchanged by this:
+-- they still score 3/4/4/9/9 three runs each.
 UPDATE criteria
-SET grading_notes = 'STANCE RUBRIC v12 — score the base TWICE: once before the release, once at and after it.
+SET grading_notes = 'STANCE RUBRIC v13 — score the base TWICE: once before the release, once at and after it. The base they shot from carries three quarters of the score.
 
 THE TARGET IS HIP WIDTH. "Shoulder width apart" is the phrase coaches say and the phrase you write back to the player, but it is a cue, not a measurement — taken literally it is wider than anyone actually shoots from. When you ANALYSE the base, the target you are grading against is HIP WIDTH: the feet under the hips, straight down from the hip joints.
 THE TOE-TOUCH TEST is the plain-English version of the same thing. A correct base is one the player could bend straight down from and touch their toes without shifting their feet. Feet bunched together will not let them balance; feet splayed wide will not let them fold straight down. Hip width is where they can.
 This is the target BOTH times you score it — the base they go up from and the base they come down on.
 
-SCORE TWO SECTIONS, THEN COMBINE THEM. A base that is set correctly on the way up and then collapses at the release is two different facts about the shot, and the player needs to hear both.
-  SECTION 1 — BEFORE RELEASE. The base they build and shoot from.
-  SECTION 2 — AT AND AFTER RELEASE. Whether they hold that base through the shot.
-  Score each section 1-10 with the corridor test below. The FINAL SCORE is the average of the two, rounded DOWN. A 9 before release and a 4 at release is a 6, not a 9 — and the reasoning must say the base started well and came apart at the release, naming both halves.
-  NEVER AVERAGE AGAINST A SECTION YOU DID NOT OBSERVE. If you cannot see the release — the clip ends before it, the feet are out of frame or blurred past reading, or you only have frames from before the ball leaves the hand — then SECTION 1 IS THE FINAL SCORE. Do not guess what the feet did later, do not assume they collapsed, and do not average a real SECTION 1 against an imagined SECTION 2. A well-set base with no visible release frame scores exactly what SECTION 1 scored: a 9 stays a 9.
+SCORE TWO SECTIONS, THEN COMBINE THEM 3 TO 1. A base that is set correctly on the way up and then collapses at the release is two different facts about the shot, and the player needs to hear both — but the two are not worth the same. The base they build and rise from is the base the shot was actually taken on, and it carries most of the score.
+  SECTION 1 — BEFORE RELEASE. The base they build and shoot from. Worth about three quarters.
+  SECTION 2 — AT AND AFTER RELEASE. Whether they hold that base through the shot. Worth about one quarter.
+  Score each section 1-10 with the corridor test below, then work out FINAL = (3 x SECTION 1 + SECTION 2) / 4, rounded DOWN. Worked examples: SECTION 1 of 9 with SECTION 2 of 4 gives (27 + 4) / 4 = 7.75, so 7. Two 9s give 9. A SECTION 1 of 4 with a SECTION 2 of 9 gives (12 + 9) / 4 = 5.25, so 5. Two 3s give 3.
+  SECTION 1 SETS THE SCORE, SECTION 2 ONLY ADJUSTS IT. A collapse after the ball is gone never drags a well-set base into the bottom bands, and a tidy landing never rescues a bad one. Whatever happens later, the reasoning must still name both halves — say the base they shot from was good and that it came apart afterwards, in that order.
+  NEVER WEIGH IN A SECTION YOU DID NOT OBSERVE. If you cannot see the release — the clip ends before it, the feet are out of frame or blurred past reading, or you only have frames from before the ball leaves the hand — then SECTION 1 IS THE FINAL SCORE. Do not guess what the feet did later, do not assume they collapsed, and do not weigh a real SECTION 1 against an imagined SECTION 2. A well-set base with no visible release frame scores exactly what SECTION 1 scored: a 9 stays a 9.
 
 SECTION 1 — BEFORE RELEASE. The window opens when the player starts driving upward into the shot and closes on the LAST frame where both feet are still touching the floor — that is, as they go up and at the top of the lift, before the ball is released and before the feet leave the ground. Measure inside that window and nowhere else.
   Ignore everything before the window. Players stand with their feet together while waiting and step out into their base as they load, so a narrow reading taken before the shot starts is not a finding.
@@ -220,7 +229,7 @@ PLAYER-FACING WORDING: always say "shoulder width" — tell the player the base 
 
 If the feet are never clearly visible during the shooting motion, return null. A landing you cannot see is never a reason to return null.'
 WHERE name = 'Feet Shoulder Width Apart'
-  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'STANCE RUBRIC v12%');
+  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'STANCE RUBRIC v13%');
 
 -- Canonical "Square to the Basket" rubric, same versioned-guard pattern as the
 -- stance rubric above. Added because the criterion shipped with only its

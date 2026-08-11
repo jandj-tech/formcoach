@@ -162,8 +162,17 @@ WHERE NOT EXISTS (SELECT 1 FROM criteria WHERE name = 'Feet Shoulder Width Apart
 -- rounded down, so a 9 before release with a 4 after is a 7. The five
 -- single-frame reference cases are SECTION 1 only and are unchanged by this:
 -- they still score 3/4/4/9/9 three runs each.
+--
+-- v14 fixes the narrow-side cliff. v13 jumped from "a little short of the hip
+-- line: 7-8" straight to "clearly inside: 3-4", so a stance with real daylight
+-- between the shoes but sitting just inside hip width fell to the failing band
+-- — an expert-graded gather like that came out 5 overall when it should be a
+-- 7+. v14 grades both sides on a ladder keyed to the daylight between the
+-- shoes: near hip width or better is 9-10, slightly inside with a clear gap is
+-- 7-8, distinctly narrow is 5-6, and 3-4 is reserved for shoes nearly
+-- touching. Same ladder outward on the wide side.
 UPDATE criteria
-SET grading_notes = 'STANCE RUBRIC v13 — score the base TWICE: once before the release, once at and after it. The base they shot from carries three quarters of the score.
+SET grading_notes = 'STANCE RUBRIC v14 — score the base TWICE: once before the release, once at and after it. The base they shot from carries three quarters of the score.
 
 THE TARGET IS HIP WIDTH. "Shoulder width apart" is the phrase coaches say and the phrase you write back to the player, but it is a cue, not a measurement — taken literally it is wider than anyone actually shoots from. When you ANALYSE the base, the target you are grading against is HIP WIDTH: the feet under the hips, straight down from the hip joints.
 THE TOE-TOUCH TEST is the plain-English version of the same thing. A correct base is one the player could bend straight down from and touch their toes without shifting their feet. Feet bunched together will not let them balance; feet splayed wide will not let them fold straight down. Hip width is where they can.
@@ -186,28 +195,30 @@ SECTION 1 — BEFORE RELEASE. The window opens when the player starts driving up
 THE MEASUREMENT — THE CORRIDOR TEST. Never judge the base by general impression; your first impression is usually wrong, and it is wrong in the generous direction far more often than not. On a frame where the player is square to the camera:
   STEP 1. Find four points: the outer edge of each HIP, and the outer edge of each SHOULDER. Take the shoulder points at the SHOULDER JOINTS — the outer edge of the torso itself. NEVER include an arm, elbow, hand or the ball. An arm reaching out to the side or across the body is not part of the shoulder span, and counting it inflates that span and makes a perfectly good base read as narrow.
   STEP 2. Drop a vertical plumb line to the floor from all four. On each side this gives an inner line from the hip and an outer line from the shoulder; the space between them is that side CORRIDOR.
-  STEP 3. See where the OUTER edge of each shoe lands:
+  STEP 3. See where the OUTER edge of each shoe lands. The bands are a LADDER, not a cliff — a base slides down it one band at a time as the feet close or splay, and the failing band at the bottom is only for the extremes:
     - Landing on or near the HIP line — the shoes under the hips: IDEAL. Score 10.
     - Anywhere else inside its corridor, out as far as the shoulder line: CORRECT. Score 9-10.
-    - A little short of the hip line, or a little past the shoulder line: 7-8.
-    - Clearly INSIDE the hip line, bunched toward the centre: TOO NARROW. Score 3-4, and 3 when the shoes are nearly touching.
-    - Clearly OUTSIDE the shoulder line: TOO WIDE. Score 3-4.
+    - A little short of the hip line with a clear gap still between the shoes, or a little past the shoulder line: 7-8. A stance with real daylight between the shoes — around a shoe width or more — is NEVER lower than this band, however far inside the hip line it sits.
+    - Distinctly narrow — the daylight between the shoes clearly less than one shoe width but the shoes not touching — or clearly outside the shoulder line: 5-6.
+    - The shoes nearly or actually TOUCHING, or an extreme straddle with the foot span half again the shoulder span or more: 3-4, and 3 when there is no daylight at all.
 
-HIP WIDTH IS THE TARGET, NOT THE NARROW END. A base with the shoes under the hips is exactly right and scores 10 — never mark it down, never call it "a bit narrow", and never tell that player to widen their feet. The corridor runs out to the shoulder line because a base anywhere between the hips and the shoulders still works, but the hip end is the ideal and the shoulder line is the OUTER limit of correct, not the goal. Past the shoulder line, or bunched inside the hip line, is 3-4 no matter how athletic or tidy the rest of the shot looks.
+HIP WIDTH IS THE TARGET, NOT THE NARROW END. A base with the shoes under the hips is exactly right and scores 10 — never mark it down, never call it "a bit narrow", and never tell that player to widen their feet. The corridor runs out to the shoulder line because a base anywhere between the hips and the shoulders still works, but the hip end is the ideal and the shoulder line is the OUTER limit of correct, not the goal. Outside the corridor the score walks down the ladder — and it only reaches 3-4 for shoes nearly touching or an extreme straddle, no matter how athletic or tidy the rest of the shot looks.
 
 JUDGE THE SHOES ON THE FLOOR, NOT THE LEGS. Knees or thighs that converge while the shoes stay apart is NOT a narrow base — it is a knee-bend question and belongs to another criterion. Measure only the gap between the two shoes where they meet the floor.
 
-BEFORE YOU SCORE 3-4 FOR A NARROW BASE, CONFIRM THE SHOES ARE ACTUALLY BUNCHED. The 3-4 narrow band is for feet with almost no daylight between them — the shoes almost touching. If there is a clear gap between the inner edges of the shoes, one you could fit a shoe into, the base is NOT in that band: it is 9-10 if the shoes are inside their corridors and at worst 7-8 if they fall a little short of the hip lines. Being strict about bunched feet does not mean doubting a base that plainly has room in it.
+BEFORE YOU SCORE BELOW 7 FOR A NARROW BASE, MEASURE THE DAYLIGHT. The tiebreaker between the bands is the gap between the INNER edges of the shoes, measured in shoe widths. One shoe width of daylight or more: never below 7. Clearly less than one shoe width but a visible gap: 5-6. No real daylight — the shoes nearly or actually touching: 3-4. Being strict about bunched feet does not mean doubting a base that plainly has room in it, and "inside the hip line" alone is never grounds for the failing band.
 
-WHEN THE PLAYER IS SMALL IN THE FRAME the hip and shoulder edges are too soft to place accurately and the plumb lines will mislead you — usually into a generous score. Fall back on the daylight between the shoes: a correct base has a clear gap between the inner edges roughly as wide as one shoe or more. Shoes nearly touching with almost no daylight is 3-4, whatever the plumb lines seemed to say.
+WHEN THE PLAYER IS SMALL IN THE FRAME the hip and shoulder edges are too soft to place accurately and the plumb lines will mislead you — usually into a generous score. Fall back on the same daylight ladder: a shoe width or more of gap is a correct base, visibly less is 5-6, and shoes nearly touching with almost no daylight is 3-4, whatever the plumb lines seemed to say.
 
 THIS CRITERION IS DIRECTLY MEASURABLE, SO NEVER DEFAULT TO A HIGH SCORE. Whenever the feet and shoulders are both visible you can compare the two spans, which makes a bad base a specific, clearly visible flaw. The general burden-of-proof and default-to-10 rules do NOT soften this criterion. Judge the feet and nothing else: a square torso, a clean rise, good balance and a tidy upper body tell you nothing about the base and must never pull a narrow or wide stance back up toward 9.
 
-THE TWO WAYS THIS GETS GRADED WRONG, BOTH OF THEM GENEROUS:
-  1. A NARROW BASE UNDER A TIDY SHOOTING POSE. A player standing tall and square with the ball up at the set point looks like textbook form at a glance, and that glance says the stance is fine when the feet are actually close together. It is not fine — it is a 3-4. This is easiest to miss when the player is far from the camera and small in the frame. When that happens, look harder at the feet; do not fall back on overall impression.
-  2. A WIDE BASE UNDER A LOADED CROUCH. Knees bent and hips back reads as "athletic" and "stable" even when the shoes are far outside the shoulder line. That impression is wrong. A foot span half again the shoulder span is a 3-4, not a 9.
+THE THREE WAYS THIS GETS GRADED WRONG:
+  1. A NARROW BASE UNDER A TIDY SHOOTING POSE (generous). A player standing tall and square with the ball up at the set point looks like textbook form at a glance, and that glance says the stance is fine when the feet are actually close together. It is not fine — score it off the daylight ladder, down to 3-4 when the shoes nearly touch. This is easiest to miss when the player is far from the camera and small in the frame. When that happens, look harder at the feet; do not fall back on overall impression.
+  2. A WIDE BASE UNDER A LOADED CROUCH (generous). Knees bent and hips back reads as "athletic" and "stable" even when the shoes are far outside the shoulder line. That impression is wrong. A foot span half again the shoulder span is a 3-4, not a 9.
+  3. A WORKABLE BASE CALLED A FAILURE (harsh). A stance with a clear shoe width of daylight that sits a little inside hip width is a 7-8 — room to improve, not a flaw that fails the criterion. Skipping the 7-8 and 5-6 bands and dropping straight to 3-4 because the feet read "narrow" is as wrong as the generous mistakes above.
 
-EXPERT CALIBRATION — six real graded cases:
+EXPERT CALIBRATION — seven real graded cases:
+  - Facing the camera in the gather, ball held at the chest, shoes plainly separated with about a shoe width of daylight between them, sitting just inside hip width: 7. Scored 5 on review; the expert corrected it — a base with that much room in it is never in the failing bands.
   - Distant, small in frame, square, ball at the set point, feet almost touching with barely any daylight between the shoes: 3. Repeat runs scored this 8, 9, 9 and 4 before the expert set it at 3.
   - Standing tall mid-shot, arms extended overhead, shoes a few inches apart and well inside the shoulders: 4. Scored 8 then 9 on review; the expert corrected it to 4 both times.
   - Crouched with the ball low, thighs splayed, shoes clearly outside the shoulders: 4. Scored 9; the expert corrected it to 4.
@@ -229,7 +240,7 @@ PLAYER-FACING WORDING: always say "shoulder width" — tell the player the base 
 
 If the feet are never clearly visible during the shooting motion, return null. A landing you cannot see is never a reason to return null.'
 WHERE name = 'Feet Shoulder Width Apart'
-  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'STANCE RUBRIC v13%');
+  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'STANCE RUBRIC v14%');
 
 -- Canonical "Square to the Basket" rubric, same versioned-guard pattern as the
 -- stance rubric above. Added because the criterion shipped with only its

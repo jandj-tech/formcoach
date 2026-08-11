@@ -129,7 +129,12 @@ interface FormValues {
 }
 
 function emptyForm(): FormValues {
-  return { type: 'practice', date: '', time: '', timeTbd: false, location: '', title: '', notes: '', repeatWeeks: 1 }
+  // Defaults a coach usually wants: tomorrow at 6 PM — create in two taps,
+  // adjust only what differs.
+  const d = new Date(Date.now() + 24 * 60 * 60 * 1000)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const date = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+  return { type: 'practice', date, time: '18:00', timeTbd: false, location: '', title: '', notes: '', repeatWeeks: 1 }
 }
 
 function formFromEvent(e: ScheduleEvent): FormValues {
@@ -178,6 +183,7 @@ function EventForm({
   const t = themeClasses(dark)
   const [v, setV] = useState<FormValues>(initial)
   const [error, setError] = useState<string | null>(null)
+  const [showExtras, setShowExtras] = useState(!!(initial.title || initial.notes))
 
   function set<K extends keyof FormValues>(key: K, value: FormValues[K]) {
     setV(prev => ({ ...prev, [key]: value }))
@@ -185,121 +191,136 @@ function EventForm({
 
   function submit() {
     if (!v.date) return setError('Pick a date.')
-    if (!v.timeTbd && !v.time) return setError('Pick a time, or check Time TBD.')
+    if (!v.timeTbd && !v.time) return setError('Pick a time, or use "time TBD".')
     setError(null)
     onSubmit(v)
   }
 
   const caption = repeatCaption(v)
-  const inputCls = `rounded-lg px-3 py-2 text-sm focus:outline-none ${t.input}`
+  const inputCls = `rounded-xl px-3.5 py-2.5 text-sm focus:outline-none ${t.input}`
+  const REPEATS = [
+    { weeks: 1, label: 'Just once' },
+    { weeks: 4, label: '4 weeks' },
+    { weeks: 8, label: '8 weeks' },
+    { weeks: 12, label: '12 weeks' },
+  ]
 
   return (
-    <div className={`rounded-xl p-4 space-y-3 ${t.form}`}>
-      {/* Type segmented control */}
-      <div className={`inline-flex rounded-lg overflow-hidden ${t.segBorder}`}>
-        {(['practice', 'game', 'other'] as const).map(ty => (
+    <div className={`rounded-xl p-4 space-y-4 ${t.form}`}>
+      {/* What */}
+      <div className="grid grid-cols-3 gap-2">
+        {([
+          ['practice', '🏀', 'Practice'],
+          ['game', '🏆', 'Game'],
+          ['other', '📌', 'Other'],
+        ] as const).map(([ty, icon, label]) => (
           <button
             key={ty}
             type="button"
             onClick={() => set('type', ty)}
-            className={`px-3.5 py-1.5 text-xs font-bold transition-colors ${v.type === ty ? t.segActive : t.segIdle}`}
+            className={`rounded-xl py-3 text-sm font-bold transition-colors ${v.type === ty ? t.segActive : t.segIdle}`}
           >
-            {ty === 'practice' ? 'Practice' : ty === 'game' ? 'Game' : 'Other'}
+            {icon} {label}
           </button>
         ))}
       </div>
 
-      {/* Date / time / TBD */}
-      <div className="flex flex-wrap items-center gap-2">
-        <input type="date" value={v.date} onChange={e => set('date', e.target.value)} className={inputCls} />
-        <input
-          type="time"
-          value={v.time}
-          disabled={v.timeTbd}
-          onChange={e => set('time', e.target.value)}
-          className={`${inputCls} disabled:opacity-40`}
-        />
-        <label className={`inline-flex items-center gap-1.5 text-xs font-semibold cursor-pointer ${t.dim}`}>
-          <input
-            type="checkbox"
-            checked={v.timeTbd}
-            onChange={e => set('timeTbd', e.target.checked)}
-            className={t.accent}
-          />
-          Time TBD
-        </label>
+      {/* When — pre-filled with tomorrow 6 PM so most coaches only adjust */}
+      <div>
+        <p className={`text-xs font-bold uppercase tracking-wide mb-1.5 ${t.dim}`}>When</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <input type="date" value={v.date} onChange={e => set('date', e.target.value)} className={inputCls} />
+          {!v.timeTbd && (
+            <input type="time" value={v.time} onChange={e => set('time', e.target.value)} className={inputCls} />
+          )}
+          <button
+            type="button"
+            onClick={() => set('timeTbd', !v.timeTbd)}
+            className={`rounded-xl px-3 py-2.5 text-xs font-bold transition-colors ${v.timeTbd ? t.segActive : t.segIdle}`}
+          >
+            {v.timeTbd ? '⏱ Time TBD ✓' : 'Time TBD?'}
+          </button>
+        </div>
       </div>
 
-      {/* Location / title / notes */}
-      <input
-        type="text"
-        value={v.location}
-        maxLength={200}
-        onChange={e => set('location', e.target.value)}
-        placeholder="Location (e.g. Main Gym)"
-        className={`w-full ${inputCls}`}
-      />
-      <input
-        type="text"
-        value={v.title}
-        maxLength={120}
-        onChange={e => set('title', e.target.value)}
-        placeholder={v.type === 'game' ? 'Title (e.g. vs Raptors)' : 'Title (optional)'}
-        className={`w-full ${inputCls}`}
-      />
-      <textarea
-        value={v.notes}
-        maxLength={500}
-        rows={2}
-        onChange={e => set('notes', e.target.value)}
-        placeholder="Notes (optional — e.g. bring both jerseys)"
-        className={`w-full resize-none ${inputCls}`}
-      />
+      {/* Where */}
+      <div>
+        <p className={`text-xs font-bold uppercase tracking-wide mb-1.5 ${t.dim}`}>Where</p>
+        <input
+          type="text"
+          value={v.location}
+          maxLength={200}
+          onChange={e => set('location', e.target.value)}
+          placeholder="e.g. Main Gym"
+          className={`w-full ${inputCls}`}
+        />
+      </div>
 
-      {/* Repeat weekly stepper — create only; each occurrence is independent */}
+      {/* How often — plain-English chips instead of a numeric stepper */}
       {mode === 'create' && (
         <div>
-          <div className={`flex items-center gap-2 text-xs font-semibold ${t.dim}`}>
-            Repeat weekly
-            <button
-              type="button"
-              aria-label="Fewer weeks"
-              onClick={() => set('repeatWeeks', Math.max(1, v.repeatWeeks - 1))}
-              className={`w-7 h-7 rounded-lg font-bold ${t.btnIdle}`}
-            >
-              −
-            </button>
-            <span className={`font-numeric text-sm w-6 text-center ${t.text}`}>{v.repeatWeeks}</span>
-            <button
-              type="button"
-              aria-label="More weeks"
-              onClick={() => set('repeatWeeks', Math.min(16, v.repeatWeeks + 1))}
-              className={`w-7 h-7 rounded-lg font-bold ${t.btnIdle}`}
-            >
-              +
-            </button>
+          <p className={`text-xs font-bold uppercase tracking-wide mb-1.5 ${t.dim}`}>How often</p>
+          <div className="flex flex-wrap gap-2">
+            {REPEATS.map(r => (
+              <button
+                key={r.weeks}
+                type="button"
+                onClick={() => set('repeatWeeks', r.weeks)}
+                className={`rounded-full px-4 py-2 text-xs font-bold transition-colors ${v.repeatWeeks === r.weeks ? t.segActive : t.segIdle}`}
+              >
+                {r.weeks === 1 ? r.label : `Weekly × ${r.label}`}
+              </button>
+            ))}
           </div>
-          {caption && <p className={`text-[11px] mt-1 ${t.faint}`}>{caption}</p>}
+          {caption && <p className={`text-xs mt-1.5 font-semibold ${t.dim}`}>📅 {caption}</p>}
+        </div>
+      )}
+
+      {/* Rarely-needed fields stay out of the way */}
+      {!showExtras ? (
+        <button type="button" onClick={() => setShowExtras(true)} className={`text-xs font-semibold underline ${t.dim}`}>
+          + Add a title or notes
+        </button>
+      ) : (
+        <div className="space-y-2">
+          <input
+            type="text"
+            value={v.title}
+            maxLength={120}
+            onChange={e => set('title', e.target.value)}
+            placeholder={v.type === 'game' ? 'Title (e.g. vs Raptors)' : 'Title (optional)'}
+            className={`w-full ${inputCls}`}
+          />
+          <textarea
+            value={v.notes}
+            maxLength={500}
+            rows={2}
+            onChange={e => set('notes', e.target.value)}
+            placeholder="Notes (e.g. bring both jerseys)"
+            className={`w-full resize-none ${inputCls}`}
+          />
         </div>
       )}
 
       {error && <p className="text-xs font-semibold text-red-500">{error}</p>}
 
-      <div className="flex items-center justify-end gap-2 pt-1">
+      <div className="flex items-center gap-2 pt-1">
+        <button
+          type="button"
+          onClick={submit}
+          disabled={submitting}
+          className={`flex-1 font-bold rounded-xl px-5 py-3 text-sm transition-colors disabled:opacity-40 ${t.primaryBtn}`}
+        >
+          {submitting ? 'Saving…' : mode === 'create'
+            ? v.repeatWeeks > 1 ? `Create ${v.repeatWeeks} events` : 'Create event'
+            : 'Save changes'}
+        </button>
         <button
           type="button"
           onClick={onClose}
           className={`text-xs font-semibold px-3 py-2 transition-colors ${t.quietBtn}`}
         >
-          Close
-        </button>
-        <button
-          type="button"
-          onClick={submit}
-          disabled={submitting}
-          className={`font-bold rounded-xl px-5 py-2.5 text-sm transition-colors disabled:opacity-40 ${t.primaryBtn}`}
-        >
-          {submitting ? 'Saving…' : mode === 'create' ? 'Create event' : 'Save changes'}
+          Cancel
         </button>
       </div>
     </div>

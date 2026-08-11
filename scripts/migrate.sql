@@ -154,18 +154,42 @@ WHERE NOT EXISTS (SELECT 1 FROM criteria WHERE name = 'Feet Shoulder Width Apart
 -- frames up to 1280px (MAX_FRAME_DIM in components/VideoUploader.tsx). Upscale
 -- them to 1280 before evaluating — at screenshot size the model misreads the
 -- feet and you end up tuning against your own proxy's noise.
+--
+-- v13 weights the two sections 3:1 instead of averaging them. The base the
+-- player actually shot from is what the shot was taken on; what the feet do
+-- after the ball is gone matters less, and a 50/50 average let a collapse at
+-- the landing pull a well-set base down to a 6. FINAL = (3 x S1 + S2) / 4,
+-- rounded down, so a 9 before release with a 4 after is a 7. The five
+-- single-frame reference cases are SECTION 1 only and are unchanged by this:
+-- they still score 3/4/4/9/9 three runs each.
+--
+-- v14 fixes the narrow-side cliff. v13 jumped from "a little short of the hip
+-- line: 7-8" straight to "clearly inside: 3-4", so a stance with real daylight
+-- between the shoes but sitting just inside hip width fell to the failing band
+-- — an expert-graded gather like that came out 5 overall when it should be a
+-- 7+. v14 grades both sides on a ladder keyed to the daylight between the
+-- shoes: near hip width or better is 9-10, slightly inside with a clear gap is
+-- 7-8, distinctly narrow is 5-6, and 3-4 is reserved for shoes nearly
+-- touching. Same ladder outward on the wide side.
+--
+-- v15 adds three expert-photographed anchors, one per failure mode: shoes
+-- nearly touching under an upright gather (3), shoes near the shoulder plumb
+-- lines on a follow-through (9 — near the shoulder line is GOOD, not wide),
+-- and shoes clearly outside the shoulder lines in a crouched gather (5). Also
+-- states plainly that a shoe at the shoulder line is a good base.
 UPDATE criteria
-SET grading_notes = 'STANCE RUBRIC v12 — score the base TWICE: once before the release, once at and after it.
+SET grading_notes = 'STANCE RUBRIC v15 — score the base TWICE: once before the release, once at and after it. The base they shot from carries three quarters of the score.
 
 THE TARGET IS HIP WIDTH. "Shoulder width apart" is the phrase coaches say and the phrase you write back to the player, but it is a cue, not a measurement — taken literally it is wider than anyone actually shoots from. When you ANALYSE the base, the target you are grading against is HIP WIDTH: the feet under the hips, straight down from the hip joints.
 THE TOE-TOUCH TEST is the plain-English version of the same thing. A correct base is one the player could bend straight down from and touch their toes without shifting their feet. Feet bunched together will not let them balance; feet splayed wide will not let them fold straight down. Hip width is where they can.
 This is the target BOTH times you score it — the base they go up from and the base they come down on.
 
-SCORE TWO SECTIONS, THEN COMBINE THEM. A base that is set correctly on the way up and then collapses at the release is two different facts about the shot, and the player needs to hear both.
-  SECTION 1 — BEFORE RELEASE. The base they build and shoot from.
-  SECTION 2 — AT AND AFTER RELEASE. Whether they hold that base through the shot.
-  Score each section 1-10 with the corridor test below. The FINAL SCORE is the average of the two, rounded DOWN. A 9 before release and a 4 at release is a 6, not a 9 — and the reasoning must say the base started well and came apart at the release, naming both halves.
-  NEVER AVERAGE AGAINST A SECTION YOU DID NOT OBSERVE. If you cannot see the release — the clip ends before it, the feet are out of frame or blurred past reading, or you only have frames from before the ball leaves the hand — then SECTION 1 IS THE FINAL SCORE. Do not guess what the feet did later, do not assume they collapsed, and do not average a real SECTION 1 against an imagined SECTION 2. A well-set base with no visible release frame scores exactly what SECTION 1 scored: a 9 stays a 9.
+SCORE TWO SECTIONS, THEN COMBINE THEM 3 TO 1. A base that is set correctly on the way up and then collapses at the release is two different facts about the shot, and the player needs to hear both — but the two are not worth the same. The base they build and rise from is the base the shot was actually taken on, and it carries most of the score.
+  SECTION 1 — BEFORE RELEASE. The base they build and shoot from. Worth about three quarters.
+  SECTION 2 — AT AND AFTER RELEASE. Whether they hold that base through the shot. Worth about one quarter.
+  Score each section 1-10 with the corridor test below, then work out FINAL = (3 x SECTION 1 + SECTION 2) / 4, rounded DOWN. Worked examples: SECTION 1 of 9 with SECTION 2 of 4 gives (27 + 4) / 4 = 7.75, so 7. Two 9s give 9. A SECTION 1 of 4 with a SECTION 2 of 9 gives (12 + 9) / 4 = 5.25, so 5. Two 3s give 3.
+  SECTION 1 SETS THE SCORE, SECTION 2 ONLY ADJUSTS IT. A collapse after the ball is gone never drags a well-set base into the bottom bands, and a tidy landing never rescues a bad one. Whatever happens later, the reasoning must still name both halves — say the base they shot from was good and that it came apart afterwards, in that order.
+  NEVER WEIGH IN A SECTION YOU DID NOT OBSERVE. If you cannot see the release — the clip ends before it, the feet are out of frame or blurred past reading, or you only have frames from before the ball leaves the hand — then SECTION 1 IS THE FINAL SCORE. Do not guess what the feet did later, do not assume they collapsed, and do not weigh a real SECTION 1 against an imagined SECTION 2. A well-set base with no visible release frame scores exactly what SECTION 1 scored: a 9 stays a 9.
 
 SECTION 1 — BEFORE RELEASE. The window opens when the player starts driving upward into the shot and closes on the LAST frame where both feet are still touching the floor — that is, as they go up and at the top of the lift, before the ball is released and before the feet leave the ground. Measure inside that window and nowhere else.
   Ignore everything before the window. Players stand with their feet together while waiting and step out into their base as they load, so a narrow reading taken before the shot starts is not a finding.
@@ -177,28 +201,33 @@ SECTION 1 — BEFORE RELEASE. The window opens when the player starts driving up
 THE MEASUREMENT — THE CORRIDOR TEST. Never judge the base by general impression; your first impression is usually wrong, and it is wrong in the generous direction far more often than not. On a frame where the player is square to the camera:
   STEP 1. Find four points: the outer edge of each HIP, and the outer edge of each SHOULDER. Take the shoulder points at the SHOULDER JOINTS — the outer edge of the torso itself. NEVER include an arm, elbow, hand or the ball. An arm reaching out to the side or across the body is not part of the shoulder span, and counting it inflates that span and makes a perfectly good base read as narrow.
   STEP 2. Drop a vertical plumb line to the floor from all four. On each side this gives an inner line from the hip and an outer line from the shoulder; the space between them is that side CORRIDOR.
-  STEP 3. See where the OUTER edge of each shoe lands:
+  STEP 3. See where the OUTER edge of each shoe lands. The bands are a LADDER, not a cliff — a base slides down it one band at a time as the feet close or splay, and the failing band at the bottom is only for the extremes:
     - Landing on or near the HIP line — the shoes under the hips: IDEAL. Score 10.
-    - Anywhere else inside its corridor, out as far as the shoulder line: CORRECT. Score 9-10.
-    - A little short of the hip line, or a little past the shoulder line: 7-8.
-    - Clearly INSIDE the hip line, bunched toward the centre: TOO NARROW. Score 3-4, and 3 when the shoes are nearly touching.
-    - Clearly OUTSIDE the shoulder line: TOO WIDE. Score 3-4.
+    - Anywhere else inside its corridor, out as far as the shoulder line: CORRECT. Score 9-10. A shoe sitting right at the shoulder plumb line is a GOOD base — never call a shoulder-line stance wide.
+    - A little short of the hip line with a clear gap still between the shoes, or a little past the shoulder line: 7-8. A stance with real daylight between the shoes — around a shoe width or more — is NEVER lower than this band, however far inside the hip line it sits.
+    - Distinctly narrow — the daylight between the shoes clearly less than one shoe width but the shoes not touching — or clearly outside the shoulder line: 5-6.
+    - The shoes nearly or actually TOUCHING, or an extreme straddle with the foot span half again the shoulder span or more: 3-4, and 3 when there is no daylight at all.
 
-HIP WIDTH IS THE TARGET, NOT THE NARROW END. A base with the shoes under the hips is exactly right and scores 10 — never mark it down, never call it "a bit narrow", and never tell that player to widen their feet. The corridor runs out to the shoulder line because a base anywhere between the hips and the shoulders still works, but the hip end is the ideal and the shoulder line is the OUTER limit of correct, not the goal. Past the shoulder line, or bunched inside the hip line, is 3-4 no matter how athletic or tidy the rest of the shot looks.
+HIP WIDTH IS THE TARGET, NOT THE NARROW END. A base with the shoes under the hips is exactly right and scores 10 — never mark it down, never call it "a bit narrow", and never tell that player to widen their feet. The corridor runs out to the shoulder line because a base anywhere between the hips and the shoulders still works, but the hip end is the ideal and the shoulder line is the OUTER limit of correct, not the goal. Outside the corridor the score walks down the ladder — and it only reaches 3-4 for shoes nearly touching or an extreme straddle, no matter how athletic or tidy the rest of the shot looks.
 
 JUDGE THE SHOES ON THE FLOOR, NOT THE LEGS. Knees or thighs that converge while the shoes stay apart is NOT a narrow base — it is a knee-bend question and belongs to another criterion. Measure only the gap between the two shoes where they meet the floor.
 
-BEFORE YOU SCORE 3-4 FOR A NARROW BASE, CONFIRM THE SHOES ARE ACTUALLY BUNCHED. The 3-4 narrow band is for feet with almost no daylight between them — the shoes almost touching. If there is a clear gap between the inner edges of the shoes, one you could fit a shoe into, the base is NOT in that band: it is 9-10 if the shoes are inside their corridors and at worst 7-8 if they fall a little short of the hip lines. Being strict about bunched feet does not mean doubting a base that plainly has room in it.
+BEFORE YOU SCORE BELOW 7 FOR A NARROW BASE, MEASURE THE DAYLIGHT. The tiebreaker between the bands is the gap between the INNER edges of the shoes, measured in shoe widths. One shoe width of daylight or more: never below 7. Clearly less than one shoe width but a visible gap: 5-6. No real daylight — the shoes nearly or actually touching: 3-4. Being strict about bunched feet does not mean doubting a base that plainly has room in it, and "inside the hip line" alone is never grounds for the failing band.
 
-WHEN THE PLAYER IS SMALL IN THE FRAME the hip and shoulder edges are too soft to place accurately and the plumb lines will mislead you — usually into a generous score. Fall back on the daylight between the shoes: a correct base has a clear gap between the inner edges roughly as wide as one shoe or more. Shoes nearly touching with almost no daylight is 3-4, whatever the plumb lines seemed to say.
+WHEN THE PLAYER IS SMALL IN THE FRAME the hip and shoulder edges are too soft to place accurately and the plumb lines will mislead you — usually into a generous score. Fall back on the same daylight ladder: a shoe width or more of gap is a correct base, visibly less is 5-6, and shoes nearly touching with almost no daylight is 3-4, whatever the plumb lines seemed to say.
 
 THIS CRITERION IS DIRECTLY MEASURABLE, SO NEVER DEFAULT TO A HIGH SCORE. Whenever the feet and shoulders are both visible you can compare the two spans, which makes a bad base a specific, clearly visible flaw. The general burden-of-proof and default-to-10 rules do NOT soften this criterion. Judge the feet and nothing else: a square torso, a clean rise, good balance and a tidy upper body tell you nothing about the base and must never pull a narrow or wide stance back up toward 9.
 
-THE TWO WAYS THIS GETS GRADED WRONG, BOTH OF THEM GENEROUS:
-  1. A NARROW BASE UNDER A TIDY SHOOTING POSE. A player standing tall and square with the ball up at the set point looks like textbook form at a glance, and that glance says the stance is fine when the feet are actually close together. It is not fine — it is a 3-4. This is easiest to miss when the player is far from the camera and small in the frame. When that happens, look harder at the feet; do not fall back on overall impression.
-  2. A WIDE BASE UNDER A LOADED CROUCH. Knees bent and hips back reads as "athletic" and "stable" even when the shoes are far outside the shoulder line. That impression is wrong. A foot span half again the shoulder span is a 3-4, not a 9.
+THE THREE WAYS THIS GETS GRADED WRONG:
+  1. A NARROW BASE UNDER A TIDY SHOOTING POSE (generous). A player standing tall and square with the ball up at the set point looks like textbook form at a glance, and that glance says the stance is fine when the feet are actually close together. It is not fine — score it off the daylight ladder, down to 3-4 when the shoes nearly touch. This is easiest to miss when the player is far from the camera and small in the frame. When that happens, look harder at the feet; do not fall back on overall impression.
+  2. A WIDE BASE UNDER A LOADED CROUCH (generous). Knees bent and hips back reads as "athletic" and "stable" even when the shoes are far outside the shoulder line. That impression is wrong. A foot span half again the shoulder span is a 3-4, not a 9.
+  3. A WORKABLE BASE CALLED A FAILURE (harsh). A stance with a clear shoe width of daylight that sits a little inside hip width is a 7-8 — room to improve, not a flaw that fails the criterion. Skipping the 7-8 and 5-6 bands and dropping straight to 3-4 because the feet read "narrow" is as wrong as the generous mistakes above.
 
-EXPERT CALIBRATION — six real graded cases:
+EXPERT CALIBRATION — ten real graded cases:
+  - Facing the camera in the gather, ball held at the chest, shoes plainly separated with about a shoe width of daylight between them, sitting just inside hip width: 7. Scored 5 on review; the expert corrected it — a base with that much room in it is never in the failing bands.
+  - Standing tall early in the gather, ball held low in front of the shorts, arms hanging straight down, shoes nearly touching with no real daylight — the legs reading as one column: 3. Way too close, whatever the tidy upright posture suggests.
+  - Follow-through frame, both arms extended overhead after the release, shoes landing near the shoulder plumb lines with an obvious gap between them: 9. Feet near the shoulder lines are a good base, not a wide one.
+  - Crouched gather, ball at the chest, knees pushed outward, shoes clearly outside the shoulder plumb lines on both sides: 5. Too wide — but a working straddle in the 5-6 band, not the extreme 3-4 band.
   - Distant, small in frame, square, ball at the set point, feet almost touching with barely any daylight between the shoes: 3. Repeat runs scored this 8, 9, 9 and 4 before the expert set it at 3.
   - Standing tall mid-shot, arms extended overhead, shoes a few inches apart and well inside the shoulders: 4. Scored 8 then 9 on review; the expert corrected it to 4 both times.
   - Crouched with the ball low, thighs splayed, shoes clearly outside the shoulders: 4. Scored 9; the expert corrected it to 4.
@@ -220,7 +249,7 @@ PLAYER-FACING WORDING: always say "shoulder width" — tell the player the base 
 
 If the feet are never clearly visible during the shooting motion, return null. A landing you cannot see is never a reason to return null.'
 WHERE name = 'Feet Shoulder Width Apart'
-  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'STANCE RUBRIC v12%');
+  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'STANCE RUBRIC v15%');
 
 -- Canonical "Square to the Basket" rubric, same versioned-guard pattern as the
 -- stance rubric above. Added because the criterion shipped with only its
@@ -319,40 +348,107 @@ PLAYER-FACING WORDING: tell them to load their legs and let the power come up fr
 WHERE name = 'Source of Shot Power'
   AND (grading_notes IS NULL OR grading_notes NOT LIKE 'POWER RUBRIC v1%');
 
--- "Guide Hand Follow Through" rubric. The criterion had only its one-line
--- description, which named the flick but not the two faults the expert cares
--- most about: the hands closing up toward each other at any point after the
--- release, and a flimsy finish where the hands and elbows sit in visibly
--- different places frame to frame instead of holding their shape. The target is
--- a flat vertical guide hand with a passive thumb that the ball is shot
--- straight through, hands finishing clearly apart.
+-- "Guide Hand Follow Through" rubric. v1 named the flick, the hands closing up
+-- and a thrashing finish, but "flat" was left as an impression and the model read
+-- an extended hand with the fingers spread wide as "flat and open" — a real clip
+-- of a guide hand riding up overhead with the fingers splayed scored 10/10/10.
+-- v2 makes flatness a thing you look AT (the gaps between the fingers: together
+-- is flat, spread is not) and adds a stay-put test that tracks the hand across
+-- the finish frames, so sideways travel and riding up with the shot are faults
+-- of their own rather than variations on the flick.
+-- v3, from expert review with a photographed anchor: BOTH ARMS FINISHING HIGH
+-- IS NOT A FAULT. v2 scored "rides up overhead alongside the shooting hand"
+-- 4-5 outright, which fails the expert's own good example — a front-on finish
+-- with both arms extended overhead, hands clearly apart, guide hand flat and
+-- peeling. The fault was never the height of the guide arm; it is the hand
+-- CONVERGING, pushing or flicking. v3 rescopes the upward-drive fault to
+-- convergence-while-rising and adds the anchor. Also check every finish frame,
+-- frame by frame — the peel is a motion, not a pose.
 UPDATE criteria
-SET grading_notes = 'GUIDE HAND FOLLOW THROUGH RUBRIC v1 — did the shot go THROUGH a flat, still guide hand that stayed clear of the shooting hand?
+SET grading_notes = 'GUIDE HAND FOLLOW THROUGH RUBRIC v3 — did the shot go THROUGH a flat, still guide hand that stayed clear of the shooting hand?
 
-WHAT GOOD LOOKS LIKE. At the finish the two hands are clearly APART and never touch. The guide hand is FLAT — fingers together and extended, the hand reading like a flat vertical board rather than a cup, a claw or a fist. The thumb is passive and flat against the hand, not flicking or pushing. The hand simply stays where it was and the ball is shot THROUGH it: it peels away cleanly and adds nothing to the shot. A guide hand that finishes flat, still and separated is 9-10.
+WHAT GOOD LOOKS LIKE. At the finish the two hands are clearly APART and never touch. The guide hand is FLAT — fingers TOGETHER and extended, the hand reading like one flat board or paddle. The thumb is passive and flat against the hand, not flicking or pushing. And the hand STAYS WHERE IT WAS: the ball is shot THROUGH it, so it holds its position and PEELS away without adding anything. A guide hand that finishes flat, still and separated is 9-10.
+  THE GUIDE ARM FINISHING HIGH IS FINE. Plenty of correct shooters finish with BOTH arms extended upward. That is not a fault and never costs points on its own — expert-graded anchor: a front-on finish with both arms extended overhead, the hands clearly apart, the guide hand flat with its fingers together, peeling with no flick, is a 9-10. The height of the guide arm tells you nothing; what you are checking is whether the hand STAYED CLEAR, STAYED FLAT and STAYED PASSIVE on its way there.
+  WORK FRAME BY FRAME. The peel is a motion, not a pose — step through every frame from the release to the finish and watch what the guide hand actually does in each one. A single tidy finish frame proves nothing about the frames before it.
 
-CAMERA ANGLE COMPRESSES SEPARATION. Filmed from the front the two hands can look closer together than they are. What matters is whether they actually TOUCH or converge. Hands that look a little close from that angle but plainly keep a gap between them are correct — score them 9-10 and do not deduct for the angle.
+THE FLATNESS TEST — LOOK AT THE GAPS BETWEEN THE FINGERS. This is a specific thing to look at, not an impression. A flat hand has its fingers touching or nearly touching, so the hand reads as ONE surface. Clear gaps between the fingers, fingers spread open like a starfish, fingers curled into a cup or claw, or a fist, are all NOT flat — score 4-5. Do not call a hand "flat and open" because it is extended: an extended hand with the fingers spread apart is a spread hand, and spread is the fault.
 
-FAULT 1 — THE HANDS COME TOO CLOSE. If at ANY point from the release onward the guide hand drifts in toward the shooting hand — the two closing up, meeting, touching or crossing — that is a real flaw. Check every frame of the release and finish, not just the last one. Hands ending up together is a 3-4, and touching or crossing is 1-2.
+THE STAY-PUT TEST — TRACK THE GUIDE HAND ACROSS THE FRAMES. Note where the guide hand is in the frame where the ball leaves the shooting hand, then find it again in each of the next two or three frames. A correct guide hand barely moves. Score the largest movement you can see:
+  - Holds its position, peels away cleanly, or rises with the shot while staying clearly APART from the shooting hand, flat and passive: 9-10.
+  - Slides SIDEWAYS — in toward the shooting hand, or out away from the body — by roughly its own width or more: 4-5. Side-to-side motion in the guide hand means it was steering, not riding along.
+  - CONVERGES while rising — the gap between the two hands closing as they go up, the guide hand chasing the ball or its palm turning to push it: 4-5. Rising is fine; closing the gap is the fault.
+  - Snaps or flicks — a fast lateral jab, or the thumb kicking at the ball: 3-4.
 
-FAULT 2 — A FLIMSY, THRASHING FINISH. If the hands or the elbows are in noticeably different places from one frame to the next, flying around rather than holding a position, the finish is not controlled. A good follow-through is STILL: the arms hold their shape after the ball is gone. Hands and elbows that jump around frame to frame, with no held finish, score 3-4 even if no single frame looks terrible on its own. Judge this across the sequence, not from one image.
+FAULT — THE HANDS COME TOO CLOSE. If at ANY point from the release onward the guide hand drifts in toward the shooting hand — the two closing up, meeting, touching or crossing — that is a real flaw. Check every frame of the release and finish, not just the last one. Hands ending up together is a 3-4, and touching or crossing is 1-2.
 
-FAULT 3 — THE GUIDE HAND IS NOT FLAT. A cupped palm, curled or splayed fingers, or a thumb that drives, flicks or pushes at the ball all mean the guide hand acted on the shot instead of riding along. Score 4-5. The thumb is the usual culprit — look at it directly.
+FAULT — A FLIMSY, THRASHING FINISH. If the hands or the elbows are in noticeably different places from one frame to the next, flying around rather than holding a position, the finish is not controlled. A good follow-through is STILL: the arms hold their shape after the ball is gone. Hands and elbows that jump around frame to frame, with no held finish, score 3-4 even if no single frame looks terrible on its own. Judge this across the sequence, not from one image.
 
-NEVER DEDUCT FOR SOMETHING YOU CANNOT SEE. In particular, do not shave points because the finish could have been "held a beat longer" or the hand could have been "a little flatter" — that is coaching advice, not an observed flaw. If the hands are apart, the guide hand reads flat and the thumb is passive, the score is 9-10. Reserve everything below that for a fault you can actually point at in a frame.
+CAMERA ANGLE COMPRESSES SEPARATION. Filmed from the front the two hands can look closer together than they are. What matters is whether they actually TOUCH or converge. Hands that look a little close from that angle but plainly keep a gap between them are correct — do not deduct for the angle alone.
+
+NEVER DEDUCT FOR SOMETHING YOU CANNOT SEE. Do not shave points because the finish could have been "held a beat longer" or the hand could have been "a little flatter" — that is coaching advice, not an observed flaw. If the hands are apart, the fingers are together, the thumb is passive and the hand held still, the score is 9-10. Reserve everything below that for a fault you can actually point at in a frame.
+
+BUT THE HAND ITSELF IS DIRECTLY VISIBLE, SO NEVER DEFAULT TO A HIGH SCORE ON IT. Spread fingers, a cupped palm, a driving thumb, and a hand that travels between frames are all things you can see and name. The general burden-of-proof and default-to-10 rules do NOT soften this criterion, and a clean release, a good arc or a ball that goes in tells you nothing about what the guide hand did.
 
 HOW TO SCORE:
-  - Hands clearly apart, guide hand flat and vertical, thumb passive, finish held still: 9-10.
+  - Hands clearly apart, fingers together and flat, thumb passive, hand still or peeling cleanly — whether the guide arm finishes low or high: 9-10.
   - Correct but slightly imperfect — the hand a touch angled, or a small settle after the finish: 7-8.
-  - Guide hand cupped, or the thumb visibly driving: 4-5.
-  - Hands closing up together at the finish, or hands and elbows thrashing between frames: 3-4.
+  - Guide hand spread, cupped or curled; or it slides sideways; or the gap between the hands closes as they rise: 4-5.
+  - Hands closing up together at the finish, a thumb flick, or hands and elbows thrashing between frames: 3-4.
   - Hands actually touching or crossing: 1-2.
 
 DO NOT PENALISE THE ARMS COMING DOWN. After the ball is gone it is normal for both arms to lower and separate as the player returns to rest. That is not a flaw and is not thrashing. Only the frames at and just after release count.
 
-PLAYER-FACING WORDING: tell them to keep the guide hand flat like a board, thumb relaxed, and let the ball go straight through it — hands finishing apart, and hold the finish instead of dropping the hands straight away. Never mention frames or scoring bands in the reasoning.'
+PLAYER-FACING WORDING: tell them to keep the guide hand flat like a board with the fingers together, thumb relaxed, and let the ball go straight through it — the hand peeling away cleanly instead of sliding around or pushing, and the hands finishing apart. Never mention frames or scoring bands in the reasoning.'
 WHERE name = 'Guide Hand Follow Through'
-  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'GUIDE HAND FOLLOW THROUGH RUBRIC v1%');
+  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'GUIDE HAND FOLLOW THROUGH RUBRIC v3%');
+
+-- "Shooting Hand Follow Through" rubric. The criterion shipped with only its
+-- one-line description, so it inherited nothing but the global default-to-10
+-- rule and scored 10 on almost every shot — including clips where the hand
+-- plainly drifted in toward the middle of the body after release. The fault it
+-- never had language for is the cross-body finish: the hand carried past the
+-- midline instead of reaching straight down the line at the rim. The midline
+-- test makes that a placement you locate in the frame rather than an
+-- impression of whether the finish looked tidy.
+-- v2, from expert review: names the "hand in the cookie jar" finish as the
+-- target shape (wrist snapped, fingers hanging — like reaching over the rim
+-- into a jar), makes stillness a consequence of a LOADED wrist (the snap is
+-- the only motion; a travelling arm means the arm did the throwing), and adds
+-- a photographed anchor of that finish.
+UPDATE criteria
+SET grading_notes = 'SHOOTING HAND FOLLOW THROUGH RUBRIC v2 — did the shooting hand finish reaching STRAIGHT at the basket, on its own side of the body, with the wrist snapped down?
+
+WHEN TO JUDGE IT. Start at the frame where the ball leaves the fingers and use the next two or three frames — the finish. Do not judge this from the set point, and do not judge it from late frames where the arms are already back down by the waist.
+
+WHAT GOOD LOOKS LIKE — THE HAND IN THE COOKIE JAR. The arm finishes extended up and out toward the basket. The wrist has snapped DOWN so the fingers hang over and point down the line of the shot at the rim, palm toward the floor — the "goose neck", like reaching over the rim of a tall cookie jar and dropping the hand in. The hand stays on the shooting side of the body. And it is STILL: because the wrist was LOADED before the shot, the snap is the ONLY motion in the finish — the arm reaches its spot and holds that shape while the ball is in the air. Expert-graded anchor: a front-on finish frame, arm extended high on its own side, wrist snapped so the hand hangs relaxed toward the floor, holding there — 9-10.
+
+THE ARM BARELY MOVES AFTER RELEASE. Watch the arm itself across the finish frames, separately from the wrist. A correct follow-through has the arm arriving and STOPPING; the wrist snap happens at the end of a still arm. An arm that keeps travelling after the ball is gone — sweeping across, pumping down, whipping back — was throwing the ball instead of releasing it: score 5-6 even when the final pose looks tidy, and lower if the travel crosses the midline (the bands below).
+
+THE MIDLINE TEST — RUN THIS ON EVERY SHOT. Never score this criterion off general impression; a follow-through that ends up looking tidy is the single most common reason a cross-body finish gets missed.
+  STEP 1. Find the player''s MIDLINE — a vertical line up through the centre of the torso and the middle of the head.
+  STEP 2. Note which side of that line the SHOOTING SHOULDER is on. That is the hand''s own side.
+  STEP 3. In each finish frame, see which side of the midline the shooting HAND is on, and watch which way it travels from frame to frame.
+    - Hand staying on its own side, or directly above the midline, reaching toward the rim: CORRECT. Score 9-10.
+    - Hand finishing a little across the midline, or drifting toward the guide-hand side as the ball flies: 5-6.
+    - Hand carried CLEARLY past the midline — finishing above or beyond the guide-hand shoulder, or the forearm cutting diagonally across the chest, throat or face: CROSS-BODY FINISH. Score 3-4.
+    - Hand thrown out sideways AWAY from the body instead of at the rim, so the fingers finish pointing off to one side rather than at the basket: also 3-4.
+
+STRAIGHT TO THE BASKET IS THE WHOLE POINT. The hand should finish along the line the ball travels. Anything that takes it off that line — across the body, out to the side, or whipping laterally at the moment of release — is a real, visible flaw, because a hand that leaves the line pushes the ball off the line with it.
+
+CHECK EVERY FINISH FRAME, NOT JUST THE LAST ONE. A sideways whip at release is fast and the player usually corrects back into a normal-looking position within a frame or two. A tidy final frame does NOT mean the hand went straight — if any frame at or just after release shows the hand cutting across or flicking sideways, that is the finding, and the tidy frame afterwards does not cancel it.
+
+NO WRIST SNAP IS ITS OWN FAULT, BUT ONLY WHEN YOU CAN ACTUALLY SEE THE HAND. If you can make out the fingers in a frame where the arm is fully extended, and they are clearly still pointing UP with the palm facing the basket rather than hanging over toward the floor, score 6-7 even when the arm went perfectly straight — a hand that never snaps put no backspin on the ball. If the hand is small in the frame, motion-blurred, or reads as an indistinct blob, you cannot tell a snapped wrist from a stiff one: say nothing about the snap and score the criterion on where the hand finished. Guessing at the wrist is the main way this criterion gets scored differently on the same shot twice.
+
+WHAT IS NOT A FLAW. Both arms lowering together after the ball is gone is a normal return to rest, not a cross-body finish and not a flick — judge only the frames at and immediately after release. A shooting hand that finishes slightly inside the shoulder line, or a little rotation of the palm, is ordinary and still scores 9-10. Do not deduct because the finish "could have been held longer" or the hand "could have snapped a bit harder" — that is advice, not an observed flaw.
+
+THIS CRITERION IS DIRECTLY VISIBLE, SO NEVER DEFAULT TO A HIGH SCORE. Where the hand finishes relative to the body is something you can see and locate in the frame, which makes a cross-body finish a specific, clearly visible flaw. The general burden-of-proof and default-to-10 rules do NOT soften this criterion. Judge the shooting hand and nothing else: a high release, a good arc, a ball that goes in, and a clean-looking guide hand tell you nothing about where this hand finished and must never pull a cross-body finish back up toward 9.
+
+IF THE BALL NEVER LEAVES THE HAND in any frame you have, return null rather than scoring the set point.
+
+PLAYER-FACING WORDING: tell them to finish with the hand reaching straight at the rim on their own side of their body, snap the wrist down like dropping their hand into a cookie jar, and hold it there — the "hand in the cookie jar" cue is good coaching language to use. Never mention midlines, frames or scoring bands in the reasoning.'
+WHERE name = 'Shooting Hand Follow Through'
+  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'SHOOTING HAND FOLLOW THROUGH RUBRIC v2%');
+
 
 
 

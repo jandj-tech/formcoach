@@ -126,7 +126,9 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
         <section className="space-y-3">
           <div className="flex items-baseline justify-between">
             <h2 className="text-black font-black text-lg sm:text-xl">Criteria breakdown</h2>
-            <span className="text-xs text-gray-400">{scores.length} criteria graded</span>
+            <span className="text-xs text-gray-400">
+              {scores.filter((s) => s.ai_score !== null).length} of {scores.length} criteria graded
+            </span>
           </div>
           {scores.map((s, i) => (
             <Fragment key={s.id}>
@@ -205,9 +207,19 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
             For the most accurate analysis, film from under or near the net — either directly
             behind the basket or slightly to the side, at an angle where the shooter&apos;s elbow,
             arms, and hands are all clearly visible throughout the shot. This gives the AI a clear
-            view of arm mechanics, elbow alignment, and release. If you also want arc to be
-            evaluated, choose an angle where the ball&apos;s flight path is visible. Avoid filming
-            directly face-on, as key form details are hidden from that perspective.
+            view of arm mechanics, elbow alignment, and release. Avoid filming directly face-on, as
+            key form details are hidden from that perspective.
+          </p>
+          <p className="text-zinc-700 text-sm leading-relaxed mt-3">
+            Shot arc and ball rotation need the ball itself in frame and in focus the whole way to
+            the rim. When the footage can&apos;t show that, we leave those criteria ungraded rather
+            than estimate them — a guessed score would skew your overall number.{' '}
+            <Link
+              href="/support#filming"
+              className="font-bold text-orange-500 hover:text-red-600 underline underline-offset-2 transition-colors"
+            >
+              Full filming guide →
+            </Link>
           </p>
         </div>
 

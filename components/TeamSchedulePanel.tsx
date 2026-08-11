@@ -1,13 +1,14 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
 // Team schedule — one component, three faces:
 //   1. /team hub (theme="dark")            — full panel for players + coaches
 //   2. coach dashboard (theme="light")     — full panel with admin CRUD
-//   3. player dashboard card (compact)     — next 3 events + "Full schedule →"
+//   3. player dashboard card (compact)     — calendar + "Full schedule →", no admin
 //
 // Wire types mirror lib/team-schedule.ts exactly. That module is server-only
 // (it imports the db client), so the shapes are re-declared for the client
@@ -165,9 +166,31 @@ function repeatCaption(v: FormValues): string | null {
   return `Creates ${v.repeatWeeks} ${noun}, every ${first.toLocaleDateString(undefined, { weekday: 'short' })} through ${last.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
 }
 
+// Parse a typed time: "7:30", "7:30pm", "730", "7pm", "19:30", "1930".
+// 1–12 with no am/pm keeps the currently selected period — typing "7:30"
+// while PM is lit means 7:30 PM; 13–23 is unambiguous 24-hour.
+function parseTypedTime(raw: string, fallbackPM: boolean): string | null {
+  const s = raw.trim().toLowerCase().replace(/[\s.]/g, '')
+  const m = s.match(/^(\d{1,2})(?::?([0-5]\d))?(am?|pm?)?$/)
+  if (!m) return null
+  let h = parseInt(m[1], 10)
+  const min = m[2] ? parseInt(m[2], 10) : 0
+  const suffix = m[3]
+  if (suffix) {
+    if (h < 1 || h > 12) return null
+    h = (h % 12) + (suffix.startsWith('p') ? 12 : 0)
+  } else if (h > 23) {
+    return null
+  } else if (h >= 1 && h <= 12) {
+    h = (h % 12) + (fallbackPM ? 12 : 0)
+  }
+  return `${pad2(h)}:${pad2(min)}`
+}
+
 function TimeSelect({ value, onChange, dark }: { value: string; onChange: (v: string) => void; dark: boolean }) {
   const t = themeClasses(dark)
-  // value is 24h "HH:MM"; render as tap-only hour/minute/AM-PM controls.
+  // value is 24h "HH:MM"; a typed field plus tap-only hour/minute/AM-PM
+  // controls, kept in sync both ways. Type OR tap — whichever is faster.
   const [hh, mm] = value ? value.split(':').map(n => parseInt(n, 10)) : [18, 0]
   const isPM = hh >= 12
   const hour12 = hh % 12 === 0 ? 12 : hh % 12
@@ -175,9 +198,32 @@ function TimeSelect({ value, onChange, dark }: { value: string; onChange: (v: st
     const h24 = pm ? (h12 % 12) + 12 : h12 % 12
     onChange(`${String(h24).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`)
   }
+  // Uncontrolled + keyed by value: commits on blur/Enter; a dropdown tap
+  // remounts it with the canonical text, so the two never disagree.
+  const commitTyped = (el: HTMLInputElement) => {
+    const parsed = parseTypedTime(el.value, isPM)
+    if (parsed && parsed !== value) onChange(parsed)
+    else el.value = `${hour12}:${pad2(mm)}`
+  }
   const selCls = `rounded-xl px-2.5 py-2.5 text-sm font-bold focus:outline-none cursor-pointer ${t.input}`
   return (
-    <span className="inline-flex items-center gap-1.5">
+    <span className="inline-flex items-center gap-1.5 flex-wrap">
+      <input
+        key={value}
+        type="text"
+        defaultValue={`${hour12}:${pad2(mm)}`}
+        onFocus={e => e.currentTarget.select()}
+        onBlur={e => commitTyped(e.currentTarget)}
+        onKeyDown={e => {
+          if (e.key === 'Enter') {
+            e.preventDefault()
+            commitTyped(e.currentTarget)
+          }
+        }}
+        placeholder="7:30"
+        aria-label="Type a time, e.g. 7:30"
+        className={`w-[4.5rem] text-center rounded-xl px-2 py-2.5 text-sm font-bold focus:outline-none ${t.input}`}
+      />
       <select value={hour12} onChange={e => apply(parseInt(e.target.value, 10), mm, isPM)} className={selCls} aria-label="Hour">
         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(h => <option key={h} value={h}>{h}</option>)}
       </select>
@@ -200,6 +246,169 @@ function TimeSelect({ value, onChange, dark }: { value: string; onChange: (v: st
         ))}
       </span>
     </span>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Location autocomplete — Photon (OpenStreetMap's typeahead API): free, no
+// key, CORS-open. Suggestions appear as the coach types; picking one fills
+// the field with a full address so the map links on the card resolve well.
+// If the API is slow or down, nothing breaks — the field stays free text.
+// ---------------------------------------------------------------------------
+
+interface PhotonFeature {
+  properties: {
+    name?: string
+    housenumber?: string
+    street?: string
+    city?: string
+    state?: string
+    country?: string
+  }
+}
+
+function formatPhotonFeature(f: PhotonFeature): string | null {
+  const p = f.properties
+  const parts = [p.name, [p.street, p.housenumber].filter(Boolean).join(' '), p.city, p.state].filter(
+    (x): x is string => !!x,
+  )
+  // A place named after its city ("Toronto", street "", city "Toronto")
+  // shouldn't repeat itself in the label.
+  const seen = new Set<string>()
+  const label = parts
+    .filter(x => {
+      const k = x.toLowerCase()
+      if (seen.has(k)) return false
+      seen.add(k)
+      return true
+    })
+    .join(', ')
+  return label || null
+}
+
+function LocationInput({
+  value,
+  onChange,
+  dark,
+  className,
+}: {
+  value: string
+  onChange: (v: string) => void
+  dark: boolean
+  className: string
+}) {
+  const t = themeClasses(dark)
+  const [suggestions, setSuggestions] = useState<string[]>([])
+  const [open, setOpen] = useState(false)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
+
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current)
+      abortRef.current?.abort()
+    },
+    [],
+  )
+
+  function handleChange(q: string) {
+    onChange(q.slice(0, 200))
+    if (timer.current) clearTimeout(timer.current)
+    const query = q.trim()
+    if (query.length < 3) {
+      setSuggestions([])
+      setOpen(false)
+      return
+    }
+    // Debounced + aborted per keystroke: at most one in-flight lookup.
+    timer.current = setTimeout(async () => {
+      abortRef.current?.abort()
+      const ac = new AbortController()
+      abortRef.current = ac
+      try {
+        const res = await fetch(
+          `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5&lang=en`,
+          { signal: ac.signal },
+        )
+        if (!res.ok) return
+        const json = (await res.json()) as { features?: PhotonFeature[] }
+        const seen = new Set<string>()
+        const items = (json.features ?? [])
+          .map(formatPhotonFeature)
+          .filter((label): label is string => !!label)
+          .filter(label => {
+            const k = label.toLowerCase()
+            if (seen.has(k)) return false
+            seen.add(k)
+            return true
+          })
+          .slice(0, 5)
+        setSuggestions(items)
+        setOpen(items.length > 0)
+      } catch {
+        // Aborted or offline — the typed text still works as a plain location.
+      }
+    }, 300)
+  }
+
+  function pick(label: string) {
+    onChange(label.slice(0, 200))
+    setSuggestions([])
+    setOpen(false)
+  }
+
+  return (
+    <div className="relative">
+      <input
+        type="text"
+        value={value}
+        maxLength={200}
+        onChange={e => handleChange(e.target.value)}
+        onFocus={() => {
+          if (suggestions.length > 0) setOpen(true)
+        }}
+        onBlur={() => setOpen(false)}
+        onKeyDown={e => {
+          if (e.key === 'Escape') setOpen(false)
+          // Enter takes the top suggestion — type, Enter, done.
+          if (e.key === 'Enter' && open && suggestions.length > 0) {
+            e.preventDefault()
+            pick(suggestions[0])
+          }
+        }}
+        placeholder="e.g. Main Gym"
+        role="combobox"
+        aria-expanded={open}
+        aria-controls="location-suggestions"
+        aria-autocomplete="list"
+        className={className}
+      />
+      {open && (
+        <div
+          // Mousedown fires before the input's blur — without this the list
+          // closes a beat before the click lands and taps select nothing.
+          onMouseDown={e => e.preventDefault()}
+          className={`absolute left-0 right-0 top-full mt-1 z-20 rounded-xl overflow-hidden shadow-lg ${t.panel}`}
+        >
+          <ul id="location-suggestions" role="listbox">
+            {suggestions.map(label => (
+              <li key={label} role="option" aria-selected={false}>
+                <button
+                  type="button"
+                  onClick={() => pick(label)}
+                  className={`block w-full text-left px-3.5 py-2 text-sm transition-colors ${t.text} ${
+                    dark ? 'hover:bg-ink-950' : 'hover:bg-orange-50'
+                  }`}
+                >
+                  📍 {label}
+                </button>
+              </li>
+            ))}
+          </ul>
+          <p className={`px-3.5 py-1.5 text-[10px] ${t.faint}`}>Suggestions © OpenStreetMap</p>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -257,7 +466,7 @@ function EventForm({
         ))}
       </div>
 
-      {/* When — date plus tap-only time dropdowns (native time inputs are fiddly) */}
+      {/* When — date plus a typed time field with tap dropdowns as backup */}
       <div>
         <p className={`text-xs font-bold uppercase tracking-wide mb-1.5 ${t.dim}`}>When</p>
         <div className="flex flex-wrap items-center gap-2">
@@ -275,15 +484,13 @@ function EventForm({
         </div>
       </div>
 
-      {/* Where */}
+      {/* Where — type a few letters and pick the real place, or free text */}
       <div>
         <p className={`text-xs font-bold uppercase tracking-wide mb-1.5 ${t.dim}`}>Where</p>
-        <input
-          type="text"
+        <LocationInput
           value={v.location}
-          maxLength={200}
-          onChange={e => set('location', e.target.value)}
-          placeholder="e.g. Main Gym"
+          onChange={loc => set('location', loc)}
+          dark={dark}
           className={`w-full ${inputCls}`}
         />
       </div>
@@ -586,7 +793,28 @@ function EventCard({
           <p className={`text-sm font-bold mt-1 ${t.text} ${cancelled ? 'line-through' : ''}`}>
             {event.title || typeLabel(event.type)}
           </p>
-          {event.location && <p className={`text-xs mt-0.5 ${t.dim}`}>📍 {event.location}</p>}
+          {event.location && (
+            <p className={`text-xs mt-0.5 ${t.dim}`}>
+              📍{' '}
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold underline underline-offset-2"
+              >
+                {event.location}
+              </a>
+              {' · '}
+              <a
+                href={`https://maps.apple.com/?q=${encodeURIComponent(event.location)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2 whitespace-nowrap"
+              >
+                Apple Maps
+              </a>
+            </p>
+          )}
           {event.notes && (
             <button
               type="button"
@@ -791,6 +1019,143 @@ function EventCard({
 }
 
 // ---------------------------------------------------------------------------
+// Week calendar — one week at a time, Google-style: ‹ › arrows, a Today
+// button, a 7-day grid with event chips, and the tapped event's full card
+// (RSVP, names, coach menu) rendered underneath. Back-navigation reaches
+// past weeks; their events come from the lazily fetched past window.
+// ---------------------------------------------------------------------------
+
+function startOfWeekLocal(d: Date): Date {
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+  x.setDate(x.getDate() - x.getDay()) // Sunday-start, device-local
+  return x
+}
+
+function sameLocalDay(a: Date, b: Date): boolean {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
+}
+
+function weekRangeLabel(weekStart: Date): string {
+  const end = new Date(weekStart)
+  end.setDate(end.getDate() + 6)
+  const startStr = weekStart.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  const endStr = end.toLocaleDateString(
+    undefined,
+    weekStart.getMonth() === end.getMonth() ? { day: 'numeric' } : { month: 'short', day: 'numeric' },
+  )
+  return `${startStr} – ${endStr}`
+}
+
+function weekTitle(weekStart: Date): string {
+  const thisWeek = startOfWeekLocal(new Date())
+  // Local-midnight anchors can differ by an hour across a DST switch — round.
+  const diffWeeks = Math.round((weekStart.getTime() - thisWeek.getTime()) / (7 * 24 * 60 * 60 * 1000))
+  if (diffWeeks === -1) return 'Last week'
+  if (diffWeeks === 0) return 'This week'
+  if (diffWeeks === 1) return 'Next week'
+  return weekRangeLabel(weekStart)
+}
+
+function WeekCalendar({
+  weekStart,
+  events,
+  dark,
+  selectedId,
+  isCurrentWeek,
+  onSelect,
+  onStep,
+  onToday,
+}: {
+  weekStart: Date
+  events: ScheduleEvent[] // this week's events only, sorted by start
+  dark: boolean
+  selectedId: string | null
+  isCurrentWeek: boolean
+  onSelect: (id: string) => void
+  onStep: (dir: -1 | 1) => void
+  onToday: () => void
+}) {
+  const t = themeClasses(dark)
+  const today = new Date()
+  const border = dark ? 'border-courtline' : 'border-gray-200'
+  const navBtn = `w-8 h-8 rounded-lg inline-flex items-center justify-center ${t.btnIdle}`
+  const title = weekTitle(weekStart)
+  const range = weekRangeLabel(weekStart)
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(weekStart)
+    d.setDate(d.getDate() + i)
+    return d
+  })
+
+  return (
+    <div className={`rounded-2xl overflow-hidden border ${border} ${dark ? '' : 'bg-white'}`}>
+      {/* Nav bar */}
+      <div className={`flex items-center justify-between gap-2 px-3 py-2.5 border-b ${border}`}>
+        <div className="flex items-center gap-1.5">
+          <button type="button" aria-label="Previous week" onClick={() => onStep(-1)} className={navBtn}>
+            <ChevronLeftIcon className="w-4 h-4" aria-hidden />
+          </button>
+          <button type="button" aria-label="Next week" onClick={() => onStep(1)} className={navBtn}>
+            <ChevronRightIcon className="w-4 h-4" aria-hidden />
+          </button>
+          {!isCurrentWeek && (
+            <button type="button" onClick={onToday} className={`rounded-lg px-2.5 h-8 text-xs font-bold ${t.btnIdle}`}>
+              Today
+            </button>
+          )}
+        </div>
+        <p className="text-right min-w-0">
+          <span className={`font-display font-black uppercase text-sm tracking-wide ${t.text}`}>{title}</span>
+          {title !== range && <span className={`ml-2 text-xs whitespace-nowrap ${t.dim}`}>{range}</span>}
+        </p>
+      </div>
+
+      {/* 7-day grid — columns on desktop, stacked day rows on phones */}
+      <div className={`grid grid-cols-1 sm:grid-cols-7 divide-y sm:divide-y-0 sm:divide-x ${dark ? 'divide-courtline' : 'divide-gray-200'}`}>
+        {days.map((day, i) => {
+          const dayEvents = events.filter(e => sameLocalDay(new Date(e.startsAt), day))
+          const isToday = sameLocalDay(day, today)
+          return (
+            <div key={i} className="flex sm:flex-col gap-2 p-2 sm:min-h-[7.5rem] min-w-0">
+              <div className="w-14 sm:w-auto shrink-0 flex sm:flex-col items-center gap-1.5 sm:gap-0.5">
+                <span className={`text-[10px] font-bold uppercase tracking-wide ${isToday ? (dark ? 'text-ember-400' : 'text-orange-600') : t.dim}`}>
+                  {day.toLocaleDateString(undefined, { weekday: 'short' })}
+                </span>
+                <span
+                  className={`text-sm font-bold w-6 h-6 rounded-full inline-flex items-center justify-center ${
+                    isToday ? (dark ? 'bg-ember-500 text-ink-950' : 'bg-orange-500 text-white') : t.text
+                  }`}
+                >
+                  {day.getDate()}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0 space-y-1">
+                {dayEvents.map(e => {
+                  const chipCls = e.type === 'game' ? t.chipGame : e.type === 'practice' ? t.chipPractice : t.chipOther
+                  return (
+                    <button
+                      key={e.id}
+                      type="button"
+                      onClick={() => onSelect(e.id)}
+                      aria-pressed={selectedId === e.id}
+                      className={`block w-full text-left rounded-md px-1.5 py-1 text-[11px] font-semibold truncate transition-shadow ${chipCls} ${
+                        e.status === 'cancelled' ? 'line-through opacity-50' : ''
+                      } ${selectedId === e.id ? (dark ? 'ring-2 ring-chalk' : 'ring-2 ring-black/50') : ''}`}
+                    >
+                      {e.timeTbd ? 'TBD' : timeLabel(e.startsAt)} · {e.title || typeLabel(e.type)}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // The panel
 // ---------------------------------------------------------------------------
 
@@ -808,7 +1173,10 @@ export default function TeamSchedulePanel({
 
   const [data, setData] = useState<ScheduleData | 'error' | null>(null)
   const [past, setPast] = useState<ScheduleData | 'error' | null>(null)
-  const [pastOpen, setPastOpen] = useState(false)
+  // Calendar position (weeks from the current one) and the tapped event.
+  // null = auto (first event of the visible week); 'closed' = user collapsed.
+  const [weekOffset, setWeekOffset] = useState(0)
+  const [selected, setSelected] = useState<string | 'closed' | null>(null)
   const [showCreate, setShowCreate] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -1058,7 +1426,36 @@ export default function TeamSchedulePanel({
     return <p className={`text-sm py-4 text-center ${t.dim}`}>The schedule isn&apos;t available right now.</p>
 
   const isCoach = data.isCoach && !compact
-  const events = compact ? data.events.slice(0, 3) : data.events
+
+  // Calendar derivations — the event pool is upcoming + (lazily) past, so
+  // back-navigation shows finished weeks with their attendance record.
+  const pastEvents = past && past !== 'error' ? past.events : []
+  const pastIds = new Set(pastEvents.map(e => e.id))
+  const seenIds = new Set<string>()
+  const pool = [...data.events, ...pastEvents].filter(e => (seenIds.has(e.id) ? false : (seenIds.add(e.id), true)))
+  const weekStart = startOfWeekLocal(new Date())
+  weekStart.setDate(weekStart.getDate() + weekOffset * 7)
+  const weekEnd = new Date(weekStart)
+  weekEnd.setDate(weekEnd.getDate() + 7)
+  const visibleEvents = pool
+    .filter(e => {
+      const ts = new Date(e.startsAt).getTime()
+      return ts >= weekStart.getTime() && ts < weekEnd.getTime()
+    })
+    .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime())
+  const shownEvent =
+    selected === 'closed'
+      ? null
+      : selected
+        ? (visibleEvents.find(e => e.id === selected) ?? null)
+        : (visibleEvents[0] ?? null)
+
+  function gotoWeek(offset: number) {
+    setWeekOffset(offset)
+    setSelected(null) // back to auto-select for the new week
+    // Past weeks need the past window — fetch on first visit, retry on error.
+    if (offset < 0 && (past === null || past === 'error')) loadPast()
+  }
 
   function renderCard(event: ScheduleEvent, isPast: boolean) {
     return (
@@ -1135,49 +1532,38 @@ export default function TeamSchedulePanel({
         />
       )}
 
-      {/* Upcoming events */}
-      {events.length === 0 ? (
-        <p className={`text-sm py-4 text-center ${t.dim}`}>
+      {/* Events — the same week calendar everywhere; compact adds the hub link */}
+      <WeekCalendar
+        weekStart={weekStart}
+        events={visibleEvents}
+        dark={dark}
+        selectedId={shownEvent?.id ?? null}
+        isCurrentWeek={weekOffset === 0}
+        onSelect={id => setSelected(shownEvent?.id === id ? 'closed' : id)}
+        onStep={dir => gotoWeek(weekOffset + dir)}
+        onToday={() => gotoWeek(0)}
+      />
+      {weekOffset < 0 && past === null && (
+        <p className={`text-sm py-2 text-center ${t.dim}`}>Loading past events…</p>
+      )}
+      {weekOffset < 0 && past === 'error' && (
+        <p className={`text-sm py-2 text-center ${t.dim}`}>Couldn&apos;t load past events.</p>
+      )}
+      {data.events.length === 0 && (
+        <p className={`text-sm py-2 text-center ${t.dim}`}>
           {isCoach
             ? 'No events yet — schedule your first practice.'
             : 'No upcoming events. Your coach hasn’t scheduled anything yet.'}
         </p>
-      ) : (
-        <div className="space-y-2.5">{events.map(e => renderCard(e, false))}</div>
       )}
+      {/* The tapped event's full card — RSVP, attendance, coach actions */}
+      {shownEvent && renderCard(shownEvent, pastIds.has(shownEvent.id))}
 
-      {compact ? (
+      {compact && (
         <div>
           <Link href="/team" className={`text-sm font-semibold transition-colors ${t.link}`}>
             Full schedule →
           </Link>
-        </div>
-      ) : (
-        /* Past events — lazy accordion; final counts = the attendance record */
-        <div className="pt-1">
-          <button
-            type="button"
-            onClick={() => {
-              // Retry on reopen after a failure — 'error' must never be a
-              // dead-end the user can't leave without a full page reload.
-              if (!pastOpen && (past === null || past === 'error')) loadPast()
-              setPastOpen(o => !o)
-            }}
-            aria-expanded={pastOpen}
-            className={`text-sm font-semibold transition-colors ${t.link}`}
-          >
-            {pastOpen ? '− Past events' : '+ Past events'}
-          </button>
-          {pastOpen &&
-            (past === null ? (
-              <p className={`text-sm py-3 text-center ${t.dim}`}>Loading past events…</p>
-            ) : past === 'error' ? (
-              <p className={`text-sm py-3 text-center ${t.dim}`}>Couldn&apos;t load past events.</p>
-            ) : past.events.length === 0 ? (
-              <p className={`text-sm py-3 text-center ${t.dim}`}>No past events yet.</p>
-            ) : (
-              <div className="space-y-2.5 mt-2">{past.events.map(e => renderCard(e, true))}</div>
-            ))}
         </div>
       )}
     </div>

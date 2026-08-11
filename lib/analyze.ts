@@ -11,6 +11,62 @@ interface CriterionResult {
   reasoning: string
 }
 
+// Hedging language means the model reconstructed a score instead of observing
+// one. Arc and rotation are the two it guesses at most — the ball is usually
+// out of frame or a blur — and a guessed number lands in the weighted average
+// and drags the whole report off. Any hedged reasoning on those two forces the
+// score to null. Deliberately NOT included: "approximately", "roughly",
+// "estimated". Arc angle is inherently an estimate of magnitude, and the rubric
+// itself says "approximately 45-60 degrees" — matching those would null every
+// arc score, including the well-observed ones.
+const GUESS_PATTERNS: RegExp[] = [
+  /\bappear(?:s|ed|ing)?\b/,
+  /\bseem(?:s|ed|ing)?\b/,
+  /\blikely\b/,
+  /\bprobabl[ey]\b/,
+  /\bpresumabl[ey]\b/,
+  /\bpresumed\b/,
+  /\bapparently\b/,
+  /\bassum(?:e|es|ed|ing|ption)\b/,
+  /\binfer(?:s|red|ring)?\b/,
+  /\bimpl(?:y|ies|ied)\b/,
+  /\bsuggest(?:s|ed|ing)?\b/,
+  /\bconsistent with\b/,
+  /\bmay (?:be|have)\b/,
+  /\bmight (?:be|have)\b/,
+  /\bcould (?:be|have)\b/,
+  /\bwould (?:be|have)\b/,
+  /\bhard to (?:tell|see|judge|assess|confirm)\b/,
+  /\bdifficult to (?:tell|see|judge|assess|confirm)\b/,
+  /\bcan(?:no|')?t (?:fully |clearly |really )?(?:tell|see|confirm)\b/,
+  /\bnot (?:fully|entirely|clearly) (?:visible|clear|confirmed)\b/,
+  /\bpartially visible\b/,
+  /\bpartly visible\b/,
+  /\blimited (?:view|visibility)\b/,
+  /\bbased on (?:the )?trajectory\b/,
+  /\bunclear\b/,
+  /\bnot clear\b/,
+  /\bblur/,
+  /\blow resolution\b/,
+  /\btoo far\b/,
+  /\bat this distance\b/,
+]
+
+function readsLikeAGuess(reasoning: string): boolean {
+  const r = (reasoning || '').toLowerCase()
+  return GUESS_PATTERNS.some((p) => p.test(r))
+}
+
+// Shown in place of the model's own wording whenever we strip a guessed score,
+// so the card never reads as a confident judgement with no number beside it.
+// The UI pairs this with a link to the filming guide.
+const UNGRADED_ARC =
+  `The ball's flight to the basket wasn't clear enough in this clip to judge arc, so it was left ungraded rather than guessed at. It does not count against your score.`
+const UNGRADED_ROTATION =
+  `The ball's spin wasn't clear enough in this clip to judge rotation, so it was left ungraded rather than guessed at. It does not count against your score.`
+const UNGRADED_TWO_FINGER =
+  `The fingers at the exact release moment weren't clear enough in this clip to judge, so this was left ungraded rather than guessed at. It does not count against your score.`
+
 type PlayerType = 'child' | 'recreational' | 'college_pro' | 'nba_bad_form' | 'nba_decent' | 'nba_elite'
 
 interface AnalysisResult {
@@ -153,9 +209,11 @@ USER-FACING LANGUAGE RULE: The "reasoning" string is shown directly to the playe
 
 VISIBILITY RULE (null decisions only): If a criterion cannot be assessed AT ALL because the relevant body part or ball position is not clearly visible in any frame, return null. This is the only place visibility matters.
 
-SHOT ARC — RIM OR NET CONTACT REQUIRED: You may only score arc if you can clearly see the ball physically contact the rim (backboard, rim, or glass) OR visibly touch the mesh of the net. If you cannot see the ball make contact with the rim or net mesh — even if you think it went in, even if you can see the basket — return null. Trajectory alone is never enough. The ball must visibly interact with the basket hardware or net. If the ball disappears before reaching the rim, or you only see the basket from a distance without visible ball-rim/net contact, return null.
+NEVER GUESS — AN ESTIMATE IS NOT A SCORE: A score must come from something you actually watched happen in these frames. If producing a number would require you to assume, infer, extrapolate, or fill in a gap the footage does not show, return null instead. A null costs the player nothing — it is dropped from the average entirely — but a guessed score corrupts their overall number and the feedback they read, which is far worse than leaving a criterion blank. Whenever you are caught between "I can see this" and "this is probably what happened," the answer is null. This applies to every criterion, and it applies hardest to SHOT ARC and BALL ROTATION: both depend entirely on the ball being trackable in the air, both are invisible from most camera angles, and both are the ones most often guessed at from a good-looking release. Do not score them off the release. Score them off the ball.
 
-BALL ROTATION — TIED TO SHOT ARC: Score ball rotation if and only if shot arc receives a score. If shot arc is null (ball flight not visible to the basket), the ball in the air is not clearly visible either, so ball rotation must also be null. Never score ball rotation when shot arc is null.
+SHOT ARC — RIM OR NET CONTACT REQUIRED: You may only score arc if you can clearly see the ball physically contact the rim (backboard, rim, or glass) OR visibly touch the mesh of the net. If you cannot see the ball make contact with the rim or net mesh — even if you think it went in, even if you can see the basket — return null. Trajectory alone is never enough, and you must never reconstruct the arc from the direction the ball was travelling when it left the frame. The ball must visibly interact with the basket hardware or net. If the ball disappears before reaching the rim, or you only see the basket from a distance without visible ball-rim/net contact, return null.
+
+BALL ROTATION — THE SPIN MUST BE SEEN, NOT ASSUMED: Two conditions must BOTH hold before you may score ball rotation. First, shot arc must have received a score — if arc is null the ball was never tracked in flight, so rotation is unknowable and must also be null. Second, you must have actually SEEN the ball turning over: the seams, logo, or markings rotating across consecutive in-flight frames. Backspin is never implied by a clean release, a good follow-through, or the ball going in — plenty of badly spinning balls go in, and a textbook goose-neck tells you nothing about what the ball actually did. If the ball is a blur, too small, too far away, or you only have one usable frame of it in the air, you cannot see the spin: return null. If the strongest thing you can say is that the rotation "appears" or "looks like" clean backspin, that is a guess — return null instead.
 
 SHOT ARC / BALL ROTATION / TWO FINGER RELEASE — NEVER GUESS, NULL INSTEAD: these three criteria depend on clearly seeing the ball in flight or the fingers at the exact release frame. If you cannot see them CLEARLY, the answer is null — never a middle score. Giving a 4–7 with reasoning like "appears to", "seems", "hard to tell", or "partially visible" is a violation of this rubric: either you clearly saw it and score what you saw, or you did not and you return null. There is no in-between score for poor visibility.
 
@@ -165,7 +223,7 @@ WITHIN A SCORED CRITERION — VISIBILITY IS NEVER A DEDUCTION REASON: Once you d
 
 FOLLOW-THROUGH — ARMS DROPPING DOWN IS NOT A FLAW: After the ball leaves the hand, it is completely normal for both arms to drop down and move apart from each other as the player returns to rest. This must NEVER be scored as a flaw on any follow-through, guide hand, or one-hand-release criterion. Only deduct for those criteria if there is a visible INWARD snap or lateral flick AT the moment of release — not for the natural lowering of both arms afterward.
 
-GUIDE HAND — SCRUTINIZE EVERY RELEASE: The guide (off) hand must leave the ball completely BEFORE the ball leaves the shooting hand, and must add zero force. Examine the release and follow-through frames specifically for the guide hand. A two-hand release — where the guide hand is still on the ball at release, visibly pushes or steers it, or drives upward through the shot so both hands finish high and extended together — is a real and common flaw, and is NOT the same as the natural post-shot arm drop described above. When you see a genuine two-hand release or guide-hand flick, score "Shooting Through Guide Hand / One Hand Release" and "Guide Hand Follow Through" 4 or below and set followthrough_flick_to_side. Do not overlook this — it is one of the most score-relevant flaws, and it is easy to miss from front or elevated camera angles where the two hands overlap.
+GUIDE HAND — SCRUTINIZE EVERY RELEASE, FRAME BY FRAME: The guide (off) hand must leave the ball completely BEFORE the ball leaves the shooting hand, and must add zero force. Step through each release and follow-through frame specifically for the guide hand — the peel is a motion, not a pose, and one tidy finish frame proves nothing about the frames before it. A two-hand release — where the guide hand is still on the ball at release, visibly pushes or steers it, or converges on the shooting hand as the arms rise so the two hands finish together — is a real and common flaw, and is NOT the same as the natural post-shot arm drop described above. It is also NOT the same as both arms simply finishing extended overhead: hands high but clearly APART, with the guide hand flat and passive, is correct form. When you see a genuine two-hand release or guide-hand flick, score "Shooting Through Guide Hand / One Hand Release" and "Guide Hand Follow Through" 4 or below and set followthrough_flick_to_side. Do not overlook this — it is one of the most score-relevant flaws, and it is easy to miss from front or elevated camera angles where the two hands overlap.
 
 CAMERA ANGLE — ELBOW ASSESSMENT: When the video is filmed from the side (player facing left or right), a side view can make the elbow appear further out than it really is. Use your best judgment — if the arm forms a clear L-shape with the elbow tucked under the ball even from the side view, give full credit. Only penalize or flag elbow_severely_out if the elbow looks clearly wrong even accounting for the side angle — do not assume it is out simply because the angle is imperfect.
 
@@ -200,7 +258,7 @@ CRITICAL FLAGS — these operate on their own detection standard, independent of
   • GUIDE HAND flick: at release, the guide hand snaps or flicks toward the shooting hand side (inward, across the body) rather than cleanly separating straight off.
   • SHOOTING HAND flick: at the exact release moment, the shooting hand briefly flicks toward the guide hand side (or away from the basket), then quickly self-corrects back to a normal-looking follow-through. The FINAL follow-through position may look correct — this does NOT mean there was no flick. The flick happens fast at release and is usually unconscious; players often don't know they do it.
   SIDE-ANGLE TELL: when filmed from the side, both hands flicking toward each other at release is visible as the arms/hands moving inward toward each other — they may even appear to cross or overlap momentarily at the release point. This crossing or convergence of the two hands at release is a strong indicator that both the shooting hand and guide hand are flicking.
-  OVERHEAD / HIGH-ANGLE TELL: when filmed from above or a high / elevated broadcast angle, a clean one-hand release shows the shooting hand finishing high and ALONE, with the guide hand already peeled away — lower, relaxed, or off to the side. A guide-hand flick or two-hand release instead shows BOTH hands finishing high, extended and spread together through the follow-through, because the guide hand never cleanly separated from the ball before release. If both hands stay up, open and active as the ball leaves and after it is gone, treat this as a guide-hand flick.
+  OVERHEAD / HIGH-ANGLE TELL: when filmed from above or a high / elevated broadcast angle, a clean one-hand release shows the guide hand peeled cleanly away from the ball — and it may finish low OR high. BOTH ARMS FINISHING EXTENDED OVERHEAD IS NORMAL, CORRECT FORM as long as the two hands stay clearly APART and the guide hand stays flat and passive — never flag height alone. The flick/two-hand tell is the hands finishing high TOGETHER: the gap between them closing as they rise, the hands ending up side by side or touching, or the guide hand's palm turned in toward the ball pushing through the release — because the guide hand never cleanly separated before the ball left.
   WHAT IS NOT A FLICK: hands/arms moving DOWN or AWAY from each other (spreading apart, returning to rest) after release is normal and must NEVER be flagged. Only flag when the hands move TOWARD each other — converging, closing the gap, or crossing — at the moment of release. Divergence = fine. Convergence = flick.
   TIMING: the flick must occur within approximately 0.3 seconds of the ball leaving the hand. Arms drifting or dropping to the sides after that is normal post-shot follow-through, not a flick. Only flag lateral movement that happens immediately at or just after release — not the natural lowering of the arms after the shot is complete.
   SEVERITY — set this flag ONLY for significant flicks where the hands clearly and substantially converge toward each other, nearly or actually crossing. When true, apply caps ONLY to the hand that flicked:
@@ -340,11 +398,19 @@ Return ONLY valid JSON, no other text:
     chest_pass_hands: result.flag_confidence.chest_pass_hands >= 7,
   }
 
+  // Arc and rotation are resolved by name rather than by the seed id, because
+  // an admin can rename or reorder criteria and these two rules must keep
+  // biting. The seed ids stay as the fallback for a renamed criterion.
+  const criterionId = (name: string, seedId: number) =>
+    (activeCriteria.find((c) => c.name === name)?.id as number | undefined) ?? seedId
+  const arcId = criterionId('Shot Arc', 17)
+  const rotationId = criterionId('Ball Rotation', 13)
+
   // Hard-enforce arc null rule in TypeScript — prompt instructions alone are not reliable enough.
   // If the reasoning doesn't contain a confirmed outcome phrase, or contains uncertain language,
   // force the score to null regardless of what Claude returned.
   // Hard-enforce arc rule: reasoning must describe visible rim or net contact.
-  const arcCriterion = result.criteria.find(c => c.id === 17)
+  const arcCriterion = result.criteria.find(c => c.id === arcId)
   if (arcCriterion && arcCriterion.score !== null) {
     const r = arcCriterion.reasoning.toLowerCase()
     const hasRimOrNetContact =
@@ -370,37 +436,44 @@ Return ONLY valid JSON, no other text:
       r.includes('off the glass') ||
       r.includes('clanked') ||
       r.includes('rattled')
-    if (!hasRimOrNetContact) {
+    // Two ways to lose the arc score: no visible rim/net contact to anchor it,
+    // or reasoning that hedges — both mean the number was reconstructed rather
+    // than observed, and a reconstructed number skews the weighted average.
+    if (!hasRimOrNetContact || readsLikeAGuess(arcCriterion.reasoning)) {
       arcCriterion.score = null
+      arcCriterion.reasoning = UNGRADED_ARC
     }
   }
 
-  // Ball rotation is only visible when the ball is tracked in flight.
-  // If arc was not scored (ball flight not visible), rotation cannot be scored either.
+  // Ball rotation needs the ball tracked in flight. If arc wasn't scored the
+  // ball was never followed to the basket, so spin cannot have been seen
+  // either; and even when arc holds, hedged rotation wording means the spin was
+  // inferred from a clean release rather than watched on the ball.
+  const rotationCriterion = result.criteria.find(c => c.id === rotationId)
+  if (rotationCriterion && rotationCriterion.score !== null) {
+    const arcUnscored = !arcCriterion || arcCriterion.score === null
+    if (arcUnscored || readsLikeAGuess(rotationCriterion.reasoning)) {
+      rotationCriterion.score = null
+      rotationCriterion.reasoning = UNGRADED_ROTATION
+    }
+  }
+
+  // arc_too_flat caps the overall score on its own, so it must not survive an
+  // arc we refused to grade — otherwise dropping the guessed arc score still
+  // leaves the guess penalising the player through the flag caps below.
   if (!arcCriterion || arcCriterion.score === null) {
-    const rotationCriterion = result.criteria.find(c => c.id === 13)
-    if (rotationCriterion) rotationCriterion.score = null
+    result.critical_flags.arc_too_flat = false
   }
 
-  // NEVER-GUESS ENFORCEMENT (arc, rotation, two-finger release): a score with
-  // hedgy visibility language in its own reasoning is a guess — null it.
-  // Resolved by name because ids come from the DB.
-  const neverGuessNames = ['Shot Arc', 'Ball Rotation', 'Two Finger Release']
-  const neverGuessIds = (activeCriteria as unknown as Array<{ id: number; name: string }>)
-    .filter(c => neverGuessNames.includes(c.name))
-    .map(c => Number(c.id))
-  const hedges = [
-    'appears', 'seems', 'likely', 'hard to', 'difficult to', 'unclear',
-    'not clear', 'cannot fully', "can't fully", 'partially visible', 'partly visible',
-    'blur', 'low resolution', 'too far', 'at this distance', 'hard to see',
-    'difficult to see', 'not fully visible', 'assume', 'presum', 'probably',
-  ]
-  for (const c of result.criteria) {
-    if (!neverGuessIds.includes(c.id) || c.score === null) continue
-    const r = (c.reasoning || '').toLowerCase()
-    if (hedges.some(h => r.includes(h))) {
-      c.score = null
-    }
+  // Two Finger Release is the third never-guess criterion: it depends on the
+  // fingers at the exact release frame, which most angles can't show. Arc and
+  // rotation are handled above with their extra flight-visibility rules.
+  const twoFingerCriterion = result.criteria.find(
+    c => c.id === criterionId('Two Finger Release', 12)
+  )
+  if (twoFingerCriterion && twoFingerCriterion.score !== null && readsLikeAGuess(twoFingerCriterion.reasoning)) {
+    twoFingerCriterion.score = null
+    twoFingerCriterion.reasoning = UNGRADED_TWO_FINGER
   }
 
   return { result, activeCriteria: activeCriteria as unknown as CriteriaRow[] }

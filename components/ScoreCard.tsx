@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { humanizeReasoning } from '@/lib/sanitize'
 import LearnVideo from './LearnVideo'
 
@@ -90,12 +91,26 @@ export default function ScoreCard({ name, score, reasoning, videoId }: ScoreCard
 
   if (score === null) {
     return (
-      <div className="bg-gray-50 rounded-xl p-5 border border-gray-200 opacity-75">
+      <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-black font-semibold text-sm">{name}</h3>
-          <span className="text-xs font-medium text-black bg-gray-200 px-2 py-0.5 rounded-full">Not visible</span>
+          <span className="text-xs font-medium text-black bg-gray-200 px-2 py-0.5 rounded-full">Not graded</span>
         </div>
         <p className="text-black text-xs leading-relaxed italic">{cleanReasoning}</p>
+        <div className="mt-3 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2.5">
+          <p className="text-xs font-bold text-blue-800 mb-1">Why isn&apos;t this graded?</p>
+          <p className="text-xs text-blue-900 leading-relaxed">
+            This one wasn&apos;t clear enough in your video to judge, so it was left out
+            instead of guessed at — a made-up score would pull your overall number and
+            your feedback off. It is not counted against you either way.{' '}
+            <Link
+              href="/support#filming"
+              className="font-bold underline underline-offset-2 hover:text-blue-700"
+            >
+              See how to film for a more accurate analysis →
+            </Link>
+          </p>
+        </div>
       </div>
     )
   }

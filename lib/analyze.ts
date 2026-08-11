@@ -26,6 +26,13 @@ interface AnalysisResult {
     arc_too_flat: boolean
     chest_pass_hands: boolean
   }
+  /** Raw 0-10 flag confidences from a single pass (pre-merge). */
+  flag_confidence?: {
+    elbow_severely_out: number
+    followthrough_flick_to_side: number
+    arc_too_flat: number
+    chest_pass_hands: number
+  }
   criteria: CriterionResult[]
 }
 
@@ -211,7 +218,7 @@ CRITICAL FLAGS — these operate on their own detection standard, independent of
 
 - arc_too_flat: the ball travels on a low, flat trajectory rather than a proper high arc (45–60 degrees). If the ball visibly shoots out nearly flat or at a shallow angle with little height, set true. A flat shot has almost no arc and the ball comes in at a low angle toward the basket. Do NOT apply benefit-of-the-doubt here. When true: the shot arc criterion MUST score 4 or below.
 
-NOTE: These flags are the most important flaws to detect. Missing them is a bigger error than a false positive. When in doubt, flag it.
+NOTE: These flags are the most important flaws to detect. Report each as a 0-10 confidence, not a guess: 0-2 clearly absent, 3-6 borderline or partially suggestive, 7-10 clearly present with a frame you can point to. Confidence 7+ is treated as the flaw being present.
 
 For overall_score: average only scored criteria (exclude nulls).
 
@@ -230,10 +237,10 @@ Return ONLY valid JSON, no other text:
     "player_name": <string or null>
   },
   "critical_flags": {
-    "elbow_severely_out": <true|false>,
-    "followthrough_flick_to_side": <true|false>,
-    "arc_too_flat": <true|false>,
-    "chest_pass_hands": <true|false>
+    "elbow_severely_out": <0-10 confidence that this flaw is clearly present: 0 = definitely not, 10 = unmistakable. 8+ means you can point at the exact frame and describe the flaw>,
+    "followthrough_flick_to_side": <0-10 confidence, same standard>,
+    "arc_too_flat": <0-10 confidence, same standard>,
+    "chest_pass_hands": <0-10 confidence, same standard>
   },
   "criteria": [
     { "id": <criterion_id>, "score": <1-10 or null>, "reasoning": "<1-2 sentences>" },
@@ -314,9 +321,24 @@ Return ONLY valid JSON, no other text:
     return { result, activeCriteria: activeCriteria as unknown as CriteriaRow[] }
   }
 
-  // Ensure new flag fields default to false if missing from response
-  result.critical_flags.arc_too_flat = result.critical_flags.arc_too_flat ?? false
-  result.critical_flags.chest_pass_hands = result.critical_flags.chest_pass_hands ?? false
+  // Flags arrive as 0-10 confidences (older responses may send booleans).
+  // Normalize to a confidence record; booleans map to 0/10.
+  const rawFlags = result.critical_flags as unknown as Record<string, number | boolean | undefined>
+  const conf = (v: number | boolean | undefined): number =>
+    typeof v === 'number' ? Math.max(0, Math.min(10, v)) : v === true ? 10 : 0
+  result.flag_confidence = {
+    elbow_severely_out: conf(rawFlags.elbow_severely_out),
+    followthrough_flick_to_side: conf(rawFlags.followthrough_flick_to_side),
+    arc_too_flat: conf(rawFlags.arc_too_flat),
+    chest_pass_hands: conf(rawFlags.chest_pass_hands),
+  }
+  // Within a single pass the flaw counts as present at confidence >= 7.
+  result.critical_flags = {
+    elbow_severely_out: result.flag_confidence.elbow_severely_out >= 7,
+    followthrough_flick_to_side: result.flag_confidence.followthrough_flick_to_side >= 7,
+    arc_too_flat: result.flag_confidence.arc_too_flat >= 7,
+    chest_pass_hands: result.flag_confidence.chest_pass_hands >= 7,
+  }
 
   // Hard-enforce arc null rule in TypeScript — prompt instructions alone are not reliable enough.
   // If the reasoning doesn't contain a confirmed outcome phrase, or contains uncertain language,
@@ -551,10 +573,12 @@ export async function analyzeShot(
     ...detected[0],
     shot_detected: true,
     critical_flags: {
-      elbow_severely_out: majority(detected.map(r => r.critical_flags.elbow_severely_out)),
-      followthrough_flick_to_side: majority(detected.map(r => r.critical_flags.followthrough_flick_to_side)),
-      arc_too_flat: majority(detected.map(r => r.critical_flags.arc_too_flat ?? false)),
-      chest_pass_hands: majority(detected.map(r => r.critical_flags.chest_pass_hands ?? false)),
+      // Median of 0-10 confidences across passes, thresholded once — scalar
+      // medians are stable where yes/no votes on borderline flaws coin-flip.
+      elbow_severely_out: median(detected.map(r => r.flag_confidence?.elbow_severely_out ?? (r.critical_flags.elbow_severely_out ? 10 : 0))) >= 7,
+      followthrough_flick_to_side: median(detected.map(r => r.flag_confidence?.followthrough_flick_to_side ?? (r.critical_flags.followthrough_flick_to_side ? 10 : 0))) >= 7,
+      arc_too_flat: median(detected.map(r => r.flag_confidence?.arc_too_flat ?? (r.critical_flags.arc_too_flat ? 10 : 0))) >= 7,
+      chest_pass_hands: median(detected.map(r => r.flag_confidence?.chest_pass_hands ?? (r.critical_flags.chest_pass_hands ? 10 : 0))) >= 7,
     },
     criteria: activeCriteria.map(ac => {
       const perPass = detected

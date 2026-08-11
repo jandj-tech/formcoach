@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { put } from '@vercel/blob'
+import { putObject } from '@/lib/storage'
 import { db } from '@/lib/db'
 import { analyzeShot } from '@/lib/analyze'
 import { getSessionFromRequest } from '@/lib/auth'
@@ -169,8 +169,7 @@ export async function POST(req: NextRequest) {
       frameMimeTypes.push(file.type || 'image/jpeg')
 
       if (hasBlobToken) {
-        const blob = await put(`frames/${submission.id}/frame-${i}.jpg`, buffer, {
-          access: 'public',
+        const blob = await putObject(`frames/${submission.id}/frame-${i}.jpg`, buffer, {
           contentType: file.type || 'image/jpeg',
         })
         frameUrls.push(blob.url)

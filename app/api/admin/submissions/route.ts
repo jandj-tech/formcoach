@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { del } from '@vercel/blob'
+import { deleteObjects } from '@/lib/storage'
 import { db } from '@/lib/db'
 import { cookies } from 'next/headers'
 
@@ -70,7 +70,7 @@ export async function DELETE(req: Request) {
   // or a particular URL was already gone — DB state is already consistent.
   if (blobUrls.length > 0) {
     try {
-      await del(blobUrls)
+      await deleteObjects(blobUrls)
     } catch (err) {
       console.warn('Blob cleanup partially failed:', err instanceof Error ? err.message : err)
     }

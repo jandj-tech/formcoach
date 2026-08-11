@@ -435,6 +435,70 @@ function AttendeeLists({ event, dark }: { event: ScheduleEvent; dark: boolean })
 // the biggest thing on the card.
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Add to calendar — Google (prefilled link) and Apple/Outlook (.ics download).
+// Events default to 90 minutes; time-TBD events export as all-day.
+// ---------------------------------------------------------------------------
+
+function calStamp(d: Date): string {
+  return d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
+}
+
+function calDateOnly(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`
+}
+
+function calSummary(event: ScheduleEvent): string {
+  return event.title || typeLabel(event.type)
+}
+
+function googleCalUrl(event: ScheduleEvent): string {
+  const start = new Date(event.startsAt)
+  const dates = event.timeTbd
+    ? `${calDateOnly(start)}/${calDateOnly(new Date(start.getTime() + 24 * 60 * 60 * 1000))}`
+    : `${calStamp(start)}/${calStamp(new Date(start.getTime() + 90 * 60 * 1000))}`
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: calSummary(event),
+    dates,
+    ...(event.location ? { location: event.location } : {}),
+    ...(event.notes ? { details: event.notes } : {}),
+  })
+  return `https://calendar.google.com/calendar/render?${params.toString()}`
+}
+
+function downloadIcs(event: ScheduleEvent) {
+  const start = new Date(event.startsAt)
+  const esc = (v: string) => v.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n')
+  const timing = event.timeTbd
+    ? [`DTSTART;VALUE=DATE:${calDateOnly(start)}`]
+    : [`DTSTART:${calStamp(start)}`, `DTEND:${calStamp(new Date(start.getTime() + 90 * 60 * 1000))}`]
+  const lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//LearnHoops//Team Schedule//EN',
+    'BEGIN:VEVENT',
+    `UID:learnhoops-event-${event.id}`,
+    `DTSTAMP:${calStamp(new Date())}`,
+    ...timing,
+    `SUMMARY:${esc(calSummary(event))}`,
+    ...(event.location ? [`LOCATION:${esc(event.location)}`] : []),
+    ...(event.notes ? [`DESCRIPTION:${esc(event.notes)}`] : []),
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ]
+  const blob = new Blob([lines.join('\r\n')], { type: 'text/calendar;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${calSummary(event).replace(/[^\w\d -]+/g, '').trim() || 'event'}.ics`
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 5000)
+}
+
 function EventCard({
   event,
   dark,
@@ -531,6 +595,23 @@ function EventCard({
             >
               {event.notes}
             </button>
+          )}
+          {!cancelled && !isPast && (
+            <p className={`text-[11px] mt-1.5 ${t.faint}`}>
+              Add to{' '}
+              <button type="button" onClick={() => downloadIcs(event)} className={`font-semibold underline ${t.dim}`}>
+                 Apple Calendar
+              </button>
+              {' · '}
+              <a
+                href={googleCalUrl(event)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`font-semibold underline ${t.dim}`}
+              >
+                Google Calendar
+              </a>
+            </p>
           )}
         </div>
 

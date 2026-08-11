@@ -320,16 +320,16 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             </Link>
 
             {/* Upcoming events — one-tap RSVP without leaving the dashboard.
-                Schedule outranks chat everywhere. */}
-            <div className="pt-2 border-t border-gray-200">
-              <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">📅 Upcoming</p>
-              <TeamSchedulePanel teamId={t.id} theme="light" compact />
-            </div>
+                Schedule outranks chat everywhere: open by default, chat folded. */}
+            <div className="pt-2 space-y-2">
+              <Section title="📅 Upcoming" defaultOpen>
+                <TeamSchedulePanel teamId={t.id} theme="light" compact />
+              </Section>
 
-            {/* Team chat — same rules as the app: coach controls who can post */}
-            <div className="pt-2 border-t border-gray-200">
-              <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">💬 Team Chat</p>
-              <TeamChatPanel teamId={t.id} />
+              {/* Team chat — same rules as the app: coach controls who can post */}
+              <Section title="💬 Team Chat" summary="Open to chat">
+                <TeamChatPanel teamId={t.id} />
+              </Section>
             </div>
           </div>
         )

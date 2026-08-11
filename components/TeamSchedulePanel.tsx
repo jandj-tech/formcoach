@@ -1,8 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ChevronDownIcon } from 'lucide-react'
+import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
 // Team schedule — one component, three faces:
@@ -837,9 +837,10 @@ function EventCard({
 }
 
 // ---------------------------------------------------------------------------
-// Weekly view — upcoming events grouped into collapsible week sections, each
-// headed by a mini calendar strip (the 7 days, lit where something happens).
-// The first two weeks open by default; further-out weeks start folded.
+// Week calendar — one week at a time, Google-style: ‹ › arrows, a Today
+// button, a 7-day grid with event chips, and the tapped event's full card
+// (RSVP, names, coach menu) rendered underneath. Back-navigation reaches
+// past weeks; their events come from the lazily fetched past window.
 // ---------------------------------------------------------------------------
 
 function startOfWeekLocal(d: Date): Date {
@@ -852,12 +853,7 @@ function sameLocalDay(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
 }
 
-function weekTitle(weekStart: Date): string {
-  const thisWeek = startOfWeekLocal(new Date())
-  // Local-midnight anchors can differ by an hour across a DST switch — round.
-  const diffWeeks = Math.round((weekStart.getTime() - thisWeek.getTime()) / (7 * 24 * 60 * 60 * 1000))
-  if (diffWeeks === 0) return 'This week'
-  if (diffWeeks === 1) return 'Next week'
+function weekRangeLabel(weekStart: Date): string {
   const end = new Date(weekStart)
   end.setDate(end.getDate() + 6)
   const startStr = weekStart.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
@@ -868,90 +864,112 @@ function weekTitle(weekStart: Date): string {
   return `${startStr} – ${endStr}`
 }
 
-interface WeekGroup {
-  key: string
-  start: Date
-  events: ScheduleEvent[]
+function weekTitle(weekStart: Date): string {
+  const thisWeek = startOfWeekLocal(new Date())
+  // Local-midnight anchors can differ by an hour across a DST switch — round.
+  const diffWeeks = Math.round((weekStart.getTime() - thisWeek.getTime()) / (7 * 24 * 60 * 60 * 1000))
+  if (diffWeeks === -1) return 'Last week'
+  if (diffWeeks === 0) return 'This week'
+  if (diffWeeks === 1) return 'Next week'
+  return weekRangeLabel(weekStart)
 }
 
-function groupByWeek(events: ScheduleEvent[]): WeekGroup[] {
-  const map = new Map<string, WeekGroup>()
-  for (const e of events) {
-    const start = startOfWeekLocal(new Date(e.startsAt))
-    const key = `${start.getFullYear()}-${pad2(start.getMonth() + 1)}-${pad2(start.getDate())}`
-    const group = map.get(key)
-    if (group) group.events.push(e)
-    else map.set(key, { key, start, events: [e] })
-  }
-  return [...map.values()].sort((a, b) => a.start.getTime() - b.start.getTime())
-}
-
-function WeekSection({
+function WeekCalendar({
   weekStart,
   events,
   dark,
-  defaultOpen,
-  children,
+  selectedId,
+  isCurrentWeek,
+  onSelect,
+  onStep,
+  onToday,
 }: {
   weekStart: Date
-  events: ScheduleEvent[]
+  events: ScheduleEvent[] // this week's events only, sorted by start
   dark: boolean
-  defaultOpen: boolean
-  children: ReactNode
+  selectedId: string | null
+  isCurrentWeek: boolean
+  onSelect: (id: string) => void
+  onStep: (dir: -1 | 1) => void
+  onToday: () => void
 }) {
   const t = themeClasses(dark)
-  const [open, setOpen] = useState(defaultOpen)
   const today = new Date()
-  const eventDows = new Set(events.filter(e => e.status !== 'cancelled').map(e => new Date(e.startsAt).getDay()))
+  const border = dark ? 'border-courtline' : 'border-gray-200'
+  const navBtn = `w-8 h-8 rounded-lg inline-flex items-center justify-center ${t.btnIdle}`
+  const title = weekTitle(weekStart)
+  const range = weekRangeLabel(weekStart)
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(weekStart)
     d.setDate(d.getDate() + i)
     return d
   })
-  const count = events.length
 
   return (
-    <section className={`rounded-2xl ${dark ? 'border border-courtline' : 'border border-gray-200 bg-white'}`}>
-      <button
-        type="button"
-        onClick={() => setOpen(o => !o)}
-        aria-expanded={open}
-        className={`w-full flex items-center justify-between gap-3 px-4 py-3 text-left transition-colors ${
-          dark ? 'hover:bg-ink-900' : 'hover:bg-gray-50'
-        } ${open ? '' : 'rounded-2xl'} rounded-t-2xl`}
-      >
-        <span className="flex items-baseline gap-2 min-w-0">
-          <span className={`font-display font-black uppercase text-sm tracking-wide ${t.text}`}>
-            {weekTitle(weekStart)}
-          </span>
-          <span className={`text-xs whitespace-nowrap ${t.dim}`}>
-            {count} event{count === 1 ? '' : 's'}
-          </span>
-        </span>
-        <span className="flex items-center gap-2.5 shrink-0">
-          {/* Mini week strip — filled cells are days with something on */}
-          <span className="hidden sm:flex items-center gap-1" aria-hidden>
-            {days.map((d, i) => (
-              <span
-                key={i}
-                className={`w-6 h-6 rounded-md inline-flex items-center justify-center text-[10px] font-bold ${
-                  eventDows.has(i)
-                    ? dark ? 'bg-ember-500 text-ink-950' : 'bg-orange-500 text-white'
-                    : t.faint
-                } ${sameLocalDay(d, today) ? (dark ? 'ring-1 ring-chalk-dim' : 'ring-1 ring-gray-400') : ''}`}
-              >
-                {d.getDate()}
-              </span>
-            ))}
-          </span>
-          <ChevronDownIcon
-            aria-hidden
-            className={`w-4 h-4 shrink-0 transition-transform ${t.dim} ${open ? 'rotate-180' : ''}`}
-          />
-        </span>
-      </button>
-      {open && <div className="px-3 pb-3 space-y-2.5">{children}</div>}
-    </section>
+    <div className={`rounded-2xl overflow-hidden border ${border} ${dark ? '' : 'bg-white'}`}>
+      {/* Nav bar */}
+      <div className={`flex items-center justify-between gap-2 px-3 py-2.5 border-b ${border}`}>
+        <div className="flex items-center gap-1.5">
+          <button type="button" aria-label="Previous week" onClick={() => onStep(-1)} className={navBtn}>
+            <ChevronLeftIcon className="w-4 h-4" aria-hidden />
+          </button>
+          <button type="button" aria-label="Next week" onClick={() => onStep(1)} className={navBtn}>
+            <ChevronRightIcon className="w-4 h-4" aria-hidden />
+          </button>
+          {!isCurrentWeek && (
+            <button type="button" onClick={onToday} className={`rounded-lg px-2.5 h-8 text-xs font-bold ${t.btnIdle}`}>
+              Today
+            </button>
+          )}
+        </div>
+        <p className="text-right min-w-0">
+          <span className={`font-display font-black uppercase text-sm tracking-wide ${t.text}`}>{title}</span>
+          {title !== range && <span className={`ml-2 text-xs whitespace-nowrap ${t.dim}`}>{range}</span>}
+        </p>
+      </div>
+
+      {/* 7-day grid — columns on desktop, stacked day rows on phones */}
+      <div className={`grid grid-cols-1 sm:grid-cols-7 divide-y sm:divide-y-0 sm:divide-x ${dark ? 'divide-courtline' : 'divide-gray-200'}`}>
+        {days.map((day, i) => {
+          const dayEvents = events.filter(e => sameLocalDay(new Date(e.startsAt), day))
+          const isToday = sameLocalDay(day, today)
+          return (
+            <div key={i} className="flex sm:flex-col gap-2 p-2 sm:min-h-[7.5rem] min-w-0">
+              <div className="w-14 sm:w-auto shrink-0 flex sm:flex-col items-center gap-1.5 sm:gap-0.5">
+                <span className={`text-[10px] font-bold uppercase tracking-wide ${isToday ? (dark ? 'text-ember-400' : 'text-orange-600') : t.dim}`}>
+                  {day.toLocaleDateString(undefined, { weekday: 'short' })}
+                </span>
+                <span
+                  className={`text-sm font-bold w-6 h-6 rounded-full inline-flex items-center justify-center ${
+                    isToday ? (dark ? 'bg-ember-500 text-ink-950' : 'bg-orange-500 text-white') : t.text
+                  }`}
+                >
+                  {day.getDate()}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0 space-y-1">
+                {dayEvents.map(e => {
+                  const chipCls = e.type === 'game' ? t.chipGame : e.type === 'practice' ? t.chipPractice : t.chipOther
+                  return (
+                    <button
+                      key={e.id}
+                      type="button"
+                      onClick={() => onSelect(e.id)}
+                      aria-pressed={selectedId === e.id}
+                      className={`block w-full text-left rounded-md px-1.5 py-1 text-[11px] font-semibold truncate transition-shadow ${chipCls} ${
+                        e.status === 'cancelled' ? 'line-through opacity-50' : ''
+                      } ${selectedId === e.id ? (dark ? 'ring-2 ring-chalk' : 'ring-2 ring-black/50') : ''}`}
+                    >
+                      {e.timeTbd ? 'TBD' : timeLabel(e.startsAt)} · {e.title || typeLabel(e.type)}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
   )
 }
 
@@ -973,7 +991,10 @@ export default function TeamSchedulePanel({
 
   const [data, setData] = useState<ScheduleData | 'error' | null>(null)
   const [past, setPast] = useState<ScheduleData | 'error' | null>(null)
-  const [pastOpen, setPastOpen] = useState(false)
+  // Calendar position (weeks from the current one) and the tapped event.
+  // null = auto (first event of the visible week); 'closed' = user collapsed.
+  const [weekOffset, setWeekOffset] = useState(0)
+  const [selected, setSelected] = useState<string | 'closed' | null>(null)
   const [showCreate, setShowCreate] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -1225,6 +1246,36 @@ export default function TeamSchedulePanel({
   const isCoach = data.isCoach && !compact
   const events = compact ? data.events.slice(0, 3) : data.events
 
+  // Calendar derivations — the event pool is upcoming + (lazily) past, so
+  // back-navigation shows finished weeks with their attendance record.
+  const pastEvents = past && past !== 'error' ? past.events : []
+  const pastIds = new Set(pastEvents.map(e => e.id))
+  const seenIds = new Set<string>()
+  const pool = [...data.events, ...pastEvents].filter(e => (seenIds.has(e.id) ? false : (seenIds.add(e.id), true)))
+  const weekStart = startOfWeekLocal(new Date())
+  weekStart.setDate(weekStart.getDate() + weekOffset * 7)
+  const weekEnd = new Date(weekStart)
+  weekEnd.setDate(weekEnd.getDate() + 7)
+  const visibleEvents = pool
+    .filter(e => {
+      const ts = new Date(e.startsAt).getTime()
+      return ts >= weekStart.getTime() && ts < weekEnd.getTime()
+    })
+    .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime())
+  const shownEvent =
+    selected === 'closed'
+      ? null
+      : selected
+        ? (visibleEvents.find(e => e.id === selected) ?? null)
+        : (visibleEvents[0] ?? null)
+
+  function gotoWeek(offset: number) {
+    setWeekOffset(offset)
+    setSelected(null) // back to auto-select for the new week
+    // Past weeks need the past window — fetch on first visit, retry on error.
+    if (offset < 0 && (past === null || past === 'error')) loadPast()
+  }
+
   function renderCard(event: ScheduleEvent, isPast: boolean) {
     return (
       <EventCard
@@ -1300,57 +1351,50 @@ export default function TeamSchedulePanel({
         />
       )}
 
-      {/* Upcoming events — weekly sections in the full view, flat next-3 in compact */}
-      {events.length === 0 ? (
-        <p className={`text-sm py-4 text-center ${t.dim}`}>
-          {isCoach
-            ? 'No events yet — schedule your first practice.'
-            : 'No upcoming events. Your coach hasn’t scheduled anything yet.'}
-        </p>
-      ) : compact ? (
-        <div className="space-y-2.5">{events.map(e => renderCard(e, false))}</div>
+      {/* Events — week calendar in the full view, flat next-3 in compact */}
+      {compact ? (
+        events.length === 0 ? (
+          <p className={`text-sm py-4 text-center ${t.dim}`}>
+            No upcoming events. Your coach hasn&apos;t scheduled anything yet.
+          </p>
+        ) : (
+          <div className="space-y-2.5">{events.map(e => renderCard(e, false))}</div>
+        )
       ) : (
-        <div className="space-y-3">
-          {groupByWeek(events).map((g, i) => (
-            <WeekSection key={g.key} weekStart={g.start} events={g.events} dark={dark} defaultOpen={i < 2}>
-              {g.events.map(e => renderCard(e, false))}
-            </WeekSection>
-          ))}
-        </div>
+        <>
+          <WeekCalendar
+            weekStart={weekStart}
+            events={visibleEvents}
+            dark={dark}
+            selectedId={shownEvent?.id ?? null}
+            isCurrentWeek={weekOffset === 0}
+            onSelect={id => setSelected(shownEvent?.id === id ? 'closed' : id)}
+            onStep={dir => gotoWeek(weekOffset + dir)}
+            onToday={() => gotoWeek(0)}
+          />
+          {weekOffset < 0 && past === null && (
+            <p className={`text-sm py-2 text-center ${t.dim}`}>Loading past events…</p>
+          )}
+          {weekOffset < 0 && past === 'error' && (
+            <p className={`text-sm py-2 text-center ${t.dim}`}>Couldn&apos;t load past events.</p>
+          )}
+          {data.events.length === 0 && (
+            <p className={`text-sm py-2 text-center ${t.dim}`}>
+              {isCoach
+                ? 'No events yet — schedule your first practice.'
+                : 'No upcoming events. Your coach hasn’t scheduled anything yet.'}
+            </p>
+          )}
+          {/* The tapped event's full card — RSVP, attendance, coach actions */}
+          {shownEvent && renderCard(shownEvent, pastIds.has(shownEvent.id))}
+        </>
       )}
 
-      {compact ? (
+      {compact && (
         <div>
           <Link href="/team" className={`text-sm font-semibold transition-colors ${t.link}`}>
             Full schedule →
           </Link>
-        </div>
-      ) : (
-        /* Past events — lazy accordion; final counts = the attendance record */
-        <div className="pt-1">
-          <button
-            type="button"
-            onClick={() => {
-              // Retry on reopen after a failure — 'error' must never be a
-              // dead-end the user can't leave without a full page reload.
-              if (!pastOpen && (past === null || past === 'error')) loadPast()
-              setPastOpen(o => !o)
-            }}
-            aria-expanded={pastOpen}
-            className={`text-sm font-semibold transition-colors ${t.link}`}
-          >
-            {pastOpen ? '− Past events' : '+ Past events'}
-          </button>
-          {pastOpen &&
-            (past === null ? (
-              <p className={`text-sm py-3 text-center ${t.dim}`}>Loading past events…</p>
-            ) : past === 'error' ? (
-              <p className={`text-sm py-3 text-center ${t.dim}`}>Couldn&apos;t load past events.</p>
-            ) : past.events.length === 0 ? (
-              <p className={`text-sm py-3 text-center ${t.dim}`}>No past events yet.</p>
-            ) : (
-              <div className="space-y-2.5 mt-2">{past.events.map(e => renderCard(e, true))}</div>
-            ))}
         </div>
       )}
     </div>

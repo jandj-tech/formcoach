@@ -29,11 +29,11 @@ interface AnalysisResult {
   criteria: CriterionResult[]
 }
 
-export async function analyzeShot(
+async function analyzeShotOnce(
   frameBase64Array: string[],
   frameMimeTypes: string[],
   opts?: { model?: string; thinking?: 'disabled' | 'adaptive' }
-): Promise<AnalysisResult> {
+): Promise<{ result: AnalysisResult; activeCriteria: CriteriaRow[] }> {
   const model = opts?.model || process.env.ANALYSIS_MODEL || 'claude-sonnet-4-6'
   const thinkingMode = opts?.thinking || 'disabled'
   const activeCriteria = await db`
@@ -150,6 +150,8 @@ SHOT ARC — RIM OR NET CONTACT REQUIRED: You may only score arc if you can clea
 
 BALL ROTATION — TIED TO SHOT ARC: Score ball rotation if and only if shot arc receives a score. If shot arc is null (ball flight not visible to the basket), the ball in the air is not clearly visible either, so ball rotation must also be null. Never score ball rotation when shot arc is null.
 
+SHOT ARC / BALL ROTATION / TWO FINGER RELEASE — NEVER GUESS, NULL INSTEAD: these three criteria depend on clearly seeing the ball in flight or the fingers at the exact release frame. If you cannot see them CLEARLY, the answer is null — never a middle score. Giving a 4–7 with reasoning like "appears to", "seems", "hard to tell", or "partially visible" is a violation of this rubric: either you clearly saw it and score what you saw, or you did not and you return null. There is no in-between score for poor visibility.
+
 THUMB — MANDATORY NULL CONDITION: Return null for the "Thumb is Spread Wide" criterion if the thumb is not clearly and directly visible in at least one frame. Do not infer thumb position from finger spacing or general hand shape — if you cannot see the thumb clearly, return null.
 
 WITHIN A SCORED CRITERION — VISIBILITY IS NEVER A DEDUCTION REASON: Once you decide to score a criterion (not null), only clearly visible flaws count. The following phrases are FORBIDDEN as justification for any deduction — if you find yourself writing them, change the score to 10 for that criterion: "partially visible," "hard to confirm," "limited at this distance," "cannot fully see," "could not clearly confirm," "may be slightly off," "not fully clear," "difficult to assess," "angle makes it hard," "thumb not fully visible," "cannot confirm thumb," "grip hard to see." If your reasoning contains any of these, you are violating the rules.
@@ -162,7 +164,7 @@ CAMERA ANGLE — ELBOW ASSESSMENT: When the video is filmed from the side (playe
 
 CATCH-AND-SHOOT: If the player catches a pass before shooting, identify catch frames (another player/hand visible passing, ball arriving, player still rotating to face basket) and ignore them completely. The elbow being out during a catch is normal. Only evaluate from when the player has the ball fully in control and is facing the basket.
 
-SCALE:
+SCALE (scores must land exactly on a whole or half point — 7, 7.5, 8; never 7.3 or 8.2 — the same shot must always earn the same number):
 - 10 = no visible flaws (default when nothing is clearly wrong)
 - 9 = one small specific thing clearly visible and slightly off — you must name it
 - 8–8.5 = one minor clearly visible issue
@@ -257,6 +259,10 @@ Return ONLY valid JSON, no other text:
   const response = await getAnthropic().messages.create({
     model,
     max_tokens: 6000,
+    // Determinism: identical frames must grade identically. Temperature 0
+    // collapses sampling variance; the median-of-N ensemble below absorbs
+    // what little remains.
+    temperature: 0,
     // Explicit thinking mode: on Sonnet 5, omitting `thinking` silently
     // enables adaptive thinking (extra cost); 'disabled' matches Sonnet
     // 4.6's no-thinking default.
@@ -303,9 +309,9 @@ Return ONLY valid JSON, no other text:
 
   // Default to true so a malformed response never wrongly rejects a real shot.
   result.shot_detected = result.shot_detected ?? true
-  // No analyzable shot — return now; the caller discards it without charging.
+  // No analyzable shot — return now; the ensemble's majority vote decides.
   if (result.shot_detected === false) {
-    return result
+    return { result, activeCriteria: activeCriteria as unknown as CriteriaRow[] }
   }
 
   // Ensure new flag fields default to false if missing from response
@@ -354,6 +360,35 @@ Return ONLY valid JSON, no other text:
     if (rotationCriterion) rotationCriterion.score = null
   }
 
+  // NEVER-GUESS ENFORCEMENT (arc, rotation, two-finger release): a score with
+  // hedgy visibility language in its own reasoning is a guess — null it.
+  // Resolved by name because ids come from the DB.
+  const neverGuessNames = ['Shot Arc', 'Ball Rotation', 'Two Finger Release']
+  const neverGuessIds = (activeCriteria as unknown as Array<{ id: number; name: string }>)
+    .filter(c => neverGuessNames.includes(c.name))
+    .map(c => Number(c.id))
+  const hedges = [
+    'appears', 'seems', 'likely', 'hard to', 'difficult to', 'unclear',
+    'not clear', 'cannot fully', "can't fully", 'partially visible', 'partly visible',
+    'blur', 'low resolution', 'too far', 'at this distance', 'hard to see',
+    'difficult to see', 'not fully visible', 'assume', 'presum', 'probably',
+  ]
+  for (const c of result.criteria) {
+    if (!neverGuessIds.includes(c.id) || c.score === null) continue
+    const r = (c.reasoning || '').toLowerCase()
+    if (hedges.some(h => r.includes(h))) {
+      c.score = null
+    }
+  }
+
+  return { result, activeCriteria: activeCriteria as unknown as CriteriaRow[] }
+}
+
+interface CriteriaRow { id: number; name: string; weight: unknown }
+
+// Deterministic post-processing shared by every ensemble merge: caps,
+// weighted overall, player-type adjustment. Pure function of its inputs.
+function finalizeResult(result: AnalysisResult, activeCriteria: CriteriaRow[]): AnalysisResult {
   // If the AI could not assess at least half the criteria, the video was not
   // truly analyzable — too far away, too cluttered, or no clear single shooter.
   // Flag it as "no shot" so the caller cancels the analysis without charging,
@@ -463,4 +498,95 @@ Return ONLY valid JSON, no other text:
   }
 
   return result
+}
+
+// ---------------------------------------------------------------------------
+// Ensemble: run N independent grading passes at temperature 0 on the SAME
+// frames and take per-criterion medians. A single drifty pass can no longer
+// move a score — the same video grades the same way every time.
+// ---------------------------------------------------------------------------
+
+function median(nums: number[]): number {
+  const s = [...nums].sort((a, b) => a - b)
+  const mid = Math.floor(s.length / 2)
+  return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2
+}
+
+function majority(bools: boolean[]): boolean {
+  return bools.filter(Boolean).length * 2 > bools.length
+}
+
+export async function analyzeShot(
+  frameBase64Array: string[],
+  frameMimeTypes: string[],
+  opts?: { model?: string; thinking?: 'disabled' | 'adaptive' }
+): Promise<AnalysisResult> {
+  const passes = Math.max(1, Math.min(5, parseInt(process.env.ANALYSIS_PASSES || '3', 10) || 3))
+
+  // Sequential on purpose: pass 1 writes the prompt+image prefix into the
+  // Anthropic cache, passes 2..N read it back at a fraction of the input cost.
+  const runs: Array<{ result: AnalysisResult; activeCriteria: CriteriaRow[] }> = []
+  for (let i = 0; i < passes; i++) {
+    const run = await analyzeShotOnce(frameBase64Array, frameMimeTypes, opts)
+    // A non-shot verdict is decisive only by majority — collect and continue.
+    runs.push(run)
+  }
+
+  const activeCriteria = runs[0].activeCriteria
+  const results = runs.map(r => r.result)
+
+  // Shot detection: majority. A clip most passes call "no shot" is no shot.
+  const shotDetected = majority(results.map(r => r.shot_detected !== false))
+  if (!shotDetected) {
+    const no = results.find(r => r.shot_detected === false) ?? results[0]
+    no.shot_detected = false
+    return no
+  }
+  const detected = results.filter(r => r.shot_detected !== false)
+
+  // Per-criterion merge: median of scored passes; null only when most passes
+  // said null. Reasoning comes from the pass closest to the median so the
+  // player-facing text matches the number.
+  const merged: AnalysisResult = {
+    ...detected[0],
+    shot_detected: true,
+    critical_flags: {
+      elbow_severely_out: majority(detected.map(r => r.critical_flags.elbow_severely_out)),
+      followthrough_flick_to_side: majority(detected.map(r => r.critical_flags.followthrough_flick_to_side)),
+      arc_too_flat: majority(detected.map(r => r.critical_flags.arc_too_flat ?? false)),
+      chest_pass_hands: majority(detected.map(r => r.critical_flags.chest_pass_hands ?? false)),
+    },
+    criteria: activeCriteria.map(ac => {
+      const perPass = detected
+        .map(r => r.criteria.find(c => c.id === Number(ac.id)))
+        .filter((c): c is CriterionResult => !!c)
+      const scoredPasses = perPass.filter(c => c.score !== null)
+      // Null wins when it's the majority view (visibility rules held).
+      if (scoredPasses.length * 2 <= perPass.length || scoredPasses.length === 0) {
+        const nullPass = perPass.find(c => c.score === null)
+        return { id: Number(ac.id), score: null, reasoning: nullPass?.reasoning ?? '' }
+      }
+      const med = median(scoredPasses.map(c => c.score as number))
+      const closest = scoredPasses.reduce((best, c) =>
+        Math.abs((c.score as number) - med) < Math.abs((best.score as number) - med) ? c : best
+      )
+      // Round medians to one decimal so 2-pass averages don't invent .25s.
+      return { id: Number(ac.id), score: Math.round(med * 10) / 10, reasoning: closest.reasoning }
+    }),
+  }
+
+  // Player assessment: majority player_type (ties fall back to first pass).
+  const typeCounts = new Map<string, number>()
+  for (const r of detected) {
+    const t = r.player_assessment?.player_type ?? 'recreational'
+    typeCounts.set(t, (typeCounts.get(t) ?? 0) + 1)
+  }
+  const majorityType = [...typeCounts.entries()].sort((a, b) => b[1] - a[1])[0][0] as PlayerType
+  merged.player_assessment = {
+    player_type: majorityType,
+    player_name: detected.find(r => (r.player_assessment?.player_type ?? 'recreational') === majorityType)
+      ?.player_assessment?.player_name ?? null,
+  }
+
+  return finalizeResult(merged, activeCriteria)
 }

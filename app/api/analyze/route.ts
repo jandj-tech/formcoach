@@ -177,8 +177,50 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Run Claude Vision analysis
-    const result = await analyzeShot(frameBase64Array, frameMimeTypes)
+    // Identical-video fingerprint: same frames → same result, always.
+    const framesHash = crypto
+      .createHash('sha256')
+      .update(frameBase64Array.join('|'))
+      .digest('hex')
+
+    let result: Awaited<ReturnType<typeof analyzeShot>> | null = null
+    try {
+      const [prior] = (await db`
+        SELECT a.id, a.overall_score
+        FROM analyses a
+        JOIN submissions s ON s.id = a.submission_id
+        WHERE a.frames_hash = ${framesHash}
+          AND s.status = 'complete'
+          AND (${submissionUserId}::uuid IS NOT NULL AND s.user_id = ${submissionUserId})
+        ORDER BY a.id DESC LIMIT 1
+      `) as unknown as [{ id: number; overall_score: number | string } | undefined]
+      if (prior) {
+        const priorScores = (await db`
+          SELECT criterion_id, ai_score, ai_reasoning
+          FROM criterion_scores WHERE analysis_id = ${prior.id}
+        `) as unknown as Array<{ criterion_id: number; ai_score: number | string | null; ai_reasoning: string }>
+        if (priorScores.length > 0) {
+          result = {
+            overall_score: Number(prior.overall_score),
+            shot_detected: true,
+            player_assessment: { player_type: 'recreational', player_name: null },
+            critical_flags: { elbow_severely_out: false, followthrough_flick_to_side: false, arc_too_flat: false, chest_pass_hands: false },
+            criteria: priorScores.map(ps => ({
+              id: ps.criterion_id,
+              score: ps.ai_score === null ? null : Number(ps.ai_score),
+              reasoning: ps.ai_reasoning,
+            })),
+          }
+          console.log('[analyze] identical frames — reusing analysis', prior.id)
+        }
+      }
+    } catch (err) {
+      // frames_hash column may not exist until the migration runs — grade fresh.
+      console.warn('[analyze] fingerprint lookup skipped:', err instanceof Error ? err.message : err)
+    }
+
+    // Run Claude Vision analysis (fresh grade unless fingerprint matched)
+    if (!result) result = await analyzeShot(frameBase64Array, frameMimeTypes)
 
     // No analyzable shot in the video — discard the submission and don't charge
     // the user. Tokens/credits are only deducted further below, so returning
@@ -199,8 +241,8 @@ export async function POST(req: NextRequest) {
     let analysis: { id: number }
     try {
       ;[analysis] = (await db`
-        INSERT INTO analyses (submission_id, overall_score, frame_urls, video_url)
-        VALUES (${submission.id}, ${result.overall_score}, ${frameUrls}, ${videoUrl})
+        INSERT INTO analyses (submission_id, overall_score, frame_urls, video_url, frames_hash)
+        VALUES (${submission.id}, ${result.overall_score}, ${frameUrls}, ${videoUrl}, ${framesHash})
         RETURNING id
       `) as unknown as [{ id: number }]
     } catch (err) {

@@ -115,15 +115,15 @@ export default function TeamHubClient({ teams }: { teams: HubTeam[] }) {
       {/* Team switcher — sticky so switching is one tap from anywhere on the page */}
       {teams.length > 1 && (
         <div className="sticky top-0 z-20 -mx-6 px-6 py-3 bg-ink-950/95 backdrop-blur border-b border-courtline mb-5">
-          <div className="flex items-center gap-3 overflow-x-auto">
-            <span className="eyebrow text-chalk-dim shrink-0 select-none">Switch team</span>
+          <p className="eyebrow text-chalk-dim select-none mb-2">Switch team</p>
+          <div className="flex items-center gap-2 overflow-x-auto">
             {teams.map(t => (
               <button
                 key={t.id}
                 type="button"
                 onClick={() => setSelectedId(t.id)}
                 aria-pressed={t.id === team.id}
-                className={`shrink-0 px-5 py-2.5 rounded-full text-sm font-bold border transition-colors ${
+                className={`shrink-0 px-4 py-2 rounded-full text-sm font-bold border transition-colors ${
                   t.id === team.id
                     ? 'bg-ember-500 border-ember-500 text-ink-950'
                     : 'border-courtline text-chalk hover:border-ember-400 hover:text-ember-400'

@@ -319,40 +319,90 @@ PLAYER-FACING WORDING: tell them to load their legs and let the power come up fr
 WHERE name = 'Source of Shot Power'
   AND (grading_notes IS NULL OR grading_notes NOT LIKE 'POWER RUBRIC v1%');
 
--- "Guide Hand Follow Through" rubric. The criterion had only its one-line
--- description, which named the flick but not the two faults the expert cares
--- most about: the hands closing up toward each other at any point after the
--- release, and a flimsy finish where the hands and elbows sit in visibly
--- different places frame to frame instead of holding their shape. The target is
--- a flat vertical guide hand with a passive thumb that the ball is shot
--- straight through, hands finishing clearly apart.
+-- "Guide Hand Follow Through" rubric. v1 named the flick, the hands closing up
+-- and a thrashing finish, but "flat" was left as an impression and the model read
+-- an extended hand with the fingers spread wide as "flat and open" — a real clip
+-- of a guide hand riding up overhead with the fingers splayed scored 10/10/10.
+-- v2 makes flatness a thing you look AT (the gaps between the fingers: together
+-- is flat, spread is not) and adds a stay-put test that tracks the hand across
+-- the finish frames, so sideways travel and riding up with the shot are faults
+-- of their own rather than variations on the flick.
 UPDATE criteria
-SET grading_notes = 'GUIDE HAND FOLLOW THROUGH RUBRIC v1 — did the shot go THROUGH a flat, still guide hand that stayed clear of the shooting hand?
+SET grading_notes = 'GUIDE HAND FOLLOW THROUGH RUBRIC v2 — did the shot go THROUGH a flat, still guide hand that stayed clear of the shooting hand?
 
-WHAT GOOD LOOKS LIKE. At the finish the two hands are clearly APART and never touch. The guide hand is FLAT — fingers together and extended, the hand reading like a flat vertical board rather than a cup, a claw or a fist. The thumb is passive and flat against the hand, not flicking or pushing. The hand simply stays where it was and the ball is shot THROUGH it: it peels away cleanly and adds nothing to the shot. A guide hand that finishes flat, still and separated is 9-10.
+WHAT GOOD LOOKS LIKE. At the finish the two hands are clearly APART and never touch. The guide hand is FLAT — fingers TOGETHER and extended, the hand reading like one flat board or paddle. The thumb is passive and flat against the hand, not flicking or pushing. And the hand STAYS WHERE IT WAS: the ball is shot THROUGH it, so it holds its position and peels away without adding anything. A guide hand that finishes flat, still and separated is 9-10.
 
-CAMERA ANGLE COMPRESSES SEPARATION. Filmed from the front the two hands can look closer together than they are. What matters is whether they actually TOUCH or converge. Hands that look a little close from that angle but plainly keep a gap between them are correct — score them 9-10 and do not deduct for the angle.
+THE FLATNESS TEST — LOOK AT THE GAPS BETWEEN THE FINGERS. This is a specific thing to look at, not an impression. A flat hand has its fingers touching or nearly touching, so the hand reads as ONE surface. Clear gaps between the fingers, fingers spread open like a starfish, fingers curled into a cup or claw, or a fist, are all NOT flat — score 4-5. Do not call a hand "flat and open" because it is extended: an extended hand with the fingers spread apart is a spread hand, and spread is the fault.
 
-FAULT 1 — THE HANDS COME TOO CLOSE. If at ANY point from the release onward the guide hand drifts in toward the shooting hand — the two closing up, meeting, touching or crossing — that is a real flaw. Check every frame of the release and finish, not just the last one. Hands ending up together is a 3-4, and touching or crossing is 1-2.
+THE STAY-PUT TEST — TRACK THE GUIDE HAND ACROSS THE FRAMES. Note where the guide hand is in the frame where the ball leaves the shooting hand, then find it again in each of the next two or three frames. A correct guide hand barely moves. Score the largest movement you can see:
+  - Holds its position, or falls away without travelling: 9-10.
+  - Slides SIDEWAYS — in toward the shooting hand, or out away from the body — by roughly its own width or more: 4-5. Side-to-side motion in the guide hand means it was steering, not riding along.
+  - Drives UPWARD with the shot so it finishes fully extended overhead alongside the shooting hand, rather than being left behind as the ball goes: 4-5. The guide hand should not follow the ball up; only the shooting hand extends.
+  - Snaps or flicks — a fast lateral jab, or the thumb kicking at the ball: 3-4.
 
-FAULT 2 — A FLIMSY, THRASHING FINISH. If the hands or the elbows are in noticeably different places from one frame to the next, flying around rather than holding a position, the finish is not controlled. A good follow-through is STILL: the arms hold their shape after the ball is gone. Hands and elbows that jump around frame to frame, with no held finish, score 3-4 even if no single frame looks terrible on its own. Judge this across the sequence, not from one image.
+FAULT — THE HANDS COME TOO CLOSE. If at ANY point from the release onward the guide hand drifts in toward the shooting hand — the two closing up, meeting, touching or crossing — that is a real flaw. Check every frame of the release and finish, not just the last one. Hands ending up together is a 3-4, and touching or crossing is 1-2.
 
-FAULT 3 — THE GUIDE HAND IS NOT FLAT. A cupped palm, curled or splayed fingers, or a thumb that drives, flicks or pushes at the ball all mean the guide hand acted on the shot instead of riding along. Score 4-5. The thumb is the usual culprit — look at it directly.
+FAULT — A FLIMSY, THRASHING FINISH. If the hands or the elbows are in noticeably different places from one frame to the next, flying around rather than holding a position, the finish is not controlled. A good follow-through is STILL: the arms hold their shape after the ball is gone. Hands and elbows that jump around frame to frame, with no held finish, score 3-4 even if no single frame looks terrible on its own. Judge this across the sequence, not from one image.
 
-NEVER DEDUCT FOR SOMETHING YOU CANNOT SEE. In particular, do not shave points because the finish could have been "held a beat longer" or the hand could have been "a little flatter" — that is coaching advice, not an observed flaw. If the hands are apart, the guide hand reads flat and the thumb is passive, the score is 9-10. Reserve everything below that for a fault you can actually point at in a frame.
+CAMERA ANGLE COMPRESSES SEPARATION. Filmed from the front the two hands can look closer together than they are. What matters is whether they actually TOUCH or converge. Hands that look a little close from that angle but plainly keep a gap between them are correct — do not deduct for the angle alone.
+
+NEVER DEDUCT FOR SOMETHING YOU CANNOT SEE. Do not shave points because the finish could have been "held a beat longer" or the hand could have been "a little flatter" — that is coaching advice, not an observed flaw. If the hands are apart, the fingers are together, the thumb is passive and the hand held still, the score is 9-10. Reserve everything below that for a fault you can actually point at in a frame.
+
+BUT THE HAND ITSELF IS DIRECTLY VISIBLE, SO NEVER DEFAULT TO A HIGH SCORE ON IT. Spread fingers, a cupped palm, a driving thumb, and a hand that travels between frames are all things you can see and name. The general burden-of-proof and default-to-10 rules do NOT soften this criterion, and a clean release, a good arc or a ball that goes in tells you nothing about what the guide hand did.
 
 HOW TO SCORE:
-  - Hands clearly apart, guide hand flat and vertical, thumb passive, finish held still: 9-10.
+  - Hands clearly apart, fingers together and flat, thumb passive, hand held still: 9-10.
   - Correct but slightly imperfect — the hand a touch angled, or a small settle after the finish: 7-8.
-  - Guide hand cupped, or the thumb visibly driving: 4-5.
-  - Hands closing up together at the finish, or hands and elbows thrashing between frames: 3-4.
+  - Guide hand spread, cupped or curled; or it slides sideways or rides up overhead with the shot: 4-5.
+  - Hands closing up together at the finish, a thumb flick, or hands and elbows thrashing between frames: 3-4.
   - Hands actually touching or crossing: 1-2.
 
 DO NOT PENALISE THE ARMS COMING DOWN. After the ball is gone it is normal for both arms to lower and separate as the player returns to rest. That is not a flaw and is not thrashing. Only the frames at and just after release count.
 
-PLAYER-FACING WORDING: tell them to keep the guide hand flat like a board, thumb relaxed, and let the ball go straight through it — hands finishing apart, and hold the finish instead of dropping the hands straight away. Never mention frames or scoring bands in the reasoning.'
+PLAYER-FACING WORDING: tell them to keep the guide hand flat like a board with the fingers together, thumb relaxed, and let the ball go straight through it — the hand staying where it is instead of sliding around or riding up with the shot, and the hands finishing apart. Never mention frames or scoring bands in the reasoning.'
 WHERE name = 'Guide Hand Follow Through'
-  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'GUIDE HAND FOLLOW THROUGH RUBRIC v1%');
+  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'GUIDE HAND FOLLOW THROUGH RUBRIC v2%');
+
+-- "Shooting Hand Follow Through" rubric. The criterion shipped with only its
+-- one-line description, so it inherited nothing but the global default-to-10
+-- rule and scored 10 on almost every shot — including clips where the hand
+-- plainly drifted in toward the middle of the body after release. The fault it
+-- never had language for is the cross-body finish: the hand carried past the
+-- midline instead of reaching straight down the line at the rim. The midline
+-- test makes that a placement you locate in the frame rather than an
+-- impression of whether the finish looked tidy.
+UPDATE criteria
+SET grading_notes = 'SHOOTING HAND FOLLOW THROUGH RUBRIC v1 — did the shooting hand finish reaching STRAIGHT at the basket, on its own side of the body, with the wrist snapped down?
+
+WHEN TO JUDGE IT. Start at the frame where the ball leaves the fingers and use the next two or three frames — the finish. Do not judge this from the set point, and do not judge it from late frames where the arms are already back down by the waist.
+
+WHAT GOOD LOOKS LIKE. The arm finishes extended up and out toward the basket. The wrist has snapped DOWN so the fingers hang over and point down the line of the shot at the rim, palm toward the floor — the "goose neck". The hand stays on the shooting side of the body. And it is STILL: it holds that shape while the ball is in the air instead of being pulled back, dropped straight away or swept sideways.
+
+THE MIDLINE TEST — RUN THIS ON EVERY SHOT. Never score this criterion off general impression; a follow-through that ends up looking tidy is the single most common reason a cross-body finish gets missed.
+  STEP 1. Find the player''s MIDLINE — a vertical line up through the centre of the torso and the middle of the head.
+  STEP 2. Note which side of that line the SHOOTING SHOULDER is on. That is the hand''s own side.
+  STEP 3. In each finish frame, see which side of the midline the shooting HAND is on, and watch which way it travels from frame to frame.
+    - Hand staying on its own side, or directly above the midline, reaching toward the rim: CORRECT. Score 9-10.
+    - Hand finishing a little across the midline, or drifting toward the guide-hand side as the ball flies: 5-6.
+    - Hand carried CLEARLY past the midline — finishing above or beyond the guide-hand shoulder, or the forearm cutting diagonally across the chest, throat or face: CROSS-BODY FINISH. Score 3-4.
+    - Hand thrown out sideways AWAY from the body instead of at the rim, so the fingers finish pointing off to one side rather than at the basket: also 3-4.
+
+STRAIGHT TO THE BASKET IS THE WHOLE POINT. The hand should finish along the line the ball travels. Anything that takes it off that line — across the body, out to the side, or whipping laterally at the moment of release — is a real, visible flaw, because a hand that leaves the line pushes the ball off the line with it.
+
+CHECK EVERY FINISH FRAME, NOT JUST THE LAST ONE. A sideways whip at release is fast and the player usually corrects back into a normal-looking position within a frame or two. A tidy final frame does NOT mean the hand went straight — if any frame at or just after release shows the hand cutting across or flicking sideways, that is the finding, and the tidy frame afterwards does not cancel it.
+
+NO WRIST SNAP IS ITS OWN FAULT, BUT ONLY WHEN YOU CAN ACTUALLY SEE THE HAND. If you can make out the fingers in a frame where the arm is fully extended, and they are clearly still pointing UP with the palm facing the basket rather than hanging over toward the floor, score 6-7 even when the arm went perfectly straight — a hand that never snaps put no backspin on the ball. If the hand is small in the frame, motion-blurred, or reads as an indistinct blob, you cannot tell a snapped wrist from a stiff one: say nothing about the snap and score the criterion on where the hand finished. Guessing at the wrist is the main way this criterion gets scored differently on the same shot twice.
+
+WHAT IS NOT A FLAW. Both arms lowering together after the ball is gone is a normal return to rest, not a cross-body finish and not a flick — judge only the frames at and immediately after release. A shooting hand that finishes slightly inside the shoulder line, or a little rotation of the palm, is ordinary and still scores 9-10. Do not deduct because the finish "could have been held longer" or the hand "could have snapped a bit harder" — that is advice, not an observed flaw.
+
+THIS CRITERION IS DIRECTLY VISIBLE, SO NEVER DEFAULT TO A HIGH SCORE. Where the hand finishes relative to the body is something you can see and locate in the frame, which makes a cross-body finish a specific, clearly visible flaw. The general burden-of-proof and default-to-10 rules do NOT soften this criterion. Judge the shooting hand and nothing else: a high release, a good arc, a ball that goes in, and a clean-looking guide hand tell you nothing about where this hand finished and must never pull a cross-body finish back up toward 9.
+
+IF THE BALL NEVER LEAVES THE HAND in any frame you have, return null rather than scoring the set point.
+
+PLAYER-FACING WORDING: tell them to finish with the hand reaching straight at the rim on their own side of their body, snap the wrist down so the fingers point at the basket, and hold it there. Never mention midlines, frames or scoring bands in the reasoning.'
+WHERE name = 'Shooting Hand Follow Through'
+  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'SHOOTING HAND FOLLOW THROUGH RUBRIC v1%');
+
 
 
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
 
@@ -8,7 +8,7 @@ import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
 // Team schedule — one component, three faces:
 //   1. /team hub (theme="dark")            — full panel for players + coaches
 //   2. coach dashboard (theme="light")     — full panel with admin CRUD
-//   3. player dashboard card (compact)     — next 3 events + "Full schedule →"
+//   3. player dashboard card (compact)     — calendar + "Full schedule →", no admin
 //
 // Wire types mirror lib/team-schedule.ts exactly. That module is server-only
 // (it imports the db client), so the shapes are re-declared for the client
@@ -249,6 +249,169 @@ function TimeSelect({ value, onChange, dark }: { value: string; onChange: (v: st
   )
 }
 
+// ---------------------------------------------------------------------------
+// Location autocomplete — Photon (OpenStreetMap's typeahead API): free, no
+// key, CORS-open. Suggestions appear as the coach types; picking one fills
+// the field with a full address so the map links on the card resolve well.
+// If the API is slow or down, nothing breaks — the field stays free text.
+// ---------------------------------------------------------------------------
+
+interface PhotonFeature {
+  properties: {
+    name?: string
+    housenumber?: string
+    street?: string
+    city?: string
+    state?: string
+    country?: string
+  }
+}
+
+function formatPhotonFeature(f: PhotonFeature): string | null {
+  const p = f.properties
+  const parts = [p.name, [p.street, p.housenumber].filter(Boolean).join(' '), p.city, p.state].filter(
+    (x): x is string => !!x,
+  )
+  // A place named after its city ("Toronto", street "", city "Toronto")
+  // shouldn't repeat itself in the label.
+  const seen = new Set<string>()
+  const label = parts
+    .filter(x => {
+      const k = x.toLowerCase()
+      if (seen.has(k)) return false
+      seen.add(k)
+      return true
+    })
+    .join(', ')
+  return label || null
+}
+
+function LocationInput({
+  value,
+  onChange,
+  dark,
+  className,
+}: {
+  value: string
+  onChange: (v: string) => void
+  dark: boolean
+  className: string
+}) {
+  const t = themeClasses(dark)
+  const [suggestions, setSuggestions] = useState<string[]>([])
+  const [open, setOpen] = useState(false)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
+
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current)
+      abortRef.current?.abort()
+    },
+    [],
+  )
+
+  function handleChange(q: string) {
+    onChange(q.slice(0, 200))
+    if (timer.current) clearTimeout(timer.current)
+    const query = q.trim()
+    if (query.length < 3) {
+      setSuggestions([])
+      setOpen(false)
+      return
+    }
+    // Debounced + aborted per keystroke: at most one in-flight lookup.
+    timer.current = setTimeout(async () => {
+      abortRef.current?.abort()
+      const ac = new AbortController()
+      abortRef.current = ac
+      try {
+        const res = await fetch(
+          `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5&lang=en`,
+          { signal: ac.signal },
+        )
+        if (!res.ok) return
+        const json = (await res.json()) as { features?: PhotonFeature[] }
+        const seen = new Set<string>()
+        const items = (json.features ?? [])
+          .map(formatPhotonFeature)
+          .filter((label): label is string => !!label)
+          .filter(label => {
+            const k = label.toLowerCase()
+            if (seen.has(k)) return false
+            seen.add(k)
+            return true
+          })
+          .slice(0, 5)
+        setSuggestions(items)
+        setOpen(items.length > 0)
+      } catch {
+        // Aborted or offline — the typed text still works as a plain location.
+      }
+    }, 300)
+  }
+
+  function pick(label: string) {
+    onChange(label.slice(0, 200))
+    setSuggestions([])
+    setOpen(false)
+  }
+
+  return (
+    <div className="relative">
+      <input
+        type="text"
+        value={value}
+        maxLength={200}
+        onChange={e => handleChange(e.target.value)}
+        onFocus={() => {
+          if (suggestions.length > 0) setOpen(true)
+        }}
+        onBlur={() => setOpen(false)}
+        onKeyDown={e => {
+          if (e.key === 'Escape') setOpen(false)
+          // Enter takes the top suggestion — type, Enter, done.
+          if (e.key === 'Enter' && open && suggestions.length > 0) {
+            e.preventDefault()
+            pick(suggestions[0])
+          }
+        }}
+        placeholder="e.g. Main Gym"
+        role="combobox"
+        aria-expanded={open}
+        aria-controls="location-suggestions"
+        aria-autocomplete="list"
+        className={className}
+      />
+      {open && (
+        <div
+          // Mousedown fires before the input's blur — without this the list
+          // closes a beat before the click lands and taps select nothing.
+          onMouseDown={e => e.preventDefault()}
+          className={`absolute left-0 right-0 top-full mt-1 z-20 rounded-xl overflow-hidden shadow-lg ${t.panel}`}
+        >
+          <ul id="location-suggestions" role="listbox">
+            {suggestions.map(label => (
+              <li key={label} role="option" aria-selected={false}>
+                <button
+                  type="button"
+                  onClick={() => pick(label)}
+                  className={`block w-full text-left px-3.5 py-2 text-sm transition-colors ${t.text} ${
+                    dark ? 'hover:bg-ink-950' : 'hover:bg-orange-50'
+                  }`}
+                >
+                  📍 {label}
+                </button>
+              </li>
+            ))}
+          </ul>
+          <p className={`px-3.5 py-1.5 text-[10px] ${t.faint}`}>Suggestions © OpenStreetMap</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function EventForm({
   mode,
   initial,
@@ -321,15 +484,13 @@ function EventForm({
         </div>
       </div>
 
-      {/* Where */}
+      {/* Where — type a few letters and pick the real place, or free text */}
       <div>
         <p className={`text-xs font-bold uppercase tracking-wide mb-1.5 ${t.dim}`}>Where</p>
-        <input
-          type="text"
+        <LocationInput
           value={v.location}
-          maxLength={200}
-          onChange={e => set('location', e.target.value)}
-          placeholder="e.g. Main Gym"
+          onChange={loc => set('location', loc)}
+          dark={dark}
           className={`w-full ${inputCls}`}
         />
       </div>
@@ -632,7 +793,28 @@ function EventCard({
           <p className={`text-sm font-bold mt-1 ${t.text} ${cancelled ? 'line-through' : ''}`}>
             {event.title || typeLabel(event.type)}
           </p>
-          {event.location && <p className={`text-xs mt-0.5 ${t.dim}`}>📍 {event.location}</p>}
+          {event.location && (
+            <p className={`text-xs mt-0.5 ${t.dim}`}>
+              📍{' '}
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold underline underline-offset-2"
+              >
+                {event.location}
+              </a>
+              {' · '}
+              <a
+                href={`https://maps.apple.com/?q=${encodeURIComponent(event.location)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2 whitespace-nowrap"
+              >
+                Apple Maps
+              </a>
+            </p>
+          )}
           {event.notes && (
             <button
               type="button"
@@ -1244,7 +1426,6 @@ export default function TeamSchedulePanel({
     return <p className={`text-sm py-4 text-center ${t.dim}`}>The schedule isn&apos;t available right now.</p>
 
   const isCoach = data.isCoach && !compact
-  const events = compact ? data.events.slice(0, 3) : data.events
 
   // Calendar derivations — the event pool is upcoming + (lazily) past, so
   // back-navigation shows finished weeks with their attendance record.
@@ -1351,44 +1532,32 @@ export default function TeamSchedulePanel({
         />
       )}
 
-      {/* Events — week calendar in the full view, flat next-3 in compact */}
-      {compact ? (
-        events.length === 0 ? (
-          <p className={`text-sm py-4 text-center ${t.dim}`}>
-            No upcoming events. Your coach hasn&apos;t scheduled anything yet.
-          </p>
-        ) : (
-          <div className="space-y-2.5">{events.map(e => renderCard(e, false))}</div>
-        )
-      ) : (
-        <>
-          <WeekCalendar
-            weekStart={weekStart}
-            events={visibleEvents}
-            dark={dark}
-            selectedId={shownEvent?.id ?? null}
-            isCurrentWeek={weekOffset === 0}
-            onSelect={id => setSelected(shownEvent?.id === id ? 'closed' : id)}
-            onStep={dir => gotoWeek(weekOffset + dir)}
-            onToday={() => gotoWeek(0)}
-          />
-          {weekOffset < 0 && past === null && (
-            <p className={`text-sm py-2 text-center ${t.dim}`}>Loading past events…</p>
-          )}
-          {weekOffset < 0 && past === 'error' && (
-            <p className={`text-sm py-2 text-center ${t.dim}`}>Couldn&apos;t load past events.</p>
-          )}
-          {data.events.length === 0 && (
-            <p className={`text-sm py-2 text-center ${t.dim}`}>
-              {isCoach
-                ? 'No events yet — schedule your first practice.'
-                : 'No upcoming events. Your coach hasn’t scheduled anything yet.'}
-            </p>
-          )}
-          {/* The tapped event's full card — RSVP, attendance, coach actions */}
-          {shownEvent && renderCard(shownEvent, pastIds.has(shownEvent.id))}
-        </>
+      {/* Events — the same week calendar everywhere; compact adds the hub link */}
+      <WeekCalendar
+        weekStart={weekStart}
+        events={visibleEvents}
+        dark={dark}
+        selectedId={shownEvent?.id ?? null}
+        isCurrentWeek={weekOffset === 0}
+        onSelect={id => setSelected(shownEvent?.id === id ? 'closed' : id)}
+        onStep={dir => gotoWeek(weekOffset + dir)}
+        onToday={() => gotoWeek(0)}
+      />
+      {weekOffset < 0 && past === null && (
+        <p className={`text-sm py-2 text-center ${t.dim}`}>Loading past events…</p>
       )}
+      {weekOffset < 0 && past === 'error' && (
+        <p className={`text-sm py-2 text-center ${t.dim}`}>Couldn&apos;t load past events.</p>
+      )}
+      {data.events.length === 0 && (
+        <p className={`text-sm py-2 text-center ${t.dim}`}>
+          {isCoach
+            ? 'No events yet — schedule your first practice.'
+            : 'No upcoming events. Your coach hasn’t scheduled anything yet.'}
+        </p>
+      )}
+      {/* The tapped event's full card — RSVP, attendance, coach actions */}
+      {shownEvent && renderCard(shownEvent, pastIds.has(shownEvent.id))}
 
       {compact && (
         <div>

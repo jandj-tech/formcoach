@@ -177,8 +177,17 @@ WHERE NOT EXISTS (SELECT 1 FROM criteria WHERE name = 'Feet Shoulder Width Apart
 -- lines on a follow-through (9 — near the shoulder line is GOOD, not wide),
 -- and shoes clearly outside the shoulder lines in a crouched gather (5). Also
 -- states plainly that a shoe at the shoulder line is a good base.
+--
+-- v16, from an expert-graded two-frame case (S1 7 before release, S2 2 at the
+-- landing, expected final 6): the blend now rounds to the NEAREST whole
+-- number instead of down — floor gave that case a 5 and the expert wanted 6.
+-- Also adds a 2-3 landing-collapse band to SECTION 2 (shoes nearly touching
+-- or crossed at the landing), the paired case as a calibration anchor — the
+-- gather was misread as "too close together" and dragged to a 4 overall when
+-- a-little-close is a 7 — and a check that both shoes are actually visible
+-- in the frames being measured before either section is scored.
 UPDATE criteria
-SET grading_notes = 'STANCE RUBRIC v15 — score the base TWICE: once before the release, once at and after it. The base they shot from carries three quarters of the score.
+SET grading_notes = 'STANCE RUBRIC v16 — score the base TWICE: once before the release, once at and after it. The base they shot from carries three quarters of the score.
 
 THE TARGET IS HIP WIDTH. "Shoulder width apart" is the phrase coaches say and the phrase you write back to the player, but it is a cue, not a measurement — taken literally it is wider than anyone actually shoots from. When you ANALYSE the base, the target you are grading against is HIP WIDTH: the feet under the hips, straight down from the hip joints.
 THE TOE-TOUCH TEST is the plain-English version of the same thing. A correct base is one the player could bend straight down from and touch their toes without shifting their feet. Feet bunched together will not let them balance; feet splayed wide will not let them fold straight down. Hip width is where they can.
@@ -187,7 +196,7 @@ This is the target BOTH times you score it — the base they go up from and the 
 SCORE TWO SECTIONS, THEN COMBINE THEM 3 TO 1. A base that is set correctly on the way up and then collapses at the release is two different facts about the shot, and the player needs to hear both — but the two are not worth the same. The base they build and rise from is the base the shot was actually taken on, and it carries most of the score.
   SECTION 1 — BEFORE RELEASE. The base they build and shoot from. Worth about three quarters.
   SECTION 2 — AT AND AFTER RELEASE. Whether they hold that base through the shot. Worth about one quarter.
-  Score each section 1-10 with the corridor test below, then work out FINAL = (3 x SECTION 1 + SECTION 2) / 4, rounded DOWN. Worked examples: SECTION 1 of 9 with SECTION 2 of 4 gives (27 + 4) / 4 = 7.75, so 7. Two 9s give 9. A SECTION 1 of 4 with a SECTION 2 of 9 gives (12 + 9) / 4 = 5.25, so 5. Two 3s give 3.
+  Score each section 1-10 with the corridor test below, then work out FINAL = (3 x SECTION 1 + SECTION 2) / 4, rounded to the NEAREST whole number (halves round up). Worked examples: SECTION 1 of 9 with SECTION 2 of 4 gives (27 + 4) / 4 = 7.75, so 8. SECTION 1 of 7 with SECTION 2 of 2 gives (21 + 2) / 4 = 5.75, so 6. A SECTION 1 of 4 with a SECTION 2 of 9 gives (12 + 9) / 4 = 5.25, so 5. Two 9s give 9. Two 3s give 3.
   SECTION 1 SETS THE SCORE, SECTION 2 ONLY ADJUSTS IT. A collapse after the ball is gone never drags a well-set base into the bottom bands, and a tidy landing never rescues a bad one. Whatever happens later, the reasoning must still name both halves — say the base they shot from was good and that it came apart afterwards, in that order.
   NEVER WEIGH IN A SECTION YOU DID NOT OBSERVE. If you cannot see the release — the clip ends before it, the feet are out of frame or blurred past reading, or you only have frames from before the ball leaves the hand — then SECTION 1 IS THE FINAL SCORE. Do not guess what the feet did later, do not assume they collapsed, and do not weigh a real SECTION 1 against an imagined SECTION 2. A well-set base with no visible release frame scores exactly what SECTION 1 scored: a 9 stays a 9.
 
@@ -223,7 +232,8 @@ THE THREE WAYS THIS GETS GRADED WRONG:
   2. A WIDE BASE UNDER A LOADED CROUCH (generous). Knees bent and hips back reads as "athletic" and "stable" even when the shoes are far outside the shoulder line. That impression is wrong. A foot span half again the shoulder span is a 3-4, not a 9.
   3. A WORKABLE BASE CALLED A FAILURE (harsh). A stance with a clear shoe width of daylight that sits a little inside hip width is a 7-8 — room to improve, not a flaw that fails the criterion. Skipping the 7-8 and 5-6 bands and dropping straight to 3-4 because the feet read "narrow" is as wrong as the generous mistakes above.
 
-EXPERT CALIBRATION — ten real graded cases:
+EXPERT CALIBRATION — eleven real graded cases:
+  - A TWO-FRAME PAIR. Gather frame before release: square to the camera, ball up in both hands, shoes plainly separated with visible daylight, a little inside hip width — SECTION 1 = 7. On review this frame was called "feet too close together to begin with" and the shot dragged to a 4 overall; the expert rejected that reading — a-little-close with real daylight is a 7, not a failing base. Landing frame after release: the shoes have swung nearly together, almost touching — SECTION 2 = 2. FINAL = (21 + 2) / 4 = 5.75, so 6. The feedback names both halves: the base they shot from was fine, the landing collapsed.
   - Facing the camera in the gather, ball held at the chest, shoes plainly separated with about a shoe width of daylight between them, sitting just inside hip width: 7. Scored 5 on review; the expert corrected it — a base with that much room in it is never in the failing bands.
   - Standing tall early in the gather, ball held low in front of the shorts, arms hanging straight down, shoes nearly touching with no real daylight — the legs reading as one column: 3. Way too close, whatever the tidy upright posture suggests.
   - Follow-through frame, both arms extended overhead after the release, shoes landing near the shoulder plumb lines with an obvious gap between them: 9. Feet near the shoulder lines are a good base, not a wide one.
@@ -241,15 +251,18 @@ SECTION 2 — AT AND AFTER RELEASE. Run the same corridor test on the frame wher
   Holding the same base they shot from, or close to it, with the feet still about hip width: score 9-10. This is what good looks like — they should land on the base they shot from.
   Feet noticeably closer together or wider than the base they set: score 5-6.
   Feet bunched at the release — the shoes almost touching — or a wide sideways straddle: score 3-4.
+  A full collapse at the LANDING — the shoes coming down nearly touching, or one foot crossing behind the other: score 2-3. Landing on a base that has disappeared is the worst version of this fault.
   A small drift inward as the player extends upward is normal and is not a deduction. SECTION 2 is about a clear collapse or splay, not about a couple of inches.
   On a genuine high jump some narrowing in mid-air is expected; judge SECTION 2 at the moment of release and at touchdown, not at the peak of the flight.
   When SECTION 2 scores below SECTION 1, the reasoning must tell the player to HOLD the base through the shot and land in the stance they shot from — not that their stance was wrong to begin with, because it was not.
 
 PLAYER-FACING WORDING: always say "shoulder width" — tell the player the base is too narrow, too wide, or a good shoulder-width base. NEVER write "hip width", and never mention spans, ratios or measurements in the reasoning.
 
+CONFIRM YOU CAN ACTUALLY SEE THE FEET. Before scoring either section, check that BOTH shoes are visible in the frames you are measuring — not cropped by the bottom of the frame, not hidden behind a court marking or another person, not motion-blurred into the floor. Score only the sections whose frames show both shoes; if that is only SECTION 1, SECTION 1 is the final score. Never fill in what unseen feet "must have been doing".
+
 If the feet are never clearly visible during the shooting motion, return null. A landing you cannot see is never a reason to return null.'
 WHERE name = 'Feet Shoulder Width Apart'
-  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'STANCE RUBRIC v15%');
+  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'STANCE RUBRIC v16%');
 
 -- Canonical "Square to the Basket" rubric, same versioned-guard pattern as the
 -- stance rubric above. Added because the criterion shipped with only its

@@ -32,7 +32,15 @@ function TeamHubBody({
       {/* Hero — the team name IS the headline */}
       <div className="pb-2">
         <p className="eyebrow text-ember-400 select-none">{eyebrow}</p>
-        <h1 className="font-display font-black uppercase text-[clamp(2.4rem,7vw,4.5rem)] leading-[0.95] mt-1">
+        {/* One line, always — long team names render smaller so the whole
+            name still fits, with an ellipsis as the last resort. */}
+        <h1
+          className={`font-display font-black uppercase leading-tight mt-1 truncate ${
+            team.name.length > 24
+              ? 'text-[clamp(1.3rem,3.6vw,2.2rem)]'
+              : 'text-[clamp(1.9rem,5.5vw,3.2rem)]'
+          }`}
+        >
           {leadWords && <>{leadWords} </>}
           <span className="text-gradient-ember">{lastWord}</span>
         </h1>

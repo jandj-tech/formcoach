@@ -244,7 +244,7 @@ export async function POST(req: NextRequest) {
       mode: 'payment',
       // Embedded checkout with server-controlled shipping: the iframe calls
       // onShippingDetailsChange when the buyer completes their address, our
-      // shipping-options endpoint quotes live carrier rates and updates the
+      // shipping-options endpoint quotes carrier-calibrated rates and updates the
       // session. The $0 placeholder below is replaced by real rates then.
       // Note: express wallets (Apple/Google Pay) are disabled by Stripe
       // under server_only shipping permissions.

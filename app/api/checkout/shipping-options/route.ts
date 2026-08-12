@@ -3,7 +3,7 @@ import { getStripe } from '@/lib/stripe'
 import { getShippingOptions } from '@/lib/shipping'
 
 // Called by the embedded checkout's onShippingDetailsChange handler when the
-// buyer completes the address form. Quotes live carrier rates for that
+// buyer completes the address form. Quotes carrier-calibrated rates for that
 // address and writes them onto the session, so the shipping line the buyer
 // sees is the real cost. The response body is passed straight back to
 // Stripe's iframe: { type: 'accept' } or { type: 'reject', errorMessage }.
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
           service: 'comp',
           estDaysMin: 3,
           estDaysMax: 9,
-          source: 'live' as const,
+          source: 'table' as const,
         }]
       : await getShippingOptions(
           {

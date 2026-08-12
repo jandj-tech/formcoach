@@ -173,7 +173,7 @@ export default function CartView() {
         {error && <p className="text-red-500 text-sm">{error}</p>}
 
         <p className="text-white text-xs">
-          Shipping calculated at checkout from live Canada Post / USPS rates. Secure payment by Stripe.
+          Shipping calculated from your address at checkout. Secure payment by Stripe.
         </p>
       </div>
     </section>

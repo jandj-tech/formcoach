@@ -1,10 +1,16 @@
 import 'server-only'
 import { getUsdToCadRate } from '@/lib/fx'
 
-// Live shipping quotes via Shippo (rates both Canada Post and USPS), with a
-// flat zone table as fallback so checkout keeps working if the API is down.
-// Canadian orders ship from the Vaughan, ON warehouse; US orders from the
-// Las Vegas, NV warehouse — every order is domestic.
+// Address-based shipping quotes with zero external dependencies: prices come
+// from built-in zone tables calibrated against published Canada Post and
+// USPS retail rate charts (2026). Canadian orders ship from the Vaughan, ON
+// warehouse via Canada Post; US orders from Las Vegas, NV via USPS — every
+// order is domestic, and the zone is derived from the buyer's postal code
+// (Canada) or state (US).
+//
+// If SHIPPO_API_KEY is ever set, live carrier rates are fetched instead and
+// the tables become the fallback. Without a key nothing is called and
+// nothing costs money.
 
 export type ShippingAddress = {
   name?: string
@@ -24,8 +30,154 @@ export type ShippingOptionQuote = {
   service: string
   estDaysMin?: number
   estDaysMax?: number
-  source: 'live' | 'fallback'
+  source: 'live' | 'table'
 }
+
+// ---------------------------------------------------------------------------
+// Built-in zone tables (primary rate source)
+// ---------------------------------------------------------------------------
+
+// Canada, from Vaughan, ON. Zoned by the first letter of the postal code
+// (the FSA letter maps cleanly to a region — finer than province for
+// Ontario, where Toronto and Thunder Bay price very differently).
+// Amounts are CAD cents for one ball (box bills at ~3.1 kg volumetric),
+// calibrated against Canada Post Regular Parcel retail prices.
+type Zone = { cents: number; daysMin: number; daysMax: number }
+const CA_ZONES: Record<string, Zone> = {
+  // GTA / Golden Horseshoe
+  L: { cents: 1395, daysMin: 1, daysMax: 3 },
+  M: { cents: 1395, daysMin: 1, daysMax: 3 },
+  // Rest of southern/eastern Ontario
+  K: { cents: 1695, daysMin: 2, daysMax: 4 },
+  N: { cents: 1695, daysMin: 2, daysMax: 4 },
+  // Northern Ontario
+  P: { cents: 1895, daysMin: 3, daysMax: 6 },
+  // Quebec
+  G: { cents: 1895, daysMin: 2, daysMax: 5 },
+  H: { cents: 1795, daysMin: 2, daysMax: 4 },
+  J: { cents: 1795, daysMin: 2, daysMax: 5 },
+  // Prairies
+  R: { cents: 2195, daysMin: 4, daysMax: 7 },
+  S: { cents: 2195, daysMin: 4, daysMax: 7 },
+  T: { cents: 2195, daysMin: 4, daysMax: 7 },
+  // British Columbia
+  V: { cents: 2395, daysMin: 4, daysMax: 8 },
+  // Maritimes
+  E: { cents: 2195, daysMin: 3, daysMax: 6 },
+  B: { cents: 2195, daysMin: 3, daysMax: 6 },
+  C: { cents: 2195, daysMin: 3, daysMax: 6 },
+  // Newfoundland
+  A: { cents: 2595, daysMin: 5, daysMax: 9 },
+  // Territories
+  X: { cents: 3495, daysMin: 6, daysMax: 12 },
+  Y: { cents: 3495, daysMin: 6, daysMax: 12 },
+}
+// Province fallback when the postal code is missing/unparseable.
+const CA_PROVINCE_TO_LETTER: Record<string, string> = {
+  ON: 'L', QC: 'H', MB: 'R', SK: 'S', AB: 'T', BC: 'V',
+  NB: 'E', NS: 'B', PE: 'C', NL: 'A', YT: 'Y', NT: 'X', NU: 'X',
+}
+
+// US, from Las Vegas, NV. Zoned by state (USPS zones 1–8 approximated by
+// distance from 89xxx). USD cents for one ball (box bills at ~3 lb),
+// calibrated against USPS Ground Advantage retail prices.
+const US_ZONE_NEAR: Zone = { cents: 1195, daysMin: 2, daysMax: 4 }       // ~zones 1-4
+const US_ZONE_MOUNTAIN: Zone = { cents: 1395, daysMin: 2, daysMax: 4 }   // ~zones 4-5
+const US_ZONE_CENTRAL: Zone = { cents: 1595, daysMin: 3, daysMax: 5 }    // ~zones 5-6
+const US_ZONE_EAST: Zone = { cents: 1995, daysMin: 3, daysMax: 5 }       // ~zones 7-8
+const US_ZONE_REMOTE: Zone = { cents: 2495, daysMin: 4, daysMax: 8 }     // AK/HI
+const US_STATE_ZONES: Record<string, Zone> = {
+  NV: US_ZONE_NEAR, AZ: US_ZONE_NEAR, UT: US_ZONE_NEAR, CA: US_ZONE_NEAR,
+  OR: US_ZONE_MOUNTAIN, WA: US_ZONE_MOUNTAIN, ID: US_ZONE_MOUNTAIN,
+  MT: US_ZONE_MOUNTAIN, WY: US_ZONE_MOUNTAIN, CO: US_ZONE_MOUNTAIN, NM: US_ZONE_MOUNTAIN,
+  ND: US_ZONE_CENTRAL, SD: US_ZONE_CENTRAL, NE: US_ZONE_CENTRAL, KS: US_ZONE_CENTRAL,
+  OK: US_ZONE_CENTRAL, TX: US_ZONE_CENTRAL, MN: US_ZONE_CENTRAL, IA: US_ZONE_CENTRAL,
+  MO: US_ZONE_CENTRAL, AR: US_ZONE_CENTRAL, LA: US_ZONE_CENTRAL, WI: US_ZONE_CENTRAL,
+  IL: US_ZONE_CENTRAL, MS: US_ZONE_CENTRAL,
+  AK: US_ZONE_REMOTE, HI: US_ZONE_REMOTE,
+}
+
+// Bigger boxes bill at higher volumetric weight, but not linearly per ball.
+// Derived from the 3 lb vs 10-12 lb (and 3.1 kg vs 6.25 kg) rate steps.
+function countMultiplier(ballCount: number): number {
+  if (ballCount <= 1) return 1
+  if (ballCount === 2) return 1.7
+  if (ballCount <= 4) return 2.4
+  return 3
+}
+
+// Expedited (Xpresspost / Priority Mail Express-ish) relative to ground.
+const EXPRESS_MULTIPLIER = 1.65
+
+function zoneFor(to: ShippingAddress): Zone {
+  if (to.country === 'CA') {
+    const letter =
+      to.postalCode?.trim().charAt(0).toUpperCase() ||
+      CA_PROVINCE_TO_LETTER[(to.state || '').toUpperCase()] ||
+      'V' // unknown → price like BC rather than undercharging
+    return CA_ZONES[letter] ?? CA_ZONES[CA_PROVINCE_TO_LETTER[(to.state || '').toUpperCase()] ?? 'V'] ?? CA_ZONES.V
+  }
+  return US_STATE_ZONES[(to.state || '').toUpperCase()] ?? US_ZONE_EAST
+}
+
+async function tableQuotes(
+  to: ShippingAddress,
+  ballCount: number,
+  sessionCurrency: 'usd' | 'cad'
+): Promise<ShippingOptionQuote[]> {
+  const zone = zoneFor(to)
+  const localCurrency: 'usd' | 'cad' = to.country === 'CA' ? 'cad' : 'usd'
+  const carrier = to.country === 'CA' ? 'canada_post' : 'usps'
+  const carrierLabel = to.country === 'CA' ? 'Canada Post' : 'USPS'
+  const standardLocal = Math.round(zone.cents * countMultiplier(ballCount))
+  const expressLocal = Math.round(standardLocal * EXPRESS_MULTIPLIER)
+
+  const [standard, express] = await Promise.all([
+    convertToCurrency(standardLocal, localCurrency, sessionCurrency).catch(() => standardLocal),
+    convertToCurrency(expressLocal, localCurrency, sessionCurrency).catch(() => expressLocal),
+  ])
+
+  return [
+    {
+      displayName: `${carrierLabel} Standard`,
+      amountCents: standard,
+      currency: sessionCurrency,
+      carrier,
+      service: 'standard',
+      estDaysMin: zone.daysMin,
+      estDaysMax: zone.daysMax,
+      source: 'table',
+    },
+    {
+      displayName: `${carrierLabel} Express`,
+      amountCents: express,
+      currency: sessionCurrency,
+      carrier,
+      service: 'express',
+      estDaysMin: 1,
+      estDaysMax: Math.max(2, Math.ceil(zone.daysMin * 1.5)),
+      source: 'table',
+    },
+  ]
+}
+
+async function convertToCurrency(
+  amountCents: number,
+  from: string,
+  to: 'usd' | 'cad'
+): Promise<number> {
+  const f = from.toLowerCase()
+  if (f === to) return amountCents
+  const rate = await getUsdToCadRate()
+  if (f === 'usd' && to === 'cad') return Math.round(amountCents * rate)
+  if (f === 'cad' && to === 'usd') return Math.round(amountCents / rate)
+  // Unexpected third currency — treat as unconvertible.
+  throw new Error(`Cannot convert ${from} to ${to}`)
+}
+
+// ---------------------------------------------------------------------------
+// Optional live rates via Shippo (only when SHIPPO_API_KEY is set)
+// ---------------------------------------------------------------------------
 
 function warehouseFor(country: string) {
   if (country === 'CA') {
@@ -63,43 +215,6 @@ function parcelFor(ballCount: number) {
     weight: Math.round(n * 0.9 * 100) / 100,
     mass_unit: 'kg',
   }
-}
-
-// Flat fallback rates in the destination's own currency (CAD cents from
-// Vaughan, USD cents from Las Vegas). Tuned near average carrier cost —
-// adjust freely; the structure is what matters.
-const CA_FALLBACK_CENTS: Record<string, number> = {
-  ON: 1400,
-  QC: 1700, MB: 1700,
-  SK: 2100, AB: 2100, BC: 2100, NB: 2100, NS: 2100, PE: 2100,
-  NL: 2800, YT: 2800, NT: 2800, NU: 2800,
-}
-const US_WEST = new Set(['NV', 'AZ', 'UT', 'CA'])
-const US_MOUNTAIN_PACIFIC = new Set(['OR', 'WA', 'ID', 'MT', 'WY', 'CO', 'NM'])
-const US_CENTRAL = new Set(['ND', 'SD', 'NE', 'KS', 'OK', 'TX', 'MN', 'IA', 'MO', 'AR', 'LA', 'WI', 'IL', 'MS'])
-
-function fallbackCents(country: string, state: string | null | undefined): number {
-  const s = (state || '').toUpperCase()
-  if (country === 'CA') return CA_FALLBACK_CENTS[s] ?? 2100
-  if (s === 'AK' || s === 'HI') return 2500
-  if (US_WEST.has(s)) return 900
-  if (US_MOUNTAIN_PACIFIC.has(s)) return 1100
-  if (US_CENTRAL.has(s)) return 1300
-  return 1500
-}
-
-async function convertToCurrency(
-  amountCents: number,
-  from: string,
-  to: 'usd' | 'cad'
-): Promise<number> {
-  const f = from.toLowerCase()
-  if (f === to) return amountCents
-  const rate = await getUsdToCadRate()
-  if (f === 'usd' && to === 'cad') return Math.round(amountCents * rate)
-  if (f === 'cad' && to === 'usd') return Math.round(amountCents / rate)
-  // Unexpected third currency — treat as unconvertible.
-  throw new Error(`Cannot convert ${from} to ${to}`)
 }
 
 type ShippoRate = {
@@ -157,6 +272,62 @@ function rateCents(r: ShippoRate, sessionCurrency: 'usd' | 'cad'): { cents: numb
   return { cents: Math.round(parseFloat(r.amount) * 100), currency: r.currency }
 }
 
+async function liveQuotes(
+  to: ShippingAddress,
+  ballCount: number,
+  sessionCurrency: 'usd' | 'cad'
+): Promise<ShippingOptionQuote[]> {
+  const expectedProvider = to.country === 'CA' ? 'canada_post' : 'usps'
+  const rates = (await fetchShippoRates(to, ballCount))
+    .filter((r) => r.provider?.toLowerCase() === expectedProvider)
+    .filter((r) => Number.isFinite(parseFloat(r.amount)))
+  if (rates.length === 0) throw new Error('No rates returned')
+
+  const ground = rates
+    .filter((r) => (r.estimated_days ?? 8) <= 8)
+    .sort((a, b) => parseFloat(a.amount) - parseFloat(b.amount))[0]
+    ?? rates.sort((a, b) => parseFloat(a.amount) - parseFloat(b.amount))[0]
+  const expedited = rates
+    .filter((r) => (r.estimated_days ?? 99) <= 3 && r !== ground)
+    .sort((a, b) => parseFloat(a.amount) - parseFloat(b.amount))[0]
+
+  let quotes: ShippingOptionQuote[] = []
+  for (const r of [ground, expedited]) {
+    if (!r) continue
+    const { cents, currency } = rateCents(r, sessionCurrency)
+    quotes.push({
+      displayName: `${providerLabel(r.provider)} ${r.servicelevel?.name || 'Shipping'}`,
+      amountCents: await convertToCurrency(cents, currency, sessionCurrency),
+      currency: sessionCurrency,
+      carrier: r.provider,
+      service: r.servicelevel?.token || r.servicelevel?.name || 'unknown',
+      estDaysMin: r.estimated_days ?? undefined,
+      estDaysMax: r.estimated_days ? r.estimated_days + 2 : undefined,
+      source: 'live',
+    })
+  }
+  // An expedited option that isn't meaningfully faster or costs less than
+  // ground just confuses — drop it.
+  if (quotes.length === 2 && quotes[1].amountCents <= quotes[0].amountCents) {
+    quotes = [quotes[1]]
+  }
+  if (quotes.length === 0) throw new Error('No usable rates')
+  return quotes
+}
+
+function providerLabel(provider: string): string {
+  const p = provider.toLowerCase()
+  if (p === 'canada_post') return 'Canada Post'
+  if (p === 'usps') return 'USPS'
+  if (p === 'ups') return 'UPS'
+  if (p === 'fedex') return 'FedEx'
+  return provider
+}
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
 // Quote cache: the Stripe callback fires on every completed address edit,
 // so identical re-quotes within a session are common.
 const CACHE_TTL_MS = 10 * 60 * 1000
@@ -164,9 +335,9 @@ const CACHE_MAX = 500
 const quoteCache = new Map<string, { at: number; quotes: ShippingOptionQuote[] }>()
 
 /**
- * Returns 1–2 shipping options for the address: the cheapest ground rate,
- * plus an expedited rate when one exists. Falls back to the flat zone table
- * on any error — this function never throws.
+ * Returns 1–2 shipping options (standard + express) for the address, priced
+ * from the built-in zone tables — or from live Shippo rates when a key is
+ * configured. Never throws: the tables always produce a price.
  */
 export async function getShippingOptions(
   to: ShippingAddress,
@@ -178,56 +349,15 @@ export async function getShippingOptions(
   if (cached && Date.now() - cached.at < CACHE_TTL_MS) return cached.quotes
 
   let quotes: ShippingOptionQuote[]
-  try {
-    const expectedProvider = to.country === 'CA' ? 'canada_post' : 'usps'
-    const rates = (await fetchShippoRates(to, ballCount))
-      .filter((r) => r.provider?.toLowerCase() === expectedProvider)
-      .filter((r) => Number.isFinite(parseFloat(r.amount)))
-    if (rates.length === 0) throw new Error('No rates returned')
-
-    const ground = rates
-      .filter((r) => (r.estimated_days ?? 8) <= 8)
-      .sort((a, b) => parseFloat(a.amount) - parseFloat(b.amount))[0]
-      ?? rates.sort((a, b) => parseFloat(a.amount) - parseFloat(b.amount))[0]
-    const expedited = rates
-      .filter((r) => (r.estimated_days ?? 99) <= 3 && r !== ground)
-      .sort((a, b) => parseFloat(a.amount) - parseFloat(b.amount))[0]
-
-    quotes = []
-    for (const r of [ground, expedited]) {
-      if (!r) continue
-      const { cents, currency } = rateCents(r, sessionCurrency)
-      quotes.push({
-        displayName: `${providerLabel(r.provider)} ${r.servicelevel?.name || 'Shipping'}`,
-        amountCents: await convertToCurrency(cents, currency, sessionCurrency),
-        currency: sessionCurrency,
-        carrier: r.provider,
-        service: r.servicelevel?.token || r.servicelevel?.name || 'unknown',
-        estDaysMin: r.estimated_days ?? undefined,
-        estDaysMax: r.estimated_days ? r.estimated_days + 2 : undefined,
-        source: 'live',
-      })
+  if (process.env.SHIPPO_API_KEY) {
+    try {
+      quotes = await liveQuotes(to, ballCount, sessionCurrency)
+    } catch (err) {
+      console.error('[shipping] live rates failed, using zone table:', err)
+      quotes = await tableQuotes(to, ballCount, sessionCurrency)
     }
-    // An expedited option that isn't meaningfully faster or costs less than
-    // ground just confuses — drop it.
-    if (quotes.length === 2 && quotes[1].amountCents <= quotes[0].amountCents) {
-      quotes = [quotes[1]]
-    }
-    if (quotes.length === 0) throw new Error('No usable rates')
-  } catch (err) {
-    console.error('[shipping] live rates failed, using fallback zone table:', err)
-    const localCurrency: 'usd' | 'cad' = to.country === 'CA' ? 'cad' : 'usd'
-    const perOrder = fallbackCents(to.country, to.state) + Math.max(0, ballCount - 1) * 500
-    quotes = [{
-      displayName: 'Standard Shipping',
-      amountCents: await convertToCurrency(perOrder, localCurrency, sessionCurrency).catch(() => perOrder),
-      currency: sessionCurrency,
-      carrier: to.country === 'CA' ? 'canada_post' : 'usps',
-      service: 'standard_fallback',
-      estDaysMin: 3,
-      estDaysMax: 9,
-      source: 'fallback',
-    }]
+  } else {
+    quotes = await tableQuotes(to, ballCount, sessionCurrency)
   }
 
   if (quoteCache.size >= CACHE_MAX) {
@@ -236,13 +366,4 @@ export async function getShippingOptions(
   }
   quoteCache.set(key, { at: Date.now(), quotes })
   return quotes
-}
-
-function providerLabel(provider: string): string {
-  const p = provider.toLowerCase()
-  if (p === 'canada_post') return 'Canada Post'
-  if (p === 'usps') return 'USPS'
-  if (p === 'ups') return 'UPS'
-  if (p === 'fedex') return 'FedEx'
-  return provider
 }

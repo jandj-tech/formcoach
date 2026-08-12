@@ -121,7 +121,7 @@ function CheckoutFrame({ items, region, compCode }: { items: CartItem[]; region:
       <div className="max-w-3xl mx-auto space-y-4">
         <h1 className="text-2xl sm:text-3xl font-black text-white">Checkout</h1>
         <p className="text-zinc-400 text-sm">
-          Shipping is calculated from live carrier rates once you enter your address.
+          Shipping is calculated once you enter your address.
         </p>
         {error && <p className="text-red-500 text-sm">{error}</p>}
         <div className="rounded-2xl overflow-hidden bg-white">

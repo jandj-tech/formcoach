@@ -489,6 +489,15 @@ PLAYER-FACING WORDING: tell them to finish with the hand reaching straight at th
 WHERE name = 'Shooting Hand Follow Through'
   AND (grading_notes IS NULL OR grading_notes NOT LIKE 'SHOOTING HAND FOLLOW THROUGH RUBRIC v2%');
 
+-- Free first analysis: every NEW account gets one upload on the house, but its
+-- report shows only the overall score — the criteria breakdown stays blurred
+-- until the account holds a purchased token (the results page then flips
+-- is_free_preview off permanently). users.free_analysis_used defaults TRUE so
+-- existing accounts are not retroactively granted the freebie; the signup
+-- route inserts FALSE explicitly for accounts created after this ships.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS free_analysis_used BOOLEAN DEFAULT true;
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS is_free_preview BOOLEAN DEFAULT false;
+
 
 
 

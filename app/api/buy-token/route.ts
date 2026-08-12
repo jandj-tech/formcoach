@@ -18,8 +18,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Login required' }, { status: 401 })
     }
 
-    const body = await req.json().catch(() => ({})) as { region?: string; compCode?: string; quantity?: unknown }
+    const body = await req.json().catch(() => ({})) as { region?: string; compCode?: string; quantity?: unknown; returnTo?: unknown }
     const region = body.region ?? 'US'
+
+    // Optional same-site path to land back on after checkout — used by the
+    // locked free-preview report so buying returns the player to their
+    // results. Anything that isn't a plain local path falls back to /analyze.
+    const returnTo = typeof body.returnTo === 'string' && body.returnTo.startsWith('/') && !body.returnTo.startsWith('//')
+      ? body.returnTo
+      : null
 
     // Players can buy in bulk like coaches and orgs already could. Floored so
     // a fractional quantity cannot bill a fraction of a token.
@@ -57,9 +64,9 @@ export async function POST(req: NextRequest) {
         userId: session.userId,
         quantity: String(quantity),
       },
-      success_url: `${BASE_URL}/analyze?token_purchased=1`,
+      success_url: returnTo ? `${BASE_URL}${returnTo}?token_purchased=1` : `${BASE_URL}/analyze?token_purchased=1`,
       ...discountOpts,
-      cancel_url: `${BASE_URL}/analyze`,
+      cancel_url: returnTo ? `${BASE_URL}${returnTo}` : `${BASE_URL}/analyze`,
     })
 
     return NextResponse.json({ url: stripeSession.url })

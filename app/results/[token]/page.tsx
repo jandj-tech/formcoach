@@ -11,6 +11,7 @@ import ScoreCard from '@/components/ScoreCard'
 import { getCriteriaVideoMap } from '@/lib/youtube'
 import FrameViewer from './FrameViewer'
 import ShareResultButton from './ShareResultButton'
+import UnlockCta from './UnlockCta'
 
 // Share-friendly metadata: when a player sends their results link to a
 // teammate, the preview shows their score (the OG image comes from the
@@ -49,11 +50,18 @@ export async function generateMetadata({ params }: { params: Promise<{ token: st
   }
 }
 
-export default async function ResultsPage({ params }: { params: Promise<{ token: string }> }) {
+export default async function ResultsPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ token: string }>
+  searchParams: Promise<{ token_purchased?: string }>
+}) {
   const { token } = await params
+  const sp = await searchParams
 
   const [submission] = await db`
-    SELECT id, status FROM submissions WHERE token = ${token}
+    SELECT id, status, user_id, is_free_preview FROM submissions WHERE token = ${token}
   `
 
   if (!submission) return notFound()
@@ -68,19 +76,54 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
 
   if (!analysis) return notFound()
 
-  const scores = (await db`
-    SELECT cs.id, cs.ai_score, cs.ai_reasoning, c.name, c.order_index
-    FROM criterion_scores cs
-    JOIN criteria c ON cs.criterion_id = c.id
-    WHERE cs.analysis_id = ${analysis.id}
-    ORDER BY c.order_index
-  `) as unknown as Array<{
-    id: number
-    ai_score: number | null
-    ai_reasoning: string
-    name: string
-    order_index: number
-  }>
+  // Free-preview gate: the one free signup analysis shows only the overall
+  // score. The moment the owner's account holds a token (or an active
+  // subscription/comp), the report unlocks permanently — unlocking does NOT
+  // consume the token, buying it is enough.
+  let locked = !!submission.is_free_preview
+  if (locked && submission.user_id) {
+    const [owner] = (await db`
+      SELECT analysis_tokens, subscription_type, subscription_expires_at
+      FROM users WHERE id = ${submission.user_id}
+    `) as unknown as [{ analysis_tokens: number | null; subscription_type: string | null; subscription_expires_at: string | null } | undefined]
+    const ownerHasAccess =
+      (owner?.analysis_tokens ?? 0) > 0 ||
+      (!!owner?.subscription_type &&
+        !!owner?.subscription_expires_at &&
+        new Date(owner.subscription_expires_at) > new Date())
+    if (ownerHasAccess) {
+      await db`UPDATE submissions SET is_free_preview = false WHERE id = ${submission.id}`
+      locked = false
+    }
+  }
+
+  // For a locked preview the real scores and reasoning never leave the
+  // server — only the criterion names render, under blurred placeholder cards.
+  const scores = locked
+    ? []
+    : ((await db`
+        SELECT cs.id, cs.ai_score, cs.ai_reasoning, c.name, c.order_index
+        FROM criterion_scores cs
+        JOIN criteria c ON cs.criterion_id = c.id
+        WHERE cs.analysis_id = ${analysis.id}
+        ORDER BY c.order_index
+      `) as unknown as Array<{
+        id: number
+        ai_score: number | null
+        ai_reasoning: string
+        name: string
+        order_index: number
+      }>)
+
+  const lockedNames = locked
+    ? ((await db`
+        SELECT c.name
+        FROM criterion_scores cs
+        JOIN criteria c ON cs.criterion_id = c.id
+        WHERE cs.analysis_id = ${analysis.id}
+        ORDER BY c.order_index
+      `) as unknown as Array<{ name: string }>)
+    : []
 
   // Load tutorial-video map for the criteria the player needs help with (< 7.5).
   // The video map function handles manual overrides and YouTube auto-matching.
@@ -126,11 +169,43 @@ export default async function ResultsPage({ params }: { params: Promise<{ token:
         <section className="space-y-3">
           <div className="flex items-baseline justify-between">
             <h2 className="text-black font-black text-lg sm:text-xl">Criteria breakdown</h2>
-            <span className="text-xs text-gray-400">
-              {scores.filter((s) => s.ai_score !== null).length} of {scores.length} criteria graded
-            </span>
+            {!locked && (
+              <span className="text-xs text-gray-400">
+                {scores.filter((s) => s.ai_score !== null).length} of {scores.length} criteria graded
+              </span>
+            )}
           </div>
-          {scores.map((s, i) => (
+          {locked && (
+            <div className="relative max-h-[560px] overflow-hidden rounded-2xl">
+              {/* Decoy cards: the numbers and text here are placeholders — the
+                  real scores were never sent to the browser. */}
+              <div className="space-y-3 blur-[7px] select-none pointer-events-none" aria-hidden>
+                {lockedNames.map((c, i) => (
+                  <div key={c.name} className="bg-gray-50 rounded-xl p-5 border border-gray-200">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-black font-semibold text-sm">{c.name}</h3>
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl font-bold text-green-600">{(6 + ((i * 7) % 4)).toFixed(1)}</span>
+                        <span className="text-black text-sm">/10</span>
+                      </div>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-1.5 mb-3">
+                      <div className="h-1.5 rounded-full bg-green-600" style={{ width: `${60 + ((i * 13) % 35)}%` }} />
+                    </div>
+                    <p className="text-black text-xs leading-relaxed">
+                      The full report grades this part of your form and tells you exactly
+                      what you did, what to fix, and the drill that fixes it.
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-white to-transparent" />
+              <div className="absolute inset-0 flex items-center justify-center px-6">
+                <UnlockCta resultsPath={`/results/${token}`} justPurchased={sp.token_purchased === '1'} />
+              </div>
+            </div>
+          )}
+          {!locked && scores.map((s, i) => (
             <Fragment key={s.id}>
               <ScoreCard
                 name={s.name}

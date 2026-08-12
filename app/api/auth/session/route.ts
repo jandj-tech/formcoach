@@ -17,6 +17,7 @@ export async function GET(req: NextRequest) {
       subscription_type: string | null
       subscription_expires_at: string | null
       analysis_tokens?: number
+      free_analysis_used?: boolean | null
     }
 
     // The analysis_tokens column may not exist yet if the DB migration
@@ -24,12 +25,12 @@ export async function GET(req: NextRequest) {
     let user: UserRow | undefined
     try {
       ;[user] = (await db`
-        SELECT id, email, subscription_type, subscription_expires_at, analysis_tokens
+        SELECT id, email, subscription_type, subscription_expires_at, analysis_tokens, free_analysis_used
         FROM users WHERE id = ${session.userId}
       `) as unknown as [UserRow | undefined]
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
-      if (!/analysis_tokens.*does not exist/i.test(msg)) throw err
+      if (!/(analysis_tokens|free_analysis_used).*does not exist/i.test(msg)) throw err
       console.warn('users.analysis_tokens column missing — run `npm run migrate`.')
       ;[user] = (await db`
         SELECT id, email, subscription_type, subscription_expires_at
@@ -61,8 +62,12 @@ export async function GET(req: NextRequest) {
       // per-analysis price is $0.99 instead of $1.79.
       const onInitiatedTeam = onTeam && (await userHasInitiatedTeam(user.id))
 
+      // The one-time free signup analysis is still available (score-only
+      // preview). Only meaningful when they have no tokens or subscription.
+      const freeUpload = !isSubscribed && tokens <= 0 && user.free_analysis_used === false
+
       return NextResponse.json({
-        user: { id: user.id, email: user.email, subscribed, tokens, onTeam, onInitiatedTeam },
+        user: { id: user.id, email: user.email, subscribed, tokens, onTeam, onInitiatedTeam, freeUpload },
         account: { type: 'player', dashboard: '/dashboard' },
       })
     }

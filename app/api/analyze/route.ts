@@ -67,12 +67,16 @@ export async function POST(req: NextRequest) {
 
     const userId = session?.userId ?? null
 
-    // Check + reserve token before doing any expensive work
+    // Check + reserve token before doing any expensive work. An account that
+    // has never used its free signup analysis gets this one on the house —
+    // flagged as a preview so the results page shows the overall score but
+    // keeps the criteria breakdown locked until a token is purchased.
+    let isFreePreview = false
     if (!isTeamUpload && userId) {
       const [user] = await db`
-        SELECT analysis_tokens, subscription_type, subscription_expires_at
+        SELECT analysis_tokens, subscription_type, subscription_expires_at, free_analysis_used
         FROM users WHERE id = ${userId}
-      ` as unknown as [{ analysis_tokens: number; subscription_type: string | null; subscription_expires_at: string | null } | undefined]
+      ` as unknown as [{ analysis_tokens: number; subscription_type: string | null; subscription_expires_at: string | null; free_analysis_used: boolean | null } | undefined]
 
       const isSubscribed =
         !!user?.subscription_type &&
@@ -82,7 +86,11 @@ export async function POST(req: NextRequest) {
       const tokens = user?.analysis_tokens ?? 0
 
       if (!isSubscribed && tokens <= 0) {
-        return NextResponse.json({ error: 'No analysis tokens' }, { status: 402 })
+        if (user?.free_analysis_used === false) {
+          isFreePreview = true
+        } else {
+          return NextResponse.json({ error: 'No analysis tokens' }, { status: 402 })
+        }
       }
     }
 
@@ -149,8 +157,8 @@ export async function POST(req: NextRequest) {
     const submissionToken = crypto.randomBytes(32).toString('hex')
     const submissionUserId = userId ?? classPlayerUserId
     const [submission] = await db`
-      INSERT INTO submissions (token, status, user_id, team_id, team_player_id, email)
-      VALUES (${submissionToken}, 'processing', ${submissionUserId}, ${teamId}, ${teamPlayerId}, ${coachEmail})
+      INSERT INTO submissions (token, status, user_id, team_id, team_player_id, email, is_free_preview)
+      VALUES (${submissionToken}, 'processing', ${submissionUserId}, ${teamId}, ${teamPlayerId}, ${coachEmail}, ${isFreePreview})
       RETURNING id
     `
 
@@ -341,12 +349,18 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Deduct token after successful analysis
+    // Deduct token after successful analysis. The free preview consumes the
+    // one-time freebie instead of a token — and only here, after success, so
+    // a failed or no-shot upload never burns it.
     if (!isTeamUpload && userId) {
-      await db`
-        UPDATE users SET analysis_tokens = analysis_tokens - 1
-        WHERE id = ${userId} AND analysis_tokens > 0
-      `
+      if (isFreePreview) {
+        await db`UPDATE users SET free_analysis_used = true WHERE id = ${userId}`
+      } else {
+        await db`
+          UPDATE users SET analysis_tokens = analysis_tokens - 1
+          WHERE id = ${userId} AND analysis_tokens > 0
+        `
+      }
     }
 
     if (isTeamUpload && teamId) {

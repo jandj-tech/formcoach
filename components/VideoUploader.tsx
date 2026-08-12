@@ -92,7 +92,7 @@ async function fitFramesToBudget(
   return { frames: current, reduced: true }
 }
 
-interface SessionUser { id: string; email: string; tokens: number; subscribed: boolean; onTeam: boolean; onInitiatedTeam: boolean }
+interface SessionUser { id: string; email: string; tokens: number; subscribed: boolean; onTeam: boolean; onInitiatedTeam: boolean; freeUpload: boolean }
 
 interface TeamMode {
   code: string
@@ -700,7 +700,7 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
 
   const sessionLoading = !teamMode && !coachSelf && sessionUser === undefined
   const notLoggedIn = !teamMode && !coachSelf && sessionUser === null
-  const noTokens = !teamMode && !coachSelf && !!sessionUser && !sessionUser.subscribed && sessionUser.tokens === 0
+  const noTokens = !teamMode && !coachSelf && !!sessionUser && !sessionUser.subscribed && sessionUser.tokens === 0 && !sessionUser.freeUpload
   const noCredits = !!coachSelf && (coachCredits ?? 0) === 0
   const isLocked = sessionLoading || notLoggedIn || noTokens || noCredits
 
@@ -719,6 +719,16 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
 
   return (
     <div className="w-full max-w-lg mx-auto space-y-4 px-2">
+
+      {/* Free first analysis for new accounts */}
+      {sessionUser && !sessionUser.subscribed && sessionUser.tokens === 0 && sessionUser.freeUpload && (
+        <div className="bg-orange-50 border border-orange-300 rounded-xl px-4 py-2.5 text-center">
+          <p className="text-orange-700 text-sm font-black tracking-wide">YOUR FIRST ANALYSIS IS FREE</p>
+          <p className="text-orange-700/80 text-xs mt-0.5">
+            You&apos;ll get your overall score — buy a token any time to unlock the full report.
+          </p>
+        </div>
+      )}
 
       {/* Token count for logged-in users */}
       {sessionUser && !sessionUser.subscribed && sessionUser.tokens > 0 && (

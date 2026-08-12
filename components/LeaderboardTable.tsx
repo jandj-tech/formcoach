@@ -16,6 +16,7 @@ export interface LeaderboardRow {
 }
 
 type SortMode = 'score-desc' | 'score-asc' | 'avg-desc' | 'name'
+type Theme = 'light' | 'dark'
 
 const SORT_OPTIONS: { mode: SortMode; label: string }[] = [
   { mode: 'name', label: 'Name (A–Z)' },
@@ -24,43 +25,96 @@ const SORT_OPTIONS: { mode: SortMode; label: string }[] = [
   { mode: 'avg-desc', label: 'Highest average' },
 ]
 
+// Every themed class the table uses, per theme. The dark variant carries
+// print: overrides back to the light palette — dark chalk-on-ink text would
+// otherwise print white-on-white.
+const THEMES = {
+  light: {
+    sortBtn: 'text-gray-600 hover:text-black border-gray-200',
+    sortBtnValue: 'text-black',
+    sortMenu: 'bg-white border-gray-200',
+    sortOption: 'text-gray-700 hover:bg-orange-50',
+    sortOptionActive: 'font-bold text-orange-600',
+    card: 'border-gray-200 bg-white shadow-sm',
+    thead: 'bg-gray-50 border-b border-gray-200',
+    th: 'text-gray-500',
+    tbody: 'divide-gray-100',
+    rowTop: 'bg-orange-50/50 hover:bg-orange-50',
+    row: 'hover:bg-gray-50',
+    name: 'text-black',
+    nameLink: 'text-black hover:text-orange-600',
+    team: 'text-gray-600',
+    avg: 'text-gray-500',
+    uploads: 'text-gray-400',
+    rankNum: 'text-gray-400',
+    rankTints: ['bg-amber-100', 'bg-gray-100', 'bg-orange-100'],
+    scoreHigh: 'text-green-600',
+    scoreMid: 'text-orange-500',
+    scoreLow: 'text-red-500',
+  },
+  dark: {
+    sortBtn: 'text-chalk-dim hover:text-chalk border-courtline',
+    sortBtnValue: 'text-chalk',
+    sortMenu: 'bg-ink-900 border-courtline',
+    sortOption: 'text-chalk-dim hover:bg-ink-800 hover:text-chalk',
+    sortOptionActive: 'font-bold text-ember-400',
+    card: 'border-courtline bg-ink-900 print:bg-white print:border-gray-200',
+    thead: 'bg-ink-950/60 border-b border-courtline print:bg-white print:border-gray-200',
+    th: 'text-chalk-dim print:text-gray-500',
+    tbody: 'divide-courtline print:divide-gray-100',
+    rowTop: 'bg-ember-500/10 hover:bg-ember-500/15 print:bg-white',
+    row: 'hover:bg-ink-800 print:bg-white',
+    name: 'text-chalk print:text-black',
+    nameLink: 'text-chalk hover:text-ember-400 print:text-black',
+    team: 'text-chalk-dim print:text-gray-600',
+    avg: 'text-chalk-dim print:text-gray-500',
+    uploads: 'text-chalk-dim print:text-gray-400',
+    rankNum: 'text-chalk-dim print:text-gray-400',
+    rankTints: [
+      'bg-amber-400/15 print:bg-transparent',
+      'bg-chalk/10 print:bg-transparent',
+      'bg-ember-500/20 print:bg-transparent',
+    ],
+    scoreHigh: 'text-green-400 print:text-green-600',
+    scoreMid: 'text-ember-400 print:text-orange-500',
+    scoreLow: 'text-red-400 print:text-red-500',
+  },
+} as const
+
 function formatPlayerName(firstName: string, lastNameInitial: string | null) {
   if (!lastNameInitial) return firstName
   if (lastNameInitial.length === 1) return `${firstName} ${lastNameInitial}.`
   return `${firstName} ${lastNameInitial}`
 }
 
-function scoreColor(score: number) {
-  if (score >= 8) return 'text-green-600'
-  if (score >= 6) return 'text-orange-500'
-  return 'text-red-500'
+function scoreColor(score: number, t: (typeof THEMES)[Theme]) {
+  if (score >= 8) return t.scoreHigh
+  if (score >= 6) return t.scoreMid
+  return t.scoreLow
 }
 
 // Fixed-size rank badge so medal rows and numbered rows stay aligned.
-function RankBadge({ rank }: { rank: number }) {
+function RankBadge({ rank, t }: { rank: number; t: (typeof THEMES)[Theme] }) {
   if (rank <= 3) {
-    const tint =
-      rank === 1
-        ? 'bg-amber-100'
-        : rank === 2
-          ? 'bg-gray-100'
-          : 'bg-orange-100'
     return (
-      <span className={`inline-flex h-8 w-8 items-center justify-center rounded-full text-base ${tint}`}>
+      <span className={`inline-flex h-8 w-8 items-center justify-center rounded-full text-base ${t.rankTints[rank - 1]}`}>
         {rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉'}
       </span>
     )
   }
   return (
-    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold text-gray-400 tabular-nums">
+    <span className={`inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold tabular-nums ${t.rankNum}`}>
       {rank}
     </span>
   )
 }
 
 // Player name links to the analyses detail page. `context` picks the routes:
-// 'team' for the coach dashboard, 'org' for the organization dashboard.
-function detailHref(entry: LeaderboardRow, context: 'team' | 'org'): string | null {
+// 'team' for the coach dashboard, 'org' for the organization dashboard, and
+// 'player' for the player-facing list, where the coach pages aren't
+// accessible so names never link.
+function detailHref(entry: LeaderboardRow, context: 'team' | 'org' | 'player'): string | null {
+  if (context === 'player') return null
   if (entry.kind === 'member') {
     return context === 'org'
       ? `/org/dashboard/member/${entry.id}`
@@ -74,19 +128,22 @@ function detailHref(entry: LeaderboardRow, context: 'team' | 'org'): string | nu
 // Best is the highest score recorded on their account and Avg the mean across
 // all their uploads; their Rank always reflects the Best standing, no matter
 // which sort order is shown. Pass `showTeam` for the org-wide list to add a
-// Team column.
+// Team column, and theme="dark" on Broadcast Court (ink/chalk/ember) pages.
 export default function LeaderboardTable({
   entries,
   context = 'team',
   showTeam = false,
+  theme = 'light',
 }: {
   entries: LeaderboardRow[]
-  context?: 'team' | 'org'
+  context?: 'team' | 'org' | 'player'
   showTeam?: boolean
+  theme?: Theme
 }) {
   const [sortMode, setSortMode] = useState<SortMode>('score-desc')
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const t = THEMES[theme]
 
   // Older callers may not send avg_score yet — drop the column (and its sort
   // option) instead of rendering a dash for everyone.
@@ -150,13 +207,13 @@ export default function LeaderboardTable({
           <button
             type="button"
             onClick={() => setMenuOpen((o) => !o)}
-            className="flex items-center gap-1.5 text-sm font-semibold text-gray-600 hover:text-black border border-gray-200 rounded-lg px-3 py-1.5 transition-colors"
+            className={`flex items-center gap-1.5 text-sm font-semibold border rounded-lg px-3 py-1.5 transition-colors ${t.sortBtn}`}
           >
-            Sort by: <span className="text-black">{currentLabel}</span>
-            <span className={`text-gray-400 transition-transform ${menuOpen ? 'rotate-180' : ''}`}>▾</span>
+            Sort by: <span className={t.sortBtnValue}>{currentLabel}</span>
+            <span className={`transition-transform ${menuOpen ? 'rotate-180' : ''} ${theme === 'dark' ? 'text-chalk-dim' : 'text-gray-400'}`}>▾</span>
           </button>
           {menuOpen && (
-            <div className="absolute right-0 top-full mt-1 z-40 w-44 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden py-1">
+            <div className={`absolute right-0 top-full mt-1 z-40 w-44 border rounded-xl shadow-lg overflow-hidden py-1 ${t.sortMenu}`}>
               {sortOptions.map((opt) => (
                 <button
                   key={opt.mode}
@@ -165,8 +222,8 @@ export default function LeaderboardTable({
                     setSortMode(opt.mode)
                     setMenuOpen(false)
                   }}
-                  className={`block w-full text-left px-4 py-2 text-sm transition-colors hover:bg-orange-50 ${
-                    opt.mode === sortMode ? 'font-bold text-orange-600' : 'text-gray-700'
+                  className={`block w-full text-left px-4 py-2 text-sm transition-colors ${
+                    opt.mode === sortMode ? t.sortOptionActive : t.sortOption
                   }`}
                 >
                   {opt.label}
@@ -177,24 +234,24 @@ export default function LeaderboardTable({
         </div>
       </div>
 
-      <div className="border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+      <div className={`border rounded-2xl overflow-hidden ${t.card}`}>
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className={t.thead}>
               <tr>
-                <th className="pl-4 pr-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-12">Rank</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Player</th>
+                <th className={`pl-4 pr-2 py-3 text-left text-xs font-semibold uppercase tracking-wide w-12 ${t.th}`}>Rank</th>
+                <th className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide ${t.th}`}>Player</th>
                 {showTeam && (
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Team</th>
+                  <th className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide ${t.th}`}>Team</th>
                 )}
-                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Best</th>
+                <th className={`px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide ${t.th}`}>Best</th>
                 {hasAvg && (
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Avg</th>
+                  <th className={`px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide ${t.th}`}>Avg</th>
                 )}
-                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Uploads</th>
+                <th className={`px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide ${t.th}`}>Uploads</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className={`divide-y ${t.tbody}`}>
               {sortedEntries.map((entry) => {
                 const score = Number(entry.best_score)
                 const avg = entry.avg_score != null ? Number(entry.avg_score) : null
@@ -203,34 +260,31 @@ export default function LeaderboardTable({
                 const key = rowKey(entry)
                 const rank = rankByKey[key]
                 return (
-                  <tr
-                    key={key}
-                    className={`transition-colors ${rank === 1 ? 'bg-orange-50/50 hover:bg-orange-50' : 'bg-white hover:bg-gray-50'}`}
-                  >
+                  <tr key={key} className={`transition-colors ${rank === 1 ? t.rowTop : t.row}`}>
                     <td className="pl-4 pr-2 py-2.5">
-                      <RankBadge rank={rank} />
+                      <RankBadge rank={rank} t={t} />
                     </td>
                     <td className="px-4 py-2.5 font-semibold whitespace-nowrap">
                       {href ? (
-                        <Link href={href} className="text-black hover:text-orange-600 hover:underline transition-colors">
+                        <Link href={href} className={`hover:underline transition-colors ${t.nameLink}`}>
                           {name}
                         </Link>
                       ) : (
-                        <span className="text-black">{name}</span>
+                        <span className={t.name}>{name}</span>
                       )}
                     </td>
                     {showTeam && (
-                      <td className="px-4 py-2.5 text-sm text-gray-600 whitespace-nowrap">{entry.team_name ?? '—'}</td>
+                      <td className={`px-4 py-2.5 text-sm whitespace-nowrap ${t.team}`}>{entry.team_name ?? '—'}</td>
                     )}
-                    <td className={`px-4 py-2.5 text-right font-black tabular-nums ${scoreColor(score)}`}>
+                    <td className={`px-4 py-2.5 text-right font-black tabular-nums ${scoreColor(score, t)}`}>
                       {score.toFixed(1)}
                     </td>
                     {hasAvg && (
-                      <td className="px-4 py-2.5 text-right text-sm font-semibold text-gray-500 tabular-nums">
+                      <td className={`px-4 py-2.5 text-right text-sm font-semibold tabular-nums ${t.avg}`}>
                         {avg != null ? avg.toFixed(1) : '—'}
                       </td>
                     )}
-                    <td className="px-4 py-2.5 text-right text-sm text-gray-400 tabular-nums">
+                    <td className={`px-4 py-2.5 text-right text-sm tabular-nums ${t.uploads}`}>
                       {entry.upload_count}
                     </td>
                   </tr>

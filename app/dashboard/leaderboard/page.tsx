@@ -5,26 +5,7 @@ import { db } from '@/lib/db'
 import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
 import PrintButton from '@/components/PrintButton'
-
-type LeaderboardEntry = {
-  id: string
-  first_name: string
-  last_name_initial: string | null
-  best_score: number | string
-  upload_count: number
-}
-
-function formatPlayerName(firstName: string, lastNameInitial: string | null) {
-  if (!lastNameInitial) return firstName
-  if (lastNameInitial.length === 1) return `${firstName} ${lastNameInitial}.`
-  return `${firstName} ${lastNameInitial}`
-}
-
-function scoreColor(score: number) {
-  if (score >= 8) return 'text-green-600'
-  if (score >= 6) return 'text-orange-500'
-  return 'text-red-500'
-}
+import LeaderboardTable, { type LeaderboardRow } from '@/components/LeaderboardTable'
 
 export default async function TeamLeaderboardPage({
   searchParams,
@@ -75,7 +56,7 @@ export default async function TeamLeaderboardPage({
   // The leaderboard combines two kinds of shots: players who joined with an
   // account (matched by submissions.user_id) and players a coach uploaded for
   // by name (matched by submissions.team_player_id).
-  let leaderboard: LeaderboardEntry[] = []
+  let leaderboard: LeaderboardRow[] = []
   try {
     leaderboard = (await db`
       WITH shots AS (
@@ -84,7 +65,8 @@ export default async function TeamLeaderboardPage({
           COALESCE(NULLIF(tm.first_name, ''), u.email) AS name,
           tm.last_name_initial,
           a.overall_score,
-          s.id AS sid
+          s.id AS sid,
+          'member' AS kind
         FROM team_memberships tm
         JOIN users u ON u.id = tm.user_id
         JOIN submissions s ON s.user_id = u.id
@@ -96,7 +78,8 @@ export default async function TeamLeaderboardPage({
           tp.first_name AS name,
           tp.last_name_initial,
           a.overall_score,
-          s.id AS sid
+          s.id AS sid,
+          'player' AS kind
         FROM team_players tp
         JOIN submissions s ON s.team_player_id = tp.id AND s.team_id = tp.team_id
         JOIN analyses a ON a.submission_id = s.id
@@ -106,74 +89,57 @@ export default async function TeamLeaderboardPage({
         player_id AS id,
         name AS first_name,
         last_name_initial,
+        kind,
         MAX(overall_score) AS best_score,
+        ROUND(AVG(overall_score)::numeric, 1) AS avg_score,
         COUNT(sid)::int AS upload_count
       FROM shots
-      GROUP BY player_id, name, last_name_initial
+      GROUP BY player_id, name, last_name_initial, kind
       ORDER BY best_score DESC
-    `) as unknown as LeaderboardEntry[]
+    `) as unknown as LeaderboardRow[]
   } catch (err) {
     console.error('[dashboard/leaderboard] leaderboard query failed:', err)
   }
 
+  // BIG team name, last word in the ember gradient — same hero treatment as
+  // the team hub this page is linked from.
+  const words = team.name.trim().split(/\s+/)
+  const lastWord = words[words.length - 1]
+  const leadWords = words.slice(0, -1).join(' ')
+
   return (
-    <main className="min-h-screen bg-white flex flex-col">
+    <main className="min-h-screen bg-ink-950 text-chalk print:bg-white print:text-black flex flex-col">
       <div className="print:hidden">
         <TopNav />
       </div>
       <div className="max-w-3xl mx-auto w-full px-6 py-10 space-y-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <Link href="/dashboard" className="text-sm text-orange-500 hover:underline font-medium print:hidden">
-              ← Back to dashboard
+            <Link href="/team" className="text-sm text-ember-400 hover:text-ember-500 font-medium print:hidden">
+              ← Back to your team
             </Link>
-            <h1 className="text-2xl font-black text-black mt-2">{team.name} Leaderboard</h1>
-            <p className="text-gray-500 text-sm mt-1">Best shot score for each player on your team</p>
+            <p className="eyebrow text-ember-400 select-none mt-4 print:text-black">Leaderboard</p>
+            <h1 className="font-display font-black uppercase text-[clamp(2rem,6vw,3.5rem)] leading-[0.95] mt-1">
+              {leadWords && <>{leadWords} </>}
+              <span className="text-gradient-ember print:text-black print:[background:none]">{lastWord}</span>
+            </h1>
+            <p className="text-chalk-dim text-sm mt-3 print:text-gray-500">
+              Every player ranked by their best shot score.
+            </p>
           </div>
           {leaderboard.length > 0 && <PrintButton label="Print" />}
         </div>
 
         {leaderboard.length === 0 ? (
-          <div className="text-center py-12 text-gray-400 border-2 border-dashed border-gray-200 rounded-2xl">
-            <p className="font-semibold">No shots analyzed yet</p>
+          <div className="text-center py-12 text-chalk-dim border-2 border-dashed border-courtline rounded-2xl">
+            <p className="font-semibold text-chalk">No shots analyzed yet</p>
             <p className="text-sm mt-1">Scores show up here once teammates analyze their shots.</p>
           </div>
         ) : (
-          <div className="border border-gray-200 rounded-2xl overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Rank</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Player</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Best Score</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Uploads</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {leaderboard.map((entry, i) => {
-                  const score = Number(entry.best_score)
-                  return (
-                    <tr key={entry.id} className={i === 0 ? 'bg-orange-50/50' : 'bg-white'}>
-                      <td className="px-4 py-3 text-sm font-bold text-gray-400">
-                        {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}
-                      </td>
-                      <td className="px-4 py-3 font-semibold text-black">
-                        {formatPlayerName(entry.first_name, entry.last_name_initial)}
-                      </td>
-                      <td className={`px-4 py-3 text-right font-black text-lg ${scoreColor(score)}`}>
-                        {score.toFixed(1)}
-                      </td>
-                      <td className="px-4 py-3 text-right text-sm text-gray-400">
-                        {entry.upload_count}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+          <LeaderboardTable entries={leaderboard} context="player" theme="dark" />
         )}
       </div>
+      <div className="flex-1" />
       <div className="print:hidden">
         <SiteFooter />
       </div>

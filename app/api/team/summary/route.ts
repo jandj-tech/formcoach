@@ -76,13 +76,14 @@ export async function GET(req: NextRequest) {
         SELECT
           player_id AS id, first_name, last_name_initial,
           MAX(overall_score) AS best_score,
+          ROUND(AVG(overall_score)::numeric, 1) AS avg_score,
           COUNT(sid)::int AS upload_count
         FROM shots
         GROUP BY player_id, first_name, last_name_initial
         ORDER BY best_score DESC
       `) as unknown as Array<{
         id: string; first_name: string; last_name_initial: string
-        best_score: number | string; upload_count: number
+        best_score: number | string; avg_score: number | string | null; upload_count: number
       }>
 
       const improved = (await db`
@@ -198,6 +199,7 @@ export async function GET(req: NextRequest) {
         leaderboard: leaderboard.map(e => ({
           name: displayName(e.first_name, e.last_name_initial),
           bestScore: Number(e.best_score),
+          avgScore: e.avg_score != null ? Number(e.avg_score) : null,
           uploads: e.upload_count,
         })),
         mostImproved: improved

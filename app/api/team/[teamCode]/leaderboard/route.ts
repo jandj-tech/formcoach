@@ -24,6 +24,7 @@ export async function GET(
   const leaderboard = await db`
     SELECT tp.id, tp.first_name, tp.last_name_initial,
       MAX(a.overall_score) AS best_score,
+      ROUND(AVG(a.overall_score)::numeric, 1) AS avg_score,
       COUNT(s.id)::int AS upload_count
     FROM team_players tp
     JOIN submissions s ON s.team_player_id = tp.id AND s.team_id = tp.team_id
@@ -36,6 +37,7 @@ export async function GET(
     first_name: string
     last_name_initial: string
     best_score: number
+    avg_score: number | string | null
     upload_count: number
   }>
 

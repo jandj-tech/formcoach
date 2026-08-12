@@ -31,6 +31,7 @@ export default async function TeamDashboardPage() {
     last_name_initial: string
     kind: 'member' | 'player'
     best_score: number
+    avg_score: number | string | null
     upload_count: number
   }> = []
 
@@ -77,6 +78,7 @@ export default async function TeamDashboardPage() {
       SELECT
         player_id AS id, first_name, last_name_initial, kind,
         MAX(overall_score) AS best_score,
+        ROUND(AVG(overall_score)::numeric, 1) AS avg_score,
         COUNT(sid)::int AS upload_count
       FROM shots
       GROUP BY player_id, first_name, last_name_initial, kind

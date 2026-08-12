@@ -18,7 +18,26 @@ interface Submission {
   overall_score: number
   analysis_id: number
   frame_urls: string[] | null
+  account_email: string | null
+  account_nickname: string | null
+  team_name: string | null
+  player_first_name: string | null
+  player_last_initial: string | null
   scores: Score[]
+}
+
+// Who made this submission: a player account, a coach uploading for a roster
+// player, or a coach's own shot. Falls back to the legacy contact email.
+function accountLabel(s: Submission): string {
+  if (s.account_email) {
+    return s.account_nickname ? `${s.account_nickname} — ${s.account_email}` : s.account_email
+  }
+  if (s.player_first_name) {
+    const player = `${s.player_first_name} ${s.player_last_initial ?? ''}`.trim()
+    return s.team_name ? `${player} — team: ${s.team_name}` : `${player} — team upload`
+  }
+  if (s.email) return `${s.email} (coach upload)`
+  return 'No account'
 }
 
 export default function LearnModePage() {
@@ -166,7 +185,7 @@ export default function LearnModePage() {
               }}
             >
               <div>
-                <p className="text-white text-sm font-medium">{s.email || 'No email'}</p>
+                <p className="text-white text-sm font-medium">{accountLabel(s)}</p>
                 <p className="text-white text-xs">{new Date(s.created_at).toLocaleString()}</p>
               </div>
               <div className="flex items-center gap-3">

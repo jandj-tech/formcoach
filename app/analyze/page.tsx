@@ -73,6 +73,12 @@ export default async function AnalyzePage() {
         <p className="text-chalk-dim text-sm sm:text-base mt-4 max-w-md">
           Upload a video and our AI will score your form across 18 coaching criteria.
         </p>
+        {!playerSession && !coachSelf && (
+          <p className="inline-flex items-center gap-2 mt-4 bg-ember-500/10 border border-ember-500/30 rounded-full px-4 py-1.5 text-ember-400 text-sm font-bold select-none">
+            <span className="w-1.5 h-1.5 rounded-full bg-ember-500 animate-pulse" aria-hidden />
+            Your first analysis is free — sign up below
+          </p>
+        )}
       </section>
 
       <section className="flex-1 flex flex-col items-center px-4 pb-20">

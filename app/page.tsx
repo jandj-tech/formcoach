@@ -105,6 +105,12 @@ export default async function HomePage() {
           </Link>
         </div>
 
+        {!session && (
+          <p className="text-ember-400 text-sm font-bold mt-5">
+            Your first shot analysis is free — sign up and upload your video.
+          </p>
+        )}
+
         {/* Stat strip */}
         <div className="flex items-center justify-center gap-8 sm:gap-14 mt-14 select-none">
           {[
@@ -318,6 +324,11 @@ export default async function HomePage() {
             For teams &amp; organizations
           </Link>
         </div>
+        {!session && (
+          <p className="mt-6 text-ink-950 font-bold text-sm">
+            New here? Your first analysis is free.
+          </p>
+        )}
         <p className="mt-8 text-sm">
           <Link
             href="/support#faq"

@@ -136,11 +136,7 @@ async function analyzeShotOnce(
 
   const calibrationLines = calibration.map((f) => {
     const drift = Number(f.avg_drift)
-    const direction =
-      drift > 0
-        ? `you score ${Math.abs(drift).toFixed(1)} pts too LOW — be more generous`
-        : `you score ${Math.abs(drift).toFixed(1)} pts too HIGH — be stricter`
-    return `- "${f.name}" (${f.corrections} correction${Number(f.corrections) > 1 ? 's' : ''}): ${direction}${f.latest_note ? ` — "${f.latest_note}"` : ''}`
+    return `- "${f.name}" (${f.corrections} correction${Number(f.corrections) > 1 ? 's' : ''}): expert scored ${Math.abs(drift).toFixed(1)} pts ${drift > 0 ? 'higher' : 'lower'} on average${f.latest_note ? ` — "${f.latest_note}"` : ''}`
   })
 
   const recentLines = recentCorrections
@@ -148,8 +144,8 @@ async function analyzeShotOnce(
     .map((r) => `- "${r.name}": scored ${r.ai_score} → corrected to ${r.admin_score} — "${r.admin_notes}"`)
 
   const feedbackText = calibrationLines.length > 0 || recentLines.length > 0
-    ? '\n\nEXPERT GRADING CALIBRATION — This is how the expert grades. Study these corrections and apply the same judgment to your scoring:\n' +
-      (calibrationLines.length > 0 ? 'Score drift per criterion:\n' + calibrationLines.join('\n') : '') +
+    ? '\n\nEXPERT GRADING CALIBRATION — an expert reviewed some of your past scores and corrected them. These corrections are NOT about being stricter or more generous overall — your grading standard is fine. Each correction happened because something specific in that video was missed or misread. Study the REASON behind each correction and actively check this video for the same thing before scoring:\n' +
+      (calibrationLines.length > 0 ? 'Corrections per criterion:\n' + calibrationLines.join('\n') : '') +
       (recentLines.length > 0 ? '\n\nRecent corrections with reasoning (apply this grading style):\n' + recentLines.join('\n') : '')
     : ''
 

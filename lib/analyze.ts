@@ -111,6 +111,8 @@ async function analyzeShotOnce(
       c.name,
       cs.criterion_id,
       ROUND(AVG(cs.admin_score - cs.ai_score)::numeric, 2) AS avg_drift,
+      MIN(cs.admin_score - cs.ai_score) AS min_drift,
+      MAX(cs.admin_score - cs.ai_score) AS max_drift,
       COUNT(*) AS corrections,
       MAX(cs.admin_notes) FILTER (WHERE cs.admin_notes IS NOT NULL AND cs.admin_notes != '') AS latest_note
     FROM criterion_scores cs
@@ -134,7 +136,23 @@ async function analyzeShotOnce(
     .map((c) => `--- ID ${c.id}: "${c.name}"\n${c.grading_notes || c.description}`)
     .join('\n\n')
 
-  const calibrationLines = calibration.map((f) => {
+  // A criterion's corrections only become prompt guidance when they all push
+  // the same direction. Mixed-direction corrections mean the judgment is
+  // situational — that lesson belongs in the criterion's grading guide, not
+  // here. Injecting an AVERAGED directive for a mixed criterion is actively
+  // harmful: "be more generous" (net of old upward fixes) made a catapulted
+  // shot grade 8 against a rubric that caps it at 4, and raw score examples
+  // the model cannot see the footage for bias its read of EVERY clip — a
+  // "7.5→3 catapult" example made a clean control clip grade 3.5.
+  const consistent = calibration.filter((f) => {
+    const lo = f.min_drift === null ? null : Number(f.min_drift)
+    const hi = f.max_drift === null ? null : Number(f.max_drift)
+    const avg = f.avg_drift === null ? null : Number(f.avg_drift)
+    return lo !== null && hi !== null && avg !== null && Math.abs(avg) >= 0.5 && lo >= 0 === hi >= 0
+  })
+  const consistentNames = new Set(consistent.map((f) => f.name as string))
+
+  const calibrationLines = consistent.map((f) => {
     const drift = Number(f.avg_drift)
     const direction =
       drift > 0
@@ -144,11 +162,11 @@ async function analyzeShotOnce(
   })
 
   const recentLines = recentCorrections
-    .filter((r) => r.admin_notes)
+    .filter((r) => r.admin_notes && consistentNames.has(r.name as string))
     .map((r) => `- "${r.name}": scored ${r.ai_score} → corrected to ${r.admin_score} — "${r.admin_notes}"`)
 
   const feedbackText = calibrationLines.length > 0 || recentLines.length > 0
-    ? '\n\nEXPERT GRADING CALIBRATION — This is how the expert grades. Study these corrections and apply the same judgment to your scoring:\n' +
+    ? '\n\nEXPERT GRADING CALIBRATION — This is how the expert grades. Study these corrections and apply the same judgment to your scoring. They NEVER override the grading guides above: when a guide names a hard cap or band for a fault you observed, that cap wins over any generosity guidance here.\n' +
       (calibrationLines.length > 0 ? 'Score drift per criterion:\n' + calibrationLines.join('\n') : '') +
       (recentLines.length > 0 ? '\n\nRecent corrections with reasoning (apply this grading style):\n' + recentLines.join('\n') : '')
     : ''
@@ -179,7 +197,8 @@ You will receive ${n} sequential frames covering one shot. They are NOT split ev
 JUDGE EACH CRITERION ONLY AT ITS OWN MOMENT — a criterion scored off the wrong moment is the single most common cause of a wrong score:
 - Feet shoulder width apart, knees bent, dominant foot forward, square to the basket: MOMENT 1 ONLY. The base and the lower body are judged as the player goes up, never from an earlier frame where they are still standing around.
 - Shot pocket, elbow L-shape, guide hand placement, thumb spread, palm off the ball: MOMENT 1 THROUGH MOMENT 2 — the hands and arms as they rise, and again at the apex.
-- Source of power, one-hand release, two-finger release, guide hand separation: MOMENT 2.
+- Source of power: MOMENT 1 THROUGH MOMENT 2 — where the power came from shows in the rise (how the ball is carried up), not at the apex, where every arm is extended.
+- One-hand release, two-finger release, guide hand separation: MOMENT 2.
 - Shooting hand follow-through, guide hand follow-through, forward motion and toes: MOMENT 3 — right after the ball leaves the hand and the next couple of frames.
 - Shot arc, ball rotation: the ball in flight after release.
 - Connected shot: the sequence as a whole.

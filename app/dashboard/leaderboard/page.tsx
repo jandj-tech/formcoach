@@ -114,12 +114,20 @@ export default async function TeamLeaderboardPage({
       </div>
       <div className="max-w-3xl mx-auto w-full px-6 py-10 space-y-6">
         <div className="flex items-start justify-between gap-4">
-          <div>
+          <div className="min-w-0 flex-1">
             <Link href="/team" className="text-sm text-ember-400 hover:text-ember-500 font-medium print:hidden">
               ← Back to your team
             </Link>
             <p className="eyebrow text-ember-400 select-none mt-4 print:text-black">Leaderboard</p>
-            <h1 className="font-display font-black uppercase text-[clamp(2rem,6vw,3.5rem)] leading-[0.95] mt-1">
+            {/* One line, always — long team names render smaller so the whole
+                name still fits, with an ellipsis as the last resort. */}
+            <h1
+              className={`font-display font-black uppercase leading-tight mt-1 truncate ${
+                team.name.length > 24
+                  ? 'text-[clamp(1.05rem,2.6vw,1.5rem)]'
+                  : 'text-[clamp(1.4rem,3.5vw,2rem)]'
+              }`}
+            >
               {leadWords && <>{leadWords} </>}
               <span className="text-gradient-ember print:text-black print:[background:none]">{lastWord}</span>
             </h1>

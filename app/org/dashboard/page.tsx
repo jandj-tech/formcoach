@@ -182,7 +182,9 @@ export default async function OrgDashboardPage() {
               WHERE tp.team_id = ${t.id} AND s.status = 'complete'
             )
             SELECT player_id AS id, first_name, last_name_initial, kind,
-                   MAX(overall_score) AS best_score, COUNT(sid)::int AS upload_count
+                   MAX(overall_score) AS best_score,
+                   ROUND(AVG(overall_score)::numeric, 1) AS avg_score,
+                   COUNT(sid)::int AS upload_count
             FROM shots
             GROUP BY player_id, first_name, last_name_initial, kind
             ORDER BY best_score DESC

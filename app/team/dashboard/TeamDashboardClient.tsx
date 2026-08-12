@@ -43,6 +43,7 @@ interface LeaderboardEntry {
   last_name_initial: string
   kind: 'member' | 'player'
   best_score: number
+  avg_score: number | string | null
   upload_count: number
 }
 

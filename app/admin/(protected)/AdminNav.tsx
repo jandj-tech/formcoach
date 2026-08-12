@@ -12,6 +12,7 @@ const ADMIN_TABS = [
   { href: '/admin/organizations', label: 'Organizations' },
   { href: '/admin/criteria', label: 'Criteria' },
   { href: '/admin/learn', label: 'Learn Mode' },
+  { href: '/admin/eval', label: 'Test Bench' },
   { href: '/admin/emails', label: 'Emails' },
   { href: '/admin/orders', label: 'Orders' },
   { href: '/admin/access', label: 'Access' },

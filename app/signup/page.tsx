@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { trackCompleteRegistration } from '@/lib/meta-pixel'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
@@ -23,17 +23,6 @@ function SignupForm() {
   const teamInviteToken = searchParams.get('teamInvite') || ''
   const claimToken = searchParams.get('claimToken') || ''
   const pendingCredits = parseInt(searchParams.get('credits') || '0', 10)
-
-  useEffect(() => {
-    // Pre-fill email from Stripe checkout redirect (subscription flow only)
-    const sessionId = searchParams.get('session_id')
-    if (sessionId) {
-      fetch(`/api/subscribe/session-email?session_id=${sessionId}`)
-        .then(r => r.json())
-        .then(({ email: e }) => { if (e) setEmail(e) })
-        .catch(() => {})
-    }
-  }, [searchParams])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()

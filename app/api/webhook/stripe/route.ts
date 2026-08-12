@@ -53,7 +53,7 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
     const session = event.data.object as Stripe.Checkout.Session
     const variant = session.metadata?.variant
     const size = session.metadata?.size
-    const plan = session.metadata?.plan as 'monthly' | 'annual' | 'team-credits' | undefined
+    const plan = session.metadata?.plan as 'team-credits' | undefined
     const metaType = session.metadata?.type
     const email = session.customer_details?.email
 
@@ -192,36 +192,6 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
         if (claim === 'claimed') await releaseStripeSessionClaim(session.id, 'analysis_token_failed')
         return NextResponse.json({ received: true, handled: false })
       }
-      return NextResponse.json({ received: true })
-    }
-
-    // --- Legacy subscription checkout (honored until expiry, no longer sold) ---
-    if (plan === 'monthly' || plan === 'annual') {
-      if (!email) return NextResponse.json({ received: true })
-
-      const emailLower = email.toLowerCase()
-      const expiresAt = plan === 'annual'
-        ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
-        : new Date(Date.now() + 31 * 24 * 60 * 60 * 1000)
-
-      try {
-        await db`
-          INSERT INTO email_list (email, subscription_type, subscription_expires_at)
-          VALUES (${emailLower}, ${plan}, ${expiresAt})
-          ON CONFLICT (email) DO UPDATE
-          SET subscription_type = ${plan}, subscription_expires_at = ${expiresAt}
-        `
-        await db`
-          UPDATE users
-          SET subscription_type = ${plan}, subscription_expires_at = ${expiresAt},
-              stripe_customer_id = ${session.customer as string ?? null}
-          WHERE email = ${emailLower}
-        `
-      } catch (err) {
-        console.error('Failed to save subscription:', err)
-        return NextResponse.json({ received: true, handled: false })
-      }
-
       return NextResponse.json({ received: true })
     }
 
@@ -584,24 +554,6 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
       console.error('[stripe webhook] abandoned-checkout email failed:', err)
     }
     return NextResponse.json({ received: true })
-  }
-
-  // --- Subscription cancelled/expired ---
-  if (event.type === 'customer.subscription.deleted') {
-    const sub = event.data.object as Stripe.Subscription
-    const customerId = sub.customer as string
-    try {
-      await db`
-        UPDATE users SET subscription_type = NULL, subscription_expires_at = NULL
-        WHERE stripe_customer_id = ${customerId}
-      `
-      await db`
-        UPDATE email_list SET subscription_type = NULL, subscription_expires_at = NULL
-        WHERE email IN (SELECT email FROM users WHERE stripe_customer_id = ${customerId})
-      `
-    } catch (err) {
-      console.error('Failed to clear subscription:', err)
-    }
   }
 
   return NextResponse.json({ received: true })

@@ -329,7 +329,15 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
         // multipart upload that blows past Vercel's 4.5MB request-body limit,
         // which the user only sees as "something went wrong". 1280px on the
         // long edge keeps ample detail for the AI while staying well under it.
-        const MAX_FRAME_DIM = 1280
+        //
+        // Env-tunable (build-time): image tokens scale with width × height, so
+        // this is the biggest per-analysis cost lever — 1024 is ~-36% image
+        // tokens, 896 ~-51%, 768 ~-64%. Lower resolution can hurt the
+        // fine-grained checks (fingers, thumb, elbow angle): validate any
+        // change with `npm run eval` against the fixture baseline BEFORE
+        // adopting it, per fixtures/README.md.
+        const MAX_FRAME_DIM =
+          Number(process.env.NEXT_PUBLIC_MAX_FRAME_DIM) || 1280
         const frameScale = Math.min(
           1,
           MAX_FRAME_DIM / Math.max(video.videoWidth, video.videoHeight),

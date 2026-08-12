@@ -439,6 +439,13 @@ async function analyzeShotOnce(
           {
             type: 'text',
             text: 'Analyze this basketball shot across all frames and return your scoring as JSON.',
+            // Second breakpoint AFTER the frames: the ~34K image tokens are by
+            // far the biggest input cost, and without this marker passes 2..N
+            // of the ensemble re-paid full price for them every time (the
+            // system-prompt breakpoint above only covers the rubric). With it,
+            // pass 1 writes rubric+frames once and passes 2..N read the whole
+            // prefix at ~10% — roughly a third off the cost of every analysis.
+            cache_control: { type: 'ephemeral' },
           },
         ],
       },

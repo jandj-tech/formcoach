@@ -37,11 +37,24 @@ export type ShippingOptionQuote = {
 // Built-in zone tables (primary rate source)
 // ---------------------------------------------------------------------------
 
+// Delivery estimates shown to buyers = carrier transit time + handling.
+// Handling covers the gap between the order landing and the parcel actually
+// reaching the post office (packing, drop-off runs). Tune to the real
+// drop-off cadence at each warehouse.
+const HANDLING_DAYS_MIN = 1
+const HANDLING_DAYS_MAX = 2
+
+// Express service (Xpresspost / Priority Mail) moves by air, so transit is
+// fairly flat nationwide regardless of ground zone.
+const EXPRESS_TRANSIT_MIN = 1
+const EXPRESS_TRANSIT_MAX = 3
+
 // Canada, from Vaughan, ON. Zoned by the first letter of the postal code
 // (the FSA letter maps cleanly to a region — finer than province for
 // Ontario, where Toronto and Thunder Bay price very differently).
 // Amounts are CAD cents for one ball (box bills at ~3.1 kg volumetric),
 // calibrated against Canada Post Regular Parcel retail prices.
+// daysMin/daysMax are carrier TRANSIT days; handling is added at quote time.
 type Zone = { cents: number; daysMin: number; daysMax: number }
 const CA_ZONES: Record<string, Zone> = {
   // GTA / Golden Horseshoe
@@ -68,9 +81,9 @@ const CA_ZONES: Record<string, Zone> = {
   C: { cents: 2195, daysMin: 3, daysMax: 6 },
   // Newfoundland
   A: { cents: 2595, daysMin: 5, daysMax: 9 },
-  // Territories
-  X: { cents: 3495, daysMin: 6, daysMax: 12 },
-  Y: { cents: 3495, daysMin: 6, daysMax: 12 },
+  // Territories — ground service this remote genuinely takes weeks
+  X: { cents: 3495, daysMin: 7, daysMax: 14 },
+  Y: { cents: 3495, daysMin: 7, daysMax: 14 },
 }
 // Province fallback when the postal code is missing/unparseable.
 const CA_PROVINCE_TO_LETTER: Record<string, string> = {
@@ -144,8 +157,8 @@ async function tableQuotes(
       currency: sessionCurrency,
       carrier,
       service: 'standard',
-      estDaysMin: zone.daysMin,
-      estDaysMax: zone.daysMax,
+      estDaysMin: zone.daysMin + HANDLING_DAYS_MIN,
+      estDaysMax: zone.daysMax + HANDLING_DAYS_MAX,
       source: 'table',
     },
     {
@@ -154,8 +167,8 @@ async function tableQuotes(
       currency: sessionCurrency,
       carrier,
       service: 'express',
-      estDaysMin: 1,
-      estDaysMax: Math.max(2, Math.ceil(zone.daysMin * 1.5)),
+      estDaysMin: EXPRESS_TRANSIT_MIN + HANDLING_DAYS_MIN,
+      estDaysMax: EXPRESS_TRANSIT_MAX + HANDLING_DAYS_MAX,
       source: 'table',
     },
   ]
@@ -301,8 +314,8 @@ async function liveQuotes(
       currency: sessionCurrency,
       carrier: r.provider,
       service: r.servicelevel?.token || r.servicelevel?.name || 'unknown',
-      estDaysMin: r.estimated_days ?? undefined,
-      estDaysMax: r.estimated_days ? r.estimated_days + 2 : undefined,
+      estDaysMin: r.estimated_days ? r.estimated_days + HANDLING_DAYS_MIN : undefined,
+      estDaysMax: r.estimated_days ? r.estimated_days + 2 + HANDLING_DAYS_MAX : undefined,
       source: 'live',
     })
   }

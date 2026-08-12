@@ -70,18 +70,15 @@ elbow-out, guide-hand flick, chest-pass, a child player, one poor-visibility
 clip where arc/rotation/two-finger **must** stay null, and one no-shot clip
 (`"expected": { "shot_detected": false }`).
 
-## Calibration workflow (frozen since the grader-calibration migration)
+## Admin corrections are LIVE (owner's choice)
 
-Admin corrections **no longer change the grader live**. They accumulate until
-you bundle and activate them:
-
-```sh
-npm run calibration:refresh                    # mint a draft version, see the diff vs active
-npm run calibration:refresh -- --activate      # mint + activate in one step
-npm run eval                                   # measure what the new calibration did
-npm run eval -- --accept                       # keep it — or roll back:
-npm run calibration:refresh -- --activate-version <N>
-```
+Corrections made in the admin panel change the grader's prompt immediately,
+as they always have. Because the correction text is hashed into the grader's
+`prompt_sha`, the eval will print a **GRADER CHANGED** warning when the
+current grader no longer matches the accepted baseline — that warning is your
+record that corrections (or rubric edits) moved the grader. When you see it,
+run `npm run eval`, review the drift, and either `--accept` the new behavior
+or revisit the corrections.
 
 ## Known residual: frame selection
 

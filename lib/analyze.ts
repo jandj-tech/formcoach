@@ -72,8 +72,10 @@ type PlayerType = 'child' | 'recreational' | 'college_pro' | 'nba_bad_form' | 'n
 
 /**
  * Identity of the grader that produced a result: which rubric text, which
- * frozen calibration version, which model, and how many ensemble passes.
- * Stored per analysis so any grade can be traced to the grader that made it.
+ * calibration state (hashed into prompt_sha), which model, and how many
+ * ensemble passes. Stored per analysis so any grade can be traced to the
+ * grader that made it. calibration_version is reserved for a future frozen-
+ * calibration workflow and is always null while calibration is live.
  */
 export interface GraderVersion {
   prompt_sha: string
@@ -126,9 +128,7 @@ interface GraderContext {
 
 /**
  * Renders the "EXPERT GRADING CALIBRATION" block from live admin corrections.
- * Two callers: loadGraderContext as the fallback when no frozen
- * grader_calibration row is active, and scripts/eval/refresh-calibration.mjs
- * when minting a new frozen version. Returns '' when there are no corrections.
+ * Returns '' when there are no corrections.
  */
 export async function buildCalibrationFeedbackText(): Promise<string> {
   const calibration = await db`
@@ -179,10 +179,11 @@ export async function buildCalibrationFeedbackText(): Promise<string> {
  * Loads everything the prompt is built from — once per analysis, shared by
  * every ensemble pass, so all passes grade with the byte-identical prompt.
  *
- * Calibration is frozen: the grader only changes when a new grader_calibration
- * row is activated (scripts/eval/refresh-calibration.mjs). Live computation
- * from admin corrections remains as the fallback for a database that hasn't
- * run the migration or never activated a version.
+ * Calibration is LIVE by the owner's choice: an admin correction takes effect
+ * on the very next analysis. The trade-off is that each correction changes
+ * the prompt (and therefore prompt_sha), which the eval harness surfaces as a
+ * grader-changed warning against the accepted baseline — that warning is the
+ * record that corrections moved the grader.
  */
 async function loadGraderContext(): Promise<GraderContext> {
   const activeCriteria = (await db`
@@ -192,25 +193,10 @@ async function loadGraderContext(): Promise<GraderContext> {
     ORDER BY order_index
   `) as unknown as CriteriaRow[]
 
-  let feedbackText: string
-  let calibrationVersion: number | null = null
-  try {
-    const [row] = (await db`
-      SELECT content, version FROM grader_calibration
-      WHERE active = true
-      ORDER BY version DESC
-      LIMIT 1
-    `) as unknown as [{ content: string; version: number } | undefined]
-    if (row) {
-      feedbackText = row.content
-      calibrationVersion = Number(row.version)
-    } else {
-      feedbackText = await buildCalibrationFeedbackText()
-    }
-  } catch {
-    // grader_calibration table missing until `npm run migrate` — legacy live block.
-    feedbackText = await buildCalibrationFeedbackText()
-  }
+  const feedbackText = await buildCalibrationFeedbackText()
+  // No frozen calibration versions in live mode; the correction state is
+  // still captured in prompt_sha because feedbackText is hashed into it.
+  const calibrationVersion: number | null = null
 
   const criteriaText = activeCriteria
     .map((c) => `--- ID ${c.id}: "${c.name}"\n${c.grading_notes || c.description}`)

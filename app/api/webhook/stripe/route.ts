@@ -407,6 +407,24 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
       shippingService = shippingRateRef.metadata?.service ?? shippingRateRef.display_name ?? null
     }
 
+    // Shipping was priced from the destination entered in the cart; if the
+    // buyer then shipped somewhere materially different at Stripe, flag it
+    // for manual review (they may have under/overpaid shipping).
+    const quotedDest = session.metadata?.ship_to // "CC:STATE:POSTAL"
+    if (quotedDest && ship?.address) {
+      const [qCountry, qState] = quotedDest.split(':')
+      const mismatch =
+        ship.address.country !== qCountry ||
+        (qCountry === 'US' && qState && ship.address.state?.toUpperCase() !== qState)
+      if (mismatch) {
+        console.error('[stripe webhook] ball-order: shipping destination differs from quoted zone — review shipping charged', {
+          sessionId: session.id,
+          quoted: quotedDest,
+          actual: `${ship.address.country}:${ship.address.state ?? ''}:${ship.address.postal_code ?? ''}`,
+        })
+      }
+    }
+
     // Grant the free shot analyses FIRST, before any validation that could
     // early-return. The order row is nice-to-have; the credits the buyer
     // paid for must always land. Token amounts and routing both come from
@@ -566,18 +584,15 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
   }
 
   // --- Abandoned checkout: session expired unpaid ---
-  // Gated to ball-shop checkouts (only those set metadata.ball_count), and
-  // Stripe only includes customer_details when the shopper got far enough to
-  // enter an email — together those gate this to warm leads. The email links
-  // back to /cart: the cart is saved in the shopper's localStorage, so on
-  // the same device it reopens exactly where they left off. (Embedded
-  // checkout can't use Stripe's hosted recovery URLs.)
+  // Only ball-shop checkouts opt into recovery (after_expiration is set at
+  // creation), and Stripe only includes customer_details when the shopper got
+  // far enough to enter an email — together those gate this to warm leads.
   if (event.type === 'checkout.session.expired') {
     const session = event.data.object as Stripe.Checkout.Session
-    const isBallShop = !!session.metadata?.ball_count
+    const recoveryUrl = session.after_expiration?.recovery?.url
     const email = session.customer_details?.email?.toLowerCase()
 
-    if (!isBallShop || !email) {
+    if (!recoveryUrl || !email) {
       return NextResponse.json({ received: true })
     }
 
@@ -603,8 +618,7 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
     }
 
     try {
-      const cartUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'https://learnhoops.com'}/cart`
-      await sendAbandonedCheckoutEmail(email, session.customer_details?.name ?? null, cartUrl)
+      await sendAbandonedCheckoutEmail(email, session.customer_details?.name ?? null, recoveryUrl)
     } catch (err) {
       // Best-effort — never ask Stripe to retry a marketing email.
       console.error('[stripe webhook] abandoned-checkout email failed:', err)

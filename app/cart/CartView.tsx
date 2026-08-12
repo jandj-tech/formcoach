@@ -20,8 +20,26 @@ const SIZE_INCHES: Record<Size, string> = {
   '7': '29.5"',
 }
 
+const US_STATES = [
+  'AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME',
+  'MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI',
+  'SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY',
+]
+
+type EstimateQuote = {
+  displayName: string
+  amountCents: number
+  currency: string
+  estDaysMin?: number
+  estDaysMax?: number
+}
+
 function formatPrice(amount: number): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)
+}
+
+function formatCents(cents: number, currency: string): string {
+  return `$${(cents / 100).toFixed(2)} ${currency.toUpperCase()}`
 }
 
 function variantLabel(v: Variant) {
@@ -36,9 +54,15 @@ export default function CartView() {
   // Logged-in account type — drives the "your credits will land here" hint.
   const [account, setAccount] = useState<{ type: string } | null>(null)
   const [compCode, setCompCode] = useState('')
-  // Buyer's region decides the checkout currency (CAD for Canada, else USD).
-  // Was hard-coded to 'US', which billed Canadian buyers in USD.
-  const [region, setRegion] = useState<'US' | 'CA'>('US')
+  // Destination for the shipping estimate. The country decides the checkout
+  // currency (CAD for Canada, else USD); the state / postal code decides the
+  // shipping zone. Country is pre-filled from the visitor's region.
+  const [country, setCountry] = useState<'US' | 'CA'>('US')
+  const [usState, setUsState] = useState('')
+  const [postal, setPostal] = useState('')
+  // Estimate keyed by the inputs that produced it, so a stale response for
+  // an old destination is never displayed.
+  const [estimate, setEstimate] = useState<{ key: string; quotes: EstimateQuote[] } | null>(null)
 
   useEffect(() => {
     fetch('/api/auth/session')
@@ -50,7 +74,7 @@ export default function CartView() {
     fetch('/api/region')
       .then(r => r.json())
       .then(({ region }) => {
-        if (region === 'CA') setRegion('CA')
+        if (region === 'CA') setCountry('CA')
       })
       .catch(() => {})
   }, [])
@@ -61,16 +85,76 @@ export default function CartView() {
   }, 0)
   const subtotalRounded = Math.round(subtotal * 100) / 100
 
-  function handleCheckout() {
-    if (items.length === 0) return
+  const ballCount = items.reduce<number>(
+    (sum, it) => sum + (it.productSlug === 'bundle' ? 2 : it.quantity),
+    0
+  )
+  const destReady = country === 'US' ? /^[A-Z]{2}$/.test(usState) : /^[A-Za-z]/.test(postal.trim())
+  const estimateKey = `${country}|${usState}|${postal.trim().toUpperCase()}|${ballCount}`
+  const quotes = estimate?.key === estimateKey ? estimate.quotes : null
+
+  useEffect(() => {
+    if (!destReady || ballCount === 0) return
+    const key = estimateKey
+    const t = setTimeout(() => {
+      fetch('/api/shipping-estimate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          country,
+          state: usState || undefined,
+          postalCode: postal.trim() || undefined,
+          ballCount,
+        }),
+      })
+        .then(r => r.json())
+        .then((data) => {
+          if (Array.isArray(data?.quotes)) setEstimate({ key, quotes: data.quotes })
+        })
+        .catch(() => {})
+    }, 350)
+    return () => clearTimeout(t)
+  }, [destReady, ballCount, country, usState, postal, estimateKey])
+
+  async function handleCheckout() {
+    if (items.length === 0 || !destReady) return
     setLoading(true)
     setError('')
-    // The /checkout page reads the cart from localStorage itself and renders
-    // the embedded Stripe checkout, where shipping is quoted live from the
-    // entered address. Region and comp code travel via query params.
-    const params = new URLSearchParams({ region })
-    if (compCode.trim()) params.set('compCode', compCode.trim())
-    window.location.href = `/checkout?${params.toString()}`
+    try {
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          region: country,
+          shipTo: { country, state: usState, postalCode: postal.trim() },
+          ...(compCode.trim() ? { compCode: compCode.trim() } : {}),
+          items: items.map((it) => {
+            if (it.productSlug === 'bundle') {
+              return {
+                productSlug: 'bundle',
+                variant1: it.variant1,
+                size1: it.size1,
+                variant2: it.variant2,
+                size2: it.size2,
+              }
+            }
+            return {
+              productSlug: it.productSlug,
+              variant: it.variant,
+              size: it.size,
+              quantity: it.quantity,
+            }
+          }),
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.url) throw new Error(data.error || 'Checkout failed')
+      window.location.href = data.url
+    } catch (err) {
+      console.error(err)
+      setError(err instanceof Error ? err.message : 'Something went wrong')
+      setLoading(false)
+    }
   }
 
   if (!hydrated) {
@@ -134,6 +218,79 @@ export default function CartView() {
           </span>
         </div>
 
+        {/* Shipping estimator — the destination entered here prices the
+            shipping options the buyer picks from at Stripe checkout. */}
+        <div className="flex flex-col gap-3 rounded-xl border border-zinc-800 bg-zinc-950 p-4">
+          <div className="text-white text-sm font-bold">Shipping</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1">
+              <label className="text-zinc-400 text-xs font-semibold">Country</label>
+              <select
+                value={country}
+                onChange={(e) => setCountry(e.target.value === 'CA' ? 'CA' : 'US')}
+                className="bg-zinc-900 border border-zinc-800 text-white rounded-xl px-3 py-2.5 focus:outline-none focus:border-orange-500"
+              >
+                <option value="US">United States</option>
+                <option value="CA">Canada</option>
+              </select>
+            </div>
+            {country === 'US' ? (
+              <div className="flex flex-col gap-1">
+                <label className="text-zinc-400 text-xs font-semibold">State</label>
+                <select
+                  value={usState}
+                  onChange={(e) => setUsState(e.target.value)}
+                  className="bg-zinc-900 border border-zinc-800 text-white rounded-xl px-3 py-2.5 focus:outline-none focus:border-orange-500"
+                >
+                  <option value="">Select state…</option>
+                  {US_STATES.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-1">
+                <label className="text-zinc-400 text-xs font-semibold">Postal code</label>
+                <input
+                  type="text"
+                  value={postal}
+                  onChange={(e) => setPostal(e.target.value.toUpperCase())}
+                  placeholder="e.g. L4K 2N6"
+                  maxLength={7}
+                  className="bg-zinc-900 border border-zinc-800 text-white rounded-xl px-3 py-2.5 focus:outline-none focus:border-orange-500 placeholder-zinc-600"
+                />
+              </div>
+            )}
+          </div>
+          {!destReady ? (
+            <p className="text-zinc-500 text-xs">
+              {country === 'US' ? 'Select your state' : 'Enter your postal code'} to see shipping.
+            </p>
+          ) : quotes ? (
+            <div className="space-y-1.5">
+              {quotes.map((q) => (
+                <div key={q.displayName} className="flex items-center justify-between text-sm">
+                  <span className="text-zinc-300">
+                    {q.displayName}
+                    {q.estDaysMin && q.estDaysMax && (
+                      <span className="text-zinc-500"> · {q.estDaysMin}–{q.estDaysMax} business days</span>
+                    )}
+                  </span>
+                  <span className="text-white font-semibold">{formatCents(q.amountCents, q.currency)}</span>
+                </div>
+              ))}
+              <p className="text-zinc-500 text-xs pt-1">
+                You&apos;ll pick your shipping speed at checkout. Estimated total with standard shipping:{' '}
+                <span className="text-zinc-300 font-semibold">
+                  {formatCents(Math.round(subtotalRounded * 100) + quotes[0].amountCents, quotes[0].currency)}
+                </span>
+              </p>
+            </div>
+          ) : (
+            <p className="text-zinc-500 text-xs">Calculating shipping…</p>
+          )}
+        </div>
+
         {account && !inApp && (
           <p className="text-zinc-400 text-xs">
             Free analyses go to your{' '}
@@ -162,18 +319,22 @@ export default function CartView() {
 
         <button
           onClick={handleCheckout}
-          disabled={loading}
+          disabled={loading || !destReady}
           className="bg-orange-500 hover:bg-red-600 disabled:opacity-50 text-white font-bold px-8 py-4 rounded-xl text-base transition-colors w-full"
         >
           {loading
-            ? 'Opening checkout…'
-            : `Checkout — ${formatPrice(subtotalRounded)}`}
+            ? 'Redirecting to checkout…'
+            : destReady
+              ? `Checkout — ${formatPrice(subtotalRounded)} + shipping`
+              : country === 'US'
+                ? 'Select your state to checkout'
+                : 'Enter your postal code to checkout'}
         </button>
 
         {error && <p className="text-red-500 text-sm">{error}</p>}
 
         <p className="text-white text-xs">
-          Shipping calculated from your address at checkout. Secure payment by Stripe.
+          Orders ship Canada Post within Canada and USPS within the US. Secure payment by Stripe.
         </p>
       </div>
     </section>

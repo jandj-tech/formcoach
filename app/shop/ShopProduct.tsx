@@ -211,8 +211,8 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
             )}
 
             <p className="text-white text-xs">
-              Secure checkout powered by Stripe. Shipping is calculated from your
-              address at checkout — Canada Post in Canada, USPS in the US.
+              Secure checkout powered by Stripe. See your shipping cost in the
+              cart — Canada Post in Canada, USPS in the US.
             </p>
 
             {/* Product details — collapsible so the buy box stays compact */}
@@ -233,7 +233,7 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
                 standard. When in doubt, pick the size used in your league.
               </ShopAccordion>
               <ShopAccordion title="Shipping" dark>
-                Enter your address at checkout and you&apos;ll see your shipping
+                Enter your state or postal code in the cart to see your shipping
                 cost before you pay — orders ship Canada Post within Canada and
                 USPS within the US. You&apos;ll get a receipt by email right
                 away and another email when your order ships.

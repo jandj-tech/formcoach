@@ -1151,7 +1151,7 @@ export async function sendSupportRequestEmail(req: {
 
 // Abandoned-checkout recovery: sent once when a Stripe checkout session
 // expires unpaid (the buyer entered their email at Stripe but never paid).
-// Links back to /cart — the cart persists in the shopper's localStorage.
+// The recovery URL reopens their exact cart.
 export async function sendAbandonedCheckoutEmail(
   to: string,
   name: string | null,

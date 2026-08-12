@@ -12,8 +12,6 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.1",
     "@base-ui/react": "^1.4.1",
-    "@stripe/react-stripe-js": "^6.8.1",
-    "@stripe/stripe-js": "^9.13.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/pg": "^8.20.0",
     "@vercel/blob": "^2.3.3",

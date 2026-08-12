@@ -5,6 +5,7 @@ import { getTeamSessionFromRequest } from '@/lib/team-auth'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { db } from '@/lib/db'
 import { isValidCompCode, getCompCouponId } from '@/lib/comp'
+import { getShippingOptions } from '@/lib/shipping'
 
 const BALL_DESCRIPTION = 'Training basketball with hand-placement guide lines that build consistent shooting form.'
 
@@ -65,6 +66,19 @@ export async function POST(req: NextRequest) {
 
     if (region !== 'US' && region !== 'CA') {
       return NextResponse.json({ error: 'Invalid region' }, { status: 400 })
+    }
+
+    // Destination entered in the cart's shipping estimator. It prices the
+    // shipping options attached to the session, so it's required: a US
+    // buyer picks their state, a Canadian buyer enters their postal code.
+    const shipTo = body?.shipTo
+    const destState = typeof shipTo?.state === 'string' ? shipTo.state.slice(0, 3).toUpperCase() : ''
+    const destPostal = typeof shipTo?.postalCode === 'string' ? shipTo.postalCode.slice(0, 10) : ''
+    if (region === 'US' && !/^[A-Z]{2}$/.test(destState)) {
+      return NextResponse.json({ error: 'Select your state to calculate shipping' }, { status: 400 })
+    }
+    if (region === 'CA' && !/^[A-Za-z]/.test(destPostal.trim())) {
+      return NextResponse.json({ error: 'Enter your postal code to calculate shipping' }, { status: 400 })
     }
 
     // Where the free analysis tokens land: always the BUYER'S personal
@@ -225,57 +239,81 @@ export async function POST(req: NextRequest) {
       `
     }
 
-    const returnUrl = guestClaimToken
+    const successUrl = guestClaimToken
       ? `${BASE_URL}/signup?claimToken=${guestClaimToken}&credits=${analysisTokens}`
       : `${BASE_URL}/shop/success?session_id={CHECKOUT_SESSION_ID}`
 
     // A valid comp code applies a 100%-off coupon server-side, so the
-    // Stripe total is $0 and the card form is skipped (shipping is still
-    // collected). allow_promotion_codes and discounts are mutually
-    // exclusive, so only one is set. Coupons don't discount shipping, so
-    // the shipping-options endpoint reads metadata.comp and quotes $0.
+    // Stripe total is $0 and the card form is skipped. Coupons don't
+    // discount shipping, so comp orders get a $0 shipping option to keep
+    // the card-free flow.
     const comp = isValidCompCode(body?.compCode)
     if (comp) metadata.comp = '1'
     const discountOpts = comp
       ? { discounts: [{ coupon: await getCompCouponId() }] }
       : { allow_promotion_codes: true as const }
 
+    // Shipping options priced from the destination the buyer entered in the
+    // cart (recorded in metadata so the webhook can flag a mismatch against
+    // the address they ultimately type at Stripe).
+    metadata.ship_to = `${region}:${destState}:${destPostal}`.slice(0, 100)
+    const quotes = comp
+      ? [{
+          displayName: 'Free Shipping (comp)',
+          amountCents: 0,
+          currency,
+          carrier: 'comp',
+          service: 'comp',
+          estDaysMin: 3,
+          estDaysMax: 9,
+        }]
+      : await getShippingOptions(
+          { country: region, state: destState || undefined, postalCode: destPostal || undefined },
+          ballCount,
+          currency
+        )
+    const shipping_options = quotes.map((q) => ({
+      shipping_rate_data: {
+        display_name: q.displayName,
+        type: 'fixed_amount' as const,
+        fixed_amount: { amount: q.amountCents, currency: q.currency },
+        ...(q.estDaysMin && q.estDaysMax
+          ? {
+              delivery_estimate: {
+                minimum: { unit: 'business_day' as const, value: q.estDaysMin },
+                maximum: { unit: 'business_day' as const, value: q.estDaysMax },
+              },
+            }
+          : {}),
+        // Read back by the webhook to record what carrier/service was paid for.
+        metadata: { carrier: q.carrier, service: q.service },
+      },
+    }))
+
     const session = await getStripe().checkout.sessions.create({
       mode: 'payment',
-      // Embedded checkout with server-controlled shipping: the iframe calls
-      // onShippingDetailsChange when the buyer completes their address, our
-      // shipping-options endpoint quotes carrier-calibrated rates and updates the
-      // session. The $0 placeholder below is replaced by real rates then.
-      // Note: express wallets (Apple/Google Pay) are disabled by Stripe
-      // under server_only shipping permissions.
-      ui_mode: 'embedded_page',
-      permissions: { update_shipping_details: 'server_only' },
-      shipping_options: [{
-        shipping_rate_data: {
-          display_name: 'Enter address to calculate',
-          type: 'fixed_amount',
-          fixed_amount: { amount: 0, currency },
-        },
-      }],
       // Leave email unset so the buyer can edit it at Stripe. Order
       // routing in the webhook uses metadata.token_recipient, not the
       // checkout email, so receipts going to a different address are
       // fine. We still record the entered email on the orders row.
       line_items,
-      shipping_address_collection: { allowed_countries: ['US', 'CA'] },
+      shipping_options,
+      // Locked to the country the shipping was priced for.
+      shipping_address_collection: { allowed_countries: [region] },
       phone_number_collection: { enabled: true },
       metadata,
+      success_url: successUrl,
       ...discountOpts,
-      return_url: returnUrl,
-      // The session expires after 1 hour and Stripe fires
-      // checkout.session.expired; the webhook emails buyers who got far
-      // enough to enter their email but never paid, linking back to /cart.
-      // (after_expiration.recovery reopens a Stripe-hosted copy of the
-      // session, which can't do server-driven shipping — not used here.)
+      cancel_url: `${BASE_URL}/cart`,
+      // Abandoned-checkout recovery: the session expires after 1 hour and
+      // Stripe fires checkout.session.expired with a recovery URL that
+      // reopens this exact cart. The webhook emails it to buyers who got
+      // far enough to enter their email but never paid.
       expires_at: Math.floor(Date.now() / 1000) + 60 * 60,
+      after_expiration: { recovery: { enabled: true } },
     })
 
-    return NextResponse.json({ clientSecret: session.client_secret })
+    return NextResponse.json({ url: session.url })
   } catch (err) {
     console.error('Checkout error:', err)
     const message = err instanceof Error ? err.message : 'Checkout failed'

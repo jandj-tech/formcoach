@@ -112,6 +112,9 @@ export async function POST(req: NextRequest) {
 
     // Free shot analyses earned: 5 per single ball, 10 for a 2-ball bundle.
     let analysisTokens = 0
+    // Total physical balls in the order — drives the parcel size used to
+    // quote live shipping rates once the buyer enters their address.
+    let ballCount = 0
     let firstBallVariant: string | undefined
     let firstBallSize: string | undefined
 
@@ -129,6 +132,7 @@ export async function POST(req: NextRequest) {
         }
 
         analysisTokens += BUNDLE.uploadsGranted
+        ballCount += 2
         line_items.push({
           quantity: 1,
           price_data: {
@@ -159,6 +163,7 @@ export async function POST(req: NextRequest) {
         if (qty < 1 || qty > 99) throw new Error('Invalid quantity')
 
         analysisTokens += BALL_ANALYSES_GRANTED * qty
+        ballCount += qty
 
         if (!firstBallVariant) {
           firstBallVariant = ballItem.variant
@@ -188,6 +193,7 @@ export async function POST(req: NextRequest) {
 
     metadata.analysis_tokens = String(analysisTokens)
     metadata.token_recipient = tokenRecipient
+    metadata.ball_count = String(ballCount)
     if (guestClaimToken) metadata.claim_token = guestClaimToken
 
     // 5 per single ball × qty, 10 per 2-ball bundle. Logged so any future
@@ -219,21 +225,38 @@ export async function POST(req: NextRequest) {
       `
     }
 
-    const successUrl = guestClaimToken
+    const returnUrl = guestClaimToken
       ? `${BASE_URL}/signup?claimToken=${guestClaimToken}&credits=${analysisTokens}`
       : `${BASE_URL}/shop/success?session_id={CHECKOUT_SESSION_ID}`
 
     // A valid comp code applies a 100%-off coupon server-side, so the
     // Stripe total is $0 and the card form is skipped (shipping is still
     // collected). allow_promotion_codes and discounts are mutually
-    // exclusive, so only one is set.
+    // exclusive, so only one is set. Coupons don't discount shipping, so
+    // the shipping-options endpoint reads metadata.comp and quotes $0.
     const comp = isValidCompCode(body?.compCode)
+    if (comp) metadata.comp = '1'
     const discountOpts = comp
       ? { discounts: [{ coupon: await getCompCouponId() }] }
       : { allow_promotion_codes: true as const }
 
     const session = await getStripe().checkout.sessions.create({
       mode: 'payment',
+      // Embedded checkout with server-controlled shipping: the iframe calls
+      // onShippingDetailsChange when the buyer completes their address, our
+      // shipping-options endpoint quotes live carrier rates and updates the
+      // session. The $0 placeholder below is replaced by real rates then.
+      // Note: express wallets (Apple/Google Pay) are disabled by Stripe
+      // under server_only shipping permissions.
+      ui_mode: 'embedded_page',
+      permissions: { update_shipping_details: 'server_only' },
+      shipping_options: [{
+        shipping_rate_data: {
+          display_name: 'Enter address to calculate',
+          type: 'fixed_amount',
+          fixed_amount: { amount: 0, currency },
+        },
+      }],
       // Leave email unset so the buyer can edit it at Stripe. Order
       // routing in the webhook uses metadata.token_recipient, not the
       // checkout email, so receipts going to a different address are
@@ -242,18 +265,17 @@ export async function POST(req: NextRequest) {
       shipping_address_collection: { allowed_countries: ['US', 'CA'] },
       phone_number_collection: { enabled: true },
       metadata,
-      success_url: successUrl,
       ...discountOpts,
-      cancel_url: `${BASE_URL}/cart`,
-      // Abandoned-checkout recovery: the session expires after 1 hour and
-      // Stripe fires checkout.session.expired with a recovery URL that
-      // reopens this exact cart. The webhook emails it to buyers who got
-      // far enough to enter their email but never paid.
+      return_url: returnUrl,
+      // The session expires after 1 hour and Stripe fires
+      // checkout.session.expired; the webhook emails buyers who got far
+      // enough to enter their email but never paid, linking back to /cart.
+      // (after_expiration.recovery reopens a Stripe-hosted copy of the
+      // session, which can't do server-driven shipping — not used here.)
       expires_at: Math.floor(Date.now() / 1000) + 60 * 60,
-      after_expiration: { recovery: { enabled: true } },
     })
 
-    return NextResponse.json({ url: session.url })
+    return NextResponse.json({ clientSecret: session.client_secret })
   } catch (err) {
     console.error('Checkout error:', err)
     const message = err instanceof Error ? err.message : 'Checkout failed'

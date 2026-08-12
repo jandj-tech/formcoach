@@ -11,16 +11,19 @@ export function getStripe(): Stripe {
   return stripeClient
 }
 
+// Flat numeric pricing: the same cent value is charged in the region's
+// currency ($39.99 USD in the US, $39.99 CAD in Canada). Shipping is
+// charged separately at checkout from live carrier rates.
 export const PRODUCT = {
   name: 'The LearnHoops Training Ball',
-  priceCents: 4999,
+  priceCents: 3999,
   currency: 'usd',
 }
 
 // 2-Ball Bundle: full price + 50% off second ball + free shot analyses
 export const BUNDLE = {
-  ball1PriceCents: 4999,
-  ball2PriceCents: 2500,  // Math.round(4999 * 0.5) = 2500
+  ball1PriceCents: 3999,
+  ball2PriceCents: 2000,  // ~50% off → bundle totals 5999 ($59.99)
   uploadsGranted: 10,     // free shot analyses for the whole bundle
 }
 

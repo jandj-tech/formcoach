@@ -21,6 +21,9 @@ interface Order {
   shipping_state: string | null
   shipping_postal_code: string | null
   shipping_country: string | null
+  shipping_cost_cents: number | null
+  shipping_carrier: string | null
+  shipping_service: string | null
   status: string
   shipping_link: string | null
   created_at: string
@@ -258,8 +261,16 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
                         <span className="text-zinc-500 text-xs">—</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-orange-400 font-bold">
-                      {fmt(Number(o.amount_total))}
+                    <td className="px-4 py-3">
+                      <div className="text-orange-400 font-bold">{fmt(Number(o.amount_total))}</div>
+                      {o.shipping_cost_cents != null && (
+                        <div className="text-zinc-400 text-xs mt-0.5">
+                          incl. {fmt(Number(o.shipping_cost_cents))} ship
+                          {o.shipping_carrier && (
+                            <span className="text-zinc-500"> · {o.shipping_carrier === 'canada_post' ? 'Canada Post' : o.shipping_carrier.toUpperCase()}</span>
+                          )}
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-zinc-300 text-xs leading-relaxed">
                       {hasBall ? (

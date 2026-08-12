@@ -8,8 +8,8 @@ import type { CartBallItem, CartBundleItem, Variant, Size } from '@/lib/cart'
 import QuantityStepper from '@/components/QuantityStepper'
 import { useIsInApp } from '@/lib/useIsInApp'
 
-const PRICE = 49.99
-// Bundle: ball 1 full price + ball 2 at 50% off = $49.99 + $25.00 = $74.99
+const PRICE = 39.99
+// Bundle: ball 1 full price + ball 2 at 50% off = $39.99 + $20.00 = $59.99
 const BUNDLE_PRICE = PRICE + Math.round(PRICE * 50) / 100
 // Free shot analyses granted per single training ball.
 const FREE_ANALYSES_PER_BALL = 5
@@ -61,49 +61,16 @@ export default function CartView() {
   }, 0)
   const subtotalRounded = Math.round(subtotal * 100) / 100
 
-  async function handleCheckout() {
+  function handleCheckout() {
     if (items.length === 0) return
     setLoading(true)
     setError('')
-    try {
-      const res = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          region,
-          ...(compCode.trim() ? { compCode: compCode.trim() } : {}),
-          items: items.map((it) => {
-            if (it.productSlug === 'bundle') {
-              return {
-                productSlug: 'bundle',
-                variant1: it.variant1,
-                size1: it.size1,
-                variant2: it.variant2,
-                size2: it.size2,
-              }
-            }
-            return {
-              productSlug: it.productSlug,
-              variant: it.variant,
-              size: it.size,
-              quantity: it.quantity,
-            }
-          }),
-        }),
-      })
-      if (res.status === 401) {
-        // An account is required to buy a ball — send them to log in, then back to the cart.
-        window.location.href = `/login?next=${encodeURIComponent('/cart')}`
-        return
-      }
-      const data = await res.json()
-      if (!res.ok || !data.url) throw new Error(data.error || 'Checkout failed')
-      window.location.href = data.url
-    } catch (err) {
-      console.error(err)
-      setError(err instanceof Error ? err.message : 'Something went wrong')
-      setLoading(false)
-    }
+    // The /checkout page reads the cart from localStorage itself and renders
+    // the embedded Stripe checkout, where shipping is quoted live from the
+    // entered address. Region and comp code travel via query params.
+    const params = new URLSearchParams({ region })
+    if (compCode.trim()) params.set('compCode', compCode.trim())
+    window.location.href = `/checkout?${params.toString()}`
   }
 
   if (!hydrated) {
@@ -199,14 +166,14 @@ export default function CartView() {
           className="bg-orange-500 hover:bg-red-600 disabled:opacity-50 text-white font-bold px-8 py-4 rounded-xl text-base transition-colors w-full"
         >
           {loading
-            ? 'Redirecting to checkout…'
+            ? 'Opening checkout…'
             : `Checkout — ${formatPrice(subtotalRounded)}`}
         </button>
 
         {error && <p className="text-red-500 text-sm">{error}</p>}
 
         <p className="text-white text-xs">
-          Shipping calculated at checkout. Secure payment by Stripe.
+          Shipping calculated at checkout from live Canada Post / USPS rates. Secure payment by Stripe.
         </p>
       </div>
     </section>

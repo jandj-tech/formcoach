@@ -7,7 +7,10 @@
     "build": "tsx scripts/migrate.ts --skip-if-no-db && next build",
     "start": "next start",
     "lint": "eslint",
-    "migrate": "npx tsx --env-file=.env.local scripts/migrate.ts"
+    "migrate": "npx tsx --env-file=.env.local scripts/migrate.ts",
+    "eval": "npx tsx --env-file=.env.local scripts/eval/run-eval.mjs",
+    "eval:quick": "npx tsx --env-file=.env.local scripts/eval/run-eval.mjs --quick",
+    "calibration:refresh": "npx tsx --env-file=.env.local scripts/eval/refresh-calibration.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.1",

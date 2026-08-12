@@ -21,6 +21,19 @@ const REGION_PAD = 0.40     // ±40% of video around rough center
 const REGION_MIN_S = 5.0    // minimum dense region width — covers full short videos
 const SEEK_TIMEOUT_MS = 4000  // max ms to wait for a seek before skipping
 
+// Every seek target is snapped to a fixed 30fps grid before it reaches the
+// decoder. The rough/probe/final timestamps come out of float math (duration
+// fractions, motion weighting) that can differ in the 4th decimal between two
+// uploads of the same file; unquantized, those hairline differences decode
+// different frames, the frame bytes change, and the server's frames-hash
+// dedup misses — so the same video gets a fresh grade. Snapping to the grid
+// (plus a quarter-frame nudge so the target sits inside the intended frame
+// interval, not on its ambiguous boundary) makes the same decisions converge
+// on identical frames on the same device.
+const SEEK_GRID_FPS = 30
+const quantizeSeek = (t: number) =>
+  Math.round(t * SEEK_GRID_FPS) / SEEK_GRID_FPS + 1 / (SEEK_GRID_FPS * 4)
+
 // True if the canvas holds an essentially solid-black image — the signature of
 // a frame the browser handed back before its video decoder was ready (common
 // on iOS/Android until the <video> has been played once).
@@ -140,7 +153,7 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
         // before we drawImage — without this, some formats return the previous frame
         requestAnimationFrame(() => requestAnimationFrame(() => finish()))
       }
-      video.currentTime = t
+      video.currentTime = quantizeSeek(t)
     })
 
   const extractFrames = useCallback(async (file: File): Promise<Blob[]> => {

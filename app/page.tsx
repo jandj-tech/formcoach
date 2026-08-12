@@ -262,7 +262,7 @@ export default async function HomePage() {
                   </p>
                 </div>
                 <div className="text-right shrink-0">
-                  <div className="font-numeric text-xl text-chalk">$49.99</div>
+                  <div className="font-numeric text-xl text-chalk">$39.99</div>
                   <span className="text-ember-400 group-hover:text-ember-500 text-sm font-bold transition-colors">
                     Shop →
                   </span>

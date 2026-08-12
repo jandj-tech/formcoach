@@ -357,6 +357,44 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
     const phone = session.customer_details?.phone
     const ship = session.collected_information?.shipping_details
 
+    // What the buyer paid for shipping, and on which carrier/service. The
+    // carrier and service were stashed on the shipping rate's metadata by
+    // the shipping-options endpoint.
+    const shippingCostCents = session.shipping_cost?.amount_total ?? null
+    let shippingCarrier: string | null = null
+    let shippingService: string | null = null
+    const shippingRateRef = session.shipping_cost?.shipping_rate
+    if (typeof shippingRateRef === 'string') {
+      try {
+        const rate = await getStripe().shippingRates.retrieve(shippingRateRef)
+        shippingCarrier = rate.metadata?.carrier ?? null
+        shippingService = rate.metadata?.service ?? rate.display_name ?? null
+      } catch (err) {
+        console.error('[stripe webhook] shipping rate lookup failed (non-fatal):', err)
+      }
+    } else if (shippingRateRef) {
+      shippingCarrier = shippingRateRef.metadata?.carrier ?? null
+      shippingService = shippingRateRef.metadata?.service ?? shippingRateRef.display_name ?? null
+    }
+
+    // Shipping was priced from the destination entered in the cart; if the
+    // buyer then shipped somewhere materially different at Stripe, flag it
+    // for manual review (they may have under/overpaid shipping).
+    const quotedDest = session.metadata?.ship_to // "CC:STATE:POSTAL"
+    if (quotedDest && ship?.address) {
+      const [qCountry, qState] = quotedDest.split(':')
+      const mismatch =
+        ship.address.country !== qCountry ||
+        (qCountry === 'US' && qState && ship.address.state?.toUpperCase() !== qState)
+      if (mismatch) {
+        console.error('[stripe webhook] ball-order: shipping destination differs from quoted zone — review shipping charged', {
+          sessionId: session.id,
+          quoted: quotedDest,
+          actual: `${ship.address.country}:${ship.address.state ?? ''}:${ship.address.postal_code ?? ''}`,
+        })
+      }
+    }
+
     // Grant the free shot analyses FIRST, before any validation that could
     // early-return. The order row is nice-to-have; the credits the buyer
     // paid for must always land. Token amounts and routing both come from
@@ -496,13 +534,15 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
             stripe_session_id, email, customer_name, phone, variant, size,
             amount_total, currency, quantity,
             shipping_name, shipping_line1, shipping_line2,
-            shipping_city, shipping_state, shipping_postal_code, shipping_country
+            shipping_city, shipping_state, shipping_postal_code, shipping_country,
+            shipping_cost_cents, shipping_carrier, shipping_service
           ) VALUES (
             ${orderKey}, ${email}, ${name ?? null}, ${phone ?? null}, ${row.variant}, ${row.size},
             ${i === 0 ? session.amount_total ?? 0 : 0}, ${session.currency ?? 'usd'}, ${row.quantity},
             ${ship?.name ?? null}, ${ship?.address?.line1 ?? null}, ${ship?.address?.line2 ?? null},
             ${ship?.address?.city ?? null}, ${ship?.address?.state ?? null},
-            ${ship?.address?.postal_code ?? null}, ${ship?.address?.country ?? null}
+            ${ship?.address?.postal_code ?? null}, ${ship?.address?.country ?? null},
+            ${i === 0 ? shippingCostCents : null}, ${i === 0 ? shippingCarrier : null}, ${i === 0 ? shippingService : null}
           )
           ON CONFLICT (stripe_session_id) DO NOTHING
         `

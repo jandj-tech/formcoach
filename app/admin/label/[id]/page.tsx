@@ -24,13 +24,26 @@ export const metadata: Metadata = { title: 'Shipping Label' }
 
 const sizeLabel: Record<string, string> = { '5': '27.5"', '6': '28.5"', '7': '29.5"' }
 
-function getFrom() {
+// Return address matches the warehouse the order ships from: Vaughan, ON
+// for Canadian orders, Las Vegas, NV for US orders. Legacy single-warehouse
+// SHIP_FROM_* vars are the fallback if the per-country ones aren't set.
+function getFrom(shippingCountry: string | null) {
+  if (shippingCountry === 'CA') {
+    return {
+      name: process.env.SHIP_FROM_CA_NAME || process.env.SHIP_FROM_NAME || 'LearnHoops',
+      line1: process.env.SHIP_FROM_CA_LINE1 || process.env.SHIP_FROM_LINE1 || '',
+      city: process.env.SHIP_FROM_CA_CITY || process.env.SHIP_FROM_CITY || '',
+      state: process.env.SHIP_FROM_CA_STATE || process.env.SHIP_FROM_STATE || '',
+      zip: process.env.SHIP_FROM_CA_ZIP || process.env.SHIP_FROM_ZIP || '',
+      country: 'CA',
+    }
+  }
   return {
-    name: process.env.SHIP_FROM_NAME || 'LearnHoops',
-    line1: process.env.SHIP_FROM_LINE1 || '',
-    city: process.env.SHIP_FROM_CITY || '',
-    state: process.env.SHIP_FROM_STATE || '',
-    zip: process.env.SHIP_FROM_ZIP || '',
+    name: process.env.SHIP_FROM_US_NAME || process.env.SHIP_FROM_NAME || 'LearnHoops',
+    line1: process.env.SHIP_FROM_US_LINE1 || process.env.SHIP_FROM_LINE1 || '',
+    city: process.env.SHIP_FROM_US_CITY || process.env.SHIP_FROM_CITY || '',
+    state: process.env.SHIP_FROM_US_STATE || process.env.SHIP_FROM_STATE || '',
+    zip: process.env.SHIP_FROM_US_ZIP || process.env.SHIP_FROM_ZIP || '',
     country: process.env.SHIP_FROM_COUNTRY || 'US',
   }
 }
@@ -51,7 +64,7 @@ export default async function LabelPage({ params }: { params: Promise<{ id: stri
 
   if (!rows[0]) notFound()
   const o = rows[0]
-  const from = getFrom()
+  const from = getFrom(o.shipping_country)
   const missingFrom = !from.line1 || !from.city || !from.state || !from.zip
 
   const toName = o.shipping_name || o.customer_name || 'Unknown Recipient'
@@ -84,7 +97,7 @@ export default async function LabelPage({ params }: { params: Promise<{ id: stri
 
       {missingFrom && (
         <div className="no-print mx-auto mt-4 max-w-2xl bg-orange-50 border border-orange-300 rounded-lg px-4 py-3 text-sm text-orange-700">
-          Return address incomplete. Set <code className="font-mono bg-orange-100 px-1 rounded">SHIP_FROM_LINE1</code>, <code className="font-mono bg-orange-100 px-1 rounded">SHIP_FROM_CITY</code>, <code className="font-mono bg-orange-100 px-1 rounded">SHIP_FROM_STATE</code>, <code className="font-mono bg-orange-100 px-1 rounded">SHIP_FROM_ZIP</code> in Vercel environment variables.
+          Return address incomplete. Set <code className="font-mono bg-orange-100 px-1 rounded">SHIP_FROM_{o.shipping_country === 'CA' ? 'CA' : 'US'}_LINE1</code>, <code className="font-mono bg-orange-100 px-1 rounded">SHIP_FROM_{o.shipping_country === 'CA' ? 'CA' : 'US'}_CITY</code>, <code className="font-mono bg-orange-100 px-1 rounded">SHIP_FROM_{o.shipping_country === 'CA' ? 'CA' : 'US'}_STATE</code>, <code className="font-mono bg-orange-100 px-1 rounded">SHIP_FROM_{o.shipping_country === 'CA' ? 'CA' : 'US'}_ZIP</code> in Vercel environment variables.
         </div>
       )}
 

@@ -15,8 +15,8 @@ const SIZES: { value: Size; inches: string; label: string }[] = [
   { value: '7', inches: '29.5"', label: "Men's" },
 ]
 
-const PRICE = 49.99
-// Bundle: ball 1 full price + ball 2 at 50% off = $49.99 + $25.00 = $74.99
+const PRICE = 39.99
+// Bundle: ball 1 full price + ball 2 at 50% off = $39.99 + $20.00 = $59.99
 const BUNDLE_PRICE = PRICE + Math.round(PRICE * 50) / 100
 // Free shot analyses granted per single training ball.
 const FREE_ANALYSES_PER_BALL = 5
@@ -211,7 +211,8 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
             )}
 
             <p className="text-white text-xs">
-              Secure checkout powered by Stripe. Shipping address collected at checkout.
+              Secure checkout powered by Stripe. See your shipping cost in the
+              cart — Canada Post in Canada, USPS in the US.
             </p>
 
             {/* Product details — collapsible so the buy box stays compact */}
@@ -232,9 +233,10 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
                 standard. When in doubt, pick the size used in your league.
               </ShopAccordion>
               <ShopAccordion title="Shipping" dark>
-                Your shipping address is collected securely at checkout. You&apos;ll
-                get a receipt by email right away and another email when your
-                order ships.
+                Enter your state or postal code in the cart to see your shipping
+                cost before you pay — orders ship Canada Post within Canada and
+                USPS within the US. You&apos;ll get a receipt by email right
+                away and another email when your order ships.
               </ShopAccordion>
             </div>
           </div>

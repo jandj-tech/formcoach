@@ -5,6 +5,7 @@ import { getTeamSessionFromRequest } from '@/lib/team-auth'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { db } from '@/lib/db'
 import { isValidCompCode, getCompCouponId } from '@/lib/comp'
+import { getShippingOptions } from '@/lib/shipping'
 
 const BALL_DESCRIPTION = 'Training basketball with hand-placement guide lines that build consistent shooting form.'
 
@@ -67,6 +68,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid region' }, { status: 400 })
     }
 
+    // Destination entered in the cart's shipping estimator. It prices the
+    // shipping options attached to the session, so it's required: a US
+    // buyer picks their state, a Canadian buyer enters their postal code.
+    const shipTo = body?.shipTo
+    const destState = typeof shipTo?.state === 'string' ? shipTo.state.slice(0, 3).toUpperCase() : ''
+    const destPostal = typeof shipTo?.postalCode === 'string' ? shipTo.postalCode.slice(0, 10) : ''
+    if (region === 'US' && !/^[A-Z]{2}$/.test(destState)) {
+      return NextResponse.json({ error: 'Select your state to calculate shipping' }, { status: 400 })
+    }
+    if (region === 'CA' && !/^[A-Za-z]/.test(destPostal.trim())) {
+      return NextResponse.json({ error: 'Enter your postal code to calculate shipping' }, { status: 400 })
+    }
+
     // Where the free analysis tokens land: always the BUYER'S personal
     // balance, regardless of session type. Coaches and org owners can
     // transfer to a team / players later from their dashboard.
@@ -112,6 +126,9 @@ export async function POST(req: NextRequest) {
 
     // Free shot analyses earned: 5 per single ball, 10 for a 2-ball bundle.
     let analysisTokens = 0
+    // Total physical balls in the order — drives the parcel size used to
+    // quote live shipping rates once the buyer enters their address.
+    let ballCount = 0
     let firstBallVariant: string | undefined
     let firstBallSize: string | undefined
 
@@ -129,6 +146,7 @@ export async function POST(req: NextRequest) {
         }
 
         analysisTokens += BUNDLE.uploadsGranted
+        ballCount += 2
         line_items.push({
           quantity: 1,
           price_data: {
@@ -159,6 +177,7 @@ export async function POST(req: NextRequest) {
         if (qty < 1 || qty > 99) throw new Error('Invalid quantity')
 
         analysisTokens += BALL_ANALYSES_GRANTED * qty
+        ballCount += qty
 
         if (!firstBallVariant) {
           firstBallVariant = ballItem.variant
@@ -188,6 +207,7 @@ export async function POST(req: NextRequest) {
 
     metadata.analysis_tokens = String(analysisTokens)
     metadata.token_recipient = tokenRecipient
+    metadata.ball_count = String(ballCount)
     if (guestClaimToken) metadata.claim_token = guestClaimToken
 
     // 5 per single ball × qty, 10 per 2-ball bundle. Logged so any future
@@ -224,13 +244,51 @@ export async function POST(req: NextRequest) {
       : `${BASE_URL}/shop/success?session_id={CHECKOUT_SESSION_ID}`
 
     // A valid comp code applies a 100%-off coupon server-side, so the
-    // Stripe total is $0 and the card form is skipped (shipping is still
-    // collected). allow_promotion_codes and discounts are mutually
-    // exclusive, so only one is set.
+    // Stripe total is $0 and the card form is skipped. Coupons don't
+    // discount shipping, so comp orders get a $0 shipping option to keep
+    // the card-free flow.
     const comp = isValidCompCode(body?.compCode)
+    if (comp) metadata.comp = '1'
     const discountOpts = comp
       ? { discounts: [{ coupon: await getCompCouponId() }] }
       : { allow_promotion_codes: true as const }
+
+    // Shipping options priced from the destination the buyer entered in the
+    // cart (recorded in metadata so the webhook can flag a mismatch against
+    // the address they ultimately type at Stripe).
+    metadata.ship_to = `${region}:${destState}:${destPostal}`.slice(0, 100)
+    const quotes = comp
+      ? [{
+          displayName: 'Free Shipping (comp)',
+          amountCents: 0,
+          currency,
+          carrier: 'comp',
+          service: 'comp',
+          estDaysMin: 3,
+          estDaysMax: 9,
+        }]
+      : await getShippingOptions(
+          { country: region, state: destState || undefined, postalCode: destPostal || undefined },
+          ballCount,
+          currency
+        )
+    const shipping_options = quotes.map((q) => ({
+      shipping_rate_data: {
+        display_name: q.displayName,
+        type: 'fixed_amount' as const,
+        fixed_amount: { amount: q.amountCents, currency: q.currency },
+        ...(q.estDaysMin && q.estDaysMax
+          ? {
+              delivery_estimate: {
+                minimum: { unit: 'business_day' as const, value: q.estDaysMin },
+                maximum: { unit: 'business_day' as const, value: q.estDaysMax },
+              },
+            }
+          : {}),
+        // Read back by the webhook to record what carrier/service was paid for.
+        metadata: { carrier: q.carrier, service: q.service },
+      },
+    }))
 
     const session = await getStripe().checkout.sessions.create({
       mode: 'payment',
@@ -239,7 +297,9 @@ export async function POST(req: NextRequest) {
       // checkout email, so receipts going to a different address are
       // fine. We still record the entered email on the orders row.
       line_items,
-      shipping_address_collection: { allowed_countries: ['US', 'CA'] },
+      shipping_options,
+      // Locked to the country the shipping was priced for.
+      shipping_address_collection: { allowed_countries: [region] },
       phone_number_collection: { enabled: true },
       metadata,
       success_url: successUrl,

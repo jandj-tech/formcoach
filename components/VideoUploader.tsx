@@ -70,7 +70,11 @@ async function reencodeFrames(
 
 // Returns a frame batch guaranteed to fit under UPLOAD_BUDGET_BYTES (so the
 // analyze upload can never trigger an HTTP 413), plus whether the batch had to
-// be compressed — `reduced: true` means analysis quality will be lower.
+// give up RESOLUTION to get there — `reduced: true` means analysis quality is
+// genuinely lower. The full-resolution JPEG re-encode steps are normal for any
+// modern phone video (4K frames always start over budget) and cost no real
+// accuracy, so they must NOT trigger the quality warning — that screen was
+// firing on every iPhone clip and reading as "your video is too big".
 async function fitFramesToBudget(
   frames: Blob[],
 ): Promise<{ frames: Blob[]; reduced: boolean }> {
@@ -78,17 +82,20 @@ async function fitFramesToBudget(
   // Each step re-encodes from the original frames (no compounding artifacts),
   // dropping quality first and then resolution until the batch is small enough.
   const steps = [
-    { quality: 0.7, scale: 1 },
-    { quality: 0.55, scale: 1 },
-    { quality: 0.5, scale: 0.8 },
-    { quality: 0.42, scale: 0.65 },
-    { quality: 0.35, scale: 0.5 },
+    { quality: 0.7, scale: 1, lossy: false },
+    { quality: 0.55, scale: 1, lossy: false },
+    { quality: 0.5, scale: 0.8, lossy: true },
+    { quality: 0.42, scale: 0.65, lossy: true },
+    { quality: 0.35, scale: 0.5, lossy: true },
   ]
   let current = frames
   for (const step of steps) {
     current = await reencodeFrames(frames, step.quality, step.scale)
-    if (totalBytes(current) <= UPLOAD_BUDGET_BYTES) break
+    if (totalBytes(current) <= UPLOAD_BUDGET_BYTES) {
+      return { frames: current, reduced: step.lossy }
+    }
   }
+  // Still over budget at the smallest step — definitely degraded.
   return { frames: current, reduced: true }
 }
 
@@ -602,11 +609,11 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
         <div className="text-5xl">⚠️</div>
         <div>
           <p className="text-black font-bold text-lg mb-2">
-            Your video is large — analysis quality may suffer
+            Heads up — this clip needed heavy compression
           </p>
           <p className="text-gray-600 text-sm leading-relaxed">
-            Your video was big enough that we had to compress the frames to analyze it. The
-            results will still work, but they may be less accurate than normal.
+            Your video will still be analyzed, but we had to shrink the picture so much that
+            the AI may miss details. A shorter, closer clip will grade more accurately.
           </p>
         </div>
         <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 text-left">

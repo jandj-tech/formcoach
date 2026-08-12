@@ -9,11 +9,9 @@ import { useRouter } from 'next/navigation'
 import { upload } from '@vercel/blob/client'
 
 import {
-  cropCanvasSize,
   diffFrames,
   emptyMotionColumns,
   motionWeightedTimes,
-  playerColumn,
 } from '@/lib/frame-motion'
 
 const FRAME_COUNT = 28
@@ -324,27 +322,17 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
           MAX_FRAME_DIM / Math.max(video.videoWidth, video.videoHeight),
         )
 
-        // Crop to the player's column. Uncropped, a phone clip of a whole gym puts
-        // the shooter across a quarter of the frame width and his shoes about ten
-        // pixels apart, which is below what the grader can measure. The crop is
-        // scaled back up to the SAME AREA the full frame would have occupied, so the
-        // image-token cost per frame is unchanged and the player just fills more of it.
-        const column = playerColumn(
-          motionColumns,
-          video.videoWidth,
-          video.videoHeight,
-          probeW,
-        )
-        const srcX = column ? column.x : 0
-        const srcW = column ? column.width : video.videoWidth
-        const canvasSize = cropCanvasSize(
-          srcW,
-          video.videoWidth,
-          video.videoHeight,
-          frameScale,
-        )
-        mainCanvas.width = canvasSize.width
-        mainCanvas.height = canvasSize.height
+        // NOT cropping to the player, deliberately — see lib/frame-motion.ts.
+        // Cropping the frame to the shooter would give the grader a much bigger
+        // player for the same token cost, and the arithmetic works, but locating him
+        // from frame differencing does not: on a panned or handheld clip the moving
+        // pixels are the whole background, the tallest column is a frame edge, and
+        // the crop cuts the player out of shot entirely. That happened on a real
+        // submission — every cropped frame held wall and floor and no player, which
+        // is far worse than a wide frame. The box has to come from the detector that
+        // already looks at these frames, not from pixel differences.
+        mainCanvas.width = Math.round(video.videoWidth * frameScale)
+        mainCanvas.height = Math.round(video.videoHeight * frameScale)
 
         // Weight the frame times by motion rather than spacing them evenly, so the
         // release gets the frames and the still wind-up does not.
@@ -359,11 +347,7 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
         for (let i = 0; i < timestamps.length; i++) {
           if (cancelledRef.current) { cleanup(); resolve(blobs); return }
           await seekTo(video, timestamps[i])
-          ctx.drawImage(
-            video,
-            srcX, 0, srcW, video.videoHeight,
-            0, 0, mainCanvas.width, mainCanvas.height,
-          )
+          ctx.drawImage(video, 0, 0, mainCanvas.width, mainCanvas.height)
           await new Promise<void>((res) => {
             mainCanvas.toBlob(
               (blob) => {

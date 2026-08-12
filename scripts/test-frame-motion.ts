@@ -80,8 +80,17 @@ for (const video of process.argv.slice(2)) {
 
   const col = playerColumn(cols, vw, vh, pw)
   const totalMotion = cols.reduce((a, b) => a + b, 0)
-  const peakCol = cols.indexOf(Math.max(...cols))
+  const peakVal = Math.max(...cols)
+  const peakCol = cols.indexOf(peakVal)
+  const mean = totalMotion / cols.length
   check('motion found', totalMotion > 0, `${totalMotion} moving samples, busiest column ${peakCol} of ${pw}`)
+  // A cropped frame that does not contain the player is far worse than an
+  // uncropped one, so the concentration ratio that gates the crop is reported
+  // explicitly: low means the player stands out, high means the camera is moving.
+  console.log(`        concentration: mean/peak = ${(mean / peakVal).toFixed(2)} (crop requires < 0.34) -> ${col ? 'crop' : 'full frame'}`)
+  // A crop must never be produced for a clip whose expected verdict is "full
+  // frame"; pass the expectation as name suffix ":nocrop" to assert that.
+  if (video.includes(':nocrop')) check('refused to crop a moving camera', col === null, 'expected full frame')
   check('column produced', col !== null, col ? `x=${col.x} w=${col.width} (${((col.width / vw) * 100) | 0}% of width)` : 'null — would send full frame')
 
   if (col) {

@@ -122,6 +122,18 @@ export function playerColumn(
   const peak = Math.max(...columns)
   if (!(peak > 0)) return null
 
+  // REFUSE TO CROP A PANNING OR HANDHELD CLIP. When the camera moves, every edge
+  // and every high-contrast feature in the frame registers as motion, the tall
+  // column is no longer the player, and the crop confidently cuts him out of shot
+  // entirely — strictly worse than not cropping. Measured on a real submission:
+  // the busiest column was 16 of 179, at the far left edge, while the player stood
+  // near the middle; the cropped frames contained wall and floor and no player.
+  // The tell is motion spread evenly across the frame rather than concentrated:
+  // on a locked-off clip the player's columns tower over the background, so the
+  // mean column sits far below the peak. Bail when it does not.
+  const mean = columns.reduce((sum, v) => sum + v, 0) / columns.length
+  if (mean > peak * 0.34) return null
+
   // The player is the MODE of this histogram, not its range. Measured on real
   // clips, compression noise and floor reflections put a thin scatter of movement
   // across almost every column, so any percentile of the total mass still spans

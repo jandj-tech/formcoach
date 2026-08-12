@@ -337,10 +337,14 @@ WHERE name = 'Square to the Basket'
 -- confirm" hedging is banned for the hoist: it is visible from every angle.
 -- Eval (harness, 5 runs): catapults 197/196 went 7→3.5-4 median, open-V 193
 -- 8-9→3.5, clean control held 8-10.
+-- v3 adds Joseph's taxonomy anchor: the correct set point sits around the
+-- FOREHEAD on the shooting side (catapult = carried behind the head; chest
+-- pass = never rises past the chest). Re-evaled: flawed clips 3.5 on every
+-- run, control median 8.
 UPDATE criteria
-SET grading_notes = 'ELBOW RUBRIC v2 — is the arm folded into a vertical L under the ball, or is the ball being hoisted some other way?
+SET grading_notes = 'ELBOW RUBRIC v3 — is the arm folded into a vertical L under the ball, or is the ball being hoisted some other way?
 
-WHAT AN L LOOKS LIKE. The forearm points straight UP toward the ceiling, the elbow points straight DOWN toward the floor, and the elbow sits directly UNDER the ball, stacked ball-over-hand-over-forearm-over-elbow. The angle at the elbow is roughly 90 degrees. That is the whole target.
+WHAT AN L LOOKS LIKE. The forearm points straight UP toward the ceiling, the elbow points straight DOWN toward the floor, and the elbow sits directly UNDER the ball, stacked ball-over-hand-over-forearm-over-elbow. The angle at the elbow is roughly 90 degrees. The set point — where the ball loads before the release — sits around the FOREHEAD, on the shooting side. That is the whole target: forehead-height set point, one vertical forearm under the ball.
 
 THE TWO-HAND HOIST TEST — RUN THIS FIRST, AT FACE HEIGHT. Find the frames where the ball passes the player''s face on the way up, and answer two questions there and in every frame above:
   1. THE MIDLINE CHECK. Where is the ball relative to the head? A correct shot carries the ball up on the SHOOTING SIDE of the head — clearly off to one side of the face, above one shoulder, with one forearm under it. A hoisted shot carries the ball straight up the MIDLINE — dead-centre in line with the nose and the middle of the face, then directly over the top of the head, framed between two symmetric arms. The centred ball is the tell you can see from any distance: locate it in each rise frame and say which side of the head it is on.
@@ -373,7 +377,7 @@ EXPERT CALIBRATION — real graded cases:
 
 PLAYER-FACING WORDING: tell them the shooting hand has to take the ball at face height with the elbow tucked under it — one flat vertical forearm carrying the ball, the other hand just along for the ride — instead of heaving the ball up with both hands. Never mention degrees or angles in the reasoning.'
 WHERE name = 'Elbow L-Shape — Under the Ball'
-  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'ELBOW RUBRIC v2%');
+  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'ELBOW RUBRIC v3%');
 
 -- "Source of Shot Power" rubric. v1 read power off legs + elbow angle but had
 -- no shape for the catapult, so a catapulted shot scored 8 off its knee bend
@@ -383,17 +387,21 @@ WHERE name = 'Elbow L-Shape — Under the Ball'
 -- open-V push (cap 4), and the chest pass (cap 2), plus a flared-elbow-on-
 -- the-rise cap of 6. Same eval as the elbow rubric: catapults 6.5-8→3.5-4,
 -- clean control held 8-10.
+-- v3 anchors the correct set point around the FOREHEAD: launched from the
+-- chest (chest pass, elbows out) or carried past it behind the head
+-- (catapult) both mean the arms threw it. Re-evaled: flawed clips 3.5 on
+-- every run, control median 8.
 UPDATE criteria
-SET grading_notes = 'POWER RUBRIC v2 — is the shot driven by the legs, or thrown by the arms?
+SET grading_notes = 'POWER RUBRIC v3 — is the shot driven by the legs, or thrown by the arms?
 
 READ THIS OFF TWO THINGS: the legs, and HOW THE BALL IS CARRIED UP. Check both every time — never score this criterion off the legs alone. Bent knees the player never drives through put no power into the ball, and a deep knee bend never excuses arms that are doing the throwing.
 
 THE LEG TEST. Look for a real dip and a real drive: knees bent in the gather, then visibly extending as the ball goes up, the whole body rising as one motion. A player who stays upright, or who dips and then shoots without ever extending the legs, is not getting power from the ground.
 
-THE ARM TEST — RUN IT AT FACE HEIGHT. In a leg-powered shot, by the time the ball passes the face ONE hand has taken it — shooting hand under the ball, forearm folded toward vertical, elbow under it — and the ball simply rides the leg drive up through that stacked arm. Look at the frames from face height to the set point and ask what the arms are doing. Each of these patterns proves the arms supplied the force, and each caps this criterion on its own no matter how good the knee bend looks:
+THE ARM TEST — RUN IT AT FACE HEIGHT. In a leg-powered shot, by the time the ball passes the face ONE hand has taken it — shooting hand under the ball, forearm folded toward vertical, elbow under it — and the ball loads at a set point around the FOREHEAD on the shooting side, riding the leg drive up through that stacked arm. A ball that never gets to the forehead (launched from the chest) or that keeps going past it (carried behind the head) was thrown by the arms. Look at the frames from face height to the set point and ask what the arms are doing. Each of these patterns proves the arms supplied the force, and each caps this criterion on its own no matter how good the knee bend looks:
   - THE TWO-HAND HOIST / CATAPULT. Run the midline check: locate the ball against the head in each rise frame. A correct shot carries the ball up on the SHOOTING SIDE of the head; a hoisted shot carries it straight up the MIDLINE — dead-centre over the nose and then the top of the head, framed between two symmetric winged-out arms so the arms and ball read as one symmetric W, persisting frame after frame — before whipping it forward (from the side you would see it dip behind the head first). Two arms heaving IS the power source; the legs are just along for the ride. Cap at 4. BOTH findings are required: the centred ball AND the mirrored winged arms. A ball clearly on the shooting side of the head is not a hoist, and a ball only slightly off-centre without confidently symmetric arms is not one either — judge the arm normally from there.
   - THE OPEN-V PUSH. The elbow opens well past 90 on the way up, the arm reaching and extending at the ball rather than folded and lifting. The hands are pushing. Cap at 4.
-  - THE CHEST PASS. Both hands mirrored on the sides of the ball, ball shoved straight out from chest height by the two arms together, no rise to a set point at all. Cap at 2.
+  - THE CHEST PASS. Both hands mirrored on the sides of the ball, both elbows winged out, ball shoved straight out from chest height by the two arms together — it never rises to a forehead set point at all. Cap at 2.
 Two hands on the ball during the gather, below the chin, is completely normal and none of these — the arm test starts where the ball passes the face.
 
 FLARED ELBOW ON THE RISE. Even with one hand properly under the ball, a shooting elbow drifting out sideways on the way up means the arm is lifting rather than riding: cap at 6 even when the set point tidies up afterwards.
@@ -412,7 +420,7 @@ IF THE ONLY FRAMES YOU HAVE ARE AT OR AFTER THE RELEASE, the evidence for this c
 
 PLAYER-FACING WORDING: tell them to load their legs and let the ball ride up through one folded, vertical arm — the shooting hand taking the ball at face height — instead of heaving or catapulting it with both hands. Calling it "catapulting the ball" is good coaching language. Never mention degrees or angles in the reasoning.'
 WHERE name = 'Source of Shot Power'
-  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'POWER RUBRIC v2%');
+  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'POWER RUBRIC v3%');
 
 -- "Guide Hand Follow Through" rubric. v1 named the flick, the hands closing up
 -- and a thrashing finish, but "flat" was left as an impression and the model read

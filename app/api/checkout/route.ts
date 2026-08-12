@@ -264,8 +264,8 @@ export async function POST(req: NextRequest) {
           currency,
           carrier: 'comp',
           service: 'comp',
-          estDaysMin: 3,
-          estDaysMax: 9,
+          estDaysMin: 4,
+          estDaysMax: 10,
         }]
       : await getShippingOptions(
           { country: region, state: destState || undefined, postalCode: destPostal || undefined },

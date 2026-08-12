@@ -8,6 +8,14 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { upload } from '@vercel/blob/client'
 
+import {
+  cropCanvasSize,
+  diffFrames,
+  emptyMotionColumns,
+  motionWeightedTimes,
+  playerColumn,
+} from '@/lib/frame-motion'
+
 const FRAME_COUNT = 28
 const ROUGH_COUNT = 10      // tiny frames for rough shot location
 const PROBE_COUNT = 30      // low-res frames for precise release detection
@@ -243,7 +251,9 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
         const probeH = Math.max(1, Math.round(video.videoHeight * probeScale))
         probeCanvas.width = probeW
         probeCanvas.height = probeH
-        const probeCtx = probeCanvas.getContext('2d')!
+        // willReadFrequently: this pass now calls getImageData on every probe to
+        // measure motion, which is slow on a GPU-backed canvas.
+        const probeCtx = probeCanvas.getContext('2d', { willReadFrequently: true })!
 
         // Dense region: roughCenter ± 40%, minimum 5s total
         // Min 5s covers most short single-shot clips entirely regardless of rough accuracy
@@ -257,12 +267,22 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
         )
 
         const probeBase64: string[] = []
+        // Motion per probe frame, and the box bounding everything that moved.
+        const probeMotion: number[] = []
+        const motionColumns = emptyMotionColumns(probeW)
+        let prevProbe: ImageData | null = null
         for (let i = 0; i < PROBE_COUNT; i++) {
           await seekTo(video, probeTimestamps[i])
           probeCtx.drawImage(video, 0, 0, probeW, probeH)
           probeBase64.push(probeCanvas.toDataURL('image/jpeg', 0.7).split(',')[1])
+          const cur = probeCtx.getImageData(0, 0, probeW, probeH)
+          // The first probe has nothing to diff against; it inherits the second's
+          // score below so the profile stays the same length as the timestamps.
+          probeMotion.push(prevProbe ? diffFrames(prevProbe, cur, motionColumns) : 0)
+          prevProbe = cur
           setProgress(Math.round(20 + ((i + 1) / PROBE_COUNT) * 15))
         }
+        if (probeMotion.length > 1) probeMotion[0] = probeMotion[1]
 
         // --- Phase 2: Find release frame within dense region ---
         // release - 1.7s covers: gather → shot pocket → jump → release
@@ -303,17 +323,47 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
           1,
           MAX_FRAME_DIM / Math.max(video.videoWidth, video.videoHeight),
         )
-        mainCanvas.width = Math.round(video.videoWidth * frameScale)
-        mainCanvas.height = Math.round(video.videoHeight * frameScale)
 
-        const timestamps = Array.from({ length: FRAME_COUNT }, (_, i) =>
-          shotStart + ((shotEnd - shotStart) / (FRAME_COUNT + 1)) * (i + 1)
+        // Crop to the player's column. Uncropped, a phone clip of a whole gym puts
+        // the shooter across a quarter of the frame width and his shoes about ten
+        // pixels apart, which is below what the grader can measure. The crop is
+        // scaled back up to the SAME AREA the full frame would have occupied, so the
+        // image-token cost per frame is unchanged and the player just fills more of it.
+        const column = playerColumn(
+          motionColumns,
+          video.videoWidth,
+          video.videoHeight,
+          probeW,
+        )
+        const srcX = column ? column.x : 0
+        const srcW = column ? column.width : video.videoWidth
+        const canvasSize = cropCanvasSize(
+          srcW,
+          video.videoWidth,
+          video.videoHeight,
+          frameScale,
+        )
+        mainCanvas.width = canvasSize.width
+        mainCanvas.height = canvasSize.height
+
+        // Weight the frame times by motion rather than spacing them evenly, so the
+        // release gets the frames and the still wind-up does not.
+        const timestamps = motionWeightedTimes(
+          FRAME_COUNT,
+          shotStart,
+          shotEnd,
+          probeTimestamps,
+          probeMotion,
         )
 
         for (let i = 0; i < timestamps.length; i++) {
           if (cancelledRef.current) { cleanup(); resolve(blobs); return }
           await seekTo(video, timestamps[i])
-          ctx.drawImage(video, 0, 0, mainCanvas.width, mainCanvas.height)
+          ctx.drawImage(
+            video,
+            srcX, 0, srcW, video.videoHeight,
+            0, 0, mainCanvas.width, mainCanvas.height,
+          )
           await new Promise<void>((res) => {
             mainCanvas.toBlob(
               (blob) => {

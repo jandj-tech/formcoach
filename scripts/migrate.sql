@@ -327,66 +327,92 @@ PLAYER-FACING WORDING: tell them to point their toes where they want the ball to
 WHERE name = 'Square to the Basket'
   AND (grading_notes IS NULL OR grading_notes NOT LIKE 'SQUARE RUBRIC v1%');
 
--- "Elbow L-Shape" rubric. The criterion shipped with only its one-line
--- description and had no language for the failure that actually happens: the
--- arm opening into a wide V beside the head instead of folding into an L under
--- the ball. A V is a different shape, not a slightly imperfect L, and belongs
--- in the bottom bands.
+-- "Elbow L-Shape" rubric. v1 named the open-V push but scored a CATAPULTED
+-- shot 8: the two-handed heave up the midline is MORE folded than an L, so
+-- "recognisable L" language rewarded it (analysis 197, expert-flagged
+-- 2026-08-12). v2's primary test is the two-hand hoist read at face height —
+-- the midline check (ball dead-centre over the nose/head vs on the shooting
+-- side) plus mirrored winged elbows, both required, with a
+-- judge-normally fallback when either is unclear. Front-camera "hard to
+-- confirm" hedging is banned for the hoist: it is visible from every angle.
+-- Eval (harness, 5 runs): catapults 197/196 went 7→3.5-4 median, open-V 193
+-- 8-9→3.5, clean control held 8-10.
 UPDATE criteria
-SET grading_notes = 'ELBOW RUBRIC v1 — is the arm folded into an L under the ball, or opened into a V beside it?
+SET grading_notes = 'ELBOW RUBRIC v2 — is the arm folded into a vertical L under the ball, or is the ball being hoisted some other way?
 
 WHAT AN L LOOKS LIKE. The forearm points straight UP toward the ceiling, the elbow points straight DOWN toward the floor, and the elbow sits directly UNDER the ball, stacked ball-over-hand-over-forearm-over-elbow. The angle at the elbow is roughly 90 degrees. That is the whole target.
 
-WHAT A V LOOKS LIKE — THIS IS THE FAILURE TO CATCH. The elbow angle is opened up well past 90 degrees, so the upper arm and forearm form a wide V instead of a folded L. The ball ends up beside the head or out to the side rather than stacked above the elbow, and the arm is reaching or pushing rather than lifting. A V is not a slightly imperfect L — it is a different shape, and it scores in the bottom bands.
+THE TWO-HAND HOIST TEST — RUN THIS FIRST, AT FACE HEIGHT. Find the frames where the ball passes the player''s face on the way up, and answer two questions there and in every frame above:
+  1. THE MIDLINE CHECK. Where is the ball relative to the head? A correct shot carries the ball up on the SHOOTING SIDE of the head — clearly off to one side of the face, above one shoulder, with one forearm under it. A hoisted shot carries the ball straight up the MIDLINE — dead-centre in line with the nose and the middle of the face, then directly over the top of the head, framed between two symmetric arms. The centred ball is the tell you can see from any distance: locate it in each rise frame and say which side of the head it is on.
+  2. THE ELBOWS. Is the shooting elbow tucked under the ball pointing at the floor? Or are BOTH elbows winged out sideways, away from the body, the two arms making a matching symmetric shape either side of the ball?
+A ball riding the midline with both elbows winged out at face height and above is a TWO-HAND HOIST: the ball is being heaved up the middle with both hands, there is no L anywhere in the shot, and this criterion scores 3-4. THE SHAPE CONFIRMS IT: in a hoist the two upper arms lift out level to the sides, mirror images of each other, so the arms and ball read as one symmetric W with the ball at its centre — and that symmetric W persists frame after frame as the ball travels over the head. Do not average it up because the shape looks "recognisable" — an L requires ONE forearm under the ball, and a two-hand hoist has none.
+Two hands on the ball during the gather, below the chin, is completely normal and is not this fault — the test starts at face height. A ball clearly on the shooting side of the head is NOT a hoist, whatever the guide hand is doing: judge it as an ordinary L from there. And BOTH findings are required to call it: the centred ball AND the mirrored winged arms. If the ball is only slightly off-centre, or you cannot confidently say the two arms are symmetric, that is not a hoist — go back to judging the L normally under the ordinary burden of proof.
+
+WHAT A V LOOKS LIKE — THE OPEN PUSH. The elbow angle is opened up well past 90 degrees, so the upper arm and forearm form a wide V instead of a folded L. The ball ends up beside the head or out to the side rather than stacked above the elbow, and the arm is reaching or pushing rather than lifting. A V is not a slightly imperfect L — it is a different shape, and it scores in the bottom bands.
+
+FLARED ELBOW ON THE RISE. Even with one hand properly under the ball, a shooting elbow that wings out sideways during the rise costs points: clearly out is 4-5, a brief mild drift that recovers into a true vertical L is 7-8.
+
+SEEN FROM THE SIDE, the same hoist shows as the ball carried over the top of the head or dipping behind it, the forearm folded backward like a catapult arm about to sling forward. That is the same no-L fault: 3-4, and 1-2 if the ball clearly hangs behind the head. (The WRIST cocking back under the ball is correct and universal — the fault is the FOREARM leaning back, the whole ball travelling toward the head.)
 
 HOW TO SCORE:
-  - Forearm vertical, elbow pointing down and sitting under the ball, angle near 90 degrees: 9-10.
-  - Recognisably an L, forearm close to vertical, elbow a little outside the ball line: 7-8.
-  - Angle clearly opened past 90 into a V, or the elbow visibly outside the ball rather than under it: 3-4.
-  - No L at all — the arm reaching out to the side, a sideways L with the forearm travelling sideways instead of up, or the ball pushed from beside the shoulder: 1-2.
+  - One forearm vertical under the ball, elbow pointing down, near 90 degrees, guide hand resting on the side: 9-10.
+  - Recognisably an L, forearm close to vertical, elbow a little outside the ball line or a brief mild drift on the rise: 7-8.
+  - Angle clearly opened past 90 into a V, or the shooting elbow clearly out to the side on the rise: 4-5.
+  - Two-hand hoist (ball up the midline, both elbows winged, from face height up), a sideways L, or the ball carried over the head: 3-4.
+  - Ball hanging behind the head, or pushed from beside the shoulder with no L at all: 1-2.
 
 A SIDEWAYS L IS NOT AN L. An arm bent at 90 degrees but rotated so the forearm points sideways rather than up scores the same as an elbow that is completely out. Only a VERTICAL forearm counts.
 
 JUDGE IT FROM THE RISE THROUGH THE SET POINT, before the arm extends to release. At full extension every shooter''s arm is straight — a straight arm at the apex is not a V and is not a flaw. If the only frames you have are at or after release, return null rather than scoring the extension.
 
-CAMERA ANGLE. Filmed from the side, an elbow can look further out than it is. If the arm still forms a clear L with the elbow under the ball allowing for the angle, give full credit. But a wide-open V is visible from any angle — do not excuse one as a camera artifact.
+CAMERA ANGLE. Filmed from the side, a single tucked elbow can look further out than it is; allow for that. But the two-hand hoist is visible from EVERY angle — mirrored hands and two winged elbows read clearly front-on, side-on and elevated — so never wave it off as a camera artifact, and never default high because the view "makes the elbow hard to confirm" when you can plainly see both hands still driving the ball. If you can see the hoist, you have seen the flaw.
 
-EXPERT CALIBRATION — a real graded case:
-  - Player square to the camera with the ball up beside his head, upper arm and forearm opened into a wide V, elbow out to the side rather than under the ball, pushing the shot from the side of his body: the expert said this player "did not have an L shape at all". Score it 1-3, not 5 or 6. A shot pushed from beside the head with an open arm angle has no L in it.
+EXPERT CALIBRATION — real graded cases:
+  - Player square to the camera with the ball up beside his head, upper arm and forearm opened into a wide V, elbow out to the side rather than under the ball, pushing the shot from the side of his body: the expert said this player "did not have an L shape at all". Score it 1-3, not 5 or 6.
+  - Player who carried the ball up the middle of his body with both hands mirrored on it, both elbows winged out wide, the ball riding above his head before whipping out: a catapulted, two-hand hoist with no L at any point. The expert graded this a clear failure — 3-4 at best, never 7-8.
 
-PLAYER-FACING WORDING: tell them to get the ball stacked over a vertical forearm with the elbow pointing at the floor, directly under the ball. Never mention degrees or angles in the reasoning.'
+PLAYER-FACING WORDING: tell them the shooting hand has to take the ball at face height with the elbow tucked under it — one flat vertical forearm carrying the ball, the other hand just along for the ride — instead of heaving the ball up with both hands. Never mention degrees or angles in the reasoning.'
 WHERE name = 'Elbow L-Shape — Under the Ball'
-  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'ELBOW RUBRIC v1%');
+  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'ELBOW RUBRIC v2%');
 
--- "Source of Shot Power" rubric. Power was being read off the legs alone, so a
--- visible knee bend carried the score even when the arms were plainly doing the
--- work. The elbow angle is the evidence of where the force came from: a folded
--- L rides the leg drive, a wide-open V means the hands are pushing. A V caps
--- this criterion at 4 regardless of how good the knee bend looks.
+-- "Source of Shot Power" rubric. v1 read power off legs + elbow angle but had
+-- no shape for the catapult, so a catapulted shot scored 8 off its knee bend
+-- (analysis 197, expert-flagged 2026-08-12). v2 keeps the leg test and names
+-- three arm-powered patterns that each cap the score on their own: the
+-- two-hand hoist/catapult (midline check + mirrored winged arms, cap 4), the
+-- open-V push (cap 4), and the chest pass (cap 2), plus a flared-elbow-on-
+-- the-rise cap of 6. Same eval as the elbow rubric: catapults 6.5-8→3.5-4,
+-- clean control held 8-10.
 UPDATE criteria
-SET grading_notes = 'POWER RUBRIC v1 — is the shot driven by the legs, or pushed by the arms?
+SET grading_notes = 'POWER RUBRIC v2 — is the shot driven by the legs, or thrown by the arms?
 
-READ THIS OFF TWO THINGS: the legs, and the ELBOW ANGLE. The elbow tells you where the power is coming from, so check it every time — do not score this criterion off the legs alone.
+READ THIS OFF TWO THINGS: the legs, and HOW THE BALL IS CARRIED UP. Check both every time — never score this criterion off the legs alone. Bent knees the player never drives through put no power into the ball, and a deep knee bend never excuses arms that are doing the throwing.
 
-THE ELBOW TEST. A shooter who is driving with their legs loads the arm into a folded L, roughly 90 degrees at the elbow with the forearm vertical, and lets the leg drive travel up through that stacked arm. A shooter who is pushing with their arms opens the elbow into a wide V — the angle well past 90 degrees, the arm reaching and extending rather than folded and lifting. A V means the hands and arms are supplying the force, and the score must come down for it even if the knees are bent, because bent knees the player never actually drives through do not put power into the ball.
+THE LEG TEST. Look for a real dip and a real drive: knees bent in the gather, then visibly extending as the ball goes up, the whole body rising as one motion. A player who stays upright, or who dips and then shoots without ever extending the legs, is not getting power from the ground.
 
-THE LEG TEST. Look for a real dip and a real drive: knees bent in the gather, then visibly extending as the ball goes up, with the whole body rising as one motion. A player who stays upright, or who dips and then shoots without ever extending the legs, is not getting power from the ground.
+THE ARM TEST — RUN IT AT FACE HEIGHT. In a leg-powered shot, by the time the ball passes the face ONE hand has taken it — shooting hand under the ball, forearm folded toward vertical, elbow under it — and the ball simply rides the leg drive up through that stacked arm. Look at the frames from face height to the set point and ask what the arms are doing. Each of these patterns proves the arms supplied the force, and each caps this criterion on its own no matter how good the knee bend looks:
+  - THE TWO-HAND HOIST / CATAPULT. Run the midline check: locate the ball against the head in each rise frame. A correct shot carries the ball up on the SHOOTING SIDE of the head; a hoisted shot carries it straight up the MIDLINE — dead-centre over the nose and then the top of the head, framed between two symmetric winged-out arms so the arms and ball read as one symmetric W, persisting frame after frame — before whipping it forward (from the side you would see it dip behind the head first). Two arms heaving IS the power source; the legs are just along for the ride. Cap at 4. BOTH findings are required: the centred ball AND the mirrored winged arms. A ball clearly on the shooting side of the head is not a hoist, and a ball only slightly off-centre without confidently symmetric arms is not one either — judge the arm normally from there.
+  - THE OPEN-V PUSH. The elbow opens well past 90 on the way up, the arm reaching and extending at the ball rather than folded and lifting. The hands are pushing. Cap at 4.
+  - THE CHEST PASS. Both hands mirrored on the sides of the ball, ball shoved straight out from chest height by the two arms together, no rise to a set point at all. Cap at 2.
+Two hands on the ball during the gather, below the chin, is completely normal and none of these — the arm test starts where the ball passes the face.
+
+FLARED ELBOW ON THE RISE. Even with one hand properly under the ball, a shooting elbow drifting out sideways on the way up means the arm is lifting rather than riding: cap at 6 even when the set point tidies up afterwards.
 
 HOW TO SCORE:
-  - Clear knee bend driving into a full extension, arm folded into an L and riding that drive upward: 9-10.
-  - Legs contributing but the arm doing more than it should, or a shallow dip: 6-7.
-  - Elbow opened into a V with the arms visibly supplying the force, or almost no leg drive: 3-4.
-  - Ball pushed or shoved entirely by the arms with the legs static: 1-2.
+  - Clear knee bend driving into full extension, one hand under the ball by face height, folded vertical forearm riding that drive: 9-10.
+  - Legs contributing but the arm doing more than it should, or a shallow dip, or the elbow drifting out on the rise: 6-7.
+  - Two-hand hoist or catapult, open-V push, or almost no leg drive: 3-4.
+  - Ball shoved entirely by the arms — chest-passed or two-hand slung with the legs static: 1-2.
 
-THE ELBOW CAN CAP THIS CRITERION ON ITS OWN. If the arm is in a wide-open V at the set point, this criterion cannot score above 4 no matter how good the knee bend looks. The shape of the arm is the evidence of where the force came from.
+DO NOT CONFUSE FULL EXTENSION AT RELEASE WITH ANY OF THESE. Every shooter''s arm straightens as the ball leaves the hand — that is the finish of a good shot, not an arm push. And both arms finishing high is normal. Judge the arms between face height and the set point, before the extension.
 
-DO NOT CONFUSE FULL EXTENSION AT RELEASE WITH A V. Every shooter''s arm straightens as the ball leaves the hand — that is the finish of a good shot, not an arm push. Judge the arm shape at the SET POINT, on the way up, before the extension.
+THE HOIST IS VISIBLE FROM EVERY ANGLE. Mirrored hands and two winged elbows read clearly front-on, side-on and elevated. Never default high because the camera "makes it hard to confirm" — if you can see both hands still driving the ball above face height, you have seen where the power came from.
 
 IF THE ONLY FRAMES YOU HAVE ARE AT OR AFTER THE RELEASE, the evidence for this criterion is not present — you cannot see the gather, the knee bend, or the set point, and legs already extended at release tell you nothing about whether they drove the shot. Return null rather than scoring a shot you never saw loaded.
 
-PLAYER-FACING WORDING: tell them to load their legs and let the power come up from the ground through a folded arm, instead of pushing the ball with their hands. Never mention degrees or angles in the reasoning.'
+PLAYER-FACING WORDING: tell them to load their legs and let the ball ride up through one folded, vertical arm — the shooting hand taking the ball at face height — instead of heaving or catapulting it with both hands. Calling it "catapulting the ball" is good coaching language. Never mention degrees or angles in the reasoning.'
 WHERE name = 'Source of Shot Power'
-  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'POWER RUBRIC v1%');
+  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'POWER RUBRIC v2%');
 
 -- "Guide Hand Follow Through" rubric. v1 named the flick, the hands closing up
 -- and a thrashing finish, but "flat" was left as an impression and the model read

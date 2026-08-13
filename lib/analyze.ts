@@ -136,6 +136,8 @@ export async function buildCalibrationFeedbackText(): Promise<string> {
       c.name,
       cs.criterion_id,
       ROUND(AVG(cs.admin_score - cs.ai_score)::numeric, 2) AS avg_drift,
+      MIN(cs.admin_score - cs.ai_score) AS min_drift,
+      MAX(cs.admin_score - cs.ai_score) AS max_drift,
       COUNT(*) AS corrections,
       MAX(cs.admin_notes) FILTER (WHERE cs.admin_notes IS NOT NULL AND cs.admin_notes != '') AS latest_note
     FROM criterion_scores cs
@@ -155,7 +157,23 @@ export async function buildCalibrationFeedbackText(): Promise<string> {
     LIMIT 20
   `
 
-  const calibrationLines = calibration.map((f) => {
+  // A criterion's corrections only become prompt guidance when they all push
+  // the same direction. Mixed-direction corrections mean the judgment is
+  // situational — that lesson belongs in the criterion's grading guide, not
+  // here. Injecting an AVERAGED directive for a mixed criterion is actively
+  // harmful: "be more generous" (net of old upward fixes) made a catapulted
+  // shot grade 8 against a rubric that caps it at 4, and raw score examples
+  // the model cannot see the footage for bias its read of EVERY clip — a
+  // "7.5→3 catapult" example made a clean control clip grade 3.5.
+  const consistent = calibration.filter((f) => {
+    const lo = f.min_drift === null ? null : Number(f.min_drift)
+    const hi = f.max_drift === null ? null : Number(f.max_drift)
+    const avg = f.avg_drift === null ? null : Number(f.avg_drift)
+    return lo !== null && hi !== null && avg !== null && Math.abs(avg) >= 0.5 && lo >= 0 === hi >= 0
+  })
+  const consistentNames = new Set(consistent.map((f) => f.name as string))
+
+  const calibrationLines = consistent.map((f) => {
     const drift = Number(f.avg_drift)
     const direction =
       drift > 0
@@ -165,11 +183,11 @@ export async function buildCalibrationFeedbackText(): Promise<string> {
   })
 
   const recentLines = recentCorrections
-    .filter((r) => r.admin_notes)
+    .filter((r) => r.admin_notes && consistentNames.has(r.name as string))
     .map((r) => `- "${r.name}": scored ${r.ai_score} → corrected to ${r.admin_score} — "${r.admin_notes}"`)
 
   return calibrationLines.length > 0 || recentLines.length > 0
-    ? '\n\nEXPERT GRADING CALIBRATION — This is how the expert grades. Study these corrections and apply the same judgment to your scoring:\n' +
+    ? '\n\nEXPERT GRADING CALIBRATION — This is how the expert grades. Study these corrections and apply the same judgment to your scoring. They NEVER override the grading guides above: when a guide names a hard cap or band for a fault you observed, that cap wins over any generosity guidance here.\n' +
       (calibrationLines.length > 0 ? 'Score drift per criterion:\n' + calibrationLines.join('\n') : '') +
       (recentLines.length > 0 ? '\n\nRecent corrections with reasoning (apply this grading style):\n' + recentLines.join('\n') : '')
     : ''
@@ -242,7 +260,8 @@ You will receive ${n} sequential frames covering one shot. They are NOT split ev
 JUDGE EACH CRITERION ONLY AT ITS OWN MOMENT — a criterion scored off the wrong moment is the single most common cause of a wrong score:
 - Feet shoulder width apart, knees bent, dominant foot forward, square to the basket: MOMENT 1 ONLY. The base and the lower body are judged as the player goes up, never from an earlier frame where they are still standing around.
 - Shot pocket, elbow L-shape, guide hand placement, thumb spread, palm off the ball: MOMENT 1 THROUGH MOMENT 2 — the hands and arms as they rise, and again at the apex.
-- Source of power, one-hand release, two-finger release, guide hand separation: MOMENT 2.
+- Source of power: MOMENT 1 THROUGH MOMENT 2 — where the power came from shows in the rise (how the ball is carried up), not at the apex, where every arm is extended.
+- One-hand release, two-finger release, guide hand separation: MOMENT 2.
 - Shooting hand follow-through, guide hand follow-through, forward motion and toes: MOMENT 3 — right after the ball leaves the hand and the next couple of frames.
 - Shot arc, ball rotation: the ball in flight after release.
 - Connected shot: the sequence as a whole.
@@ -393,6 +412,14 @@ async function analyzeShotOnce(
           | 'image/webp',
         data: base64,
       },
+      // Frames are ~45% of the input bill and identical across the ensemble's
+      // 3 passes, but they sit AFTER the system-prompt breakpoint so they were
+      // re-billed at full price every pass. A breakpoint on the last frame
+      // lets passes 2 and 3 read the whole prefix (rubrics + frames) at ~10%
+      // of input price. (~$0.07 saved per analysis, no behavior change.)
+      ...(i === frameBase64Array.length - 1
+        ? { cache_control: { type: 'ephemeral' as const } }
+        : {}),
     })
   )
 
@@ -407,14 +434,18 @@ async function analyzeShotOnce(
     // enables adaptive thinking (extra cost); 'disabled' matches Sonnet
     // 4.6's no-thinking default.
     thinking: { type: thinkingMode },
-    // The coaching rubric (~6K tokens) is identical between analyses until an
-    // admin correction lands, so cache it: repeat analyses within 5 minutes
-    // (team roster sessions especially) read it at ~10% of the input price.
+    // The coaching rubric (~16K tokens) is identical between analyses until an
+    // admin correction lands, so cache it with a 1-hour TTL: roughly half of
+    // real analyses arrive within an hour of the previous one (team sessions
+    // especially), and each of those reads the rubric at ~10% of input price
+    // instead of re-writing it. The 1h write premium (2x vs 1.25x) costs ~4c
+    // extra on a cold start and saves ~6c on every warm follow-up. Must stay
+    // BEFORE the frames' 5-minute breakpoint — longer TTLs precede shorter.
     system: [
       {
         type: 'text',
         text: systemPrompt,
-        cache_control: { type: 'ephemeral' },
+        cache_control: { type: 'ephemeral', ttl: '1h' },
       },
     ],
     messages: [
@@ -425,13 +456,6 @@ async function analyzeShotOnce(
           {
             type: 'text',
             text: 'Analyze this basketball shot across all frames and return your scoring as JSON.',
-            // Second breakpoint AFTER the frames: the ~34K image tokens are by
-            // far the biggest input cost, and without this marker passes 2..N
-            // of the ensemble re-paid full price for them every time (the
-            // system-prompt breakpoint above only covers the rubric). With it,
-            // pass 1 writes rubric+frames once and passes 2..N read the whole
-            // prefix at ~10% — roughly a third off the cost of every analysis.
-            cache_control: { type: 'ephemeral' },
           },
         ],
       },

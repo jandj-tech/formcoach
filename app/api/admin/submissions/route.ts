@@ -11,11 +11,20 @@ async function isAdmin() {
 export async function GET() {
   if (!await isAdmin()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  // account_email/nickname = the logged-in player account that uploaded.
+  // team/player columns cover coach uploads for a roster player; s.email is
+  // only set for coach self-uploads.
   const submissions = await db`
     SELECT s.id, s.email, s.status, s.created_at,
-           a.id as analysis_id, a.overall_score, a.frame_urls
+           a.id as analysis_id, a.overall_score, a.frame_urls,
+           u.email AS account_email, u.nickname AS account_nickname,
+           t.name AS team_name,
+           tp.first_name AS player_first_name, tp.last_name_initial AS player_last_initial
     FROM submissions s
     LEFT JOIN analyses a ON a.submission_id = s.id
+    LEFT JOIN users u ON u.id = s.user_id
+    LEFT JOIN teams t ON t.id = s.team_id
+    LEFT JOIN team_players tp ON tp.id = s.team_player_id
     ORDER BY s.created_at DESC
     LIMIT 100
   `

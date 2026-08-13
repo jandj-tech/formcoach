@@ -11,8 +11,10 @@ import { getTeamTokenState, userHasInitiatedTeam, orgHasInitiatedTeam } from '@/
 import { db } from '@/lib/db'
 
 export const metadata: Metadata = {
-  title: 'Analyze — LearnHoops.com',
-  description: 'Upload a video of your shot and get scored across 18 coaching criteria.',
+  title: 'AI Basketball Shot Analyzer — Get Your Shooting Form Graded | LearnHoops',
+  description:
+    'Analyze your basketball shot with AI. Upload a video of your jump shot and get scored on 18 shooting-form criteria — elbow, stance, release, arc — with coaching feedback and drills. First analysis free.',
+  alternates: { canonical: '/analyze' },
 }
 
 export default async function AnalyzePage() {

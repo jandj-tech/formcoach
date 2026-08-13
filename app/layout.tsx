@@ -15,14 +15,23 @@ const spaceGrotesk = Space_Grotesk({ variable: '--font-space-grotesk', subsets: 
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.learnhoops.com'),
-  title: 'LearnHoops.com',
+  title: 'AI Basketball Shot Analysis & Shooting Form Coach | LearnHoops',
   description:
-    'AI basketball shot analysis. Upload a video, get a private breakdown across 18 form criteria in minutes — find what is holding your shot back.',
+    'AI basketball shot analysis that fixes your shooting form. Upload a video of your jump shot and get graded on 18 coaching criteria — elbow, stance, arc, follow-through — with drills to improve, in minutes. First analysis free.',
+  keywords: [
+    'basketball shot analysis',
+    'AI basketball',
+    'basketball shooting form',
+    'jump shot analyzer',
+    'basketball form coach',
+    'shooting form trainer',
+    'basketball training app',
+  ],
   alternates: { canonical: '/' },
   openGraph: {
-    title: 'LearnHoops.com',
-    description: 'AI basketball shot analysis. Upload a video, get scored across 18 form criteria.',
-    siteName: 'LearnHoops.com',
+    title: 'AI Basketball Shot Analysis & Shooting Form Coach | LearnHoops',
+    description: 'Upload a video of your jump shot, get graded on 18 shooting-form criteria with drills to improve. First analysis free.',
+    siteName: 'LearnHoops',
     url: 'https://www.learnhoops.com',
     type: 'website',
   },
@@ -53,6 +62,47 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${geistSans.variable} ${geistMono.variable} ${archivo.variable} ${spaceGrotesk.variable} h-full antialiased`}
     >
       <body className="min-h-full bg-white text-black flex flex-col">
+        {/* Structured data: tells search engines who we are and what the site
+            does — feeds rich results for brand and product searches. */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@graph': [
+                {
+                  '@type': 'Organization',
+                  '@id': 'https://www.learnhoops.com/#org',
+                  name: 'LearnHoops',
+                  url: 'https://www.learnhoops.com',
+                  logo: 'https://www.learnhoops.com/icon.png',
+                  sameAs: ['https://www.youtube.com/@LearnHoopsbasketball'],
+                },
+                {
+                  '@type': 'WebSite',
+                  name: 'LearnHoops',
+                  url: 'https://www.learnhoops.com',
+                  publisher: { '@id': 'https://www.learnhoops.com/#org' },
+                },
+                {
+                  '@type': 'SoftwareApplication',
+                  name: 'LearnHoops AI Basketball Shot Analysis',
+                  applicationCategory: 'SportsApplication',
+                  operatingSystem: 'Web, iOS',
+                  url: 'https://www.learnhoops.com/analyze',
+                  description:
+                    'Upload a video of your basketball jump shot and AI grades your shooting form on 18 coaching criteria — elbow alignment, stance, arc, follow-through — with personalized drills to improve.',
+                  offers: {
+                    '@type': 'Offer',
+                    price: '1.79',
+                    priceCurrency: 'USD',
+                    description: 'Per shot analysis. First analysis free with a new account.',
+                  },
+                },
+              ],
+            }),
+          }}
+        />
         <CartProvider>
           <MetaPixel />
           <CopyToast />

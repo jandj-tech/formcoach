@@ -290,48 +290,67 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   const teamsTab = (
     <div className="space-y-4">
-      {teams.map((t) => {
+      {teams.map((t, i) => {
         const teamCoaches = coachesByTeam[t.id] ?? []
         return (
-          <div key={t.id} className="bg-gray-50 border border-gray-200 rounded-2xl p-4 space-y-2">
-            <div className="flex items-start justify-between gap-3">
+          // The whole team is minimizable to its name+code header. Same
+          // no-JS <details> pattern as account Sections; the first team
+          // starts open (keeps the schedule's at-a-glance prominence),
+          // additional teams start folded.
+          <details
+            key={t.id}
+            open={i === 0}
+            className="group bg-gray-50 border border-gray-200 rounded-2xl"
+          >
+            <summary className="flex items-center justify-between gap-3 p-4 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
               <div className="min-w-0">
-                <p className="font-bold text-black">{t.name}</p>
+                <p className="font-bold text-black truncate">{t.name}</p>
                 <p className="text-gray-500 text-xs mt-0.5">
                   Team code:{' '}
                   <span className="font-mono font-semibold text-gray-700">{t.access_code}</span>
                 </p>
               </div>
-              <LeaveTeamButton teamId={t.id} teamName={t.name} />
-            </div>
-            {teamCoaches.length > 0 && (
-              <p className="text-xs text-gray-500">
-                <span className="font-semibold uppercase tracking-wide">
-                  {teamCoaches.length === 1 ? 'Coach' : 'Coaches'}:
-                </span>{' '}
-                <span className="text-gray-700">{teamCoaches.join(', ')}</span>
-              </p>
-            )}
-            <Link
-              href={`/dashboard/leaderboard?team=${t.id}`}
-              className="inline-block text-sm font-semibold text-orange-600 hover:text-orange-500 transition-colors"
-            >
-              View Team Leaderboard →
-            </Link>
+              <svg
+                className="w-5 h-5 text-gray-400 transition-transform group-open:rotate-180 shrink-0"
+                viewBox="0 0 20 20" fill="currentColor" aria-hidden
+              >
+                <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+              </svg>
+            </summary>
 
-            {/* Upcoming events — one-tap RSVP without leaving the dashboard.
-                Schedule outranks chat everywhere: open by default, chat folded. */}
-            <div className="pt-2 space-y-2">
-              <Section title="📅 Upcoming" defaultOpen>
-                <TeamSchedulePanel teamId={t.id} theme="light" compact />
-              </Section>
+            <div className="px-4 pb-4 space-y-2 border-t border-gray-200 pt-3">
+              <div className="flex items-start justify-between gap-3">
+                {teamCoaches.length > 0 ? (
+                  <p className="text-xs text-gray-500 min-w-0">
+                    <span className="font-semibold uppercase tracking-wide">
+                      {teamCoaches.length === 1 ? 'Coach' : 'Coaches'}:
+                    </span>{' '}
+                    <span className="text-gray-700">{teamCoaches.join(', ')}</span>
+                  </p>
+                ) : <span />}
+                <LeaveTeamButton teamId={t.id} teamName={t.name} />
+              </div>
+              <Link
+                href={`/dashboard/leaderboard?team=${t.id}`}
+                className="inline-block text-sm font-semibold text-orange-600 hover:text-orange-500 transition-colors"
+              >
+                View Team Leaderboard →
+              </Link>
 
-              {/* Team chat — same rules as the app: coach controls who can post */}
-              <Section title="💬 Team Chat" summary="Open to chat">
-                <TeamChatPanel teamId={t.id} />
-              </Section>
+              {/* Upcoming events — one-tap RSVP without leaving the dashboard.
+                  Schedule outranks chat everywhere: open by default, chat folded. */}
+              <div className="pt-2 space-y-2">
+                <Section title="📅 Upcoming" defaultOpen>
+                  <TeamSchedulePanel teamId={t.id} theme="light" compact />
+                </Section>
+
+                {/* Team chat — same rules as the app: coach controls who can post */}
+                <Section title="💬 Team Chat" summary="Open to chat">
+                  <TeamChatPanel teamId={t.id} />
+                </Section>
+              </div>
             </div>
-          </div>
+          </details>
         )
       })}
 

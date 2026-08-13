@@ -5,13 +5,63 @@ import SiteFooter from '@/components/SiteFooter'
 import SupportForm from './SupportForm'
 
 export const metadata: Metadata = {
-  title: 'Support — LearnHoops.com',
-  description: 'Contact LearnHoops support.',
+  title: 'Basketball Shot Analysis Help & FAQ | LearnHoops',
+  description:
+    'How AI basketball shot analysis works, what it costs, how to film your jump shot for the best results, and how teams use LearnHoops. Contact support any time.',
+  alternates: { canonical: '/support' },
 }
+
+// Rendered as visible FAQ items below AND emitted as FAQPage structured data,
+// so the two can never drift apart. Google only allows FAQ rich results when
+// the schema text matches what's on the page.
+const FAQS: Array<{ id?: string; q: string; a: string[] }> = [
+  {
+    q: 'What is AI basketball shot analysis?',
+    a: [
+      'You upload a short video of one jump shot, and our AI studies it frame by frame against 18 shooting-form criteria — the same fundamentals real coaches teach: elbow alignment, stance width, shot pocket, release, follow-through, arc, and more. A few minutes later you get an overall score, a grade for every criterion, and plain-English coaching feedback with drills to fix what is holding your shot back.',
+    ],
+  },
+  {
+    q: 'How much does a shot analysis cost?',
+    a: [
+      'Your first analysis is free when you create an account. After that, each analysis is $1.79 — or $0.99 for players on an initiated team. Every LearnHoops Training Basketball from the shop includes 5 free analyses, and bulk orders get volume discounts automatically.',
+    ],
+  },
+  {
+    id: 'filming',
+    q: 'What angle should I film from to get the best results?',
+    a: [
+      "For the most accurate analysis, film from under or near the net — either directly behind the basket or slightly to the side at an angle where the shooter's elbow, arms, and hands are all clearly visible throughout the shot. This gives the AI a clear view of arm mechanics, elbow alignment, and release. Avoid filming directly face-on, as key form details are hidden from that perspective. Video examples for each angle are coming soon.",
+      "To get shot arc and ball rotation graded, the ball itself has to stay in frame and in focus from the moment it leaves your hand until it reaches the rim. Keep the whole flight path in shot, stay close enough that the ball isn't a tiny blur, and film in good light so the seams are readable in the air. If the ball leaves the frame, goes out of focus, or the basket isn't visible, we leave those two criteria ungraded rather than guessing — a guessed score would drag your overall number and your feedback off, so a blank is more honest than a bad estimate.",
+    ],
+  },
+  {
+    q: 'Can basketball teams and organizations use LearnHoops?',
+    a: [
+      'Yes. Coaches get a team dashboard with a roster, shared credits, schedules, and team chat — players join with a team code, and the coach can upload shots for any player on the roster. Organizations can run multiple teams and 10-week training classes with progress certificates. Team players pay the discounted $0.99 rate per analysis.',
+    ],
+  },
+]
 
 export default function SupportPage() {
   return (
     <main className="min-h-screen bg-ink-950 text-chalk flex flex-col">
+      {/* FAQ structured data, generated from the same FAQS array the page
+          renders — eligible for FAQ rich results in search. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'FAQPage',
+            mainEntity: FAQS.map((f) => ({
+              '@type': 'Question',
+              name: f.q,
+              acceptedAnswer: { '@type': 'Answer', text: f.a.join(' ') },
+            })),
+          }),
+        }}
+      />
       <TopNav />
 
       {/* Contact */}
@@ -44,22 +94,26 @@ export default function SupportPage() {
             <h2 className="font-display font-black uppercase text-2xl text-center">
               Frequently asked questions
             </h2>
-            <details id="filming" className="bg-ink-800 border border-courtline rounded-2xl group scroll-mt-24" open>
-              <summary className="flex items-center justify-between gap-3 px-5 py-4 cursor-pointer list-none font-bold text-chalk select-none">
-                What angle should I film from to get the best results?
-                <span className="text-chalk-dim text-lg group-open:rotate-180 transition-transform select-none" aria-hidden>
-                  ›
-                </span>
-              </summary>
-              <div className="px-5 pb-5 text-sm text-chalk-dim leading-relaxed space-y-3">
-                <p>
-                  For the most accurate analysis, film from under or near the net — either directly behind the basket or slightly to the side at an angle where the shooter&apos;s elbow, arms, and hands are all clearly visible throughout the shot. This gives the AI a clear view of arm mechanics, elbow alignment, and release. Avoid filming directly face-on, as key form details are hidden from that perspective. Video examples for each angle are coming soon.
-                </p>
-                <p>
-                  <strong className="text-chalk">To get shot arc and ball rotation graded</strong>, the ball itself has to stay in frame and in focus from the moment it leaves your hand until it reaches the rim. Keep the whole flight path in shot, stay close enough that the ball isn&apos;t a tiny blur, and film in good light so the seams are readable in the air. If the ball leaves the frame, goes out of focus, or the basket isn&apos;t visible, we leave those two criteria ungraded rather than guessing — a guessed score would drag your overall number and your feedback off, so a blank is more honest than a bad estimate.
-                </p>
-              </div>
-            </details>
+            {FAQS.map((f) => (
+              <details
+                key={f.q}
+                id={f.id}
+                className="bg-ink-800 border border-courtline rounded-2xl group scroll-mt-24"
+                open={f.id === 'filming'}
+              >
+                <summary className="flex items-center justify-between gap-3 px-5 py-4 cursor-pointer list-none font-bold text-chalk select-none">
+                  {f.q}
+                  <span className="text-chalk-dim text-lg group-open:rotate-180 transition-transform select-none" aria-hidden>
+                    ›
+                  </span>
+                </summary>
+                <div className="px-5 pb-5 text-sm text-chalk-dim leading-relaxed space-y-3">
+                  {f.a.map((para, i) => (
+                    <p key={i}>{para}</p>
+                  ))}
+                </div>
+              </details>
+            ))}
           </div>
 
           <Link href="/" className="text-sm font-semibold text-ember-400 hover:text-ember-500 transition-colors py-2">

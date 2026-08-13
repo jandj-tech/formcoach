@@ -11,9 +11,10 @@ import TeamHubClient, { type HubTeam } from './TeamHubClient'
 import { GraduationCapIcon, TrendingUpIcon, TrophyIcon } from 'lucide-react'
 
 export const metadata: Metadata = {
-  title: 'Organizations — LearnHoops.com',
+  title: 'Basketball Team & Organization Shot Analysis | LearnHoops',
   description:
-    'LearnHoops Team Plan: AI shot analysis for whole organizations — player rankings, improvement tracking, and credits from $0.99 per upload.',
+    'AI basketball shot analysis for teams and organizations — coach dashboards, rosters, player rankings, improvement tracking, and team pricing from $0.99 per analysis.',
+  alternates: { canonical: '/team' },
 }
 
 export default async function TeamLandingPage() {

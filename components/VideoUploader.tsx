@@ -83,7 +83,11 @@ async function reencodeFrames(
 
 // Returns a frame batch guaranteed to fit under UPLOAD_BUDGET_BYTES (so the
 // analyze upload can never trigger an HTTP 413), plus whether the batch had to
-// be compressed — `reduced: true` means analysis quality will be lower.
+// give up RESOLUTION to get there — `reduced: true` means analysis quality is
+// genuinely lower. The full-resolution JPEG re-encode steps are normal for any
+// modern phone video (4K frames always start over budget) and cost no real
+// accuracy, so they must NOT trigger the quality warning — that screen was
+// firing on every iPhone clip and reading as "your video is too big".
 async function fitFramesToBudget(
   frames: Blob[],
 ): Promise<{ frames: Blob[]; reduced: boolean }> {
@@ -91,17 +95,20 @@ async function fitFramesToBudget(
   // Each step re-encodes from the original frames (no compounding artifacts),
   // dropping quality first and then resolution until the batch is small enough.
   const steps = [
-    { quality: 0.7, scale: 1 },
-    { quality: 0.55, scale: 1 },
-    { quality: 0.5, scale: 0.8 },
-    { quality: 0.42, scale: 0.65 },
-    { quality: 0.35, scale: 0.5 },
+    { quality: 0.7, scale: 1, lossy: false },
+    { quality: 0.55, scale: 1, lossy: false },
+    { quality: 0.5, scale: 0.8, lossy: true },
+    { quality: 0.42, scale: 0.65, lossy: true },
+    { quality: 0.35, scale: 0.5, lossy: true },
   ]
   let current = frames
   for (const step of steps) {
     current = await reencodeFrames(frames, step.quality, step.scale)
-    if (totalBytes(current) <= UPLOAD_BUDGET_BYTES) break
+    if (totalBytes(current) <= UPLOAD_BUDGET_BYTES) {
+      return { frames: current, reduced: step.lossy }
+    }
   }
+  // Still over budget at the smallest step — definitely degraded.
   return { frames: current, reduced: true }
 }
 
@@ -404,8 +411,12 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
         setErrorMsg('Please upload a video file.')
         return
       }
-      if (file.size > 200 * 1024 * 1024) {
-        setErrorMsg('Video must be under 200MB.')
+      // Generous sanity cap only. A 3-second clip off an iPhone Pro with
+      // ProRes on runs ~90MB per SECOND, so short videos legitimately arrive
+      // in the hundreds of MB — the old 200MB gate refused them outright even
+      // though the analysis only ever uploads the compressed frames.
+      if (file.size > 1024 * 1024 * 1024) {
+        setErrorMsg('Video must be under 1GB. Try trimming the clip to just the shot.')
         return
       }
 
@@ -449,26 +460,36 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
         setProgress(60)
 
         // Upload the original video directly to Vercel Blob (browser → Blob,
-        // bypassing the serverless route's 4.5MB body limit).
+        // bypassing the serverless route's 4.5MB body limit). Skipped for very
+        // large originals (iPhone ProRes etc.): the analysis only needs the
+        // frames extracted above, and pushing hundreds of MB over cellular
+        // stalls the flow for a file nobody needs stored — the results page
+        // just shows the frames without the playable video. This threshold
+        // must stay at or below /api/upload-video's maximumSizeInBytes.
+        const BLOB_UPLOAD_MAX_BYTES = 100 * 1024 * 1024
         let videoUrl: string | null = null
-        setVideoUploadStatus({ state: 'uploading' })
-        try {
-          const ext = (file.name.split('.').pop() || 'mp4').toLowerCase()
-          const pathname = `videos/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`
-          console.log('[VideoUploader] uploading video to Blob:', pathname, file.type, file.size)
-          const blob = await upload(pathname, file, {
-            access: 'public',
-            handleUploadUrl: '/api/upload-video',
-            abortSignal: controller.signal,
-          })
-          videoUrl = blob.url
-          console.log('[VideoUploader] video uploaded:', videoUrl)
-          setVideoUploadStatus({ state: 'ok', url: blob.url })
-        } catch (err) {
-          // Non-fatal: continue without the video if blob upload fails.
-          const errMsg = err instanceof Error ? `${err.name}: ${err.message}` : String(err)
-          console.error('[VideoUploader] video blob upload failed:', err)
-          setVideoUploadStatus({ state: 'failed', error: errMsg })
+        if (file.size <= BLOB_UPLOAD_MAX_BYTES) {
+          setVideoUploadStatus({ state: 'uploading' })
+          try {
+            const ext = (file.name.split('.').pop() || 'mp4').toLowerCase()
+            const pathname = `videos/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`
+            console.log('[VideoUploader] uploading video to Blob:', pathname, file.type, file.size)
+            const blob = await upload(pathname, file, {
+              access: 'public',
+              handleUploadUrl: '/api/upload-video',
+              abortSignal: controller.signal,
+            })
+            videoUrl = blob.url
+            console.log('[VideoUploader] video uploaded:', videoUrl)
+            setVideoUploadStatus({ state: 'ok', url: blob.url })
+          } catch (err) {
+            // Non-fatal: continue without the video if blob upload fails.
+            const errMsg = err instanceof Error ? `${err.name}: ${err.message}` : String(err)
+            console.error('[VideoUploader] video blob upload failed:', err)
+            setVideoUploadStatus({ state: 'failed', error: errMsg })
+          }
+        } else {
+          console.log('[VideoUploader] original video too large to store, analyzing frames only:', file.size)
         }
         setProgress(75)
         if (cancelledRef.current) return
@@ -609,11 +630,11 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
         <div className="text-5xl">⚠️</div>
         <div>
           <p className="text-black font-bold text-lg mb-2">
-            Your video is large — analysis quality may suffer
+            Heads up — this clip needed heavy compression
           </p>
           <p className="text-gray-600 text-sm leading-relaxed">
-            Your video was big enough that we had to compress the frames to analyze it. The
-            results will still work, but they may be less accurate than normal.
+            Your video will still be analyzed, but we had to shrink the picture so much that
+            the AI may miss details. A shorter, closer clip will grade more accurately.
           </p>
         </div>
         <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 text-left">
@@ -781,7 +802,7 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
           <div className="text-5xl mb-4">🎥</div>
           <p className="text-black font-semibold text-lg mb-1">Tap to upload your video</p>
           <p className="text-black text-sm hidden sm:block">or drag and drop</p>
-          <p className="text-black text-xs mt-3">MP4, MOV, AVI · Max 200MB</p>
+          <p className="text-black text-xs mt-3">MP4, MOV, AVI · Max 1GB</p>
           <button className="mt-5 bg-ember-500 hover:bg-ember-400 text-ink-950 font-bold px-8 py-3 rounded-xl text-sm transition-colors w-full sm:w-auto">
             Choose Video
           </button>

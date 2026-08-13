@@ -302,6 +302,32 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* What LearnHoops is, in the words people search for it. Real copy for
+          visitors who scrolled this far — and the keyword coverage search
+          engines index the page by. */}
+      <section className="px-4 py-16 sm:py-20 border-t border-courtline">
+        <div className="max-w-3xl mx-auto space-y-5">
+          <h2 className="font-display font-black uppercase text-[clamp(1.6rem,4vw,2.5rem)] leading-tight">
+            AI basketball shot analysis for real players
+          </h2>
+          <p className="text-chalk-dim text-sm sm:text-base leading-relaxed">
+            LearnHoops is an AI basketball coach that analyzes your shooting form from a single
+            video. Film one jump shot on your phone, upload it, and in minutes the AI grades your
+            shot against 18 coaching criteria — stance, elbow alignment, shot pocket, release,
+            follow-through, arc, and more — then tells you exactly what to fix and the drill that
+            fixes it. It&apos;s the feedback of a private shooting coach, on demand, for less than
+            two dollars a shot — and your first analysis is free.
+          </p>
+          <p className="text-chalk-dim text-sm sm:text-base leading-relaxed">
+            It works for everyone who wants a better jump shot: youth players building form from
+            scratch, high-school shooters breaking bad habits, and coaches running whole teams —
+            with rosters, shared credits, and team pricing built in. Pair it with the LearnHoops
+            Training Basketball, whose printed finger-placement guides groove correct hand position
+            on every rep between analyses.
+          </p>
+        </div>
+      </section>
+
       {/* Closing CTA — solid ember band for a hard color break before the footer */}
       <section className="grain relative text-center px-4 py-20 sm:py-28 bg-ember-500 text-white">
         <p className="eyebrow text-ink-950 mb-4 select-none">05 — Your move</p>

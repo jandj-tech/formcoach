@@ -337,6 +337,14 @@ Return ONLY valid JSON, no other text:
           | 'image/webp',
         data: base64,
       },
+      // Frames are ~45% of the input bill and identical across the ensemble's
+      // 3 passes, but they sit AFTER the system-prompt breakpoint so they were
+      // re-billed at full price every pass. A breakpoint on the last frame
+      // lets passes 2 and 3 read the whole prefix (rubrics + frames) at ~10%
+      // of input price. (~$0.07 saved per analysis, no behavior change.)
+      ...(i === frameBase64Array.length - 1
+        ? { cache_control: { type: 'ephemeral' as const } }
+        : {}),
     })
   )
 
@@ -351,14 +359,18 @@ Return ONLY valid JSON, no other text:
     // enables adaptive thinking (extra cost); 'disabled' matches Sonnet
     // 4.6's no-thinking default.
     thinking: { type: thinkingMode },
-    // The coaching rubric (~6K tokens) is identical between analyses until an
-    // admin correction lands, so cache it: repeat analyses within 5 minutes
-    // (team roster sessions especially) read it at ~10% of the input price.
+    // The coaching rubric (~16K tokens) is identical between analyses until an
+    // admin correction lands, so cache it with a 1-hour TTL: roughly half of
+    // real analyses arrive within an hour of the previous one (team sessions
+    // especially), and each of those reads the rubric at ~10% of input price
+    // instead of re-writing it. The 1h write premium (2x vs 1.25x) costs ~4c
+    // extra on a cold start and saves ~6c on every warm follow-up. Must stay
+    // BEFORE the frames' 5-minute breakpoint — longer TTLs precede shorter.
     system: [
       {
         type: 'text',
         text: systemPrompt,
-        cache_control: { type: 'ephemeral' },
+        cache_control: { type: 'ephemeral', ttl: '1h' },
       },
     ],
     messages: [

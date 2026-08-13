@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { createHash } from 'crypto'
 import { db } from './db'
 
 function getAnthropic() {
@@ -69,6 +70,21 @@ const UNGRADED_TWO_FINGER =
 
 type PlayerType = 'child' | 'recreational' | 'college_pro' | 'nba_bad_form' | 'nba_decent' | 'nba_elite'
 
+/**
+ * Identity of the grader that produced a result: which rubric text, which
+ * calibration state (hashed into prompt_sha), which model, and how many
+ * ensemble passes. Stored per analysis so any grade can be traced to the
+ * grader that made it. calibration_version is reserved for a future frozen-
+ * calibration workflow and is always null while calibration is live.
+ */
+export interface GraderVersion {
+  prompt_sha: string
+  rubric_tags: string[]
+  model: string
+  passes: number
+  calibration_version: number | null
+}
+
 interface AnalysisResult {
   overall_score: number
   shot_detected: boolean
@@ -89,23 +105,32 @@ interface AnalysisResult {
     arc_too_flat: number
     chest_pass_hands: number
   }
+  /** Set by analyzeShot on the merged result; absent on per-pass results. */
+  grader_version?: GraderVersion
   criteria: CriterionResult[]
 }
 
-async function analyzeShotOnce(
-  frameBase64Array: string[],
-  frameMimeTypes: string[],
-  opts?: { model?: string; thinking?: 'disabled' | 'adaptive' }
-): Promise<{ result: AnalysisResult; activeCriteria: CriteriaRow[] }> {
-  const model = opts?.model || process.env.ANALYSIS_MODEL || 'claude-sonnet-4-6'
-  const thinkingMode = opts?.thinking || 'disabled'
-  const activeCriteria = await db`
-    SELECT id, name, description, grading_notes, weight
-    FROM criteria
-    WHERE active = true
-    ORDER BY order_index
-  `
+// Bump this whenever the static prompt body in buildSystemPrompt changes in a
+// way that should count as a new grader. The dynamic pieces (rubric text,
+// calibration block) are hashed in directly; the frame-count interpolation
+// (n / earlyEnd / midEnd) is deliberately excluded so the same rubric hashes
+// identically for a 20-frame and a 28-frame clip.
+const PROMPT_TEMPLATE_VERSION = 'template-v1'
 
+interface GraderContext {
+  activeCriteria: CriteriaRow[]
+  criteriaText: string
+  feedbackText: string
+  calibrationVersion: number | null
+  promptSha: string
+  rubricTags: string[]
+}
+
+/**
+ * Renders the "EXPERT GRADING CALIBRATION" block from live admin corrections.
+ * Returns '' when there are no corrections.
+ */
+export async function buildCalibrationFeedbackText(): Promise<string> {
   const calibration = await db`
     SELECT
       c.name,
@@ -131,10 +156,6 @@ async function analyzeShotOnce(
     ORDER BY cs.id DESC
     LIMIT 20
   `
-
-  const criteriaText = activeCriteria
-    .map((c) => `--- ID ${c.id}: "${c.name}"\n${c.grading_notes || c.description}`)
-    .join('\n\n')
 
   // A criterion's corrections only become prompt guidance when they all push
   // the same direction. Mixed-direction corrections mean the judgment is
@@ -165,17 +186,59 @@ async function analyzeShotOnce(
     .filter((r) => r.admin_notes && consistentNames.has(r.name as string))
     .map((r) => `- "${r.name}": scored ${r.ai_score} → corrected to ${r.admin_score} — "${r.admin_notes}"`)
 
-  const feedbackText = calibrationLines.length > 0 || recentLines.length > 0
+  return calibrationLines.length > 0 || recentLines.length > 0
     ? '\n\nEXPERT GRADING CALIBRATION — This is how the expert grades. Study these corrections and apply the same judgment to your scoring. They NEVER override the grading guides above: when a guide names a hard cap or band for a fault you observed, that cap wins over any generosity guidance here.\n' +
       (calibrationLines.length > 0 ? 'Score drift per criterion:\n' + calibrationLines.join('\n') : '') +
       (recentLines.length > 0 ? '\n\nRecent corrections with reasoning (apply this grading style):\n' + recentLines.join('\n') : '')
     : ''
+}
 
-  const n = frameBase64Array.length
+/**
+ * Loads everything the prompt is built from — once per analysis, shared by
+ * every ensemble pass, so all passes grade with the byte-identical prompt.
+ *
+ * Calibration is LIVE by the owner's choice: an admin correction takes effect
+ * on the very next analysis. The trade-off is that each correction changes
+ * the prompt (and therefore prompt_sha), which the eval harness surfaces as a
+ * grader-changed warning against the accepted baseline — that warning is the
+ * record that corrections moved the grader.
+ */
+async function loadGraderContext(): Promise<GraderContext> {
+  const activeCriteria = (await db`
+    SELECT id, name, description, grading_notes, weight
+    FROM criteria
+    WHERE active = true
+    ORDER BY order_index
+  `) as unknown as CriteriaRow[]
+
+  const feedbackText = await buildCalibrationFeedbackText()
+  // No frozen calibration versions in live mode; the correction state is
+  // still captured in prompt_sha because feedbackText is hashed into it.
+  const calibrationVersion: number | null = null
+
+  const criteriaText = activeCriteria
+    .map((c) => `--- ID ${c.id}: "${c.name}"\n${c.grading_notes || c.description}`)
+    .join('\n\n')
+
+  // Human-readable rubric markers, e.g. "STANCE RUBRIC v15" — the convention
+  // already used in scripts/migrate.sql grading_notes.
+  const rubricTags = activeCriteria
+    .map((c) => (c.grading_notes || '').match(/[A-Z][A-Z /&—-]*RUBRIC v\d+/)?.[0])
+    .filter((t): t is string => !!t)
+
+  const promptSha = createHash('sha256')
+    .update(PROMPT_TEMPLATE_VERSION + criteriaText + feedbackText)
+    .digest('hex')
+
+  return { activeCriteria, criteriaText, feedbackText, calibrationVersion, promptSha, rubricTags }
+}
+
+function buildSystemPrompt(ctx: GraderContext, n: number): string {
+  const { criteriaText, feedbackText } = ctx
   const earlyEnd = Math.round(n * 0.4)
   const midEnd = Math.round(n * 0.7)
 
-  const systemPrompt = `You are an expert basketball shooting coach analyzing a player's shooting form. You have deep knowledge of proper shooting mechanics as taught by top coaches:
+  return `You are an expert basketball shooting coach analyzing a player's shooting form. You have deep knowledge of proper shooting mechanics as taught by top coaches:
 
 KEY FORM PRINCIPLES (use these to evaluate):
 - Elbow: must form a VERTICAL L-shape — forearm pointing straight up toward the ceiling, elbow pointing straight down toward the floor, directly under the ball. A sideways L (arm reaching out to the side with elbow bent, forearm going sideways rather than straight up) is NOT correct form and scores 0-2, the same as an elbow completely out. Only a vertical L with the forearm going straight up counts as good elbow position.
@@ -324,6 +387,18 @@ Return ONLY valid JSON, no other text:
     ...
   ]
 }`
+}
+
+async function analyzeShotOnce(
+  frameBase64Array: string[],
+  frameMimeTypes: string[],
+  ctx: GraderContext,
+  opts?: { model?: string; thinking?: 'disabled' | 'adaptive' }
+): Promise<AnalysisResult> {
+  const model = opts?.model || process.env.ANALYSIS_MODEL || 'claude-sonnet-4-6'
+  const thinkingMode = opts?.thinking || 'disabled'
+  const { activeCriteria } = ctx
+  const systemPrompt = buildSystemPrompt(ctx, frameBase64Array.length)
 
   const imageContent: Anthropic.ImageBlockParam[] = frameBase64Array.map(
     (base64, i) => ({
@@ -407,7 +482,7 @@ Return ONLY valid JSON, no other text:
   result.shot_detected = result.shot_detected ?? true
   // No analyzable shot — return now; the ensemble's majority vote decides.
   if (result.shot_detected === false) {
-    return { result, activeCriteria: activeCriteria as unknown as CriteriaRow[] }
+    return result
   }
 
   // Flags arrive as 0-10 confidences (older responses may send booleans).
@@ -507,10 +582,16 @@ Return ONLY valid JSON, no other text:
     twoFingerCriterion.reasoning = UNGRADED_TWO_FINGER
   }
 
-  return { result, activeCriteria: activeCriteria as unknown as CriteriaRow[] }
+  return result
 }
 
-interface CriteriaRow { id: number; name: string; weight: unknown }
+interface CriteriaRow {
+  id: number
+  name: string
+  description?: string | null
+  grading_notes?: string | null
+  weight: unknown
+}
 
 // Deterministic post-processing shared by every ensemble merge: caps,
 // weighted overall, player-type adjustment. Pure function of its inputs.
@@ -645,27 +726,39 @@ function majority(bools: boolean[]): boolean {
 export async function analyzeShot(
   frameBase64Array: string[],
   frameMimeTypes: string[],
-  opts?: { model?: string; thinking?: 'disabled' | 'adaptive' }
+  opts?: { model?: string; thinking?: 'disabled' | 'adaptive'; passes?: number }
 ): Promise<AnalysisResult> {
-  const passes = Math.max(1, Math.min(5, parseInt(process.env.ANALYSIS_PASSES || '3', 10) || 3))
+  const envPasses = parseInt(process.env.ANALYSIS_PASSES || '3', 10) || 3
+  const passes = Math.max(1, Math.min(5, opts?.passes ?? envPasses))
+  const model = opts?.model || process.env.ANALYSIS_MODEL || 'claude-sonnet-4-6'
+
+  // One grader context for the whole ensemble: every pass grades with the
+  // byte-identical prompt, even if an admin correction lands mid-analysis.
+  const ctx = await loadGraderContext()
+  const graderVersion: GraderVersion = {
+    prompt_sha: ctx.promptSha,
+    rubric_tags: ctx.rubricTags,
+    model,
+    passes,
+    calibration_version: ctx.calibrationVersion,
+  }
 
   // Sequential on purpose: pass 1 writes the prompt+image prefix into the
   // Anthropic cache, passes 2..N read it back at a fraction of the input cost.
-  const runs: Array<{ result: AnalysisResult; activeCriteria: CriteriaRow[] }> = []
+  const results: AnalysisResult[] = []
   for (let i = 0; i < passes; i++) {
-    const run = await analyzeShotOnce(frameBase64Array, frameMimeTypes, opts)
     // A non-shot verdict is decisive only by majority — collect and continue.
-    runs.push(run)
+    results.push(await analyzeShotOnce(frameBase64Array, frameMimeTypes, ctx, { ...opts, model }))
   }
 
-  const activeCriteria = runs[0].activeCriteria
-  const results = runs.map(r => r.result)
+  const activeCriteria = ctx.activeCriteria
 
   // Shot detection: majority. A clip most passes call "no shot" is no shot.
   const shotDetected = majority(results.map(r => r.shot_detected !== false))
   if (!shotDetected) {
     const no = results.find(r => r.shot_detected === false) ?? results[0]
     no.shot_detected = false
+    no.grader_version = graderVersion
     return no
   }
   const detected = results.filter(r => r.shot_detected !== false)
@@ -716,5 +809,7 @@ export async function analyzeShot(
       ?.player_assessment?.player_name ?? null,
   }
 
-  return finalizeResult(merged, activeCriteria)
+  const final = finalizeResult(merged, activeCriteria)
+  final.grader_version = graderVersion
+  return final
 }

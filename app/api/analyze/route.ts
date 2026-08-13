@@ -191,17 +191,24 @@ export async function POST(req: NextRequest) {
       .update(frameBase64Array.join('|'))
       .digest('hex')
 
-    let result: Awaited<ReturnType<typeof analyzeShot>> | null = null
+    type AnalyzeResult = Awaited<ReturnType<typeof analyzeShot>>
+    let result: AnalyzeResult | null = null
     try {
       const [prior] = (await db`
-        SELECT a.id, a.overall_score
+        SELECT a.id, a.overall_score, a.critical_flags, a.player_type, a.player_name
         FROM analyses a
         JOIN submissions s ON s.id = a.submission_id
         WHERE a.frames_hash = ${framesHash}
           AND s.status = 'complete'
           AND (${submissionUserId}::uuid IS NOT NULL AND s.user_id = ${submissionUserId})
         ORDER BY a.id DESC LIMIT 1
-      `) as unknown as [{ id: number; overall_score: number | string } | undefined]
+      `) as unknown as [{
+        id: number
+        overall_score: number | string
+        critical_flags: AnalyzeResult['critical_flags'] | null
+        player_type: string | null
+        player_name: string | null
+      } | undefined]
       if (prior) {
         const priorScores = (await db`
           SELECT criterion_id, ai_score, ai_reasoning
@@ -211,8 +218,14 @@ export async function POST(req: NextRequest) {
           result = {
             overall_score: Number(prior.overall_score),
             shot_detected: true,
-            player_assessment: { player_type: 'recreational', player_name: null },
-            critical_flags: { elbow_severely_out: false, followthrough_flick_to_side: false, arc_too_flat: false, chest_pass_hands: false },
+            // Return the flags and player type the original grade actually
+            // produced. The all-false / 'recreational' literals are only the
+            // fallback for legacy rows written before these columns existed.
+            player_assessment: {
+              player_type: (prior.player_type ?? 'recreational') as AnalyzeResult['player_assessment']['player_type'],
+              player_name: prior.player_name ?? null,
+            },
+            critical_flags: prior.critical_flags ?? { elbow_severely_out: false, followthrough_flick_to_side: false, arc_too_flat: false, chest_pass_hands: false },
             criteria: priorScores.map(ps => ({
               id: ps.criterion_id,
               score: ps.ai_score === null ? null : Number(ps.ai_score),
@@ -223,7 +236,8 @@ export async function POST(req: NextRequest) {
         }
       }
     } catch (err) {
-      // frames_hash column may not exist until the migration runs — grade fresh.
+      // frames_hash or the grader-metadata columns may not exist until the
+      // migration runs — grade fresh, exactly as before.
       console.warn('[analyze] fingerprint lookup skipped:', err instanceof Error ? err.message : err)
     }
 
@@ -245,23 +259,40 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Store analysis
+    // Store analysis. Tiered fallbacks mirror the existing video_url pattern:
+    // a database that hasn't run `npm run migrate` yet degrades gracefully
+    // instead of failing the upload.
     let analysis: { id: number }
     try {
       ;[analysis] = (await db`
-        INSERT INTO analyses (submission_id, overall_score, frame_urls, video_url, frames_hash)
-        VALUES (${submission.id}, ${result.overall_score}, ${frameUrls}, ${videoUrl}, ${framesHash})
+        INSERT INTO analyses (submission_id, overall_score, frame_urls, video_url, frames_hash, critical_flags, player_type, player_name, grader_version)
+        VALUES (${submission.id}, ${result.overall_score}, ${frameUrls}, ${videoUrl}, ${framesHash},
+                ${JSON.stringify(result.critical_flags)}::jsonb,
+                ${result.player_assessment?.player_type ?? 'recreational'},
+                ${result.player_assessment?.player_name ?? null},
+                ${result.grader_version ? JSON.stringify(result.grader_version) : null}::jsonb)
         RETURNING id
       `) as unknown as [{ id: number }]
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
-      if (!/column.*video_url.*does not exist/i.test(msg)) throw err
-      console.warn('analyses.video_url column missing — run `npm run migrate`. Inserting without video URL.')
-      ;[analysis] = (await db`
-        INSERT INTO analyses (submission_id, overall_score, frame_urls)
-        VALUES (${submission.id}, ${result.overall_score}, ${frameUrls})
-        RETURNING id
-      `) as unknown as [{ id: number }]
+      if (!/column .* does not exist/i.test(msg)) throw err
+      console.warn('analyses grader-metadata columns missing — run `npm run migrate`. Inserting legacy shape.')
+      try {
+        ;[analysis] = (await db`
+          INSERT INTO analyses (submission_id, overall_score, frame_urls, video_url, frames_hash)
+          VALUES (${submission.id}, ${result.overall_score}, ${frameUrls}, ${videoUrl}, ${framesHash})
+          RETURNING id
+        `) as unknown as [{ id: number }]
+      } catch (err2) {
+        const msg2 = err2 instanceof Error ? err2.message : String(err2)
+        if (!/column .* does not exist/i.test(msg2)) throw err2
+        console.warn('analyses.video_url column missing — run `npm run migrate`. Inserting without video URL.')
+        ;[analysis] = (await db`
+          INSERT INTO analyses (submission_id, overall_score, frame_urls)
+          VALUES (${submission.id}, ${result.overall_score}, ${frameUrls})
+          RETURNING id
+        `) as unknown as [{ id: number }]
+      }
     }
 
     // Store per-criterion scores

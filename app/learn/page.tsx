@@ -7,8 +7,10 @@ import { getCriteriaVideoMap } from '@/lib/youtube'
 import { db } from '@/lib/db'
 
 export const metadata: Metadata = {
-  title: 'Learn — How LearnHoops Works',
-  description: 'How to film your shot, what our AI scores, and how tokens and teams work on LearnHoops.',
+  title: 'How AI Basketball Shot Analysis Works | LearnHoops',
+  description:
+    'How LearnHoops analyzes your basketball shooting form: filming your jump shot, the 18 coaching criteria the AI grades, and how tokens and teams work.',
+  alternates: { canonical: '/learn' },
 }
 
 export default async function LearnPage() {

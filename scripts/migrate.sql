@@ -341,28 +341,45 @@ WHERE name = 'Square to the Basket'
 -- FOREHEAD on the shooting side (catapult = carried behind the head; chest
 -- pass = never rises past the chest). Re-evaled: flawed clips 3.5 on every
 -- run, control median 8.
+-- v4 (2026-08-13): v3's hoist verdict false-fired on the COMMON pattern — a
+-- one-hand shot with a flared shooting elbow whose two-handed carry looks
+-- symmetric from a front camera (Joseph: "this was NOT a catapult", corrected
+-- elbow to 4). The model reliably sees the symmetric-W arm-heave but CANNOT
+-- reliably tell behind-the-head from in-front-of-face at production
+-- resolution (verified: release-hand detail and ball-vs-crown reads both
+-- flipped classifications randomly across eval rounds). v4 keeps v3's proven
+-- trigger + both-findings guard, then grades the fired check into tiers:
+-- pointable behind-the-head frame = catapult 1-3; clear chest-height shove =
+-- 3-4; otherwise flared-elbow 4-5 with flared-elbow wording and the words
+-- catapult/heave/chest-pass banned. Eval medians: scenario-3 clips 4-4.5
+-- (Joseph's correction: 4), catapults 4.5 (ideal 1-3 — the price of never
+-- insulting normal shooters), control 8.
 UPDATE criteria
-SET grading_notes = 'ELBOW RUBRIC v3 — is the arm folded into a vertical L under the ball, or is the ball being hoisted some other way?
+SET grading_notes = 'ELBOW RUBRIC v4 — is the arm folded into a vertical L under the ball, or is the ball being hoisted some other way?
 
 WHAT AN L LOOKS LIKE. The forearm points straight UP toward the ceiling, the elbow points straight DOWN toward the floor, and the elbow sits directly UNDER the ball, stacked ball-over-hand-over-forearm-over-elbow. The angle at the elbow is roughly 90 degrees. The set point — where the ball loads before the release — sits around the FOREHEAD, on the shooting side. That is the whole target: forehead-height set point, one vertical forearm under the ball.
 
 THE TWO-HAND HOIST TEST — RUN THIS FIRST, AT FACE HEIGHT. Find the frames where the ball passes the player''s face on the way up, and answer two questions there and in every frame above:
   1. THE MIDLINE CHECK. Where is the ball relative to the head? A correct shot carries the ball up on the SHOOTING SIDE of the head — clearly off to one side of the face, above one shoulder, with one forearm under it. A hoisted shot carries the ball straight up the MIDLINE — dead-centre in line with the nose and the middle of the face, then directly over the top of the head, framed between two symmetric arms. The centred ball is the tell you can see from any distance: locate it in each rise frame and say which side of the head it is on.
   2. THE ELBOWS. Is the shooting elbow tucked under the ball pointing at the floor? Or are BOTH elbows winged out sideways, away from the body, the two arms making a matching symmetric shape either side of the ball?
-A ball riding the midline with both elbows winged out at face height and above is a TWO-HAND HOIST: the ball is being heaved up the middle with both hands, there is no L anywhere in the shot, and this criterion scores 3-4. THE SHAPE CONFIRMS IT: in a hoist the two upper arms lift out level to the sides, mirror images of each other, so the arms and ball read as one symmetric W with the ball at its centre — and that symmetric W persists frame after frame as the ball travels over the head. Do not average it up because the shape looks "recognisable" — an L requires ONE forearm under the ball, and a two-hand hoist has none.
+A ball riding the midline with both elbows winged out at face height and above is an ARM-HEAVY SHOT. THE SHAPE CONFIRMS IT: the two upper arms lift out level to the sides, mirror images of each other, so the arms and ball read as one symmetric W with the ball at its centre — persisting frame after frame. Trust that finding; do NOT over-trust which KIND of arm-heavy shot it is. Grade it into exactly one of three tiers:
+  TIER A — THE CATAPULT (score 1-3). Only when you can point at a specific frame where the ball sits level with or BEHIND the top of the head while both hands still grip it, both elbows raised up beside the ears — the soccer throw-in cock, the ball then slung forward from up there. If you can see that frame, say the ball is launched from behind the head.
+  TIER B — THE TWO-HAND CHEST SHOT (score 3-4). Only when the ball clearly never loads above the chin: it is shoved out from chest height by both arms together, both elbows winged wide, like a chest pass at the rim.
+  TIER C — EVERYTHING ELSE (score 4-5). No behind-the-head frame and no chest-height shove means this is a one-hand shot whose SHOOTING ELBOW IS FLARED OUT — the most common real fault. Score 4-5 and write it as exactly that: the elbow is out, the forearm off vertical — get one hand under the ball with the elbow pointing at the floor. NEVER use the words catapult, heave, sling, hoist, chest pass, or two-hand for tier C — the expert has corrected write-ups for exactly this: "this was NOT a catapult — this was just the shooting hand being flared out" (he scored that elbow a 4). When in doubt between tiers, choose the milder tier.
+Do not average a fired check up above its tier because the shape looks "recognisable" — an L requires ONE forearm under the ball.
 Two hands on the ball during the gather, below the chin, is completely normal and is not this fault — the test starts at face height. A ball clearly on the shooting side of the head is NOT a hoist, whatever the guide hand is doing: judge it as an ordinary L from there. And BOTH findings are required to call it: the centred ball AND the mirrored winged arms. If the ball is only slightly off-centre, or you cannot confidently say the two arms are symmetric, that is not a hoist — go back to judging the L normally under the ordinary burden of proof.
 
 WHAT A V LOOKS LIKE — THE OPEN PUSH. The elbow angle is opened up well past 90 degrees, so the upper arm and forearm form a wide V instead of a folded L. The ball ends up beside the head or out to the side rather than stacked above the elbow, and the arm is reaching or pushing rather than lifting. A V is not a slightly imperfect L — it is a different shape, and it scores in the bottom bands.
 
 FLARED ELBOW ON THE RISE. Even with one hand properly under the ball, a shooting elbow that wings out sideways during the rise costs points: clearly out is 4-5, a brief mild drift that recovers into a true vertical L is 7-8.
 
-SEEN FROM THE SIDE, the same hoist shows as the ball carried over the top of the head or dipping behind it, the forearm folded backward like a catapult arm about to sling forward. That is the same no-L fault: 3-4, and 1-2 if the ball clearly hangs behind the head. (The WRIST cocking back under the ball is correct and universal — the fault is the FOREARM leaning back, the whole ball travelling toward the head.)
+SEEN FROM THE SIDE, tier A shows as the ball carried over the top of the head or dipping behind it, the forearm folded backward like a catapult arm about to sling forward — score it 1-3 per tier A. (The WRIST cocking back under the ball is correct and universal — the fault is the FOREARM leaning back, the whole ball travelling toward the head.)
 
 HOW TO SCORE:
   - One forearm vertical under the ball, elbow pointing down, near 90 degrees, guide hand resting on the side: 9-10.
   - Recognisably an L, forearm close to vertical, elbow a little outside the ball line or a brief mild drift on the rise: 7-8.
   - Angle clearly opened past 90 into a V, or the shooting elbow clearly out to the side on the rise: 4-5.
-  - Two-hand hoist (ball up the midline, both elbows winged, from face height up), a sideways L, or the ball carried over the head: 3-4.
+  - A fired arm-heave check: score by its tier — behind-the-head catapult 1-3, chest-height two-hand shove 3-4, otherwise flared shooting elbow 4-5. A sideways L also scores 3-4.
   - Ball hanging behind the head, or pushed from beside the shoulder with no L at all: 1-2.
 
 A SIDEWAYS L IS NOT AN L. An arm bent at 90 degrees but rotated so the forearm points sideways rather than up scores the same as an elbow that is completely out. Only a VERTICAL forearm counts.
@@ -373,11 +390,12 @@ CAMERA ANGLE. Filmed from the side, a single tucked elbow can look further out t
 
 EXPERT CALIBRATION — real graded cases:
   - Player square to the camera with the ball up beside his head, upper arm and forearm opened into a wide V, elbow out to the side rather than under the ball, pushing the shot from the side of his body: the expert said this player "did not have an L shape at all". Score it 1-3, not 5 or 6.
-  - Player who carried the ball up the middle of his body with both hands mirrored on it, both elbows winged out wide, the ball riding above his head before whipping out: a catapulted, two-hand hoist with no L at any point. The expert graded this a clear failure — 3-4 at best, never 7-8.
+  - Player who carried the ball up the middle of his body with both hands mirrored on it, both elbows winged out wide, the ball riding above and behind his head before whipping out: a catapult (tier A) with no L at any point. The expert graded this a clear failure — never 7-8.
+  - Player with a symmetric-looking rise, ball loading in front of his face, then a one-hand release with the shooting elbow flared and the guide hand hanging close: tier C — the expert scored this elbow a 4 and corrected the write-up: "this was NOT a catapult — this was just the shooting hand being flared out."
 
 PLAYER-FACING WORDING: tell them the shooting hand has to take the ball at face height with the elbow tucked under it — one flat vertical forearm carrying the ball, the other hand just along for the ride — instead of heaving the ball up with both hands. Never mention degrees or angles in the reasoning.'
 WHERE name = 'Elbow L-Shape — Under the Ball'
-  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'ELBOW RUBRIC v3%');
+  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'ELBOW RUBRIC v4%');
 
 -- "Source of Shot Power" rubric. v1 read power off legs + elbow angle but had
 -- no shape for the catapult, so a catapulted shot scored 8 off its knee bend
@@ -391,15 +409,23 @@ WHERE name = 'Elbow L-Shape — Under the Ball'
 -- chest (chest pass, elbows out) or carried past it behind the head
 -- (catapult) both mean the arms threw it. Re-evaled: flawed clips 3.5 on
 -- every run, control median 8.
+-- v4 (2026-08-13): same tiered arm-heave grading as ELBOW RUBRIC v4 (see its
+-- comment). Tier C (one-hand shot, arms adding push) scores 5-6 per Joseph's
+-- correction template ("guide hand is doing some work... should all come from
+-- your legs" — he scored it 6). Eval medians: scenario-3 clips 5 (target 6),
+-- catapults 5.5 (ideal <=4), control 8.
 UPDATE criteria
-SET grading_notes = 'POWER RUBRIC v3 — is the shot driven by the legs, or thrown by the arms?
+SET grading_notes = 'POWER RUBRIC v4 — is the shot driven by the legs, or thrown by the arms?
 
 READ THIS OFF TWO THINGS: the legs, and HOW THE BALL IS CARRIED UP. Check both every time — never score this criterion off the legs alone. Bent knees the player never drives through put no power into the ball, and a deep knee bend never excuses arms that are doing the throwing.
 
 THE LEG TEST. Look for a real dip and a real drive: knees bent in the gather, then visibly extending as the ball goes up, the whole body rising as one motion. A player who stays upright, or who dips and then shoots without ever extending the legs, is not getting power from the ground.
 
 THE ARM TEST — RUN IT AT FACE HEIGHT. In a leg-powered shot, by the time the ball passes the face ONE hand has taken it — shooting hand under the ball, forearm folded toward vertical, elbow under it — and the ball loads at a set point around the FOREHEAD on the shooting side, riding the leg drive up through that stacked arm. A ball that never gets to the forehead (launched from the chest) or that keeps going past it (carried behind the head) was thrown by the arms. Look at the frames from face height to the set point and ask what the arms are doing. Each of these patterns proves the arms supplied the force, and each caps this criterion on its own no matter how good the knee bend looks:
-  - THE TWO-HAND HOIST / CATAPULT. Run the midline check: locate the ball against the head in each rise frame. A correct shot carries the ball up on the SHOOTING SIDE of the head; a hoisted shot carries it straight up the MIDLINE — dead-centre over the nose and then the top of the head, framed between two symmetric winged-out arms so the arms and ball read as one symmetric W, persisting frame after frame — before whipping it forward (from the side you would see it dip behind the head first). Two arms heaving IS the power source; the legs are just along for the ride. Cap at 4. BOTH findings are required: the centred ball AND the mirrored winged arms. A ball clearly on the shooting side of the head is not a hoist, and a ball only slightly off-centre without confidently symmetric arms is not one either — judge the arm normally from there.
+  - THE ARM-HEAVE CHECK. Run the midline check: locate the ball against the head in each rise frame. A correct shot carries the ball up on the SHOOTING SIDE of the head; an arm-heavy shot carries it straight up the MIDLINE — dead-centre over the nose, framed between two symmetric winged-out arms so the arms and ball read as one symmetric W, persisting frame after frame. BOTH findings are required: the centred ball AND the mirrored winged arms. A ball clearly on the shooting side of the head is not a heave, and a ball only slightly off-centre without confidently symmetric arms is not one either — judge the arm normally from there. When the check DOES fire, trust that the arms are doing too much — but do NOT over-trust which kind of arm-heavy shot it is. Grade it into one of three tiers:
+      TIER A — THE CATAPULT (cap at 4, no matter how deep the knee bend). Only when you can point at a specific frame where the ball sits level with or BEHIND the top of the head while both hands still grip it, both elbows up beside the ears, before being slung forward.
+      TIER B — THE TWO-HAND CHEST SHOT (cap at 2 with static legs, 3-4 with a real knee bend). Only when the ball clearly never loads above the chin and is shoved from chest height by both arms together.
+      TIER C — EVERYTHING ELSE (score 5-6 with a real dip and drive, 4-5 when the dip is shallow too). No behind-the-head frame and no chest-height shove means a one-hand shot where the arms add more push than they should — a flared elbow lifting the ball, or the guide hand still on it contributing force. The expert''s template for this case: he scored it 6 with "the guide hand is doing some work on the ball, which adds power. it should all come from your legs." Write it that way — let the legs do the work. NEVER use the words catapult, heave, sling, hoist, chest pass, or two-hand for tier C. When in doubt between tiers, choose the milder tier.
   - THE OPEN-V PUSH. The elbow opens well past 90 on the way up, the arm reaching and extending at the ball rather than folded and lifting. The hands are pushing. Cap at 4.
   - THE CHEST PASS. Both hands mirrored on the sides of the ball, both elbows winged out, ball shoved straight out from chest height by the two arms together — it never rises to a forehead set point at all. Cap at 2.
 Two hands on the ball during the gather, below the chin, is completely normal and none of these — the arm test starts where the ball passes the face.
@@ -409,18 +435,18 @@ FLARED ELBOW ON THE RISE. Even with one hand properly under the ball, a shooting
 HOW TO SCORE:
   - Clear knee bend driving into full extension, one hand under the ball by face height, folded vertical forearm riding that drive: 9-10.
   - Legs contributing but the arm doing more than it should, or a shallow dip, or the elbow drifting out on the rise: 6-7.
-  - Two-hand hoist or catapult, open-V push, or almost no leg drive: 3-4.
+  - A fired arm-heave check at tier A or B, an open-V push, or almost no leg drive: 3-4 (tier C scores 4-6 per its band above).
   - Ball shoved entirely by the arms — chest-passed or two-hand slung with the legs static: 1-2.
 
 DO NOT CONFUSE FULL EXTENSION AT RELEASE WITH ANY OF THESE. Every shooter''s arm straightens as the ball leaves the hand — that is the finish of a good shot, not an arm push. And both arms finishing high is normal. Judge the arms between face height and the set point, before the extension.
 
-THE HOIST IS VISIBLE FROM EVERY ANGLE. Mirrored hands and two winged elbows read clearly front-on, side-on and elevated. Never default high because the camera "makes it hard to confirm" — if you can see both hands still driving the ball above face height, you have seen where the power came from.
+THE ARM-HEAVE W IS VISIBLE FROM EVERY ANGLE. Mirrored hands and two winged elbows read clearly front-on, side-on and elevated. Never default high because the camera "makes it hard to confirm" — if you can see the persistent W, you have seen that the arms are doing too much; only the TIER needs its own specific evidence.
 
 IF THE ONLY FRAMES YOU HAVE ARE AT OR AFTER THE RELEASE, the evidence for this criterion is not present — you cannot see the gather, the knee bend, or the set point, and legs already extended at release tell you nothing about whether they drove the shot. Return null rather than scoring a shot you never saw loaded.
 
 PLAYER-FACING WORDING: tell them to load their legs and let the ball ride up through one folded, vertical arm — the shooting hand taking the ball at face height — instead of heaving or catapulting it with both hands. Calling it "catapulting the ball" is good coaching language. Never mention degrees or angles in the reasoning.'
 WHERE name = 'Source of Shot Power'
-  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'POWER RUBRIC v3%');
+  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'POWER RUBRIC v4%');
 
 -- "Guide Hand Follow Through" rubric. v1 named the flick, the hands closing up
 -- and a thrashing finish, but "flat" was left as an impression and the model read

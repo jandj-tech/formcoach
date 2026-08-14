@@ -187,6 +187,30 @@ export default function EvalPage() {
     }
   }
 
+  // Accepts whatever the owner pastes: a bare analysis ID, or any results
+  // link/token — the server resolves the 64-hex submission token to its
+  // analysis, so nobody needs to know internal ids.
+  async function addFixtureByInput(input: string) {
+    const asId = /^\d+$/.test(input) ? parseInt(input, 10) : null
+    if (asId !== null) return addFixture(asId)
+    setAddError(null)
+    setAddingId(-1)
+    try {
+      const res = await fetch('/api/admin/eval/fixtures', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resultsUrl: input }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to add')
+      setFixtures((f) => [...f, data.fixture].sort((a, b) => a.slug.localeCompare(b.slug)))
+    } catch (err) {
+      setAddError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setAddingId(null)
+    }
+  }
+
   async function saveDraft(fixture: Fixture) {
     if (!draft) return
     setSaving(true)
@@ -727,26 +751,30 @@ export default function EvalPage() {
               </div>
             ))}
         </div>
-        <div className="flex items-center gap-3 text-sm text-zinc-400">
-          <span>Older analysis? Enter its ID:</span>
-          <input
-            value={manualId}
-            onChange={(e) => setManualId(e.target.value)}
-            className="w-28 rounded-lg bg-zinc-950 border border-zinc-700 px-3 py-1.5 text-white"
-            placeholder="e.g. 412"
-          />
-          <button
-            onClick={() => {
-              const id = parseInt(manualId, 10)
-              if (Number.isInteger(id)) {
-                addFixture(id)
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-3 text-sm text-zinc-400">
+            <span className="shrink-0">Not in the list?</span>
+            <input
+              value={manualId}
+              onChange={(e) => setManualId(e.target.value)}
+              className="flex-1 min-w-0 rounded-lg bg-zinc-950 border border-zinc-700 px-3 py-1.5 text-white"
+              placeholder="Paste a results link (learnhoops.com/results/…) or an analysis ID"
+            />
+            <button
+              onClick={() => {
+                const input = manualId.trim()
+                if (!input) return
+                addFixtureByInput(input)
                 setManualId('')
-              }
-            }}
-            className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700"
-          >
-            Add
-          </button>
+              }}
+              className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700"
+            >
+              Add
+            </button>
+          </div>
+          <p className="text-xs text-zinc-600">
+            Any report URL works — copy it from the address bar of a results page, a Learn Mode entry, or a share link.
+          </p>
         </div>
       </div>
     </div>

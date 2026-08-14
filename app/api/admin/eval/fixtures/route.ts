@@ -45,11 +45,37 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   if (!(await isAdmin())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   try {
-    const { analysisId, slug } = await req.json()
-    if (!Number.isInteger(Number(analysisId)) || typeof slug !== 'string') {
-      return NextResponse.json({ error: 'analysisId (number) and slug (string) required' }, { status: 400 })
+    const { analysisId, resultsUrl, slug } = await req.json()
+
+    // Accept either an analysis id or a pasted results link/token. The
+    // 64-hex code in /results/<token> is the submission token — resolve it
+    // to that submission's newest analysis so the owner can add reference
+    // shots straight from a report URL without knowing internal ids.
+    let id = Number(analysisId)
+    if (!Number.isInteger(id) || !analysisId) {
+      const tokenMatch = typeof resultsUrl === 'string' ? resultsUrl.match(/[a-f0-9]{64}/i) : null
+      if (!tokenMatch) {
+        return NextResponse.json(
+          { error: 'Provide an analysis ID or paste a results link (learnhoops.com/results/…)' },
+          { status: 400 },
+        )
+      }
+      const [row] = (await db`
+        SELECT a.id
+        FROM submissions s
+        JOIN analyses a ON a.submission_id = s.id
+        WHERE s.token = ${tokenMatch[0].toLowerCase()}
+        ORDER BY a.created_at DESC
+        LIMIT 1
+      `) as unknown as [{ id: number } | undefined]
+      if (!row) {
+        return NextResponse.json({ error: 'No analysis found for that results link' }, { status: 404 })
+      }
+      id = Number(row.id)
     }
-    const fixture = await authorFixtureFromAnalysis(Number(analysisId), slug.trim())
+
+    const finalSlug = typeof slug === 'string' && slug.trim() ? slug.trim() : `shot-${id}`
+    const fixture = await authorFixtureFromAnalysis(id, finalSlug)
     return NextResponse.json({ fixture })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)

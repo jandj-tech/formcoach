@@ -133,17 +133,50 @@ export async function authorFixtureFromAnalysis(analysisId: number, slug: string
 
   const [row] = (await db`
     INSERT INTO eval_fixtures (slug, analysis_id, description, frames_hash, frame_urls, expected)
-    VALUES (${slug}, ${analysisId}, ${''}, ${framesHash}, ${a.frame_urls}, ${JSON.stringify(expected)}::jsonb)
+    VALUES (${slug}, ${analysisId}, ${''}, ${framesHash}, ${a.frame_urls}, ${db.json(asJson(expected))})
     RETURNING id, slug, analysis_id, description, frames_hash, frame_urls, expected, active
   `) as unknown as [EvalFixtureRow]
-  return row
+  return coerceFixture(row)
+}
+
+/**
+ * db.json() takes postgres.js's JSONValue, which requires an index signature.
+ * Our expectation/result interfaces are structurally JSON but declared as
+ * named interfaces, so they need this pass-through cast.
+ */
+export const asJson = (v: unknown) => v as Parameters<typeof db.json>[0]
+
+/**
+ * jsonb columns must be written with db.json(value) — NOT
+ * `${JSON.stringify(value)}::jsonb`. postgres.js infers the parameter type
+ * from the jsonb context and serializes the value again, so a pre-stringified
+ * object lands as a jsonb *string* rather than an object. Rows written that
+ * way read back as a string, every `expected.criteria` lookup silently
+ * returns undefined, and checkAccuracy then reports zero errors for every
+ * fixture. This helper unwraps any such legacy row on read; the repair
+ * migration (migrate-eval-json-repair.sql) fixes them at rest.
+ */
+export function coerceJson<T>(value: unknown, fallback: T): T {
+  if (typeof value === 'string') {
+    try {
+      return JSON.parse(value) as T
+    } catch {
+      return fallback
+    }
+  }
+  return (value ?? fallback) as T
+}
+
+function coerceFixture(row: EvalFixtureRow): EvalFixtureRow {
+  return { ...row, expected: coerceJson(row.expected, {} as EvalFixtureRow['expected']) }
 }
 
 export async function listFixtures(): Promise<EvalFixtureRow[]> {
-  return (await db`
+  const rows = (await db`
     SELECT id, slug, analysis_id, description, frames_hash, frame_urls, expected, active
     FROM eval_fixtures ORDER BY slug
   `) as unknown as EvalFixtureRow[]
+  return rows.map(coerceFixture)
 }
 
 export interface BaselineRow {

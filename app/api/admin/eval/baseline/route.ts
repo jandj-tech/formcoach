@@ -15,9 +15,11 @@ export async function POST(req: NextRequest) {
   if (!results || typeof results !== 'object' || Object.keys(results).length === 0) {
     return NextResponse.json({ error: 'No results to accept' }, { status: 400 })
   }
+  // db.json() — a pre-stringified value would be stored as a jsonb *string*,
+  // making every later diffBaseline() lookup silently miss (see lib/eval).
   const [row] = (await db`
     INSERT INTO eval_baselines (grader, results)
-    VALUES (${grader ? JSON.stringify(grader) : null}::jsonb, ${JSON.stringify(results)}::jsonb)
+    VALUES (${grader ? db.json(grader) : null}::jsonb, ${db.json(results)})
     RETURNING id, grader, results, accepted_at
   `) as unknown as [Record<string, unknown>]
   return NextResponse.json({ baseline: row })

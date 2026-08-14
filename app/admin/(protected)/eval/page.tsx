@@ -93,6 +93,27 @@ function buildDraft(f: Fixture, criteriaNames: string[]): Draft {
   }
 }
 
+/**
+ * One-line readout of what a fixture actually expects, shown on the collapsed
+ * row. The editor closes on save, so this is the only place the owner can
+ * confirm their expectations were stored without reopening the panel.
+ */
+function summarizeExpected(e: EvalExpected | undefined): string | null {
+  if (!e || typeof e !== 'object') return null
+  if (e.shot_detected === false) return 'expects NO shot in this clip'
+  const parts: string[] = []
+  if (Array.isArray(e.overall)) parts.push(`overall ${e.overall[0]}–${e.overall[1]}`)
+  const criteria = Object.entries(e.criteria ?? {})
+  const ranges = criteria.filter(([, v]) => Array.isArray(v)).length
+  const mustBeUngraded = criteria.filter(([, v]) => v === 'null').length
+  if (ranges > 0) parts.push(`${ranges} criteria set`)
+  if (mustBeUngraded > 0) parts.push(`${mustBeUngraded} must stay ungraded`)
+  const flags = Object.keys(e.flags ?? {}).length
+  if (flags > 0) parts.push(`${flags} flag${flags === 1 ? '' : 's'}`)
+  if (e.player_type) parts.push(String(e.player_type))
+  return parts.length > 0 ? parts.join(' · ') : null
+}
+
 function draftToExpected(d: Draft): EvalExpected {
   if (d.noShot) return { shot_detected: false }
   const expected: EvalExpected = { shot_detected: true }
@@ -130,6 +151,8 @@ export default function EvalPage() {
   const [expanded, setExpanded] = useState<number | null>(null)
   const [draft, setDraft] = useState<Draft | null>(null)
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [savedId, setSavedId] = useState<number | null>(null)
 
   const [manualId, setManualId] = useState('')
   const [addError, setAddError] = useState<string | null>(null)
@@ -214,6 +237,7 @@ export default function EvalPage() {
   async function saveDraft(fixture: Fixture) {
     if (!draft) return
     setSaving(true)
+    setSaveError(null)
     try {
       const res = await fetch(`/api/admin/eval/fixtures/${fixture.id}`, {
         method: 'PATCH',
@@ -221,11 +245,16 @@ export default function EvalPage() {
         body: JSON.stringify({ expected: draftToExpected(draft), description: draft.description }),
       })
       const data = await res.json()
-      if (res.ok) {
-        setFixtures((fs) => fs.map((f) => (f.id === fixture.id ? { ...f, ...data.fixture } : f)))
-        setExpanded(null)
-        setDraft(null)
-      }
+      if (!res.ok) throw new Error(data.error || `Save failed (HTTP ${res.status})`)
+      setFixtures((fs) => fs.map((f) => (f.id === fixture.id ? { ...f, ...data.fixture } : f)))
+      setExpanded(null)
+      setDraft(null)
+      // Confirmation on the collapsed row — the editor closes on save, so
+      // without this there is no signal that anything was stored.
+      setSavedId(fixture.id)
+      setTimeout(() => setSavedId((id) => (id === fixture.id ? null : id)), 4000)
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : String(err))
     } finally {
       setSaving(false)
     }
@@ -503,11 +532,21 @@ export default function EvalPage() {
                 <img src={f.frame_urls[0]} alt="" className="w-14 h-14 object-cover rounded-md border border-zinc-800" />
               )}
               <div className="flex-1 min-w-40">
-                <div className="font-medium">{f.slug}</div>
-                <div className="text-sm text-zinc-500">
-                  {f.description || 'No description yet'}
-                  {f.expected?.shot_detected === false ? ' · expects NO shot' : ''}
+                <div className="font-medium flex items-center gap-2">
+                  {f.slug}
+                  {savedId === f.id && <span className="text-xs font-normal text-green-400">Saved ✓</span>}
                 </div>
+                <div className="text-sm text-zinc-500">{f.description || 'No description yet'}</div>
+                {(() => {
+                  const summary = summarizeExpected(f.expected)
+                  return summary ? (
+                    <div className="text-sm text-orange-400/90 mt-0.5">{summary}</div>
+                  ) : (
+                    <div className="text-sm text-zinc-600 mt-0.5">
+                      No expectations set — this shot is not checked against anything yet
+                    </div>
+                  )
+                })()}
               </div>
               <label className="text-sm text-zinc-400 flex items-center gap-2">
                 <input type="checkbox" checked={f.active} onChange={() => toggleActive(f)} /> include in runs
@@ -692,6 +731,7 @@ export default function EvalPage() {
                   </>
                 )}
 
+                {saveError && <p className="text-sm text-red-400">Could not save: {saveError}</p>}
                 <div className="flex gap-3">
                   <button
                     onClick={() => saveDraft(f)}
@@ -704,6 +744,7 @@ export default function EvalPage() {
                     onClick={() => {
                       setExpanded(null)
                       setDraft(null)
+                      setSaveError(null)
                     }}
                     className="px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700"
                   >

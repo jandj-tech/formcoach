@@ -13,6 +13,10 @@ import FrameViewer from './FrameViewer'
 import ShareResultButton from './ShareResultButton'
 import UnlockCta from './UnlockCta'
 import CoachNoteEditor from '@/components/CoachNoteEditor'
+import AnalysisNotes from '@/components/AnalysisNotes'
+import { resolveAnalysisNoteAuthor, getAnalysisNotes } from '@/lib/analysis-notes'
+
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.learnhoops.com'
 import {
   getPublicCoachNotes,
   getOwnNotes,
@@ -149,6 +153,16 @@ export default async function ResultsPage({
     ? await getOwnNotes(analysis.id as number, noteAuthor.teamId)
     : new Map<number, { suggestedScore: number | null; note: string | null }>()
 
+  // Free-form notes on the shot as a whole — the player's own, or a trainer's
+  // write-up for the player they uploaded it for. Unlike the per-criterion
+  // coach notes these don't depend on the scores, so they stay available on a
+  // locked preview: a coach cannot see the hidden scores to relay anyway.
+  const analysisNoteAuthor = await resolveAnalysisNoteAuthor(analysis.id as number)
+  const analysisNotes = await getAnalysisNotes(
+    analysis.id as number,
+    analysisNoteAuthor?.authorKey ?? null,
+  )
+
   // Load tutorial-video map for the criteria the player needs help with (< 7.5).
   // The video map function handles manual overrides and YouTube auto-matching.
   const needsHelp = scores
@@ -194,6 +208,13 @@ export default async function ResultsPage({
             </p>
           </div>
         )}
+
+        <AnalysisNotes
+          analysisId={analysis.id as number}
+          notes={analysisNotes}
+          canWrite={!!analysisNoteAuthor}
+          shareUrl={`${BASE_URL}/results/${token}`}
+        />
 
         {/* Overall score */}
         <section className="bg-gradient-to-b from-orange-50/70 to-white border border-orange-100 rounded-2xl py-7 flex justify-center">

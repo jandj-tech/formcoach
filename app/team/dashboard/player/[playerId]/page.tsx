@@ -4,6 +4,7 @@ import { getTeamSession } from '@/lib/team-auth'
 import { db } from '@/lib/db'
 import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
+import PlayerShotList from '@/components/PlayerShotList'
 
 // Coach/team-admin view of a single player's analyzed shots and scores.
 export default async function TeamPlayerPage({ params }: { params: Promise<{ playerId: string }> }) {
@@ -33,12 +34,6 @@ export default async function TeamPlayerPage({ params }: { params: Promise<{ pla
     overall_score: string | number | null
   }>
 
-  function scoreColor(score: number) {
-    if (score >= 8) return 'text-green-600'
-    if (score >= 6) return 'text-orange-500'
-    return 'text-red-500'
-  }
-
   const playerName = `${player.first_name}${player.last_name_initial ? ` ${player.last_name_initial}.` : ''}`
 
   return (
@@ -56,41 +51,7 @@ export default async function TeamPlayerPage({ params }: { params: Promise<{ pla
           </p>
         </div>
 
-        {shots.length === 0 ? (
-          <div className="text-center py-16 text-gray-400 border-2 border-dashed border-gray-200 rounded-2xl">
-            <p className="font-semibold">No shots analyzed yet</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {shots.map((shot) => {
-              const score = shot.overall_score == null ? null : Number(shot.overall_score)
-              const date = new Date(shot.created_at).toLocaleDateString('en-US', {
-                month: 'short', day: 'numeric', year: 'numeric',
-              })
-              return (
-                <Link
-                  key={shot.id}
-                  href={`/results/${shot.token}`}
-                  className="flex items-center gap-4 bg-gray-50 hover:bg-orange-50 border border-gray-200 hover:border-orange-200 rounded-xl p-4 transition-colors group"
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-500">{date}</p>
-                    <p className="text-black font-semibold text-sm mt-0.5 group-hover:text-orange-600 transition-colors">
-                      View Shot Breakdown →
-                    </p>
-                  </div>
-                  {score !== null && !Number.isNaN(score) ? (
-                    <div className={`text-2xl font-black shrink-0 ${scoreColor(score)}`}>
-                      {score.toFixed(1)}
-                    </div>
-                  ) : (
-                    <div className="text-gray-300 text-sm shrink-0">—</div>
-                  )}
-                </Link>
-              )
-            })}
-          </div>
-        )}
+        <PlayerShotList shots={shots} showNotesLink />
       </div>
       <SiteFooter />
     </main>

@@ -12,6 +12,7 @@ const ADMIN_TABS = [
   { href: '/admin/organizations', label: 'Organizations' },
   { href: '/admin/criteria', label: 'Criteria' },
   { href: '/admin/learn', label: 'Learn Mode' },
+  { href: '/admin/learn/notes', label: 'Coach Notes' },
   { href: '/admin/eval', label: 'Test Bench' },
   { href: '/admin/emails', label: 'Emails' },
   { href: '/admin/orders', label: 'Orders' },
@@ -38,11 +39,17 @@ export default function AdminNav() {
           </span>
         </div>
         <div className="hidden md:flex items-center gap-4 text-sm">
+          {/* Longest matching href wins, so a nested tab like /admin/learn/notes
+              highlights only itself and not its parent /admin/learn. */}
           {ADMIN_TABS.map((tab) => {
-            const active =
-              tab.href === '/admin'
-                ? pathname === '/admin'
-                : pathname.startsWith(tab.href)
+            const matches = ADMIN_TABS.filter(
+              (t) => pathname === t.href || pathname.startsWith(`${t.href}/`),
+            )
+            const best = matches.reduce(
+              (longest, t) => (t.href.length > longest.length ? t.href : longest),
+              '',
+            )
+            const active = tab.href === best
             return (
               <a
                 key={tab.href}

@@ -6,6 +6,9 @@ export default async function AdminDashboard() {
       (SELECT COUNT(*) FROM submissions WHERE status = 'complete') as total_analyses,
       (SELECT COUNT(*) FROM email_list WHERE unsubscribed_at IS NULL) as active_emails,
       (SELECT COUNT(*) FROM criterion_scores WHERE admin_score IS NOT NULL) as learn_corrections,
+      -- Separate from learn_corrections on purpose: that one must keep meaning
+      -- "owner corrections that steer the grader".
+      (SELECT COUNT(*) FROM coach_notes WHERE status = 'pending' AND deleted_at IS NULL) as pending_coach_notes,
       (SELECT ROUND(AVG(overall_score), 1) FROM analyses) as avg_score
   `
 
@@ -13,6 +16,7 @@ export default async function AdminDashboard() {
     { label: 'Total Analyses', value: counts.total_analyses ?? 0 },
     { label: 'Email Subscribers', value: counts.active_emails ?? 0 },
     { label: 'Learn Corrections', value: counts.learn_corrections ?? 0 },
+    { label: 'Coach Notes to Review', value: counts.pending_coach_notes ?? 0 },
     { label: 'Avg Overall Score', value: counts.avg_score ? `${counts.avg_score}/10` : '—' },
   ]
 

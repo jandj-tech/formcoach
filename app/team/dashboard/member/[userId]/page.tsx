@@ -57,7 +57,7 @@ export default async function TeamMemberShotsPage({ params }: { params: Promise<
           </p>
         </div>
 
-        <PlayerShotList shots={shots} />
+        <PlayerShotList shots={shots} showNotesLink />
       </div>
       <SiteFooter />
     </main>

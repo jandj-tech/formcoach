@@ -12,6 +12,7 @@ import { getCriteriaVideoMap } from '@/lib/youtube'
 import FrameViewer from './FrameViewer'
 import ShareResultButton from './ShareResultButton'
 import UnlockCta from './UnlockCta'
+import { getPublicCoachNotes, type PublicCoachNote } from '@/lib/coach-notes'
 
 // Share-friendly metadata: when a player sends their results link to a
 // teammate, the preview shows their score (the OG image comes from the
@@ -125,6 +126,13 @@ export default async function ResultsPage({
       `) as unknown as Array<{ name: string }>)
     : []
 
+  // Coach's Notes, shown beneath each individual score. Gated on `locked` the
+  // same way the scores are: a locked free-preview report must not leak note
+  // text or a coach's name into the served HTML.
+  const notesByScore: Map<number, PublicCoachNote[]> = locked
+    ? new Map()
+    : await getPublicCoachNotes(analysis.id as number)
+
   // Load tutorial-video map for the criteria the player needs help with (< 7.5).
   // The video map function handles manual overrides and YouTube auto-matching.
   const needsHelp = scores
@@ -212,6 +220,7 @@ export default async function ResultsPage({
                 score={s.ai_score !== null ? Number(s.ai_score) : null}
                 reasoning={s.ai_reasoning}
                 videoId={videoMap[s.name]}
+                coachNotes={notesByScore.get(s.id)}
               />
               {i === 1 && (
                 <aside className="relative flex items-center gap-4 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-xl p-4 pr-5">

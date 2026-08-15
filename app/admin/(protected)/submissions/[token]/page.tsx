@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation'
 import { db } from '@/lib/db'
 import OverallBadge from '@/components/OverallBadge'
 import ScoreCard from '@/components/ScoreCard'
+import CoachNoteEditor from '@/components/CoachNoteEditor'
+import { getOwnNotes } from '@/lib/coach-notes'
 
 export default async function AdminSubmissionPage({
   params,
@@ -35,6 +37,13 @@ export default async function AdminSubmissionPage({
         ORDER BY c.order_index
       `
     : []
+
+  // The owner coaches players through his own account, so he writes the same
+  // player-visible Coach's Notes a team coach does (stored with team_id NULL).
+  // Separate from Learn Mode corrections, which never reach the player.
+  const ownNotes = analysis
+    ? await getOwnNotes(analysis.id as number, null)
+    : new Map<number, { suggestedScore: number | null; note: string | null }>()
 
   return (
     <div className="space-y-8 text-white">
@@ -97,14 +106,26 @@ export default async function AdminSubmissionPage({
 
           <div className="space-y-3">
             <h2 className="text-white font-bold text-lg">Criteria Breakdown</h2>
+            <p className="text-zinc-400 text-sm">
+              Notes you add here appear on the player&apos;s report beneath each score, and land in
+              the Learn Mode queue. They never change the AI&apos;s score or the grading model.
+            </p>
             <div className="space-y-3">
               {scores.map((s) => (
-                <ScoreCard
-                  key={s.id}
-                  name={s.name}
-                  score={s.ai_score !== null ? Number(s.ai_score) : null}
-                  reasoning={s.ai_reasoning}
-                />
+                <div key={s.id}>
+                  <ScoreCard
+                    name={s.name}
+                    score={s.ai_score !== null ? Number(s.ai_score) : null}
+                    reasoning={s.ai_reasoning}
+                  />
+                  <CoachNoteEditor
+                    criterionScoreId={s.id as number}
+                    aiScore={s.ai_score !== null ? Number(s.ai_score) : null}
+                    endpoint="/api/admin/coach-note"
+                    initial={ownNotes.get(s.id as number) ?? null}
+                    theme="dark"
+                  />
+                </div>
               ))}
             </div>
           </div>

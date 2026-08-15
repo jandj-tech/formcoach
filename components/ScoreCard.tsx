@@ -43,11 +43,74 @@ const IMPROVEMENT_TIPS: Record<string, string> = {
     'Slow your entire shot down to 25% speed and practice it as one single unbroken motion from knee bend to follow through. There should be no pause or reset between the leg drive and the arm motion. Think of the whole shot as one word, not three separate moves.',
 }
 
+export interface CoachNoteView {
+  suggestedScore: number | null
+  note: string | null
+  authorName: string
+  teamName: string | null
+}
+
 interface ScoreCardProps {
   name: string
+  // ALWAYS the AI's score. A coach note never replaces or alters it, and every
+  // computation below (colour, bar width, label, improvement tip, tutorial
+  // video) stays keyed on this value — that is where "display only" is
+  // actually enforced, so it cannot drift later.
   score: number | null
   reasoning: string
   videoId?: string
+  coachNotes?: CoachNoteView[]
+}
+
+/**
+ * Coach's Notes for one criterion, shown directly beneath the AI's score.
+ * Deliberately a different colour from every score element on the card so a
+ * coach's number can never be mistaken for the grade itself.
+ */
+function CoachNotes({ notes, aiScore }: { notes: CoachNoteView[]; aiScore: number | null }) {
+  // Only disambiguate with the team name when two coaches share a display
+  // name — otherwise a public page needn't state a (possibly minor) player's
+  // team affiliation at all.
+  const seen = new Map<string, number>()
+  for (const n of notes) seen.set(n.authorName, (seen.get(n.authorName) ?? 0) + 1)
+
+  return (
+    <div className="mt-3 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2.5 space-y-2">
+      <p className="text-xs font-bold text-indigo-800">
+        {notes.length > 1 ? "Coaches' notes" : "Coach's notes"}
+      </p>
+      {notes.map((n, i) => (
+        <div key={i}>
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <span className="text-[11px] text-indigo-900/70">
+              AI {aiScore === null ? 'not graded' : aiScore.toFixed(1)}
+            </span>
+            {n.suggestedScore !== null && (
+              <>
+                <span className="text-[11px] text-indigo-900/40">·</span>
+                <span className="text-sm font-black text-indigo-900">
+                  Coach {n.suggestedScore.toFixed(1)}
+                  <span className="text-[11px] font-normal">/10</span>
+                </span>
+              </>
+            )}
+            <span className="text-[11px] font-semibold text-indigo-700">
+              {(seen.get(n.authorName) ?? 0) > 1 && n.teamName
+                ? `${n.authorName} · ${n.teamName}`
+                : n.authorName}
+            </span>
+          </div>
+          {n.note && (
+            <p className="text-xs text-indigo-900 leading-relaxed mt-1">&ldquo;{n.note}&rdquo;</p>
+          )}
+        </div>
+      ))}
+      <p className="text-[10px] text-indigo-900/60 leading-snug">
+        Your coach&rsquo;s score is their own read of this clip. Your overall score, leaderboard
+        spot and progress still come from the AI score.
+      </p>
+    </div>
+  )
 }
 
 function scoreColor(score: number) {
@@ -83,7 +146,7 @@ function scoreLabel(score: number) {
   return 'Poor'
 }
 
-export default function ScoreCard({ name, score, reasoning, videoId }: ScoreCardProps) {
+export default function ScoreCard({ name, score, reasoning, videoId, coachNotes }: ScoreCardProps) {
   const cleanReasoning = humanizeReasoning(reasoning)
   const improvementTip = score !== null && score < 10 ? IMPROVEMENT_TIPS[name] : undefined
   const showVideo = score !== null && score < 7.5 && !!videoId
@@ -111,6 +174,9 @@ export default function ScoreCard({ name, score, reasoning, videoId }: ScoreCard
             </Link>
           </p>
         </div>
+        {/* An ungraded criterion is the highest-value place for a coach note —
+            they were there and could see what the camera could not. */}
+        {coachNotes?.length ? <CoachNotes notes={coachNotes} aiScore={null} /> : null}
       </div>
     )
   }
@@ -134,6 +200,7 @@ export default function ScoreCard({ name, score, reasoning, videoId }: ScoreCard
         />
       </div>
       <p className="text-black text-xs leading-relaxed">{cleanReasoning}</p>
+      {coachNotes?.length ? <CoachNotes notes={coachNotes} aiScore={score} /> : null}
       {improvementTip && (
         <div className="mt-3 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2.5">
           <p className="text-xs font-bold text-orange-700 mb-1">How to improve</p>

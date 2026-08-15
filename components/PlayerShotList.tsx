@@ -15,7 +15,16 @@ function scoreColor(score: number) {
 }
 
 // Coach/org-facing list of a player's analyzed shots; each row opens the breakdown.
-export default function PlayerShotList({ shots }: { shots: Shot[] }) {
+// `showNotesLink` is opt-in because this component is also rendered on the org
+// member page, where the viewer holds an org session and not a team session —
+// the coach notes page would just bounce them to /login.
+export default function PlayerShotList({
+  shots,
+  showNotesLink = false,
+}: {
+  shots: Shot[]
+  showNotesLink?: boolean
+}) {
   if (shots.length === 0) {
     return (
       <div className="text-center py-16 text-gray-400 border-2 border-dashed border-gray-200 rounded-2xl">
@@ -32,25 +41,37 @@ export default function PlayerShotList({ shots }: { shots: Shot[] }) {
           month: 'short', day: 'numeric', year: 'numeric',
         })
         return (
-          <Link
+          <div
             key={shot.id}
-            href={`/results/${shot.token}`}
-            className="flex items-center gap-4 bg-gray-50 hover:bg-orange-50 border border-gray-200 hover:border-orange-200 rounded-xl p-4 transition-colors group"
+            className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-2"
           >
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-gray-500">{date}</p>
-              <p className="text-black font-semibold text-sm mt-0.5 group-hover:text-orange-600 transition-colors">
-                View Shot Breakdown →
-              </p>
-            </div>
-            {score !== null && !Number.isNaN(score) ? (
-              <div className={`text-2xl font-black shrink-0 ${scoreColor(score)}`}>
-                {score.toFixed(1)}
+            <Link
+              href={`/results/${shot.token}`}
+              className="flex items-center gap-4 group"
+            >
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-gray-500">{date}</p>
+                <p className="text-black font-semibold text-sm mt-0.5 group-hover:text-orange-600 transition-colors">
+                  View Shot Breakdown →
+                </p>
               </div>
-            ) : (
-              <div className="text-gray-300 text-sm shrink-0">—</div>
+              {score !== null && !Number.isNaN(score) ? (
+                <div className={`text-2xl font-black shrink-0 ${scoreColor(score)}`}>
+                  {score.toFixed(1)}
+                </div>
+              ) : (
+                <div className="text-gray-300 text-sm shrink-0">—</div>
+              )}
+            </Link>
+            {showNotesLink && (
+              <Link
+                href={`/team/dashboard/shot/${shot.token}`}
+                className="inline-block text-xs font-bold text-indigo-600 hover:text-indigo-500 transition-colors"
+              >
+                ✎ Add coaching notes
+              </Link>
             )}
-          </Link>
+          </div>
         )
       })}
     </div>

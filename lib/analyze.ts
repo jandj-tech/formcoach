@@ -351,9 +351,11 @@ CRITICAL FLAGS — these operate on their own detection standard, independent of
   CHECK EVERY RELEASE FRAME carefully — not just the final follow-through frame. Look at the 2–3 frames right at release for any lateral hand deviation or arm convergence.
 
 - chest_pass_hands: in any frame from the shot pocket through the rise, the hands are on the ball like a CHEST PASS instead of a shot — both hands symmetrically on the SIDES of the ball, thumbs behind it, elbows flared out away from the body, and no hand underneath supporting the ball. The tell is SYMMETRY: in a real shot the two hands do visibly different jobs, the shooting hand sitting UNDER the ball carrying its weight while the guide hand rests on the side. In a chest-pass grip they mirror each other and the ball is pushed out from the chest by both arms together.
-  CHECK THE ELBOWS ON THE WAY UP — this is the second half of the same fault and it must be caught too. As the ball travels from the pocket up toward the set point, the shooting elbow should stay tucked in UNDER the ball, pointing down toward the floor, with the upper arm close to the body. If instead BOTH elbows are winged out to the sides — pointing away from the torso rather than down, chicken-winged — and the ball is being driven upward by both arms together, set this flag. Flared elbows driving the ball up are the same chest-pass fault as the chest-height grip, just later in the motion, and they are just as bad. Check every frame of the rise, not only the pocket.
-  THE ELBOW CHECK ONLY APPLIES WHILE THE BALL IS BETWEEN THE POCKET AND THE SET POINT — roughly chest height up to forehead height. Once the arms are extended overhead at the apex or in the follow-through, the elbows are SUPPOSED to be high and pointing up; that is correct form, not flaring. Never set this flag off an apex, release or follow-through frame, and never set it because the arms are raised.
-  DO NOT set this flag just because both hands are on the ball — every shot starts that way and two hands on the ball during the gather is completely normal. Set it when EITHER of these is true: the shooting hand is clearly not under the ball and the two hands mirror each other, OR both elbows are flared out to the sides driving the ball up together. A guide-hand elbow sitting at a mild outward angle on its own is normal and is not this flag.
+  THE DISQUALIFIER — CHECK THIS FIRST AND HONOUR IT. A chest pass is thrown by BOTH hands. So if the ball leaves off ONE hand — one wrist snapping while the other hand rides beside it or peels away — this is NOT a chest pass, whatever the arms looked like on the way up. Set the flag to a LOW confidence and move on. Only the elbow criterion judges how the arm was shaped; this flag is reserved for a genuine two-handed shove.
+  FLARED ELBOWS ALONE ARE NOT THIS FLAG. A player whose elbows wing out during the rise — very common in smaller or weaker players who cannot yet lift the ball with one arm — is showing the ordinary flared-elbow fault, which the elbow criterion already scores. It is NOT a chest pass and must NOT be capped here. Setting this flag on such a shot is a serious error: it forces three separate criteria to 4 and tells a player with a clean one-hand release that they threw a chest pass.
+  THE HEIGHT TEST — WHERE DOES THE BALL GET THROWN FROM? A chest pass is delivered from CHEST TO CHIN height: the ball never loads above the face, both hands stay mirrored on its sides to the very end, and both arms shove it out at the rim together. A ball that rises to a set point at the face or forehead and is then released has been shot, not passed — no flag, regardless of elbow position.
+  Never set this flag off an apex, release or follow-through frame, and never set it because the arms are raised: once the arms are extended overhead the elbows are SUPPOSED to be high, which is correct form.
+  DO NOT set this flag just because both hands are on the ball — every shot starts that way and two hands on the ball during the gather is completely normal. Set it ONLY when ALL of these hold: the ball is shoved from chest-to-chin height without ever loading above the face, the two hands stay mirrored with no hand under the ball, and the release is visibly two-handed. If any one of those is missing, leave the flag low.
   When true: "Shot Pocket — Elbow", "Source of Shot Power" and "Shooting Through Guide Hand / One Hand Release" MUST each score 4 or below. Pushing the ball from the chest with both hands means it is not loaded in a shot pocket, the power is coming from the arms rather than the legs, and the release cannot be one-handed.
 
 - arc_too_flat: the ball travels on a low, flat trajectory rather than a proper high arc (45–60 degrees). If the ball visibly shoots out nearly flat or at a shallow angle with little height, set true. A flat shot has almost no arc and the ball comes in at a low angle toward the basket. Do NOT apply benefit-of-the-doubt here. When true: the shot arc criterion MUST score 4 or below.
@@ -673,7 +675,12 @@ function finalizeResult(result: AnalysisResult, activeCriteria: CriteriaRow[]): 
   let minimumScore: number | null = null
 
   if (pt === 'child') {
-    multiplier = 0.9
+    // 5%, down from 10%. A 10-point haircut on a child's overall stacked on
+    // top of criteria that already score a smaller player's arm-driven shot
+    // harshly, and the Test Bench caught the result: shot-156 came out 5
+    // against Joseph's expected 6-7. Kids are still held to the same
+    // criteria; this only trims the headline number.
+    multiplier = 0.95
   } else if (pt === 'college_pro') {
     multiplier = 1.025
   } else if (pt === 'nba_decent') {

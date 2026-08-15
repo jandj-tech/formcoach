@@ -15,8 +15,8 @@ export async function GET() {
   // team/player columns cover coach uploads for a roster player; s.email is
   // only set for coach self-uploads.
   const submissions = await db`
-    SELECT s.id, s.email, s.status, s.created_at,
-           a.id as analysis_id, a.overall_score, a.frame_urls,
+    SELECT s.id, s.email, s.status, s.created_at, s.token,
+           a.id as analysis_id, a.overall_score, a.frame_urls, a.video_url,
            u.email AS account_email, u.nickname AS account_nickname,
            t.name AS team_name,
            tp.first_name AS player_first_name, tp.last_name_initial AS player_last_initial

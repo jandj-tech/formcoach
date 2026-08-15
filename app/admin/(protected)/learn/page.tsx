@@ -18,6 +18,8 @@ interface Submission {
   overall_score: number
   analysis_id: number
   frame_urls: string[] | null
+  video_url: string | null
+  token: string | null
   account_email: string | null
   account_nickname: string | null
   team_name: string | null
@@ -199,33 +201,76 @@ export default function LearnModePage() {
             {expanded === s.id && (
               <div className="border-t border-zinc-800">
 
-                {/* Frame thumbnails */}
-                {s.frame_urls && s.frame_urls.length > 0 && (
+                {/* Frames + the original video side by side, mirroring the
+                    "Your shot" section at the bottom of a results page — the
+                    frames show what the grader actually saw, the video shows
+                    what really happened. */}
+                {((s.frame_urls && s.frame_urls.length > 0) || s.video_url) && (
                   <div className="px-5 py-4 space-y-2">
-                    <p className="text-white text-xs font-semibold uppercase tracking-wider">
-                      Frames Analyzed ({s.frame_urls.length})
-                    </p>
-                    <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-                      {s.frame_urls.map((url, i) => (
-                        <div
-                          key={i}
-                          className="relative cursor-pointer group"
-                          onClick={() => setLightbox({ urls: s.frame_urls!, index: i })}
+                    <div className="flex flex-wrap items-center gap-3">
+                      <p className="text-white text-xs font-semibold uppercase tracking-wider">
+                        {s.frame_urls?.length
+                          ? `Frames Analyzed (${s.frame_urls.length})`
+                          : 'Uploaded video'}
+                      </p>
+                      {s.token && (
+                        <a
+                          href={`/results/${s.token}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs font-bold text-orange-400 hover:text-orange-300"
                         >
-                          <img
-                            src={url}
-                            alt={`Frame ${i + 1}`}
-                            className="rounded-lg w-full aspect-video object-cover border border-zinc-700 group-hover:border-orange-400 transition-colors"
-                          />
-                          <span className="absolute bottom-1 left-1 text-white text-xs bg-black/60 rounded px-1">
-                            {i + 1}
-                          </span>
-                          <div className="absolute inset-0 bg-white/0 group-hover:bg-white/10 rounded-lg transition-colors flex items-center justify-center">
-                            <span className="opacity-0 group-hover:opacity-100 text-white text-lg">🔍</span>
-                          </div>
-                        </div>
-                      ))}
+                          Open the player&apos;s report ↗
+                        </a>
+                      )}
                     </div>
+                    <div
+                      className={
+                        s.video_url && s.frame_urls?.length
+                          ? 'grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4 items-start'
+                          : ''
+                      }
+                    >
+                      {s.frame_urls && s.frame_urls.length > 0 && (
+                        <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                          {s.frame_urls.map((url, i) => (
+                            <div
+                              key={i}
+                              className="relative cursor-pointer group"
+                              onClick={() => setLightbox({ urls: s.frame_urls!, index: i })}
+                            >
+                              <img
+                                src={url}
+                                alt={`Frame ${i + 1}`}
+                                className="rounded-lg w-full aspect-video object-cover border border-zinc-700 group-hover:border-orange-400 transition-colors"
+                              />
+                              <span className="absolute bottom-1 left-1 text-white text-xs bg-black/60 rounded px-1">
+                                {i + 1}
+                              </span>
+                              <div className="absolute inset-0 bg-white/0 group-hover:bg-white/10 rounded-lg transition-colors flex items-center justify-center">
+                                <span className="opacity-0 group-hover:opacity-100 text-white text-lg">🔍</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {s.video_url && (
+                        <video
+                          src={s.video_url}
+                          poster={s.frame_urls?.[Math.floor((s.frame_urls.length ?? 0) / 2)]}
+                          controls
+                          playsInline
+                          preload="metadata"
+                          className="w-full rounded-xl bg-black border border-zinc-700"
+                        />
+                      )}
+                    </div>
+                    {!s.video_url && (
+                      <p className="text-zinc-500 text-xs">
+                        No video stored for this shot — originals over 100MB are analyzed from
+                        frames only.
+                      </p>
+                    )}
                   </div>
                 )}
 

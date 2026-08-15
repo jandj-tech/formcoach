@@ -60,6 +60,9 @@ interface ScoreCardProps {
   reasoning: string
   videoId?: string
   coachNotes?: CoachNoteView[]
+  // Coach/owner note editor, injected by the caller only when the viewer is
+  // authorized. Undefined on every player-facing render.
+  editor?: React.ReactNode
 }
 
 /**
@@ -146,7 +149,14 @@ function scoreLabel(score: number) {
   return 'Poor'
 }
 
-export default function ScoreCard({ name, score, reasoning, videoId, coachNotes }: ScoreCardProps) {
+export default function ScoreCard({
+  name,
+  score,
+  reasoning,
+  videoId,
+  coachNotes,
+  editor,
+}: ScoreCardProps) {
   const cleanReasoning = humanizeReasoning(reasoning)
   const improvementTip = score !== null && score < 10 ? IMPROVEMENT_TIPS[name] : undefined
   const showVideo = score !== null && score < 7.5 && !!videoId
@@ -177,6 +187,7 @@ export default function ScoreCard({ name, score, reasoning, videoId, coachNotes 
         {/* An ungraded criterion is the highest-value place for a coach note —
             they were there and could see what the camera could not. */}
         {coachNotes?.length ? <CoachNotes notes={coachNotes} aiScore={null} /> : null}
+        {editor}
       </div>
     )
   }
@@ -218,6 +229,7 @@ export default function ScoreCard({ name, score, reasoning, videoId, coachNotes 
           Learn on the LearnHoops channel →
         </a>
       )}
+      {editor}
     </div>
   )
 }

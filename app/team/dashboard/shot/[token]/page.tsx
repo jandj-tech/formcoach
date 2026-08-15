@@ -116,7 +116,7 @@ export default async function CoachShotPage({ params }: { params: Promise<{ toke
                 <CoachNoteEditor
                   criterionScoreId={s.id}
                   aiScore={ai}
-                  endpoint="/api/team/coach-note"
+                  endpoint="/api/coach-note"
                   initial={ownNotes.get(s.id) ?? null}
                 />
               </div>

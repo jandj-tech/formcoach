@@ -12,7 +12,13 @@ import { getCriteriaVideoMap } from '@/lib/youtube'
 import FrameViewer from './FrameViewer'
 import ShareResultButton from './ShareResultButton'
 import UnlockCta from './UnlockCta'
-import { getPublicCoachNotes, type PublicCoachNote } from '@/lib/coach-notes'
+import CoachNoteEditor from '@/components/CoachNoteEditor'
+import {
+  getPublicCoachNotes,
+  getOwnNotes,
+  resolveNoteAuthorForAnalysis,
+  type PublicCoachNote,
+} from '@/lib/coach-notes'
 
 // Share-friendly metadata: when a player sends their results link to a
 // teammate, the preview shows their score (the OG image comes from the
@@ -133,6 +139,16 @@ export default async function ResultsPage({
     ? new Map()
     : await getPublicCoachNotes(analysis.id as number)
 
+  // Inline note editing for whoever is entitled to it — the owner (admin
+  // cookie or his own player account), a team coach, or an org admin over one
+  // of its teams. Everyone else, including the player and anyone holding a
+  // share link, gets null and sees a read-only report exactly as before.
+  // Suppressed on a locked preview, where no scores are loaded to annotate.
+  const noteAuthor = locked ? null : await resolveNoteAuthorForAnalysis(analysis.id as number)
+  const ownNotes = noteAuthor
+    ? await getOwnNotes(analysis.id as number, noteAuthor.teamId)
+    : new Map<number, { suggestedScore: number | null; note: string | null }>()
+
   // Load tutorial-video map for the criteria the player needs help with (< 7.5).
   // The video map function handles manual overrides and YouTube auto-matching.
   const needsHelp = scores
@@ -167,6 +183,17 @@ export default async function ResultsPage({
             score={analysis.overall_score != null ? Number(analysis.overall_score) : null}
           />
         </div>
+
+        {noteAuthor && (
+          <div className="bg-indigo-50 border border-indigo-200 rounded-2xl px-5 py-4">
+            <p className="text-sm font-bold text-indigo-900">You&apos;re viewing this as a coach</p>
+            <p className="text-xs text-indigo-900/80 mt-1 leading-relaxed">
+              Add your own score and notes under any criterion below — especially where the video
+              was blurry or the AI couldn&apos;t see. The AI&apos;s score is never changed; the
+              player sees yours alongside it, and it&apos;s sent to LearnHoops for review.
+            </p>
+          </div>
+        )}
 
         {/* Overall score */}
         <section className="bg-gradient-to-b from-orange-50/70 to-white border border-orange-100 rounded-2xl py-7 flex justify-center">
@@ -221,6 +248,16 @@ export default async function ResultsPage({
                 reasoning={s.ai_reasoning}
                 videoId={videoMap[s.name]}
                 coachNotes={notesByScore.get(s.id)}
+                editor={
+                  noteAuthor ? (
+                    <CoachNoteEditor
+                      criterionScoreId={s.id}
+                      aiScore={s.ai_score !== null ? Number(s.ai_score) : null}
+                      endpoint="/api/coach-note"
+                      initial={ownNotes.get(s.id) ?? null}
+                    />
+                  ) : undefined
+                }
               />
               {i === 1 && (
                 <aside className="relative flex items-center gap-4 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-xl p-4 pr-5">

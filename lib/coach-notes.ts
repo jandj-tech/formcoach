@@ -1,5 +1,8 @@
+import { cookies } from 'next/headers'
 import { db } from './db'
-import type { TeamSessionPayload } from './team-auth'
+import { getSession } from './auth'
+import { getTeamSession, type TeamSessionPayload } from './team-auth'
+import { getOrgSession } from './org-auth'
 
 /**
  * Coach's Notes — a coach's (or the owner's) own read of one criterion, shown
@@ -70,6 +73,118 @@ export async function resolveAdminNoteTarget(criterionScoreId: number): Promise<
     SELECT id, analysis_id, ai_score FROM criterion_scores WHERE id = ${criterionScoreId}
   `) as unknown as [NoteTarget | undefined]
   return row ?? null
+}
+
+/**
+ * Player accounts that are really the owner coaching in person. He runs
+ * sessions through his own login, so that account writes owner-level notes
+ * rather than being treated as a player. Comma-separated override available
+ * without a deploy.
+ */
+const OWNER_ACCOUNT_EMAILS = (process.env.OWNER_ACCOUNT_EMAILS ?? 'learnhoops8@gmail.com')
+  .split(',')
+  .map((e) => e.trim().toLowerCase())
+  .filter(Boolean)
+
+/** Who is writing, and under which team the note is filed. */
+export type NoteAuthor =
+  | { authorType: 'admin'; teamId: null; authorEmail: string }
+  | { authorType: 'coach'; teamId: string; authorEmail: string }
+
+async function isAdminCookie(): Promise<boolean> {
+  const store = await cookies()
+  return store.get('admin_auth')?.value === process.env.ADMIN_PASSWORD
+}
+
+/**
+ * Decides whether the current viewer may annotate a given analysis, checking
+ * every session kind: the admin cookie, an owner player account, a team coach,
+ * or an org admin whose organization owns one of the player's teams.
+ *
+ * Used by the results page to decide whether to render editors at all, and by
+ * the write endpoint to authorize each save. Returns null for players viewing
+ * their own report and for anyone holding only a share link.
+ */
+export async function resolveNoteAuthorForAnalysis(analysisId: number): Promise<NoteAuthor | null> {
+  if (await isAdminCookie()) {
+    return { authorType: 'admin', teamId: null, authorEmail: 'owner' }
+  }
+
+  // The owner's own player account — annotates as the owner, any analysis.
+  const player = await getSession()
+  if (player && OWNER_ACCOUNT_EMAILS.includes(player.email.toLowerCase())) {
+    return { authorType: 'admin', teamId: null, authorEmail: player.email.toLowerCase() }
+  }
+
+  const team = await getTeamSession()
+  if (team) {
+    const [ok] = (await db`
+      SELECT 1 AS ok
+      FROM analyses a
+      JOIN submissions s ON s.id = a.submission_id
+      WHERE a.id = ${analysisId}
+        AND EXISTS (
+          SELECT 1 FROM teams t
+          WHERE t.id = ${team.teamId} AND t.admin_email = ${team.adminEmail}
+          UNION ALL
+          SELECT 1 FROM team_coaches tc
+          WHERE tc.team_id = ${team.teamId} AND tc.email = ${team.adminEmail}
+        )
+        AND (
+          s.team_id = ${team.teamId}
+          OR EXISTS (
+            SELECT 1 FROM team_players tp
+            WHERE tp.id = s.team_player_id AND tp.team_id = ${team.teamId}
+          )
+          OR EXISTS (
+            SELECT 1 FROM team_memberships tm
+            WHERE tm.team_id = ${team.teamId} AND tm.user_id = s.user_id
+          )
+        )
+    `) as unknown as [{ ok: number } | undefined]
+    if (ok) return { authorType: 'coach', teamId: team.teamId, authorEmail: team.adminEmail }
+    return null
+  }
+
+  const org = await getOrgSession()
+  if (org) {
+    // File the note under whichever of the org's teams this player belongs to.
+    const [row] = (await db`
+      SELECT t.id AS team_id
+      FROM analyses a
+      JOIN submissions s ON s.id = a.submission_id
+      JOIN teams t ON t.organization_id = ${org.orgId}
+      WHERE a.id = ${analysisId}
+        AND (
+          s.team_id = t.id
+          OR EXISTS (
+            SELECT 1 FROM team_players tp
+            WHERE tp.id = s.team_player_id AND tp.team_id = t.id
+          )
+          OR EXISTS (
+            SELECT 1 FROM team_memberships tm
+            WHERE tm.team_id = t.id AND tm.user_id = s.user_id
+          )
+        )
+      ORDER BY t.created_at ASC
+      LIMIT 1
+    `) as unknown as [{ team_id: string } | undefined]
+    if (row) return { authorType: 'coach', teamId: row.team_id, authorEmail: org.adminEmail }
+    return null
+  }
+
+  return null
+}
+
+/** Same decision, reached from a criterion id (the write path). */
+export async function resolveNoteAuthorForCriterion(
+  criterionScoreId: number,
+): Promise<{ author: NoteAuthor; target: NoteTarget } | null> {
+  const target = await resolveAdminNoteTarget(criterionScoreId)
+  if (!target) return null
+  const author = await resolveNoteAuthorForAnalysis(target.analysis_id)
+  if (!author) return null
+  return { author, target }
 }
 
 /**

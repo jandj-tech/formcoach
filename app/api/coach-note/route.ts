@@ -1,27 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
 import {
-  resolveAdminNoteTarget,
+  resolveNoteAuthorForCriterion,
   normalizeSuggestedScore,
   normalizeNote,
   saveNote,
   deleteNote,
 } from '@/lib/coach-notes'
 
-async function isAdmin() {
-  const cookieStore = await cookies()
-  return cookieStore.get('admin_auth')?.value === process.env.ADMIN_PASSWORD
-}
-
-// The owner coaches players through his own account, so he writes the same
-// player-visible Coach's Notes as a team coach — stored with team_id NULL.
-// This is NOT the Learn Mode correction path: it does not touch
-// criterion_scores and never reaches the grading prompt.
+// One write path for every note author — the owner (admin cookie or his own
+// player account), a team coach, or an org admin over one of its teams.
+// resolveNoteAuthorForCriterion decides both who is writing and whether they
+// may touch this analysis, so the surfaces (results page, coach shot page,
+// admin submission page) all post here and stay in step.
 export async function POST(req: NextRequest) {
-  if (!(await isAdmin())) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
   try {
     const { criterionScoreId, suggestedScore, note } = await req.json()
 
@@ -39,33 +30,36 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Add a score or a note' }, { status: 400 })
     }
 
-    const target = await resolveAdminNoteTarget(csId)
-    if (!target) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    // 404 rather than 403 so a caller cannot probe which criterion ids exist
+    // outside the players they coach.
+    const resolved = await resolveNoteAuthorForCriterion(csId)
+    if (!resolved) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
     const saved = await saveNote({
       criterionScoreId: csId,
-      authorType: 'admin',
-      teamId: null,
-      authorEmail: 'owner',
+      authorType: resolved.author.authorType,
+      teamId: resolved.author.teamId,
+      authorEmail: resolved.author.authorEmail,
       suggestedScore: score,
       note: cleanNote,
     })
 
     return NextResponse.json({ success: true, note: saved })
   } catch (err) {
+    // Two coaches of the same team saving at once: one loses the partial
+    // unique index race. That is a conflict, not a server fault.
     if ((err as { code?: string })?.code === '23505') {
-      return NextResponse.json({ error: 'A note was just saved here — reload' }, { status: 409 })
+      return NextResponse.json(
+        { error: 'Another coach just saved a note here — reload and try again' },
+        { status: 409 },
+      )
     }
-    console.error('Admin coach note save error:', err)
+    console.error('Coach note save error:', err)
     return NextResponse.json({ error: 'Could not save note' }, { status: 500 })
   }
 }
 
 export async function DELETE(req: NextRequest) {
-  if (!(await isAdmin())) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
   try {
     const { criterionScoreId } = await req.json()
     const csId = typeof criterionScoreId === 'number' ? Math.floor(criterionScoreId) : NaN
@@ -73,12 +67,15 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid criterion' }, { status: 400 })
     }
 
-    const removed = await deleteNote(csId, null)
+    const resolved = await resolveNoteAuthorForCriterion(csId)
+    if (!resolved) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+    const removed = await deleteNote(csId, resolved.author.teamId)
     if (!removed) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
     return NextResponse.json({ success: true })
   } catch (err) {
-    console.error('Admin coach note delete error:', err)
+    console.error('Coach note delete error:', err)
     return NextResponse.json({ error: 'Could not remove note' }, { status: 500 })
   }
 }

@@ -121,7 +121,7 @@ export default async function AdminSubmissionPage({
                   <CoachNoteEditor
                     criterionScoreId={s.id as number}
                     aiScore={s.ai_score !== null ? Number(s.ai_score) : null}
-                    endpoint="/api/admin/coach-note"
+                    endpoint="/api/coach-note"
                     initial={ownNotes.get(s.id as number) ?? null}
                     theme="dark"
                   />

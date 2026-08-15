@@ -12,7 +12,9 @@ export default function ShareResultButton({ score }: { score: number | null }) {
   const [imgSrc, setImgSrc] = useState('')
 
   useEffect(() => {
-    setUrl(window.location.href.split('#')[0])
+    // Path only — query strings here are viewer state (?as=player,
+    // ?token_purchased) and must never ride along in a shared link.
+    setUrl(`${window.location.origin}${window.location.pathname}`)
     setImgSrc(`${window.location.pathname.replace(/\/$/, '')}/opengraph-image`)
     setCanNativeShare(typeof navigator !== 'undefined' && !!navigator.share)
   }, [])

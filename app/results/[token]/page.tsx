@@ -64,7 +64,7 @@ export default async function ResultsPage({
   searchParams,
 }: {
   params: Promise<{ token: string }>
-  searchParams: Promise<{ token_purchased?: string }>
+  searchParams: Promise<{ token_purchased?: string; as?: string }>
 }) {
   const { token } = await params
   const sp = await searchParams
@@ -146,7 +146,14 @@ export default async function ResultsPage({
   // of its teams. Everyone else, including the player and anyone holding a
   // share link, gets null and sees a read-only report exactly as before.
   // Suppressed on a locked preview, where no scores are loaded to annotate.
-  const noteAuthor = locked ? null : await resolveNoteAuthorForAnalysis(analysis.id as number)
+  //
+  // ?as=player drops every coach affordance so a coach can see the page as
+  // their player will. It's a view of one's own screen, not an access grant:
+  // it only ever removes things, and it takes the viewer key away too, so
+  // private notes stay hidden in the preview exactly as they would be.
+  const previewAsPlayer = sp.as === 'player'
+  const coachAuthor = locked ? null : await resolveNoteAuthorForAnalysis(analysis.id as number)
+  const noteAuthor = previewAsPlayer ? null : coachAuthor
   const ownNotes = noteAuthor
     ? await getOwnNotes(analysis.id as number, noteAuthor.teamId)
     : new Map<number, { suggestedScore: number | null; note: string | null }>()
@@ -155,7 +162,9 @@ export default async function ResultsPage({
   // write-up for the player they uploaded it for. Unlike the per-criterion
   // coach notes these don't depend on the scores, so they stay available on a
   // locked preview: a coach cannot see the hidden scores to relay anyway.
-  const analysisNoteAuthor = await resolveAnalysisNoteAuthor(analysis.id as number)
+  const analysisNoteAuthor = previewAsPlayer
+    ? null
+    : await resolveAnalysisNoteAuthor(analysis.id as number)
   const analysisNotes = await getAnalysisNotes(
     analysis.id as number,
     analysisNoteAuthor?.authorKey ?? null,
@@ -197,13 +206,35 @@ export default async function ResultsPage({
         </div>
 
         {noteAuthor && (
-          <div className="bg-indigo-50 border border-indigo-200 rounded-2xl px-5 py-4">
-            <p className="text-sm font-bold text-indigo-900">You&apos;re viewing this as a coach</p>
-            <p className="text-xs text-indigo-900/80 mt-1 leading-relaxed">
-              Add your own score and notes under any criterion below — especially where the video
-              was blurry or the AI couldn&apos;t see. The AI&apos;s score is never changed; the
-              player sees yours alongside it, and it&apos;s sent to LearnHoops for review.
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-2.5">
+            {/* Naming the session is deliberate: the admin cookie shows no
+                sign of itself in the nav, so "why am I a coach here?" is
+                otherwise unanswerable from the page. */}
+            <p className="text-xs font-bold text-indigo-900">
+              Coach view · {noteAuthor.authorType === 'admin' ? 'admin session' : 'team session'}
             </p>
+            <p className="text-xs text-indigo-900/70">
+              Only you see this bar and the editors — your player sees the notes you save.
+            </p>
+            <Link
+              href={`/results/${token}?as=player`}
+              className="text-xs font-bold text-indigo-700 hover:text-indigo-900 underline underline-offset-2 ml-auto"
+            >
+              See the player&apos;s view
+            </Link>
+          </div>
+        )}
+
+        {previewAsPlayer && coachAuthor && (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 bg-gray-100 border border-gray-200 rounded-xl px-4 py-2.5">
+            <p className="text-xs font-bold text-gray-700">Player&apos;s view</p>
+            <p className="text-xs text-gray-500">Exactly what opening your link shows them.</p>
+            <Link
+              href={`/results/${token}`}
+              className="text-xs font-bold text-gray-700 hover:text-black underline underline-offset-2 ml-auto"
+            >
+              Back to coach view
+            </Link>
           </div>
         )}
 

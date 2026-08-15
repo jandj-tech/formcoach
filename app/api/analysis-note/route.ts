@@ -1,32 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server'
 import {
   resolveAnalysisNoteAuthor,
+  analysisIdForCriterion,
   normalizeBody,
   saveAnalysisNote,
   deleteAnalysisNote,
 } from '@/lib/analysis-notes'
 
-// Personal notes on a whole analysis. Writable by the player it belongs to,
-// the account that uploaded it (how a trainer writes up someone else's shot),
-// and anyone already entitled to coach it.
+// Personal notes, one per author per criterion. Writable by the player the
+// analysis belongs to, the account that uploaded it (how a trainer writes up
+// someone else's shot), and anyone already entitled to coach it.
 export async function POST(req: NextRequest) {
   try {
-    const { analysisId, body, isPublic } = await req.json()
+    const { criterionScoreId, body, isPublic } = await req.json()
 
-    const id = typeof analysisId === 'number' ? Math.floor(analysisId) : NaN
-    if (!Number.isInteger(id) || id <= 0) {
-      return NextResponse.json({ error: 'Invalid analysis' }, { status: 400 })
+    const csId = typeof criterionScoreId === 'number' ? Math.floor(criterionScoreId) : NaN
+    if (!Number.isInteger(csId) || csId <= 0) {
+      return NextResponse.json({ error: 'Invalid criterion' }, { status: 400 })
     }
 
     const text = normalizeBody(body)
     if (!text) return NextResponse.json({ error: 'Write something first' }, { status: 400 })
 
-    // 404 rather than 403 so a share-link visitor cannot probe analysis ids.
-    const author = await resolveAnalysisNoteAuthor(id)
+    const analysisId = await analysisIdForCriterion(csId)
+    if (!analysisId) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+    // 404 rather than 403 so a share-link visitor cannot probe criterion ids.
+    const author = await resolveAnalysisNoteAuthor(analysisId)
     if (!author) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
     const saved = await saveAnalysisNote({
-      analysisId: id,
+      analysisId,
+      criterionScoreId: csId,
       author,
       body: text,
       isPublic: isPublic === true,
@@ -41,16 +46,19 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    const { analysisId } = await req.json()
-    const id = typeof analysisId === 'number' ? Math.floor(analysisId) : NaN
-    if (!Number.isInteger(id) || id <= 0) {
-      return NextResponse.json({ error: 'Invalid analysis' }, { status: 400 })
+    const { criterionScoreId } = await req.json()
+    const csId = typeof criterionScoreId === 'number' ? Math.floor(criterionScoreId) : NaN
+    if (!Number.isInteger(csId) || csId <= 0) {
+      return NextResponse.json({ error: 'Invalid criterion' }, { status: 400 })
     }
 
-    const author = await resolveAnalysisNoteAuthor(id)
+    const analysisId = await analysisIdForCriterion(csId)
+    if (!analysisId) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+    const author = await resolveAnalysisNoteAuthor(analysisId)
     if (!author) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-    const removed = await deleteAnalysisNote(id, author.authorKey)
+    const removed = await deleteAnalysisNote(csId, author.authorKey)
     if (!removed) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
     return NextResponse.json({ success: true })

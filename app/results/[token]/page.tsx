@@ -13,10 +13,8 @@ import FrameViewer from './FrameViewer'
 import ShareResultButton from './ShareResultButton'
 import UnlockCta from './UnlockCta'
 import CoachNoteEditor from '@/components/CoachNoteEditor'
-import AnalysisNotes from '@/components/AnalysisNotes'
+import PersonalNoteEditor from '@/components/PersonalNoteEditor'
 import { resolveAnalysisNoteAuthor, getAnalysisNotes } from '@/lib/analysis-notes'
-
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.learnhoops.com'
 import {
   getPublicCoachNotes,
   getOwnNotes,
@@ -209,13 +207,6 @@ export default async function ResultsPage({
           </div>
         )}
 
-        <AnalysisNotes
-          analysisId={analysis.id as number}
-          notes={analysisNotes}
-          canWrite={!!analysisNoteAuthor}
-          shareUrl={`${BASE_URL}/results/${token}`}
-        />
-
         {/* Overall score */}
         <section className="bg-gradient-to-b from-orange-50/70 to-white border border-orange-100 rounded-2xl py-7 flex justify-center">
           <OverallBadge score={Number(analysis.overall_score)} />
@@ -276,6 +267,18 @@ export default async function ResultsPage({
                       aiScore={s.ai_score !== null ? Number(s.ai_score) : null}
                       endpoint="/api/coach-note"
                       initial={ownNotes.get(s.id) ?? null}
+                    />
+                  ) : undefined
+                }
+                personalNotes={analysisNotes.get(s.id)}
+                personalEditor={
+                  analysisNoteAuthor ? (
+                    <PersonalNoteEditor
+                      criterionScoreId={s.id}
+                      initial={(() => {
+                        const own = analysisNotes.get(s.id)?.find((n) => n.mine)
+                        return own ? { body: own.body, isPublic: own.isPublic } : null
+                      })()}
                     />
                   ) : undefined
                 }

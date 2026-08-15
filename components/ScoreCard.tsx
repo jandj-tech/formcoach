@@ -63,6 +63,81 @@ interface ScoreCardProps {
   // Coach/owner note editor, injected by the caller only when the viewer is
   // authorized. Undefined on every player-facing render.
   editor?: React.ReactNode
+  /** Personal notes on this criterion visible to the current viewer. */
+  personalNotes?: PersonalNoteView[]
+  /** The viewer's own personal-note editor, when they may write one. */
+  personalEditor?: React.ReactNode
+}
+
+export interface PersonalNoteView {
+  id: number
+  authorLabel: string
+  body: string
+  isPublic: boolean
+  mine: boolean
+}
+
+/**
+ * Collapsed panel inside a criterion card. Only the AI's own analysis stays
+ * open by default — everything else (drills, coach input, personal notes)
+ * folds away so a report with notes on every criterion is still skimmable.
+ * Built on <details> so it needs no client JS.
+ */
+function Fold({
+  title,
+  tone,
+  children,
+}: {
+  title: string
+  tone: 'orange' | 'indigo' | 'gray'
+  children: React.ReactNode
+}) {
+  const styles = {
+    orange: 'border-orange-200 bg-orange-50 text-orange-700',
+    indigo: 'border-indigo-200 bg-indigo-50 text-indigo-800',
+    gray: 'border-gray-200 bg-white text-gray-600',
+  }[tone]
+  return (
+    <details className={`group mt-2 rounded-lg border ${styles}`}>
+      <summary className="flex items-center justify-between gap-2 px-3 py-2 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+        <span className="text-xs font-bold">{title}</span>
+        <svg
+          className="w-3.5 h-3.5 opacity-60 transition-transform group-open:rotate-180 shrink-0"
+          viewBox="0 0 20 20"
+          fill="currentColor"
+          aria-hidden
+        >
+          <path
+            fillRule="evenodd"
+            d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+            clipRule="evenodd"
+          />
+        </svg>
+      </summary>
+      <div className="px-3 pb-3">{children}</div>
+    </details>
+  )
+}
+
+/** Read-only personal notes, rendered inside their fold. */
+function PersonalNotes({ notes }: { notes: PersonalNoteView[] }) {
+  return (
+    <div className="space-y-2">
+      {notes.map((n) => (
+        <div key={n.id} className="rounded-lg bg-gray-50 border border-gray-200 px-3 py-2">
+          <p className="text-[11px] font-bold text-gray-500">
+            {n.mine ? 'Your note' : n.authorLabel}
+            {n.mine && (
+              <span className={n.isPublic ? 'text-green-600' : 'text-gray-400'}>
+                {n.isPublic ? ' · shown on this report' : ' · private to you'}
+              </span>
+            )}
+          </p>
+          <p className="text-xs text-black leading-relaxed mt-1 whitespace-pre-wrap">{n.body}</p>
+        </div>
+      ))}
+    </div>
+  )
 }
 
 /**
@@ -77,11 +152,9 @@ function CoachNotes({ notes, aiScore }: { notes: CoachNoteView[]; aiScore: numbe
   const seen = new Map<string, number>()
   for (const n of notes) seen.set(n.authorName, (seen.get(n.authorName) ?? 0) + 1)
 
+  // No heading or panel chrome here — the enclosing Fold supplies both.
   return (
-    <div className="mt-3 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2.5 space-y-2">
-      <p className="text-xs font-bold text-indigo-800">
-        {notes.length > 1 ? "Coaches' notes" : "Coach's notes"}
-      </p>
+    <div className="space-y-2">
       {notes.map((n, i) => (
         <div key={i}>
           <div className="flex items-baseline gap-2 flex-wrap">
@@ -156,6 +229,8 @@ export default function ScoreCard({
   videoId,
   coachNotes,
   editor,
+  personalNotes,
+  personalEditor,
 }: ScoreCardProps) {
   const cleanReasoning = humanizeReasoning(reasoning)
   const improvementTip = score !== null && score < 10 ? IMPROVEMENT_TIPS[name] : undefined
@@ -186,8 +261,26 @@ export default function ScoreCard({
         </div>
         {/* An ungraded criterion is the highest-value place for a coach note —
             they were there and could see what the camera could not. */}
-        {coachNotes?.length ? <CoachNotes notes={coachNotes} aiScore={null} /> : null}
-        {editor}
+        {coachNotes?.length ? (
+          <Fold title={coachNotes.length > 1 ? "Coaches' notes" : "Coach's notes"} tone="indigo">
+            <CoachNotes notes={coachNotes} aiScore={null} />
+          </Fold>
+        ) : null}
+        {editor && (
+          <Fold title="Your score &amp; note (coach)" tone="indigo">
+            {editor}
+          </Fold>
+        )}
+        {personalNotes?.length ? (
+          <Fold title={`Notes (${personalNotes.length})`} tone="gray">
+            <PersonalNotes notes={personalNotes} />
+          </Fold>
+        ) : null}
+        {personalEditor && (
+          <Fold title="Add your own note" tone="gray">
+            {personalEditor}
+          </Fold>
+        )}
       </div>
     )
   }
@@ -211,25 +304,45 @@ export default function ScoreCard({
         />
       </div>
       <p className="text-black text-xs leading-relaxed">{cleanReasoning}</p>
-      {coachNotes?.length ? <CoachNotes notes={coachNotes} aiScore={score} /> : null}
+
+      {/* Everything below the AI's own read is folded away by default, so a
+          criterion stays scannable however many notes it collects. */}
       {improvementTip && (
-        <div className="mt-3 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2.5">
-          <p className="text-xs font-bold text-orange-700 mb-1">How to improve</p>
+        <Fold title="How to improve" tone="orange">
           <p className="text-xs text-orange-900 leading-relaxed">{improvementTip}</p>
-        </div>
+          {showVideo && <LearnVideo videoId={videoId!} label="Watch how to fix this" />}
+          {showChannelLink && (
+            <a
+              href={CHANNEL_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-flex items-center gap-1.5 text-orange-600 hover:text-red-600 text-xs font-bold transition-colors"
+            >
+              Learn on the LearnHoops channel →
+            </a>
+          )}
+        </Fold>
       )}
-      {showVideo && <LearnVideo videoId={videoId!} label="Watch how to fix this" />}
-      {showChannelLink && (
-        <a
-          href={CHANNEL_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-3 inline-flex items-center gap-1.5 text-orange-500 hover:text-red-600 text-xs font-bold transition-colors"
-        >
-          Learn on the LearnHoops channel →
-        </a>
+      {coachNotes?.length ? (
+        <Fold title={coachNotes.length > 1 ? "Coaches' notes" : "Coach's notes"} tone="indigo">
+          <CoachNotes notes={coachNotes} aiScore={score} />
+        </Fold>
+      ) : null}
+      {editor && (
+        <Fold title="Your score &amp; note (coach)" tone="indigo">
+          {editor}
+        </Fold>
       )}
-      {editor}
+      {personalNotes?.length ? (
+        <Fold title={`Notes (${personalNotes.length})`} tone="gray">
+          <PersonalNotes notes={personalNotes} />
+        </Fold>
+      ) : null}
+      {personalEditor && (
+        <Fold title="Add your own note" tone="gray">
+          {personalEditor}
+        </Fold>
+      )}
     </div>
   )
 }

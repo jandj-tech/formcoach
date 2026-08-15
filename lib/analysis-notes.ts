@@ -24,6 +24,7 @@ export interface AnalysisNoteAuthor {
 
 export interface AnalysisNoteView {
   id: number
+  criterionScoreId: number
   authorLabel: string
   body: string
   isPublic: boolean
@@ -118,49 +119,62 @@ export async function resolveAnalysisNoteAuthor(
 }
 
 /**
- * Notes to render: every published note, plus the viewer's own private one.
- * A share-link visitor passes viewerKey = null and sees only published notes.
+ * Every note on a shot, grouped by criterion: all published ones, plus the
+ * viewer's own private notes. A share-link visitor passes viewerKey = null and
+ * sees only published notes.
  */
 export async function getAnalysisNotes(
   analysisId: number,
   viewerKey: string | null,
-): Promise<AnalysisNoteView[]> {
+): Promise<Map<number, AnalysisNoteView[]>> {
   const rows = (await db`
-    SELECT id, author_key, author_label, body, is_public, updated_at
+    SELECT id, criterion_score_id, author_key, author_label, body, is_public, updated_at
     FROM analysis_notes
     WHERE analysis_id = ${analysisId}
       AND (is_public = true OR author_key = ${viewerKey})
-    ORDER BY updated_at DESC
+    ORDER BY updated_at ASC
   `) as unknown as Array<{
     id: number
+    criterion_score_id: number
     author_key: string
     author_label: string
     body: string
     is_public: boolean
     updated_at: string
   }>
-  return rows.map((r) => ({
-    id: r.id,
-    authorLabel: r.author_label,
-    body: r.body,
-    isPublic: r.is_public,
-    updatedAt: r.updated_at,
-    mine: viewerKey !== null && r.author_key === viewerKey,
-  }))
+
+  const byCriterion = new Map<number, AnalysisNoteView[]>()
+  for (const r of rows) {
+    const list = byCriterion.get(r.criterion_score_id) ?? []
+    list.push({
+      id: r.id,
+      criterionScoreId: r.criterion_score_id,
+      authorLabel: r.author_label,
+      body: r.body,
+      isPublic: r.is_public,
+      updatedAt: r.updated_at,
+      mine: viewerKey !== null && r.author_key === viewerKey,
+    })
+    byCriterion.set(r.criterion_score_id, list)
+  }
+  return byCriterion
 }
 
-/** Creates or replaces this author's note for the analysis. */
+/** Creates or replaces this author's note for one criterion. */
 export async function saveAnalysisNote(params: {
   analysisId: number
+  criterionScoreId: number
   author: AnalysisNoteAuthor
   body: string
   isPublic: boolean
 }) {
-  const { analysisId, author, body, isPublic } = params
+  const { analysisId, criterionScoreId, author, body, isPublic } = params
   const [row] = (await db`
-    INSERT INTO analysis_notes (analysis_id, author_key, author_label, body, is_public)
-    VALUES (${analysisId}, ${author.authorKey}, ${author.authorLabel}, ${body}, ${isPublic})
-    ON CONFLICT (analysis_id, author_key) DO UPDATE
+    INSERT INTO analysis_notes
+      (analysis_id, criterion_score_id, author_key, author_label, body, is_public)
+    VALUES
+      (${analysisId}, ${criterionScoreId}, ${author.authorKey}, ${author.authorLabel}, ${body}, ${isPublic})
+    ON CONFLICT (criterion_score_id, author_key) DO UPDATE
       SET body = EXCLUDED.body,
           is_public = EXCLUDED.is_public,
           author_label = EXCLUDED.author_label,
@@ -170,11 +184,22 @@ export async function saveAnalysisNote(params: {
   return row
 }
 
-export async function deleteAnalysisNote(analysisId: number, authorKey: string): Promise<boolean> {
+export async function deleteAnalysisNote(
+  criterionScoreId: number,
+  authorKey: string,
+): Promise<boolean> {
   const removed = await db`
     DELETE FROM analysis_notes
-    WHERE analysis_id = ${analysisId} AND author_key = ${authorKey}
+    WHERE criterion_score_id = ${criterionScoreId} AND author_key = ${authorKey}
     RETURNING id
   `
   return removed.length > 0
+}
+
+/** Resolves the analysis a criterion belongs to, for write-path scoping. */
+export async function analysisIdForCriterion(criterionScoreId: number): Promise<number | null> {
+  const [row] = (await db`
+    SELECT analysis_id FROM criterion_scores WHERE id = ${criterionScoreId}
+  `) as unknown as [{ analysis_id: number } | undefined]
+  return row?.analysis_id ?? null
 }

@@ -22,6 +22,11 @@ const ADMIN_TABS = [
 export default function AdminNav() {
   const pathname = usePathname()
 
+  async function signOut() {
+    await fetch('/api/admin/logout', { method: 'POST' })
+    window.location.href = '/'
+  }
+
   return (
     <nav className="bg-zinc-950 border-b border-zinc-800 px-4 sm:px-6 py-3 flex items-center justify-between">
       <div className="flex items-center gap-6">
@@ -66,20 +71,30 @@ export default function AdminNav() {
           })}
         </div>
       </div>
-      <Link
-        href="/"
-        className="hidden md:inline text-white hover:text-white text-sm transition-colors"
-      >
-        ← Back to site
-      </Link>
+      <div className="hidden md:flex items-center gap-4">
+        <Link href="/" className="text-white hover:text-white text-sm transition-colors">
+          ← Back to site
+        </Link>
+        <button
+          onClick={signOut}
+          className="text-zinc-400 hover:text-orange-500 text-sm transition-colors"
+        >
+          Exit admin
+        </button>
+      </div>
       <MobileNav
         tabs={ADMIN_TABS}
         rootHref="/admin"
         useNextLink={false}
         footer={
-          <Link href="/" className="text-white hover:text-white">
-            ← Back to site
-          </Link>
+          <div className="flex flex-col gap-3">
+            <Link href="/" className="text-white hover:text-white">
+              ← Back to site
+            </Link>
+            <button onClick={signOut} className="text-left text-zinc-400 hover:text-orange-500">
+              Exit admin
+            </button>
+          </div>
         }
       />
     </nav>

@@ -378,10 +378,23 @@ WHERE name = 'Square to the Basket'
 -- catapult/heave/chest-pass banned. Eval medians: scenario-3 clips 4-4.5
 -- (Joseph's correction: 4), catapults 4.5 (ideal 1-3 — the price of never
 -- insulting normal shooters), control 8.
+--
+-- v5 widens the target. v4 named ONE acceptable angle — "roughly 90" — and
+-- then sent anything opened past it to 4-5, with its only V calibration
+-- scored 1-3. That leaves no band for the shot most good shooters actually
+-- have: a working fold somewhere around 70-90 degrees, forearm under the
+-- ball, not a textbook right angle. The bend exists to load the wrist, and
+-- it does that across a range. v5 states the range, scores it 7-8.5, and
+-- separates the two ways the angle really fails — folded back past ~45 into
+-- the catapult, or opened out until the ball leaves the top of the elbow.
 UPDATE criteria
-SET grading_notes = 'ELBOW RUBRIC v4 — is the arm folded into a vertical L under the ball, or is the ball being hoisted some other way?
+SET grading_notes = 'ELBOW RUBRIC v5 — is the arm folded into a vertical L under the ball, or is the ball being hoisted some other way?
 
 WHAT AN L LOOKS LIKE. The forearm points straight UP toward the ceiling, the elbow points straight DOWN toward the floor, and the elbow sits directly UNDER the ball, stacked ball-over-hand-over-forearm-over-elbow. The angle at the elbow is roughly 90 degrees. The set point — where the ball loads before the release — sits around the FOREHEAD, on the shooting side. That is the whole target: forehead-height set point, one vertical forearm under the ball.
+
+HOW EXACT DOES THE 90 HAVE TO BE? NOT VERY. The point of the bend is to load the wrist so the ball can be lifted and snapped rather than pushed, and that job is done anywhere in a broad band around a right angle. Roughly 70 to 90 degrees is a working shot: not a perfect L, close enough to one, and it still scores well. Plenty of high-level shooters live in that band — an arm folded to around 80 degrees, forearm under the ball, elbow pointing down, is a good shot and belongs in the 7-8.5 range, not in the fault bands. A textbook 90 with a vertical forearm is the 9-10.
+Below that band the arm is folding too far: the forearm starts laying back toward the head instead of standing under the ball, and by the time the angle closes to around 45 degrees or less the ball is travelling back over the player rather than up. That is the catapult shape and it scores in the bottom bands — see TIER A.
+This tolerance is about the ANGLE ONLY. It says nothing about an elbow winging out sideways, which is judged separately below and is not excused by a good angle.
 
 THE TWO-HAND HOIST TEST — RUN THIS FIRST, AT FACE HEIGHT. Find the frames where the ball passes the player''s face on the way up, and answer two questions there and in every frame above:
   1. THE MIDLINE CHECK. Where is the ball relative to the head? A correct shot carries the ball up on the SHOOTING SIDE of the head — clearly off to one side of the face, above one shoulder, with one forearm under it. A hoisted shot carries the ball straight up the MIDLINE — dead-centre in line with the nose and the middle of the face, then directly over the top of the head, framed between two symmetric arms. The centred ball is the tell you can see from any distance: locate it in each rise frame and say which side of the head it is on.
@@ -393,7 +406,7 @@ A ball riding the midline with both elbows winged out at face height and above i
 Do not average a fired check up above its tier because the shape looks "recognisable" — an L requires ONE forearm under the ball.
 Two hands on the ball during the gather, below the chin, is completely normal and is not this fault — the test starts at face height. A ball clearly on the shooting side of the head is NOT a hoist, whatever the guide hand is doing: judge it as an ordinary L from there. And BOTH findings are required to call it: the centred ball AND the mirrored winged arms. If the ball is only slightly off-centre, or you cannot confidently say the two arms are symmetric, that is not a hoist — go back to judging the L normally under the ordinary burden of proof.
 
-WHAT A V LOOKS LIKE — THE OPEN PUSH. The elbow angle is opened up well past 90 degrees, so the upper arm and forearm form a wide V instead of a folded L. The ball ends up beside the head or out to the side rather than stacked above the elbow, and the arm is reaching or pushing rather than lifting. A V is not a slightly imperfect L — it is a different shape, and it scores in the bottom bands.
+THE OPEN PUSH — THE OTHER WAY THE ANGLE FAILS. Here the elbow angle is opened up WELL past 90 degrees, so the upper arm and forearm form a wide, nearly straight line instead of a folded L. The ball ends up beside the head or out to the side rather than stacked above the elbow, and the arm is reaching or pushing rather than lifting: there is no bend left to load the wrist with. Judge this on the shape, not on a few degrees — an arm a little over 90 with the ball still stacked above the elbow is an ordinary L and scores in the 7-8.5 band. The open push is when the arm has plainly given up the bend and the ball has left the top of the elbow.
 
 FLARED ELBOW ON THE RISE. Even with one hand properly under the ball, a shooting elbow that wings out sideways during the rise costs points: clearly out is 4-5, a brief mild drift that recovers into a true vertical L is 7-8.
 
@@ -401,8 +414,9 @@ SEEN FROM THE SIDE, tier A shows as the ball carried over the top of the head or
 
 HOW TO SCORE:
   - One forearm vertical under the ball, elbow pointing down, near 90 degrees, guide hand resting on the side: 9-10.
-  - Recognisably an L, forearm close to vertical, elbow a little outside the ball line or a brief mild drift on the rise: 7-8.
-  - Angle clearly opened past 90 into a V, or the shooting elbow clearly out to the side on the rise: 4-5.
+  - A working L rather than a textbook one — angle somewhere around 70 to 90 degrees, forearm close to vertical with the ball still stacked above the elbow, or the elbow a little outside the ball line, or a brief mild drift on the rise: 7-8.5. This band is not a consolation prize; it is what most good shooters actually do.
+  - The arm has plainly given up the bend — opened well past 90 into an open push with the ball out beside the head — or the shooting elbow is clearly out to the side on the rise: 4-5.
+  - The forearm has folded back past roughly 45 degrees, laying toward the head rather than standing under the ball: 1-3, and check TIER A.
   - A fired arm-heave check: score by its tier — behind-the-head catapult 1-3, chest-height two-hand shove 3-4, otherwise flared shooting elbow 4-5. A sideways L also scores 3-4.
   - Ball hanging behind the head, or pushed from beside the shoulder with no L at all: 1-2.
 
@@ -413,13 +427,14 @@ JUDGE IT FROM THE RISE THROUGH THE SET POINT, before the arm extends to release.
 CAMERA ANGLE. Filmed from the side, a single tucked elbow can look further out than it is; allow for that. But the two-hand hoist is visible from EVERY angle — mirrored hands and two winged elbows read clearly front-on, side-on and elevated — so never wave it off as a camera artifact, and never default high because the view "makes the elbow hard to confirm" when you can plainly see both hands still driving the ball. If you can see the hoist, you have seen the flaw.
 
 EXPERT CALIBRATION — real graded cases:
+  - An NBA shooter at his set point, seen from the side: ball loaded above the shooting shoulder, forearm under it, elbow pointing down, the angle at the elbow a little under a right angle — around 80 degrees rather than a textbook 90. The expert called this "not a perfect L, but close enough" and scores it 7-8.5. Marking it down to a 4 or 5 for not being exactly 90 is the error, and so is calling it a V in the reasoning.
   - Player square to the camera with the ball up beside his head, upper arm and forearm opened into a wide V, elbow out to the side rather than under the ball, pushing the shot from the side of his body: the expert said this player "did not have an L shape at all". Score it 1-3, not 5 or 6.
   - Player who carried the ball up the middle of his body with both hands mirrored on it, both elbows winged out wide, the ball riding above and behind his head before whipping out: a catapult (tier A) with no L at any point. The expert graded this a clear failure — never 7-8.
   - Player with a symmetric-looking rise, ball loading in front of his face, then a one-hand release with the shooting elbow flared and the guide hand hanging close: tier C — the expert scored this elbow a 4 and corrected the write-up: "this was NOT a catapult — this was just the shooting hand being flared out."
 
 PLAYER-FACING WORDING: tell them the shooting hand has to take the ball at face height with the elbow tucked under it — one flat vertical forearm carrying the ball, the other hand just along for the ride — instead of heaving the ball up with both hands. Never mention degrees or angles in the reasoning.'
 WHERE name = 'Elbow L-Shape — Under the Ball'
-  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'ELBOW RUBRIC v4%');
+  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'ELBOW RUBRIC v5%');
 
 -- "Source of Shot Power" rubric. v1 read power off legs + elbow angle but had
 -- no shape for the catapult, so a catapulted shot scored 8 off its knee bend

@@ -24,7 +24,7 @@ const STEPS = [
   {
     num: '01',
     title: 'Upload your video',
-    desc: 'Any angle, any device. MP4 or MOV — straight from your phone.',
+    desc: 'Film from the front, near the basket. MP4 or MOV — straight from your phone.',
   },
   {
     num: '02',

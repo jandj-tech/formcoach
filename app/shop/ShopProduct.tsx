@@ -290,10 +290,10 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
                   private — bookmark it, it always works.
                 </ShopAccordion>
                 <ShopAccordion title="How does it work?">
-                  Film your shot from near the basket (so your arms and hands
-                  are visible), upload the clip on the Analyze page, and your
-                  results arrive by email within minutes. Any phone camera
-                  works — MP4 or MOV.
+                  Film your shot from the front, standing near the basket so the
+                  elbow, hands and feet are visible, upload the clip on the
+                  Analyze page, and your results arrive by email within minutes.
+                  Any phone camera works — MP4 or MOV.
                 </ShopAccordion>
                 <ShopAccordion title="Can I get analyses for free?">
                   Yes — the training ball includes 5 free analyses and the

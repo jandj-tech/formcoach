@@ -51,11 +51,10 @@ export default async function LearnPage() {
           <p className="text-orange-500 font-black text-sm uppercase tracking-wider mb-2">Step 1</p>
           <h2 className="text-2xl font-black text-white mb-3">Film your shot the right way</h2>
           <ul className="text-zinc-300 text-sm leading-relaxed space-y-2 list-disc pl-5">
-            <li><strong>Stand under or near the net</strong> — directly behind the basket or slightly to the side.</li>
-            <li>Make sure the shooter&apos;s <strong>elbow, arms, and hands are visible</strong> for the whole shot.</li>
-            <li>Want your arc scored too? Pick an angle where the <strong>ball&apos;s flight path stays in frame</strong>.</li>
-            <li><strong>Avoid filming face-on</strong> — key form details are hidden from that angle.</li>
+            <li><strong>Film from the front</strong> — stand under or just behind the basket, facing the shooter.</li>
+            <li>Get close enough that the <strong>elbow, both hands and both feet</strong> stay in frame for the whole shot.</li>
             <li>One shot per video works best. MP4 or MOV, up to 5 minutes.</li>
+            <li>Want <strong>arc and rotation</strong> graded too? Film a second clip from the side, with the ball&apos;s whole flight and the rim in frame.</li>
           </ul>
         </div>
       </section>

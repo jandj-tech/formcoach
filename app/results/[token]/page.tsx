@@ -380,16 +380,17 @@ export default async function ResultsPage({
             How to get the best results
           </h2>
           <p className="text-zinc-700 text-sm leading-relaxed">
-            For the most accurate analysis, film from under or near the net — either directly
-            behind the basket or slightly to the side, at an angle where the shooter&apos;s elbow,
-            arms, and hands are all clearly visible throughout the shot. This gives the AI a clear
-            view of arm mechanics, elbow alignment, and release. Avoid filming directly face-on, as
-            key form details are hidden from that perspective.
+            Film from the front — camera under or just behind the basket, looking back at the
+            shooter. That is the view that shows whether the elbow flares out, whether the guide
+            hand stays passive, and whether the feet and shoulders are square. Stand close enough
+            that the elbow, both hands and both feet stay in frame from the set-up through the
+            release, and keep it to one shot per clip.
           </p>
           <p className="text-zinc-700 text-sm leading-relaxed mt-3">
-            Shot arc and ball rotation need the ball itself in frame and in focus the whole way to
-            the rim. When the footage can&apos;t show that, we leave those criteria ungraded rather
-            than estimate them — a guessed score would skew your overall number.{' '}
+            Shot arc and ball rotation are the exception: filmed head-on the ball flies straight at
+            the camera, so those two are usually left blank. For them, film a second clip from the
+            side with the whole flight path and the rim in frame. We leave a criterion ungraded
+            rather than estimate it — a guessed score would skew your overall number.{' '}
             <Link
               href="/support#filming"
               className="font-bold text-orange-500 hover:text-red-600 underline underline-offset-2 transition-colors"

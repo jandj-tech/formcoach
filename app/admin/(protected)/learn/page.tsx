@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useEffect, useState } from 'react'
+import CopyButton from '@/components/CopyButton'
 
 interface Score {
   id: number
@@ -42,12 +43,27 @@ function accountLabel(s: Submission): string {
   return 'No account'
 }
 
+/** The address behind that label, for the copy button. */
+function accountEmail(s: Submission): string | null {
+  return s.account_email ?? (s.email || null)
+}
+
+
 export default function LearnModePage() {
   const [submissions, setSubmissions] = useState<Submission[]>([])
   const [expanded, setExpanded] = useState<string | null>(null)
   const [corrections, setCorrections] = useState<Record<number, { score: string; notes: string }>>({})
   const [saving, setSaving] = useState<number | null>(null)
   const [lightbox, setLightbox] = useState<{ urls: string[]; index: number } | null>(null)
+
+  function toggle(s: Submission) {
+    if (expanded === s.id) {
+      setExpanded(null)
+      return
+    }
+    setExpanded(s.id)
+    if (!s.scores && s.analysis_id) loadScores(s.analysis_id, s.id)
+  }
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -175,28 +191,44 @@ export default function LearnModePage() {
         )}
         {submissions.map((s) => (
           <div key={s.id} className="bg-zinc-900 rounded-xl border border-zinc-800">
-            <button
-              className="w-full flex items-center justify-between px-5 py-4 text-left"
-              onClick={() => {
-                if (expanded === s.id) {
-                  setExpanded(null)
-                } else {
-                  setExpanded(s.id)
-                  if (!s.scores && s.analysis_id) loadScores(s.analysis_id, s.id)
+            {/* A div, not a button: text inside a button can't be dragged over
+                to select it, which made the email here impossible to copy. */}
+            <div
+              role="button"
+              tabIndex={0}
+              className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left cursor-pointer"
+              onClick={() => toggle(s)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  toggle(s)
                 }
               }}
             >
-              <div>
-                <p className="text-white text-sm font-medium">{accountLabel(s)}</p>
-                <p className="text-white text-xs">{new Date(s.created_at).toLocaleString()}</p>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p
+                    className="text-white text-sm font-medium select-text cursor-text break-all"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {accountLabel(s)}
+                  </p>
+                  {accountEmail(s) && <CopyButton value={accountEmail(s)!} label="Copy email" />}
+                </div>
+                <p
+                  className="text-white text-xs select-text cursor-text"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {new Date(s.created_at).toLocaleString()}
+                </p>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 shrink-0">
                 <span className="text-orange-400 font-bold text-sm">
                   {s.overall_score ? `${s.overall_score}/10` : '—'}
                 </span>
                 <span className="text-white text-lg">{expanded === s.id ? '▲' : '▼'}</span>
               </div>
-            </button>
+            </div>
 
             {expanded === s.id && (
               <div className="border-t border-zinc-800">

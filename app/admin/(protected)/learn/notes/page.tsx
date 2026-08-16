@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import CopyButton from '@/components/CopyButton'
 
 interface PendingNote {
   id: number
@@ -113,10 +114,13 @@ export default function CoachNotesQueuePage() {
                     <> · <span className="text-indigo-400 font-bold">Coach {suggested.toFixed(1)}</span></>
                   )}
                 </span>
-                <span className="text-xs text-zinc-500">
+                <span className="text-xs text-zinc-500 select-text">
                   {n.author_type === 'admin' ? 'you' : n.author_email}
                   {n.team_name ? ` · ${n.team_name}` : ''}
                 </span>
+                {n.author_type !== 'admin' && n.author_email && (
+                  <CopyButton value={n.author_email} label="Copy email" />
+                )}
                 <Link
                   href={`/admin/submissions/${n.submission_token}`}
                   className="text-xs text-orange-400 hover:underline ml-auto"

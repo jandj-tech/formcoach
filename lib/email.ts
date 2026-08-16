@@ -1262,7 +1262,10 @@ export async function sendFilmingTipsEmail(to: string) {
     from: FROM,
     to,
     replyTo: 'noreply@learnhoops.com',
-    subject: 'Get a more accurate score on your next shot',
+    // Plain and descriptive on purpose. A benefit-promise subject ("get a
+    // better score…") is a Promotions-tab signal; naming what the email
+    // contains reads as the follow-up to an action they just took.
+    subject: 'How to film your next shot for an accurate analysis',
     headers: {
       'List-Unsubscribe': `<${unsubscribe}>`,
       'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',

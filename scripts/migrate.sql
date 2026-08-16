@@ -299,49 +299,57 @@ WHERE name = 'Feet Shoulder Width Apart'
 -- the rim was out of frame, which is never necessary — foot-versus-torso
 -- alignment is visible within the player's own body.
 --
--- v2 fixes the opposite error. v1 read any turned foot as drift and capped it
+-- v2 fixed the opposite error. v1 read any turned foot as drift and capped it
 -- at 7-8, but the open stance — a right-handed shooter whose toes point a
 -- little left — is coached, correct form: it squares the hips while the
 -- shooting shoulder stays behind the ball. The real fault is not the angle,
--- it is the body having to FIGHT the angle: a torso twisted back to face the
--- basket, or feet that re-align as the player rises. That tell lives across
--- frames, not in one, so v2 says where to look for it.
+-- it is the body having to FIGHT the angle.
+--
+-- v3 rebalances which half of that carries the weight. v2 put feet that shift
+-- during the shot in the same 3-4 band as feet turned nearly sideways, and
+-- feet shift a little in almost every shot — players settle, adjust and turn
+-- slightly as they gather. Small movement that changes nothing about how the
+-- shot comes out is not a flaw. The severe band is now reserved for what the
+-- expert actually calls bad: a player whose whole torso has to rotate to
+-- shoot over a stance pointing somewhere else.
 UPDATE criteria
-SET grading_notes = 'SQUARE RUBRIC v2 — do the feet, hips and shoulders all aim the same way the shot is going?
+SET grading_notes = 'SQUARE RUBRIC v3 — do the feet, hips and shoulders all aim the same way the shot is going?
 
 YOU DO NOT NEED TO SEE THE RIM. This criterion is about whether the player''s own body agrees with itself. The feet, the hips, the shoulders and the arms should all point along the same line. When the feet point one way and the upper body points another, the player is not square — and you can see that entirely within the player, with the basket completely out of frame. Never return null because the rim is not visible, and never skip a deduction because you could not confirm where the basket is.
 
-THE OPEN STANCE IS CORRECT FORM. Feet turned somewhat away from the shooting-hand side — a right-handed shooter whose toes point a little left, a left-handed shooter whose toes point a little right — is a stance coaches teach on purpose: it squares the hips to the basket while the shooting shoulder stays behind the ball. Foot direction on its own is therefore not the flaw. The flaw is the body having to FIGHT where the feet are planted, and it shows up as one of two things you can watch happen:
-  TELL 1 — A TWISTED TORSO AT THE SET POINT: the shoulders and chest visibly rotated back toward the basket to make up for the feet.
-  TELL 2 — THE FEET RE-ALIGN DURING THE SHOT: planted one way at the gather, then straightened, pivoted or dragged round by take-off or landing. A stance that has to be corrected mid-shot was never a stance the player could shoot from.
-In a working open stance neither tell is there: the player sets up turned, rises turned, releases turned, lands where they started. This paragraph is about foot DIRECTION under this criterion only. It is not a general instruction to be generous, and it changes nothing about how any other criterion is scored.
+FEET STRAIGHT DOWN THE SHOT LINE IS THE BEST CASE. FEET A LITTLE ANGLED IS ALSO FINE. Toes turned somewhat away from the shooting-hand side — a right-handed shooter pointing a little left, a left-handed shooter pointing a little right — is a stance coaches teach on purpose: it squares the hips to the basket while the shooting shoulder stays behind the ball. So foot direction on its own is not the flaw, and neither is a small amount of foot movement during the shot.
+
+THE FLAW IS A BODY THAT HAS TO ROTATE TO SHOOT OVER ITS OWN FEET. That is the thing this criterion is looking for: the feet planted pointing somewhere the player cannot shoot from, so the torso winds round to face the basket anyway, and the whole shot is fired across a base that is fighting it. You can see it in the set-up — the chest and shoulders twisted relative to the hips and feet — and you can see it in the recovery, the feet swinging or dragging all the way back round to get the shot off.
+
+A LITTLE FOOT MOVEMENT IS NORMAL AND COSTS ALMOST NOTHING. Players settle, adjust and turn slightly as they gather and rise; feet shift a few degrees in most good shots. If the movement is small and the shot comes out the same either way, it is not a deduction. Only movement large enough that the player is clearly re-aiming their base mid-shot belongs anywhere below 7.
 
 HOW TO CHECK:
   STEP 1. Find the SHOT LINE — the direction the shot is going. Read it off the upper body: where the shoulders face, and where the arms and ball are aimed.
   STEP 2. Find the FOOT LINE — the direction the toes point. Use both feet; if they disagree with each other, that is itself a fault.
-  STEP 3. Score on whether the body agrees with the feet, NOT on the size of the angle between them:
-    - Feet, hips and shoulders along one line, OR feet turned off the shot line with the upper body relaxed and nothing correcting itself during the shot: SQUARE. Score 9-10.
-    - Feet turned noticeably, a slight sense of reaching or leaning to get back on line, but the player still rises and releases along the shot line without twisting or resetting the feet: 7-8.
-    - TELL 1: the torso is visibly rotated at the set point to compensate for where the feet are planted: 5-6.
-    - TELL 2: the feet re-align during the shot — pointing one way at the gather and straightened or pivoted by take-off or landing — or the feet are close to sideways to the shot line: 3-4.
+  STEP 3. Score on whether the body has to work around the feet, NOT on the size of the angle between them:
+    - Feet straight down the shot line, or turned off it, with the upper body relaxed and the shot coming out clean. Small settling or shifting of the feet is included here: SQUARE. Score 9-10.
+    - Feet clearly moving during the shot — a visible pivot or step round as the player rises — but the shot still comes out along the shot line and the upper body is not fighting the base: 7-8.
+    - The torso is visibly rotated relative to the feet at the set point: the player is shooting across their own base rather than along it: 5-6.
+    - The player has to rotate their whole body to shoot: feet planted in a clearly different direction, torso wound round to face the basket, and the base having to swing back to get the shot away. Also feet close to sideways to the shot line: 3-4.
 
-WATCH THE FEET ACROSS FRAMES, NOT IN ONE. Tell 2 is invisible in any single frame: one picture of turned feet is just a stance. Compare the gather frame with the rise and the landing. If the toes point somewhere different in the later frames than in the first, that is the deduction. If they point the same way throughout, the turn was deliberate.
+WATCH THE FEET ACROSS FRAMES, NOT IN ONE, AND ASK HOW BIG THE MOVEMENT IS. One picture of turned feet is just a stance. Compare the gather frame with the rise and the landing. A few degrees of shuffle between them is nothing. A base that has visibly swung round to a different direction is the deduction.
 
-SQUARE DOES NOT MEAN STRAIGHT. Feet naturally sit at a small outward angle, and plenty of good shooters set up turned. The 5-6 band is for a torso visibly fighting the feet, not for a few degrees, one foot angled slightly out, or a stance that merely looks casual.
+SQUARE DOES NOT MEAN STRAIGHT, AND IT DOES NOT MEAN STILL. Feet naturally sit at a small outward angle and naturally move a little during a shot. The bands below 7 are for a player working around their own base, not for a few degrees, one foot angled slightly out, a small adjustment on the way up, or a stance that merely looks casual.
 
 A STAGGERED STANCE IS NOT A TURNED STANCE. The shooting-side foot being slightly AHEAD of the other is correct form and belongs to a different criterion — do not deduct here for it. What matters is the direction the toes POINT, not which foot is forward.
 
-THE MOST COMMON ERROR IS SCORING THIS OFF THE UPPER BODY ALONE. A player whose shoulders are square to the camera and whose arms look clean reads as "square" at a glance, and that glance ignores the feet entirely. Look down at the toes every time. The opposite error is treating any turned foot as the flaw: it is only a flaw when the torso twists to compensate or the feet move to correct themselves.
+THE MOST COMMON ERROR IS SCORING THIS OFF THE UPPER BODY ALONE. A player whose shoulders are square to the camera and whose arms look clean reads as "square" at a glance, and that glance ignores the feet entirely. Look down at the toes every time. The opposite error is treating a turned foot or a small shuffle as the flaw: it is only a flaw when the player is working around their own base.
 
 EXPERT CALIBRATION — real graded cases:
   - Player mid-shot with the ball at the set point, upper body and arms aimed one way, both feet clearly planted pointing a different direction, torso visibly rotated back to compensate, rim not visible in frame: score 5-6. The expert graded this 5-6. Scoring it high because the arms looked fine, or returning null because the basket was out of shot, are both the error.
-  - Right-handed shooter whose toes point somewhat left of the shot line, shoulders and arms comfortably along that line, feet pointing the same way at the gather, at take-off and on the landing: score 9-10. This is a coached open stance and there is nothing to fix. Deducting for the foot direction alone is the error.
+  - Right-handed shooter whose toes point somewhat left of the shot line, shoulders and arms comfortably along that line, shot coming out clean: score 9-10. This is a coached open stance and there is nothing to fix. Deducting for the foot direction alone is the error.
+  - The same shooter, whose feet also shift a little between the gather and the landing while the shot itself is unaffected: still 9-10. Small foot movement is not evidence of anything; dropping this to a 6 or a 7 for it is the error.
 
 WHEN TO RETURN NULL: only when the feet are not visible at all during the shooting motion. Not being able to see the basket is never a reason.
 
-PLAYER-FACING WORDING: when you do deduct, describe what you saw the body do — the shoulders having to twist back, or the feet swinging round as they went up — not the angle of the feet. Never tell a player whose open stance is working that they should point their toes straight. Never mention lines, angles or degrees in the reasoning.'
+PLAYER-FACING WORDING: when you do deduct, describe what you saw the body do — the shoulders having to twist back, or the base swinging round to get the shot away — not the angle of the feet. Never tell a player whose open stance is working that they should point their toes straight, and never make a note of a small foot adjustment. Never mention lines, angles or degrees in the reasoning.'
 WHERE name = 'Square to the Basket'
-  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'SQUARE RUBRIC v2%');
+  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'SQUARE RUBRIC v3%');
 
 -- "Elbow L-Shape" rubric. v1 named the open-V push but scored a CATAPULTED
 -- shot 8: the two-handed heave up the midline is MORE folded than an L, so

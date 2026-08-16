@@ -694,10 +694,23 @@ export async function sendNextMarketingEmail(
   if (emailsSentSoFar >= MARKETING_EMAILS.length) return false
 
   const template = MARKETING_EMAILS[emailsSentSoFar]
+  const unsubscribe = `${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}`
+
+  // This is the one send in this file that is unambiguously marketing, and it
+  // was the only one with no List-Unsubscribe header and no plain-text part —
+  // the two things Gmail and Yahoo check first on bulk mail. The templates
+  // carry an unsubscribe link in their HTML, but a link in the body is not the
+  // header, and providers read the header.
   await getResend().emails.send({
     from: FROM,
     to,
+    replyTo: 'noreply@learnhoops.com',
     subject: template.subject,
+    headers: {
+      'List-Unsubscribe': `<${unsubscribe}>`,
+      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+    },
+    text: `${template.subject}\n\nOpen this email in a client that supports HTML to read it, or visit ${BASE_URL}\n\nUnsubscribe: ${unsubscribe}`,
     html: template.getHtml(to),
   })
   return true

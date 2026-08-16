@@ -52,6 +52,7 @@ export default async function LearnPage() {
           <h2 className="text-2xl font-black text-white mb-3">Film your shot the right way</h2>
           <ul className="text-zinc-300 text-sm leading-relaxed space-y-2 list-disc pl-5">
             <li><strong>Film from the front</strong> — stand under or just behind the basket, facing the shooter.</li>
+            <li>Straight head-on is fine, and so is <strong>a little off to one side</strong> — as long as you stay in front. If you angle it, go toward the <strong>guide-hand side</strong>: that shows whether the shooting arm makes a proper <strong>L</strong> or opens into a wide <strong>V</strong>.</li>
             <li>Frame the <strong>whole body, head to feet</strong> — cropped at the waist loses stance, knee bend and foot position.</li>
             <li>But <strong>not from across the gym</strong> — that far away, the elbow and hands are too small to read.</li>
             <li>One shot per video works best. MP4 or MOV, up to 5 minutes.</li>

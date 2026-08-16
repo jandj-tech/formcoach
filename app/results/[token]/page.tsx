@@ -382,7 +382,10 @@ export default async function ResultsPage({
           <p className="text-zinc-700 text-sm leading-relaxed">
             Film from the front — camera under or just behind the basket, looking back at the
             shooter. That is the view that shows whether the elbow flares out, whether the guide
-            hand stays passive, and whether the feet and shoulders are square. Frame the whole
+            hand stays passive, and whether the feet and shoulders are square. Straight head-on
+            works, and so does standing a little off to one side while staying in front — angle it
+            toward the guide-hand side, which is what separates a proper L, forearm stacked under
+            the ball, from a wide V where the forearm folds back. Frame the whole
             body, head to feet, and keep it that way from the set-up through the release — a clip
             cropped at the waist loses stance, knee bend and foot position. Not from across the
             gym either, or the elbow and hands are too small to read. One shot per clip.

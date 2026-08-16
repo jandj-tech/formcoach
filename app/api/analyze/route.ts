@@ -5,6 +5,7 @@ import { analyzeShot } from '@/lib/analyze'
 import { getSessionFromRequest } from '@/lib/auth'
 import { getTeamSessionFromRequest } from '@/lib/team-auth'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
+import { maybeSendFilmingTips } from '@/lib/filming-tips'
 import crypto from 'crypto'
 
 export const maxDuration = 300
@@ -418,6 +419,13 @@ export async function POST(req: NextRequest) {
         await db`UPDATE coach_credits SET credits = credits - 1 WHERE email = ${coachEmail} AND credits > 0`
       }
     }
+
+    // First analysis for whoever uploaded it → send the filming guide. Goes to
+    // the person who held the camera, which for a team or coach upload is the
+    // coach rather than the player: they are the one who chose the angle.
+    // Awaited rather than fired and forgotten because the serverless function
+    // is frozen the moment this response returns.
+    await maybeSendFilmingTips(coachEmail ?? teamCoachEmail ?? session?.email ?? null)
 
     return NextResponse.json({
       submissionId: submission.id,

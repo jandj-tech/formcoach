@@ -1244,3 +1244,133 @@ export async function sendAbandonedCheckoutEmail(
   }
   console.log('[email] sent abandoned-checkout email:', data?.id, 'to:', to)
 }
+
+/**
+ * Sent once, after someone's first analysis finishes: how to film so the next
+ * one grades accurately.
+ *
+ * It exists because of a specific, common mistake — filming from behind the
+ * shooter, which hides the elbow and the hands, the two things the grader
+ * leans on hardest. The advice mirrors the filming FAQ at /support#filming;
+ * if that guidance changes, change it here too.
+ */
+export async function sendFilmingTipsEmail(to: string) {
+  const guide = `${BASE_URL}/support#filming`
+  const unsubscribe = `${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}`
+
+  const { data, error } = await getResend().emails.send({
+    from: FROM,
+    to,
+    replyTo: 'noreply@learnhoops.com',
+    subject: 'Get a more accurate score on your next shot',
+    headers: {
+      'List-Unsubscribe': `<${unsubscribe}>`,
+      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+    },
+    text: [
+      `Thanks for your first upload. One thing makes a bigger difference to your score than anything else: where you put the camera.`,
+      ``,
+      `1. FILM FROM THE FRONT.`,
+      `Stand under or just behind the basket, looking back at the shooter. Straight on works, and so does standing a little off to one side - if you angle it, go toward the side the guide hand is on.`,
+      `That view shows whether the elbow flares out, whether the guide hand stays passive, and whether the feet and shoulders are square. Filming from behind the shooter hides all three.`,
+      ``,
+      `2. GET THE WHOLE BODY IN FRAME.`,
+      `Head to feet, the whole way through the shot. Stance, knee bend and foot position are all graded, and a clip cropped at the waist loses them. Not from across the gym either - that far away the elbow and hands are too small to read.`,
+      ``,
+      `3. ONE SHOT PER CLIP.`,
+      `Just the shot, a few seconds long. One person, one attempt.`,
+      ``,
+      `Want arc and ball rotation graded too? Those two are the exception - filmed head-on the ball flies straight at the camera. For them, film a second clip from the side with the whole flight path and the rim in frame.`,
+      ``,
+      `Full guide: ${guide}`,
+      ``,
+      `LearnHoops.com`,
+      `Unsubscribe: ${unsubscribe}`,
+    ].join('\n'),
+    html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /></head>
+<body style="margin:0;padding:0;background:#F4F4F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#111111;">
+  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background:#F4F4F5;">
+    <tr><td align="center" style="padding:32px 16px;">
+      <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:560px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #E4E4E7;">
+
+        <tr><td style="background:#000000;padding:22px 32px;">
+          <div style="color:#F97316;font-size:20px;font-weight:800;letter-spacing:-0.3px;line-height:1;">LearnHoops<span style="color:#71717A;">.com</span></div>
+          <div style="color:#A1A1AA;font-size:12px;margin-top:5px;">Your shot. Perfected by AI.</div>
+        </td></tr>
+
+        <tr><td style="padding:36px 32px 4px;">
+          <h1 style="margin:0 0 10px;color:#111111;font-size:22px;font-weight:800;line-height:1.25;">Where you put the camera changes your score</h1>
+          <p style="margin:0;color:#52525B;font-size:15px;line-height:1.6;">
+            Thanks for your first upload. One thing affects how accurate your analysis is more than anything else, so it is worth 30 seconds before your next one.
+          </p>
+        </td></tr>
+
+        <tr><td style="padding:24px 32px 0;">
+          <table role="presentation" width="100%" style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:12px;">
+            <tr><td style="padding:18px 20px;">
+              <div style="color:#9A3412;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;">1 &middot; Film from the front</div>
+              <p style="margin:8px 0 0;color:#7C2D12;font-size:14px;line-height:1.6;">
+                Stand under or just behind the basket, looking back at the shooter. Straight on works, and so does standing a little off to one side &mdash; if you angle it, go toward the side the <strong>guide hand</strong> is on.
+              </p>
+              <p style="margin:10px 0 0;color:#7C2D12;font-size:14px;line-height:1.6;">
+                That view shows whether the elbow flares out, whether the guide hand stays passive, and whether the feet and shoulders are square. <strong>Filming from behind the shooter hides all three.</strong>
+              </p>
+            </td></tr>
+          </table>
+        </td></tr>
+
+        <tr><td style="padding:14px 32px 0;">
+          <table role="presentation" width="100%" style="background:#FAFAFA;border:1px solid #E4E4E7;border-radius:12px;">
+            <tr><td style="padding:18px 20px;">
+              <div style="color:#3F3F46;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;">2 &middot; Whole body in frame</div>
+              <p style="margin:8px 0 0;color:#52525B;font-size:14px;line-height:1.6;">
+                Head to feet, the whole way through the shot. Stance, knee bend and foot position are all graded, and a clip cropped at the waist loses them. Not from across the gym either &mdash; that far away the elbow and hands are too small to read.
+              </p>
+            </td></tr>
+          </table>
+        </td></tr>
+
+        <tr><td style="padding:14px 32px 0;">
+          <table role="presentation" width="100%" style="background:#FAFAFA;border:1px solid #E4E4E7;border-radius:12px;">
+            <tr><td style="padding:18px 20px;">
+              <div style="color:#3F3F46;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;">3 &middot; One shot per clip</div>
+              <p style="margin:8px 0 0;color:#52525B;font-size:14px;line-height:1.6;">
+                Just the shot, a few seconds long. One person, one attempt.
+              </p>
+            </td></tr>
+          </table>
+        </td></tr>
+
+        <tr><td style="padding:20px 32px 0;">
+          <p style="margin:0;color:#52525B;font-size:14px;line-height:1.6;">
+            <strong style="color:#111111;">Want arc and ball rotation graded too?</strong> Those two are the exception &mdash; filmed head-on the ball flies straight at the camera. For them, film a second clip from the side with the whole flight path and the rim in frame.
+          </p>
+        </td></tr>
+
+        <tr><td align="center" style="padding:26px 32px 32px;">
+          <a href="${guide}" style="display:inline-block;background:#F97316;color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;padding:13px 28px;border-radius:10px;">Read the full filming guide</a>
+        </td></tr>
+
+        <tr><td style="background:#FAFAFA;border-top:1px solid #E4E4E7;padding:18px 32px;">
+          <p style="margin:0;color:#A1A1AA;font-size:12px;line-height:1.6;">
+            You are getting this once, after your first analysis.
+            <a href="${unsubscribe}" style="color:#A1A1AA;text-decoration:underline;">Unsubscribe</a>
+          </p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`.trim(),
+  })
+
+  if (error) {
+    console.error('[email] filming tips email failed:', error, 'to:', to)
+    return
+  }
+  console.log('[email] sent filming tips email:', data?.id, 'to:', to)
+}

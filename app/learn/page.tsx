@@ -52,7 +52,8 @@ export default async function LearnPage() {
           <h2 className="text-2xl font-black text-white mb-3">Film your shot the right way</h2>
           <ul className="text-zinc-300 text-sm leading-relaxed space-y-2 list-disc pl-5">
             <li><strong>Film from the front</strong> — stand under or just behind the basket, facing the shooter.</li>
-            <li>Get close enough that the <strong>elbow, both hands and both feet</strong> stay in frame for the whole shot.</li>
+            <li>Frame the <strong>whole body, head to feet</strong> — cropped at the waist loses stance, knee bend and foot position.</li>
+            <li>But <strong>not from across the gym</strong> — that far away, the elbow and hands are too small to read.</li>
             <li>One shot per video works best. MP4 or MOV, up to 5 minutes.</li>
             <li>Want <strong>arc and rotation</strong> graded too? Film a second clip from the side, with the ball&apos;s whole flight and the rim in frame.</li>
           </ul>

@@ -599,6 +599,7 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
           <ul className="text-sm text-gray-600 space-y-1 list-disc pl-5">
             <li>Show <strong>one person</strong> taking the shot</li>
             <li>Film <strong>from the front</strong>, from near the basket</li>
+            <li>Fit the <strong>whole body in frame</strong> — head to feet, not just the top half</li>
             <li>Keep it to <strong>one shot</strong> — not a full game</li>
           </ul>
         </div>
@@ -642,7 +643,7 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
           <ul className="text-sm text-gray-600 space-y-1 list-disc pl-5">
             <li>Record a <strong>short clip</strong> — just the shot, a few seconds long</li>
             <li>Film <strong>one shot at a time</strong></li>
-            <li>Keep the camera <strong>close to the shooter</strong>, filming from the front</li>
+            <li>Film <strong>from the front</strong>, with the <strong>whole body in frame</strong> — head to feet, not just the top half</li>
           </ul>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">

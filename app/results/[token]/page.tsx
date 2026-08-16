@@ -382,9 +382,10 @@ export default async function ResultsPage({
           <p className="text-zinc-700 text-sm leading-relaxed">
             Film from the front — camera under or just behind the basket, looking back at the
             shooter. That is the view that shows whether the elbow flares out, whether the guide
-            hand stays passive, and whether the feet and shoulders are square. Stand close enough
-            that the elbow, both hands and both feet stay in frame from the set-up through the
-            release, and keep it to one shot per clip.
+            hand stays passive, and whether the feet and shoulders are square. Frame the whole
+            body, head to feet, and keep it that way from the set-up through the release — a clip
+            cropped at the waist loses stance, knee bend and foot position. Not from across the
+            gym either, or the elbow and hands are too small to read. One shot per clip.
           </p>
           <p className="text-zinc-700 text-sm leading-relaxed mt-3">
             Shot arc and ball rotation are the exception: filmed head-on the ball flies straight at

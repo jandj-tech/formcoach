@@ -3,6 +3,7 @@ import { getStripe } from '@/lib/stripe'
 import { db } from '@/lib/db'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { rejectInAppPurchase } from '@/lib/in-app'
+import { currencyForRequest } from '@/lib/region'
 import {
   CLASS_MIN_PLAYERS,
   CLASS_PRICE_PER_PLAYER_CENTS,
@@ -56,7 +57,7 @@ export async function POST(req: NextRequest) {
       {
         quantity: 1,
         price_data: {
-          currency: 'usd',
+          currency: currencyForRequest(req),
           unit_amount: totalCents,
           product_data: {
             name: `LearnHoops Class Program — ${playerCount} Players`,

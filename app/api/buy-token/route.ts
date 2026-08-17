@@ -5,6 +5,7 @@ import { analysisUnitCents, discountedUnitCents, MAX_TOKENS_PER_ORDER } from '@/
 import { userHasInitiatedTeam } from '@/lib/team-tokens'
 import { isValidCompCode, getCompCouponId } from '@/lib/comp'
 import { rejectInAppPurchase } from '@/lib/in-app'
+import { currencyForRequest } from '@/lib/region'
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://learnhoops.com'
 
@@ -18,8 +19,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Login required' }, { status: 401 })
     }
 
-    const body = await req.json().catch(() => ({})) as { region?: string; compCode?: string; quantity?: unknown; returnTo?: unknown }
-    const region = body.region ?? 'US'
+    const body = await req.json().catch(() => ({})) as { compCode?: string; quantity?: unknown; returnTo?: unknown }
+
+    // Resolved from the request, not the body. Callers used to post their own
+    // `region`, so the paywall (which posted none) billed USD while the
+    // dashboard billed CAD to the very same person.
+    const currency = currencyForRequest(req)
 
     // Optional same-site path to land back on after checkout — used by the
     // locked free-preview report so buying returns the player to their
@@ -50,7 +55,7 @@ export async function POST(req: NextRequest) {
       line_items: [{
         quantity,
         price_data: {
-          currency: region === 'CA' ? 'cad' : 'usd',
+          currency,
           unit_amount: unitAmount,
           product_data: {
             name: quantity === 1 ? '1 Shot Analysis' : 'Shot Analysis',

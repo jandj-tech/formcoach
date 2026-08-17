@@ -8,13 +8,12 @@ import { orderPricing, usd, MAX_TOKENS_PER_ORDER } from '@/lib/team-pricing'
 import QuantityStepper from '@/components/QuantityStepper'
 import Link from 'next/link'
 
-type Region = 'US' | 'CA'
-
 export default function PremiumCTA({ dark = false, initiated = false }: { dark?: boolean; initiated?: boolean }) {
   const inApp = useIsInApp()
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
-  const [region, setRegion] = useState<Region>('US')
+  // Display only — the server picks the currency from the request itself.
+  const [currency, setCurrency] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [qty, setQty] = useState(1)
   const { baseUnitCents } = useAnalysisPrice(initiated)
@@ -22,7 +21,7 @@ export default function PremiumCTA({ dark = false, initiated = false }: { dark?:
   const price = (baseUnitCents / 100).toFixed(2)
 
   useEffect(() => {
-    fetch('/api/region').then(r => r.json()).then(({ region }) => setRegion(region)).catch(() => {})
+    fetch('/api/region').then(r => r.json()).then(({ currency: c }) => setCurrency(typeof c === 'string' ? c : null)).catch(() => {})
   }, [])
 
   // Digital purchases inside the iOS app must use native in-app purchase.
@@ -36,7 +35,7 @@ export default function PremiumCTA({ dark = false, initiated = false }: { dark?:
       const res = await fetch('/api/buy-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ region, quantity: qty }),
+        body: JSON.stringify({ quantity: qty }),
       })
       if (res.status === 401) {
         // Logged-out visitor: send them to log in, then back here.
@@ -97,7 +96,10 @@ export default function PremiumCTA({ dark = false, initiated = false }: { dark?:
 
         <div className="flex items-center justify-between gap-3">
           <div>
-            <span className="text-orange-500 font-black text-2xl">{usd(totalCents)}</span>
+            <span className="text-orange-500 font-black text-2xl">
+              {usd(totalCents)}
+              {currency && <span className="text-sm font-bold ml-1">{currency}</span>}
+            </span>
             <p className={`text-xs ${subColor} mt-0.5`}>
               {qty === 1
                 ? 'per analysis · one-time payment'

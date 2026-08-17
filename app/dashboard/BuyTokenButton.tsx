@@ -8,7 +8,8 @@ import QuantityStepper from '@/components/QuantityStepper'
 
 export default function BuyTokenButton({ isInApp = false, initiated = false }: { isInApp?: boolean; initiated?: boolean }) {
   const inAppUA = useIsInApp()
-  const [region, setRegion] = useState('US')
+  // Display only — the server picks the currency from the request itself.
+  const [currency, setCurrency] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [qty, setQty] = useState(1)
@@ -16,7 +17,7 @@ export default function BuyTokenButton({ isInApp = false, initiated = false }: {
   const { percentOff, totalCents } = orderPricing(baseUnitCents, qty)
 
   useEffect(() => {
-    fetch('/api/region').then(r => r.json()).then(({ region: r }) => setRegion(r)).catch(() => {})
+    fetch('/api/region').then(r => r.json()).then(({ currency: c }) => setCurrency(typeof c === 'string' ? c : null)).catch(() => {})
   }, [])
 
   // Digital purchases inside the iOS app must use native in-app purchase.
@@ -29,7 +30,7 @@ export default function BuyTokenButton({ isInApp = false, initiated = false }: {
       const res = await fetch('/api/buy-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ region, quantity: qty }),
+        body: JSON.stringify({ quantity: qty }),
       })
       const data = await res.json().catch(() => ({}))
       if (data.url) {
@@ -53,7 +54,9 @@ export default function BuyTokenButton({ isInApp = false, initiated = false }: {
           disabled={loading}
           className="shrink-0 border-2 border-orange-500 text-orange-600 hover:bg-orange-100 disabled:opacity-50 text-sm font-bold px-5 py-2.5 rounded-xl transition-colors"
         >
-          {loading ? 'Loading...' : `Buy ${qty > 1 ? `${qty} Tokens` : 'Token'} — ${usd(totalCents)}`}
+          {loading
+            ? 'Loading...'
+            : `Buy ${qty > 1 ? `${qty} Tokens` : 'Token'} — ${usd(totalCents)}${currency ? ` ${currency}` : ''}`}
         </button>
       </span>
       {percentOff > 0 && (

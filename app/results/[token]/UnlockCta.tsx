@@ -25,6 +25,16 @@ export default function UnlockCta({ resultsPath, justPurchased }: { resultsPath:
   const [waiting, setWaiting] = useState(justPurchased)
   const triesRef = useRef(0)
   const [qty, setQty] = useState<number>(3)
+  // Labelled, not chosen: the server decides the currency from the request. This
+  // only tells the buyer which one they're about to see on the Stripe page.
+  const [currency, setCurrency] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch('/api/region')
+      .then((r) => r.json())
+      .then(({ currency: c }) => setCurrency(typeof c === 'string' ? c : null))
+      .catch(() => {})
+  }, [])
 
   // The viewer's own rate, not the report owner's. A results link is shareable,
   // and /api/buy-token charges whoever is signed in here — so this hook is the
@@ -149,7 +159,9 @@ export default function UnlockCta({ resultsPath, justPurchased }: { resultsPath:
             disabled={loading}
             className="w-full bg-orange-500 hover:bg-red-600 disabled:opacity-50 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors"
           >
-            {loading ? 'Opening checkout…' : `Unlock — ${usd(selected.totalCents)}`}
+            {loading
+              ? 'Opening checkout…'
+              : `Unlock — ${usd(selected.totalCents)}${currency ? ` ${currency}` : ''}`}
           </button>
 
           <p className="text-gray-400 text-[11px] leading-relaxed">

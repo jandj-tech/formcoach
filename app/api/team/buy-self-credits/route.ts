@@ -4,6 +4,7 @@ import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { getStripe } from '@/lib/stripe'
 import { getTeamTokenState, orgHasInitiatedTeam, TEAM_TOKEN_PRICE_CENTS, REGULAR_ANALYSIS_PRICE_CENTS, discountedUnitCents } from '@/lib/team-tokens'
 import { rejectInAppPurchase } from '@/lib/in-app'
+import { currencyForRequest } from '@/lib/region'
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL && process.env.NEXT_PUBLIC_BASE_URL !== 'http://localhost:3000'
   ? process.env.NEXT_PUBLIC_BASE_URL
@@ -53,7 +54,7 @@ export async function POST(req: NextRequest) {
         {
           quantity: qty,
           price_data: {
-            currency: 'usd',
+            currency: currencyForRequest(req),
             unit_amount: unitAmount,
             product_data: {
               name: `${qty} Shot Analysis Credit${qty > 1 ? 's' : ''}`,

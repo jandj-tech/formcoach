@@ -4,6 +4,7 @@ import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { db } from '@/lib/db'
 import { orgHasInitiatedTeam, TEAM_TOKEN_PRICE_CENTS, REGULAR_ANALYSIS_PRICE_CENTS, discountedUnitCents } from '@/lib/team-tokens'
 import { rejectInAppPurchase } from '@/lib/in-app'
+import { currencyForRequest } from '@/lib/region'
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://learnhoops.com'
 
@@ -40,7 +41,7 @@ export async function POST(req: NextRequest) {
       line_items: [{
         quantity,
         price_data: {
-          currency: 'usd',
+          currency: currencyForRequest(req),
           unit_amount: unitAmount,
           product_data: { name: `Coach upload credits — ${team.name}` },
         },

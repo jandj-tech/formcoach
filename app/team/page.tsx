@@ -9,6 +9,12 @@ import { getOrgSession } from '@/lib/org-auth'
 import { db } from '@/lib/db'
 import TeamHubClient, { type HubTeam } from './TeamHubClient'
 import { GraduationCapIcon, TrendingUpIcon, TrophyIcon } from 'lucide-react'
+import {
+  TEAM_TOKEN_PRICE_CENTS,
+  TEAM_VOLUME_TIERS,
+  discountedUnitCents,
+  usd,
+} from '@/lib/team-pricing'
 
 export const metadata: Metadata = {
   title: 'Basketball Team & Organization Shot Analysis | LearnHoops',
@@ -147,9 +153,30 @@ export default async function TeamLandingPage() {
               </>
             ) : (
               <>
-                <div className="font-numeric text-3xl text-ember-500">$0.99</div>
+                <div className="font-numeric text-3xl text-ember-500">{usd(TEAM_TOKEN_PRICE_CENTS)}</div>
                 <div className="font-display font-bold uppercase text-chalk">Per upload</div>
                 <div className="text-chalk-dim text-sm">Buy credits and use them when you need them.</div>
+                {/* The team rate was the only number here, which read as the
+                    whole offer. Bulk tiers stack on top of it — built from
+                    TEAM_VOLUME_TIERS so this page cannot drift from checkout. */}
+                <div className="pt-2 space-y-1">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-chalk-dim">
+                    Buy in bulk, pay less again
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[...TEAM_VOLUME_TIERS].reverse().map((tier) => (
+                      <span
+                        key={tier.minQty}
+                        className="rounded-lg border border-courtline px-2 py-1 text-[11px] text-chalk-dim"
+                      >
+                        {tier.minQty}+{' '}
+                        <span className="font-bold text-chalk">
+                          {usd(discountedUnitCents(TEAM_TOKEN_PRICE_CENTS, tier.minQty))}
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
               </>
             )}
           </div>

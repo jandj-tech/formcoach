@@ -1,6 +1,6 @@
 'use client'
 
-import { VOLUME_TIERS, nextVolumeTier, orderPricing, usd } from '@/lib/team-pricing'
+import { tiersFor, orderPricing, usd, TEAM_TOKEN_PRICE_CENTS } from '@/lib/team-pricing'
 
 /**
  * Order summary that makes the volume discount visible: the per-token price
@@ -16,11 +16,10 @@ export default function VolumeSavings({
   quantity: number
   label?: string
 }) {
-  const { percentOff, unitCents, totalCents, fullTotalCents, savingsCents } = orderPricing(
+  const { percentOff, unitCents, totalCents, fullTotalCents, savingsCents, nextTier } = orderPricing(
     baseUnitCents,
     quantity,
   )
-  const next = nextVolumeTier(quantity)
 
   return (
     <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 space-y-2">
@@ -45,21 +44,37 @@ export default function VolumeSavings({
         </p>
       )}
 
-      {next && (
+      {nextTier && (
         <p className="text-xs text-gray-500">
-          Add {next.minQty - quantity} more to get <strong>{next.percentOff}% off</strong> the whole order.
+          Add {nextTier.minQty - quantity} more to get{' '}
+          <strong>{nextTier.percentOff}% off</strong> the whole order.
         </p>
       )}
     </div>
   )
 }
 
-/** Compact list of every tier — so buyers can see the discounts before choosing. */
-export function VolumeTierList({ className = '' }: { className?: string }) {
-  const ascending = [...VOLUME_TIERS].reverse()
+/**
+ * Compact list of every tier — so buyers can see the discounts before choosing.
+ *
+ * `baseUnitCents` is required rather than defaulted: there are two ladders now,
+ * and a default would quietly show a team buyer the regular one — advertising
+ * a discount they cannot get, on a screen they are about to pay from.
+ */
+export function VolumeTierList({
+  baseUnitCents,
+  className = '',
+}: {
+  baseUnitCents: number
+  className?: string
+}) {
+  const ascending = [...tiersFor(baseUnitCents)].reverse()
+  const onTeamRate = baseUnitCents <= TEAM_TOKEN_PRICE_CENTS
   return (
     <div className={`flex flex-wrap items-center gap-1.5 ${className}`}>
-      <span className="text-[11px] text-gray-500">Bulk pricing:</span>
+      <span className="text-[11px] text-gray-500">
+        {onTeamRate ? `Bulk pricing on your ${usd(baseUnitCents)} rate:` : 'Bulk pricing:'}
+      </span>
       {ascending.map((t) => (
         <span
           key={t.minQty}

@@ -295,7 +295,7 @@ export default function OrgTokenPanel({
               <p className="text-xs text-green-600 font-semibold px-1">$0.99 team rate unlocked</p>
             )}
 
-            <VolumeTierList className="px-1" />
+            <VolumeTierList baseUnitCents={buyBaseCents} className="px-1" />
 
             <VolumeSavings baseUnitCents={buyBaseCents} quantity={buyQty} label="token" />
 

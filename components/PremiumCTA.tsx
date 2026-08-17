@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { trackInitiateCheckout } from '@/lib/meta-pixel'
 import { useIsInApp } from '@/lib/useIsInApp'
 import { useAnalysisPrice } from '@/lib/useAnalysisPrice'
-import { orderPricing, nextVolumeTier, usd, MAX_TOKENS_PER_ORDER } from '@/lib/team-pricing'
+import { orderPricing, usd, MAX_TOKENS_PER_ORDER } from '@/lib/team-pricing'
 import QuantityStepper from '@/components/QuantityStepper'
 import Link from 'next/link'
 
@@ -18,9 +18,8 @@ export default function PremiumCTA({ dark = false, initiated = false }: { dark?:
   const [error, setError] = useState('')
   const [qty, setQty] = useState(1)
   const { baseUnitCents } = useAnalysisPrice(initiated)
-  const { percentOff, unitCents, totalCents, savingsCents } = orderPricing(baseUnitCents, qty)
+  const { percentOff, unitCents, totalCents, savingsCents, nextTier } = orderPricing(baseUnitCents, qty)
   const price = (baseUnitCents / 100).toFixed(2)
-  const upsell = nextVolumeTier(qty)
 
   useEffect(() => {
     fetch('/api/region').then(r => r.json()).then(({ region }) => setRegion(region)).catch(() => {})
@@ -118,9 +117,9 @@ export default function PremiumCTA({ dark = false, initiated = false }: { dark?:
             {loading ? '...' : 'Buy Now →'}
           </button>
         </div>
-        {upsell && (
+        {nextTier && (
           <p className={`text-xs ${subColor} mt-2`}>
-            Buy {upsell.minQty - qty} more to save {upsell.percentOff}% on the whole order.
+            Buy {nextTier.minQty - qty} more to save {nextTier.percentOff}% on the whole order.
           </p>
         )}
         {error && <p className="text-red-500 text-xs mt-2">{error}</p>}

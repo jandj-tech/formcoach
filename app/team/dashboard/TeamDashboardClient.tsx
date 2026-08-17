@@ -687,7 +687,7 @@ export default function TeamDashboardClient({
               />
             </div>
 
-            <VolumeTierList className="px-1" />
+            <VolumeTierList baseUnitCents={creditBaseCents} className="px-1" />
 
             <VolumeSavings baseUnitCents={creditBaseCents} quantity={quantity} label="credit" />
 

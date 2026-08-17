@@ -38,11 +38,16 @@ export default function FilmingExample({
 }) {
   return (
     <div className={className}>
-      {heading && (
-        <p className="text-xs font-bold uppercase tracking-wider text-white mb-1.5">{heading}</p>
-      )}
       <div className="flex flex-col sm:flex-row sm:items-start gap-4">
         <div className={`shrink-0 w-full ${widthClass}`}>
+          {/* Inside the video column, not above the whole row — so it centres
+              over the clip itself rather than over the clip plus whatever is
+              sitting next to it. */}
+          {heading && (
+            <p className="text-xs font-bold uppercase tracking-wider text-white mb-1.5 text-center">
+              {heading}
+            </p>
+          )}
           <video
             src={VIDEO}
             poster={POSTER}

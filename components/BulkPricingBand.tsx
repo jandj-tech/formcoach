@@ -22,15 +22,15 @@ export default function BulkPricingBand({ className = '' }: { className?: string
 
   return (
     <div
-      className={`flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-xl border border-ink-950/10 bg-white/60 px-5 py-4 ${className}`}
+      className={`rounded-xl border border-ink-950/10 bg-white/60 px-5 py-5 text-center ${className}`}
     >
-      <span className="font-display font-black uppercase leading-none text-ember-600 text-[clamp(1.9rem,5vw,2.75rem)]">
+      <p className="font-display font-black uppercase leading-none text-ember-600 text-[clamp(1.9rem,5vw,2.75rem)]">
         Up to {best.percentOff}% off
-      </span>
-      <span className="text-sm text-ink-950/60">
+      </p>
+      <p className="text-sm text-ink-950/60 mt-2 mx-auto max-w-md">
         when you buy more than one — the discount comes off every analysis in the order, and they
         never expire.
-      </span>
+      </p>
     </div>
   )
 }

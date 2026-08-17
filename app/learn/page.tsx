@@ -3,6 +3,7 @@ import Link from 'next/link'
 import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
 import CriteriaShowcase, { type Criterion } from '@/components/CriteriaShowcase'
+import FilmingExample from '@/components/FilmingExample'
 import { getCriteriaVideoMap } from '@/lib/youtube'
 import { db } from '@/lib/db'
 
@@ -50,6 +51,7 @@ export default async function LearnPage() {
         <div className="max-w-3xl mx-auto bg-zinc-900 border border-zinc-800 rounded-2xl p-6 sm:p-8">
           <p className="text-orange-500 font-black text-sm uppercase tracking-wider mb-2">Step 1</p>
           <h2 className="text-2xl font-black text-white mb-3">Film your shot the right way</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-6 items-start">
           <ul className="text-zinc-300 text-sm leading-relaxed space-y-2 list-disc pl-5">
             <li><strong>Film from the front</strong> — stand under or just behind the basket, facing the shooter.</li>
             <li>Straight head-on is fine, and so is <strong>a little off to one side</strong> — as long as you stay in front. If you angle it, go toward the <strong>guide-hand side</strong>: that shows whether the shooting arm makes a proper <strong>L</strong> or opens into a wide <strong>V</strong>.</li>
@@ -58,6 +60,12 @@ export default async function LearnPage() {
             <li>One shot per video works best. MP4 or MOV, up to 5 minutes.</li>
             <li>Want <strong>arc and rotation</strong> graded too? Film a second clip from the side, with the ball&apos;s whole flight and the rim in frame.</li>
           </ul>
+
+            {/* Same clip as the support FAQ. The note is dropped here — the
+                bullets beside it already cover distance, and repeating it
+                would crowd a list that is doing the explaining. */}
+            <FilmingExample showNote={false} heading="Like this" className="lg:w-[260px]" />
+          </div>
         </div>
       </section>
 

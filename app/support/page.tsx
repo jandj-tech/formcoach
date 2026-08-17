@@ -3,6 +3,7 @@ import Link from 'next/link'
 import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
 import SupportForm from './SupportForm'
+import FilmingExample from '@/components/FilmingExample'
 
 export const metadata: Metadata = {
   title: 'Basketball Shot Analysis Help & FAQ | LearnHoops',
@@ -14,14 +15,6 @@ export const metadata: Metadata = {
 // Rendered as visible FAQ items below AND emitted as FAQPage structured data,
 // so the two can never drift apart. Google only allows FAQ rich results when
 // the schema text matches what's on the page.
-// Joseph's own clip, cropped out of the pillarbox his phone wrote it into and
-// re-encoded (8.7MB -> 386KB). Hosted on Blob rather than /public so an
-// unchanging file is not shipped with every deployment and every clone.
-const FILMING_EXAMPLE_VIDEO =
-  'https://x0swilm3wujbxncc.public.blob.vercel-storage.com/examples/filming-example.mp4'
-const FILMING_EXAMPLE_POSTER =
-  'https://x0swilm3wujbxncc.public.blob.vercel-storage.com/examples/filming-example-poster.jpg'
-
 const FAQS: Array<{ id?: string; q: string; a: string[] }> = [
   {
     q: 'What is AI basketball shot analysis?',
@@ -119,45 +112,7 @@ export default function SupportPage() {
                   {f.a.map((para, i) => (
                     <p key={i}>{para}</p>
                   ))}
-                  {f.id === 'filming' && (
-                    <div className="pt-1">
-                      <p className="text-xs font-bold uppercase tracking-wider text-chalk mb-2">
-                        A clip that grades well
-                      </p>
-                      <div className="flex flex-col sm:flex-row sm:items-start gap-4">
-                        <div className="shrink-0">
-                          <video
-                            src={FILMING_EXAMPLE_VIDEO}
-                            poster={FILMING_EXAMPLE_POSTER}
-                            controls
-                            playsInline
-                            preload="none"
-                            className="w-full max-w-[280px] rounded-xl border border-courtline bg-black"
-                          />
-                          <p className="text-xs text-chalk-dim/80 mt-2 max-w-[280px]">
-                            Front-on, turned slightly off square, whole body in frame from the
-                            set-up through the landing. Portrait, one shot, a few seconds long.
-                          </p>
-                        </div>
-
-                        {/* The most common mistake this example could accidentally
-                            teach is standing this far back. Called out loudly so
-                            the clip reads as "at least this close", not "here". */}
-                        <div className="rounded-xl border-2 border-ember-500 bg-ember-500/10 px-4 py-3 sm:max-w-xs">
-                          <p className="text-sm font-black text-ember-400 leading-snug">
-                            Closer than this is better.
-                          </p>
-                          <p className="text-sm text-chalk mt-1.5 leading-relaxed">
-                            Stand as near as you can while still fitting the whole body in frame.
-                            Too far back and the camera stops catching the small things — where the
-                            elbow really sits, whether the guide hand is doing something, how wide
-                            the feet are. Those are the details your score is made of, and they are
-                            the first things lost to distance.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                  {f.id === 'filming' && <FilmingExample className="pt-1" />}
                 </div>
               </details>
             ))}

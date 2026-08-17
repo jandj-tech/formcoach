@@ -384,17 +384,28 @@ WHERE name = 'Square to the Basket'
 -- scored 1-3. That leaves no band for the shot most good shooters actually
 -- have: a working fold somewhere around 70-90 degrees, forearm under the
 -- ball, not a textbook right angle. The bend exists to load the wrist, and
--- it does that across a range. v5 states the range, scores it 7-8.5, and
--- separates the two ways the angle really fails — folded back past ~45 into
--- the catapult, or opened out until the ball leaves the top of the elbow.
+-- it does that across a range. v5 states the range and separates the two
+-- ways the angle really fails — folded back past ~45 into the catapult, or
+-- opened out until the ball leaves the top of the elbow.
+--
+-- The range is scored 9-10, NOT 7-8.5. An early draft put it in the middle
+-- band and Joseph corrected it: an elite shooter's normal rep sits in that
+-- range and is a genuine L worth 9-9.5, dropping to the mid 6s only on a
+-- rare bad attempt. Treating "measures 80 rather than 90" as a defect would
+-- cap every good shooter at 8.5 and quietly recreate the problem v5 exists
+-- to fix. The middle band now requires something specific and visible in
+-- that rep, not a measurement.
 UPDATE criteria
 SET grading_notes = 'ELBOW RUBRIC v5 — is the arm folded into a vertical L under the ball, or is the ball being hoisted some other way?
 
 WHAT AN L LOOKS LIKE. The forearm points straight UP toward the ceiling, the elbow points straight DOWN toward the floor, and the elbow sits directly UNDER the ball, stacked ball-over-hand-over-forearm-over-elbow. The angle at the elbow is roughly 90 degrees. The set point — where the ball loads before the release — sits around the FOREHEAD, on the shooting side. That is the whole target: forehead-height set point, one vertical forearm under the ball.
 
-HOW EXACT DOES THE 90 HAVE TO BE? NOT VERY. The point of the bend is to load the wrist so the ball can be lifted and snapped rather than pushed, and that job is done anywhere in a broad band around a right angle. Roughly 70 to 90 degrees is a working shot: not a perfect L, close enough to one, and it still scores well. Plenty of high-level shooters live in that band — an arm folded to around 80 degrees, forearm under the ball, elbow pointing down, is a good shot and belongs in the 7-8.5 range, not in the fault bands. A textbook 90 with a vertical forearm is the 9-10.
-Below that band the arm is folding too far: the forearm starts laying back toward the head instead of standing under the ball, and by the time the angle closes to around 45 degrees or less the ball is travelling back over the player rather than up. That is the catapult shape and it scores in the bottom bands — see TIER A.
+HOW EXACT DOES THE 90 HAVE TO BE? NOT VERY — AND DO NOT DOCK A GOOD L FOR A FEW DEGREES. The point of the bend is to load the wrist so the ball can be lifted and snapped rather than pushed, and that job is done anywhere in a broad band around a right angle. An arm measuring somewhere from roughly 70 up to 90 degrees, with the forearm under the ball and the elbow pointing down, IS the L this criterion is asking for. That is what good shooting looks like in real footage, and it scores 9-10. Elite shooters live in that band rep after rep; they are not producing a protractor-perfect right angle and then falling to a 7 for it.
+Drop into the 7-8.5 band only when you can point at something specific in THAT rep — the fold noticeably shallower than the rest of the shot needs, the elbow drifting a little outside the ball line, a wobble on the way up that recovers. A number you measured is not something specific.
+Below the band the arm is folding too far: the forearm starts laying back toward the head instead of standing under the ball, and by the time the angle closes to around 45 degrees or less the ball is travelling back over the player rather than up. That is the catapult shape and it scores in the bottom bands — see TIER A.
 This tolerance is about the ANGLE ONLY. It says nothing about an elbow winging out sideways, which is judged separately below and is not excused by a good angle.
+
+SCORE THE REP IN FRONT OF YOU, NOT THE SHOOTER. Good shooters are not uniform: the same player will produce a clean L on most attempts and a visibly worse one now and then, and those two reps deserve different scores. A shooter whose form is generally excellent should be landing 9-9.5 on a normal attempt and can still fall to the mid 6s on a poor one. So do not average an obviously good rep down because nobody is perfect, and do not carry a good first frame forward over a rep where the arm plainly collapsed.
 
 THE TWO-HAND HOIST TEST — RUN THIS FIRST, AT FACE HEIGHT. Find the frames where the ball passes the player''s face on the way up, and answer two questions there and in every frame above:
   1. THE MIDLINE CHECK. Where is the ball relative to the head? A correct shot carries the ball up on the SHOOTING SIDE of the head — clearly off to one side of the face, above one shoulder, with one forearm under it. A hoisted shot carries the ball straight up the MIDLINE — dead-centre in line with the nose and the middle of the face, then directly over the top of the head, framed between two symmetric arms. The centred ball is the tell you can see from any distance: locate it in each rise frame and say which side of the head it is on.
@@ -413,8 +424,8 @@ FLARED ELBOW ON THE RISE. Even with one hand properly under the ball, a shooting
 SEEN FROM THE SIDE, tier A shows as the ball carried over the top of the head or dipping behind it, the forearm folded backward like a catapult arm about to sling forward — score it 1-3 per tier A. (The WRIST cocking back under the ball is correct and universal — the fault is the FOREARM leaning back, the whole ball travelling toward the head.)
 
 HOW TO SCORE:
-  - One forearm vertical under the ball, elbow pointing down, near 90 degrees, guide hand resting on the side: 9-10.
-  - A working L rather than a textbook one — angle somewhere around 70 to 90 degrees, forearm close to vertical with the ball still stacked above the elbow, or the elbow a little outside the ball line, or a brief mild drift on the rise: 7-8.5. This band is not a consolation prize; it is what most good shooters actually do.
+  - One forearm under the ball, elbow pointing down, the angle anywhere from roughly 70 to 90 degrees, guide hand resting on the side: 9-10. This is the band a good shooter should be landing in on a normal attempt, not a reward reserved for an exact right angle.
+  - Recognisably an L with one specific thing off in this rep — the fold noticeably shallow, the elbow a little outside the ball line, or a brief mild drift on the rise that recovers: 7-8.5. An angle that merely measures under 90 does not belong here; that is the band above.
   - The arm has plainly given up the bend — opened well past 90 into an open push with the ball out beside the head — or the shooting elbow is clearly out to the side on the rise: 4-5.
   - The forearm has folded back past roughly 45 degrees, laying toward the head rather than standing under the ball: 1-3, and check TIER A.
   - A fired arm-heave check: score by its tier — behind-the-head catapult 1-3, chest-height two-hand shove 3-4, otherwise flared shooting elbow 4-5. A sideways L also scores 3-4.
@@ -427,7 +438,7 @@ JUDGE IT FROM THE RISE THROUGH THE SET POINT, before the arm extends to release.
 CAMERA ANGLE. Filmed from the side, a single tucked elbow can look further out than it is; allow for that. But the two-hand hoist is visible from EVERY angle — mirrored hands and two winged elbows read clearly front-on, side-on and elevated — so never wave it off as a camera artifact, and never default high because the view "makes the elbow hard to confirm" when you can plainly see both hands still driving the ball. If you can see the hoist, you have seen the flaw.
 
 EXPERT CALIBRATION — real graded cases:
-  - An NBA shooter at his set point, seen from the side: ball loaded above the shooting shoulder, forearm under it, elbow pointing down, the angle at the elbow a little under a right angle — around 80 degrees rather than a textbook 90. The expert called this "not a perfect L, but close enough" and scores it 7-8.5. Marking it down to a 4 or 5 for not being exactly 90 is the error, and so is calling it a V in the reasoning.
+  - An elite NBA shooter at his set point, seen from the side: ball loaded above the shooting shoulder, forearm under it, elbow pointing down, the angle at the elbow a little under a right angle — around 80 degrees rather than a textbook 90. The expert scores this 9-9.5: it is a proper L, and most of that shooter''s attempts look like this one. Marking it down for not measuring exactly 90 is the error, calling it a V in the reasoning is the error, and so is parking it at 7 because it is "not perfect". The same shooter drops to the mid 6s only on a rep where something visibly went wrong, and that is rare.
   - Player square to the camera with the ball up beside his head, upper arm and forearm opened into a wide V, elbow out to the side rather than under the ball, pushing the shot from the side of his body: the expert said this player "did not have an L shape at all". Score it 1-3, not 5 or 6.
   - Player who carried the ball up the middle of his body with both hands mirrored on it, both elbows winged out wide, the ball riding above and behind his head before whipping out: a catapult (tier A) with no L at any point. The expert graded this a clear failure — never 7-8.
   - Player with a symmetric-looking rise, ball loading in front of his face, then a one-hand release with the shooting elbow flared and the guide hand hanging close: tier C — the expert scored this elbow a 4 and corrected the write-up: "this was NOT a catapult — this was just the shooting hand being flared out."

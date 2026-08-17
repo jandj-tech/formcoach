@@ -51,10 +51,6 @@ export default function FilmingExample({
             preload="none"
             className="w-full rounded-xl border border-white/15 bg-black"
           />
-          <p className="text-xs text-white/50 mt-2 leading-relaxed">
-            Front-on, turned slightly off square, whole body in frame from the set-up through the
-            landing. Portrait, one shot, a few seconds long.
-          </p>
         </div>
 
         {showNote && (

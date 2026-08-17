@@ -24,10 +24,17 @@ export default function FilmingExample({
   className = '',
   showNote = true,
   heading = 'A clip that grades well',
+  /**
+   * Width of the clip. A portrait video is roughly twice as tall as it is
+   * wide, so this is really a height control — set it against whatever the
+   * clip is sitting next to, or it will tower over it and leave a dead gap.
+   */
+  widthClass = 'max-w-[260px]',
 }: {
   className?: string
   showNote?: boolean
   heading?: string | null
+  widthClass?: string
 }) {
   return (
     <div className={className}>
@@ -35,16 +42,16 @@ export default function FilmingExample({
         <p className="text-xs font-bold uppercase tracking-wider text-white mb-2">{heading}</p>
       )}
       <div className="flex flex-col sm:flex-row sm:items-start gap-4">
-        <div className="shrink-0">
+        <div className={`shrink-0 w-full ${widthClass}`}>
           <video
             src={VIDEO}
             poster={POSTER}
             controls
             playsInline
             preload="none"
-            className="w-full max-w-[260px] rounded-xl border border-white/15 bg-black"
+            className="w-full rounded-xl border border-white/15 bg-black"
           />
-          <p className="text-xs text-white/50 mt-2 max-w-[260px] leading-relaxed">
+          <p className="text-xs text-white/50 mt-2 leading-relaxed">
             Front-on, turned slightly off square, whole body in frame from the set-up through the
             landing. Portrait, one shot, a few seconds long.
           </p>

@@ -39,7 +39,7 @@ export default function FilmingExample({
   return (
     <div className={className}>
       {heading && (
-        <p className="text-xs font-bold uppercase tracking-wider text-white mb-2">{heading}</p>
+        <p className="text-xs font-bold uppercase tracking-wider text-white mb-1.5">{heading}</p>
       )}
       <div className="flex flex-col sm:flex-row sm:items-start gap-4">
         <div className={`shrink-0 w-full ${widthClass}`}>

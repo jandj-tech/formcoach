@@ -49,16 +49,17 @@ export default async function LearnPage() {
       {/* Step 1: Film it right */}
       <section className="px-4 pb-12">
         <div className="max-w-3xl mx-auto bg-zinc-900 border border-zinc-800 rounded-2xl p-6 sm:p-8">
-          <p className="text-orange-500 font-black text-sm uppercase tracking-wider mb-2">Step 1</p>
-          <h2 className="text-2xl font-black text-white mb-3">Film your shot the right way</h2>
-          {/* Floated rather than a second grid column. With two columns the
-              shorter one always ends in a block of dead space — and a portrait
-              clip beside a six-item list is never the same height. Floating it
-              lets the bullets wrap alongside and then run on underneath, so
-              the card fills evenly whatever the list length. */}
+          {/* Floated rather than a second grid column: with two columns the
+              shorter one always ends in a block of dead space, and a portrait
+              clip beside a six-item list is never the same height. Declared
+              before the heading so the float opens at the very top of the
+              card — the title and bullets then wrap around it, and the clip
+              starts level with "Step 1" instead of below the headline. */}
           <div className="mb-4 sm:float-right sm:ml-6 sm:mb-3 sm:w-[200px]">
             <FilmingExample showNote={false} heading="Like this" widthClass="max-w-none" />
           </div>
+          <p className="text-orange-500 font-black text-sm uppercase tracking-wider mb-2">Step 1</p>
+          <h2 className="text-2xl font-black text-white mb-3">Film your shot the right way</h2>
           <ul className="text-zinc-300 text-sm leading-relaxed space-y-2 list-disc pl-5">
             <li><strong>Film from the front</strong> — stand under or just behind the basket, facing the shooter.</li>
             <li>Straight head-on is fine, and so is <strong>a little off to one side</strong> — as long as you stay in front. If you angle it, go toward the <strong>guide-hand side</strong>: that shows whether the shooting arm makes a proper <strong>L</strong> or opens into a wide <strong>V</strong>.</li>

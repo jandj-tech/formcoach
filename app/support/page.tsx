@@ -14,6 +14,14 @@ export const metadata: Metadata = {
 // Rendered as visible FAQ items below AND emitted as FAQPage structured data,
 // so the two can never drift apart. Google only allows FAQ rich results when
 // the schema text matches what's on the page.
+// Joseph's own clip, cropped out of the pillarbox his phone wrote it into and
+// re-encoded (8.7MB -> 386KB). Hosted on Blob rather than /public so an
+// unchanging file is not shipped with every deployment and every clone.
+const FILMING_EXAMPLE_VIDEO =
+  'https://x0swilm3wujbxncc.public.blob.vercel-storage.com/examples/filming-example.mp4'
+const FILMING_EXAMPLE_POSTER =
+  'https://x0swilm3wujbxncc.public.blob.vercel-storage.com/examples/filming-example-poster.jpg'
+
 const FAQS: Array<{ id?: string; q: string; a: string[] }> = [
   {
     q: 'What is AI basketball shot analysis?',
@@ -111,6 +119,26 @@ export default function SupportPage() {
                   {f.a.map((para, i) => (
                     <p key={i}>{para}</p>
                   ))}
+                  {f.id === 'filming' && (
+                    <div className="pt-1">
+                      <p className="text-xs font-bold uppercase tracking-wider text-chalk mb-2">
+                        A clip that grades well
+                      </p>
+                      <video
+                        src={FILMING_EXAMPLE_VIDEO}
+                        poster={FILMING_EXAMPLE_POSTER}
+                        controls
+                        playsInline
+                        preload="none"
+                        className="w-full max-w-[280px] rounded-xl border border-courtline bg-black"
+                      />
+                      <p className="text-xs text-chalk-dim/80 mt-2 max-w-md">
+                        Filmed from the front, turned slightly off square, with the whole body in
+                        frame from the set-up through the landing. Portrait, one shot, a few
+                        seconds long.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </details>
             ))}

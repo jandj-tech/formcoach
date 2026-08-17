@@ -51,7 +51,14 @@ export default async function LearnPage() {
         <div className="max-w-3xl mx-auto bg-zinc-900 border border-zinc-800 rounded-2xl p-6 sm:p-8">
           <p className="text-orange-500 font-black text-sm uppercase tracking-wider mb-2">Step 1</p>
           <h2 className="text-2xl font-black text-white mb-3">Film your shot the right way</h2>
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-6 lg:items-center">
+          {/* Floated rather than a second grid column. With two columns the
+              shorter one always ends in a block of dead space — and a portrait
+              clip beside a six-item list is never the same height. Floating it
+              lets the bullets wrap alongside and then run on underneath, so
+              the card fills evenly whatever the list length. */}
+          <div className="mb-4 sm:float-right sm:ml-6 sm:mb-3 sm:w-[200px]">
+            <FilmingExample showNote={false} heading="Like this" widthClass="max-w-none" />
+          </div>
           <ul className="text-zinc-300 text-sm leading-relaxed space-y-2 list-disc pl-5">
             <li><strong>Film from the front</strong> — stand under or just behind the basket, facing the shooter.</li>
             <li>Straight head-on is fine, and so is <strong>a little off to one side</strong> — as long as you stay in front. If you angle it, go toward the <strong>guide-hand side</strong>: that shows whether the shooting arm makes a proper <strong>L</strong> or opens into a wide <strong>V</strong>.</li>
@@ -61,18 +68,7 @@ export default async function LearnPage() {
             <li>Want <strong>arc and rotation</strong> graded too? Film a second clip from the side, with the ball&apos;s whole flight and the rim in frame.</li>
           </ul>
 
-            {/* Same clip as the support FAQ. The note is dropped here — the
-                bullets beside it already cover distance, and repeating it
-                would crowd a list that is doing the explaining. Kept narrow
-                and vertically centred: a portrait clip at full size stands
-                taller than the list and leaves a dead gap beneath it. */}
-            <FilmingExample
-              showNote={false}
-              heading="Like this"
-              widthClass="max-w-[180px]"
-              className="mx-auto lg:mx-0"
-            />
-          </div>
+          <div className="clear-both" />
         </div>
       </section>
 

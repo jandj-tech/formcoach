@@ -9,12 +9,13 @@ import { getOrgSession } from '@/lib/org-auth'
 import { db } from '@/lib/db'
 import TeamHubClient, { type HubTeam } from './TeamHubClient'
 import { GraduationCapIcon, TrendingUpIcon, TrophyIcon } from 'lucide-react'
-import {
-  TEAM_TOKEN_PRICE_CENTS,
-  TEAM_VOLUME_TIERS,
-  discountedUnitCents,
-  usd,
-} from '@/lib/team-pricing'
+import { TEAM_TOKEN_PRICE_CENTS, TEAM_VOLUME_TIERS, usd } from '@/lib/team-pricing'
+
+// The deepest tier a team can reach, read off the ladder rather than typed.
+const bestTeamDiscount = TEAM_VOLUME_TIERS.reduce(
+  (top, tier) => Math.max(top, tier.percentOff),
+  0,
+)
 
 export const metadata: Metadata = {
   title: 'Basketball Team & Organization Shot Analysis | LearnHoops',
@@ -157,25 +158,15 @@ export default async function TeamLandingPage() {
                 <div className="font-display font-bold uppercase text-chalk">Per upload</div>
                 <div className="text-chalk-dim text-sm">Buy credits and use them when you need them.</div>
                 {/* The team rate was the only number here, which read as the
-                    whole offer. Bulk tiers stack on top of it — built from
-                    TEAM_VOLUME_TIERS so this page cannot drift from checkout. */}
-                <div className="pt-2 space-y-1">
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-chalk-dim">
-                    Buy in bulk, pay less again
+                    whole offer — bulk tiers stack on top of it. Stated as one
+                    percentage rather than a grid of per-analysis prices, and
+                    read off TEAM_VOLUME_TIERS so it cannot outlive a change to
+                    the ladder. */}
+                <div className="pt-3 mt-1 border-t border-courtline">
+                  <div className="font-display font-black uppercase text-ember-500 text-xl leading-none">
+                    Up to {bestTeamDiscount}% off
                   </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {[...TEAM_VOLUME_TIERS].reverse().map((tier) => (
-                      <span
-                        key={tier.minQty}
-                        className="rounded-lg border border-courtline px-2 py-1 text-[11px] text-chalk-dim"
-                      >
-                        {tier.minQty}+{' '}
-                        <span className="font-bold text-chalk">
-                          {usd(discountedUnitCents(TEAM_TOKEN_PRICE_CENTS, tier.minQty))}
-                        </span>
-                      </span>
-                    ))}
-                  </div>
+                  <div className="text-chalk-dim text-sm mt-1">when you buy credits in bulk.</div>
                 </div>
               </>
             )}

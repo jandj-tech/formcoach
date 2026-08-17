@@ -1,6 +1,7 @@
 'use client'
 
 import { tiersFor, orderPricing, usd, TEAM_TOKEN_PRICE_CENTS } from '@/lib/team-pricing'
+import VolumeNudge from '@/components/VolumeNudge'
 
 /**
  * Order summary that makes the volume discount visible: the per-token price
@@ -11,12 +12,15 @@ export default function VolumeSavings({
   baseUnitCents,
   quantity,
   label = 'token',
+  onJump,
 }: {
   baseUnitCents: number
   quantity: number
   label?: string
+  /** Lets the tier nudge move the order up to the tier it is offering. */
+  onJump?: (quantity: number) => void
 }) {
-  const { percentOff, unitCents, totalCents, fullTotalCents, savingsCents, nextTier } = orderPricing(
+  const { percentOff, unitCents, totalCents, fullTotalCents, savingsCents } = orderPricing(
     baseUnitCents,
     quantity,
   )
@@ -44,12 +48,12 @@ export default function VolumeSavings({
         </p>
       )}
 
-      {nextTier && (
-        <p className="text-xs text-gray-500">
-          Add {nextTier.minQty - quantity} more to get{' '}
-          <strong>{nextTier.percentOff}% off</strong> the whole order.
-        </p>
-      )}
+      <VolumeNudge
+        baseUnitCents={baseUnitCents}
+        quantity={quantity}
+        onJump={onJump}
+        label={`${label}s`}
+      />
     </div>
   )
 }

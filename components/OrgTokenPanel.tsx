@@ -297,7 +297,12 @@ export default function OrgTokenPanel({
 
             <VolumeTierList baseUnitCents={buyBaseCents} className="px-1" />
 
-            <VolumeSavings baseUnitCents={buyBaseCents} quantity={buyQty} label="token" />
+            <VolumeSavings
+              baseUnitCents={buyBaseCents}
+              quantity={buyQty}
+              label="token"
+              onJump={setBuyQty}
+            />
 
             <button
               type="button"

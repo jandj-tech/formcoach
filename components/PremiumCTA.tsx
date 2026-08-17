@@ -6,6 +6,7 @@ import { useIsInApp } from '@/lib/useIsInApp'
 import { useAnalysisPrice } from '@/lib/useAnalysisPrice'
 import { orderPricing, usd, MAX_TOKENS_PER_ORDER } from '@/lib/team-pricing'
 import QuantityStepper from '@/components/QuantityStepper'
+import VolumeNudge from '@/components/VolumeNudge'
 import Link from 'next/link'
 
 export default function PremiumCTA({ dark = false, initiated = false }: { dark?: boolean; initiated?: boolean }) {
@@ -17,7 +18,7 @@ export default function PremiumCTA({ dark = false, initiated = false }: { dark?:
   const [error, setError] = useState('')
   const [qty, setQty] = useState(1)
   const { baseUnitCents } = useAnalysisPrice(initiated)
-  const { percentOff, unitCents, totalCents, savingsCents, nextTier } = orderPricing(baseUnitCents, qty)
+  const { percentOff, unitCents, totalCents, savingsCents } = orderPricing(baseUnitCents, qty)
   const price = (baseUnitCents / 100).toFixed(2)
 
   useEffect(() => {
@@ -119,11 +120,12 @@ export default function PremiumCTA({ dark = false, initiated = false }: { dark?:
             {loading ? '...' : 'Buy Now →'}
           </button>
         </div>
-        {nextTier && (
-          <p className={`text-xs ${subColor} mt-2`}>
-            Buy {nextTier.minQty - qty} more to save {nextTier.percentOff}% on the whole order.
-          </p>
-        )}
+        <VolumeNudge
+          baseUnitCents={baseUnitCents}
+          quantity={qty}
+          onJump={(q) => setQty(Math.min(MAX_TOKENS_PER_ORDER, q))}
+          className="mt-3"
+        />
         {error && <p className="text-red-500 text-xs mt-2">{error}</p>}
       </div>
 

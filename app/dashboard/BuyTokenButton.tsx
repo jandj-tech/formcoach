@@ -5,6 +5,7 @@ import { useIsInApp } from '@/lib/useIsInApp'
 import { useAnalysisPrice } from '@/lib/useAnalysisPrice'
 import { orderPricing, usd, MAX_TOKENS_PER_ORDER } from '@/lib/team-pricing'
 import QuantityStepper from '@/components/QuantityStepper'
+import VolumeNudge from '@/components/VolumeNudge'
 
 export default function BuyTokenButton({ isInApp = false, initiated = false }: { isInApp?: boolean; initiated?: boolean }) {
   const inAppUA = useIsInApp()
@@ -62,6 +63,12 @@ export default function BuyTokenButton({ isInApp = false, initiated = false }: {
       {percentOff > 0 && (
         <span className="text-green-600 text-xs font-semibold">{percentOff}% volume discount applied</span>
       )}
+      <VolumeNudge
+        baseUnitCents={baseUnitCents}
+        quantity={qty}
+        onJump={(q) => setQty(Math.min(MAX_TOKENS_PER_ORDER, q))}
+        className="w-full max-w-[19rem]"
+      />
       {error && <span className="text-red-500 text-xs">{error}</span>}
     </span>
   )

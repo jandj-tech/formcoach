@@ -3,6 +3,7 @@ import Image from 'next/image'
 import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
 import CriteriaShowcase, { type Criterion } from '@/components/CriteriaShowcase'
+import BulkPricingBand from '@/components/BulkPricingBand'
 import { db } from '@/lib/db'
 import { getCriteriaVideoMap } from '@/lib/youtube'
 import { getSession } from '@/lib/auth'
@@ -172,6 +173,12 @@ export default async function HomePage() {
               </div>
             ))}
           </div>
+
+          {/* Sits under the three steps rather than in its own numbered
+              section: the price is the next question after "how does it work",
+              and stacking more analyses is cheapest at the moment someone is
+              already deciding to buy one. */}
+          <BulkPricingBand className="fade-up mt-4" />
         </div>
       </section>
 

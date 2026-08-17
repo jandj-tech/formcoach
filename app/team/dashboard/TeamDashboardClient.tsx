@@ -689,7 +689,12 @@ export default function TeamDashboardClient({
 
             <VolumeTierList baseUnitCents={creditBaseCents} className="px-1" />
 
-            <VolumeSavings baseUnitCents={creditBaseCents} quantity={quantity} label="credit" />
+            <VolumeSavings
+              baseUnitCents={creditBaseCents}
+              quantity={quantity}
+              label="credit"
+              onJump={(q) => { setQuantity(Math.min(500, q)); setCustomQty('') }}
+            />
 
             <button
               onClick={buyCredits}

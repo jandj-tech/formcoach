@@ -55,7 +55,12 @@ export default async function LearnPage() {
               before the heading so the float opens at the very top of the
               card — the title and bullets then wrap around it, and the clip
               starts level with "Step 1" instead of below the headline. */}
-          <div className="mb-4 sm:float-right sm:ml-6 sm:mb-3 sm:w-[200px]">
+          {/* The top margin drops the clip to sit roughly centred against the
+              label, headline and six bullets beside it. A float cannot centre
+              itself — it can only start where it is told — so this is tuned to
+              the current list length and is worth a glance if bullets are
+              added or removed. */}
+          <div className="mb-4 sm:float-right sm:ml-6 sm:mb-3 sm:mt-12 sm:w-[200px]">
             <FilmingExample showNote={false} heading="Like this" widthClass="max-w-none" />
           </div>
           <p className="text-orange-500 font-black text-sm uppercase tracking-wider mb-2">Step 1</p>

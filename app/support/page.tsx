@@ -116,6 +116,46 @@ export default function SupportPage() {
             ))}
           </div>
 
+          {/* Sits below the FAQ because it answers the question the filming
+              entry above it raises: people read how to film, then want to see
+              what they are meant to be filming. */}
+          <div id="shot-example" className="w-full space-y-4 scroll-mt-24">
+            <h2 className="font-display font-black uppercase text-[clamp(1.3rem,3vw,1.9rem)] leading-tight text-chalk">
+              What should my shot look like?
+            </h2>
+            <p className="text-sm text-chalk-dim leading-relaxed">
+              Klay Thompson&apos;s shooting form, broken down. It is a good picture of what the AI
+              looks for: a base about shoulder width, the ball loaded around the forehead with one
+              forearm under it, the guide hand along for the ride, and a held follow-through.
+            </p>
+            <div className="aspect-video w-full overflow-hidden rounded-2xl border border-courtline bg-black">
+              <iframe
+                src="https://www.youtube-nocookie.com/embed/8qkArgEq490?rel=0"
+                title="What should my shot look like?"
+                allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                loading="lazy"
+                className="h-full w-full"
+              />
+            </div>
+            <p className="text-sm text-chalk-dim leading-relaxed">
+              Breakdown by{' '}
+              <a
+                href="https://www.youtube.com/@DZShooting24"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-ember-400 hover:text-ember-500"
+              >
+                DZ Shooting
+              </a>
+              . Ready to see how yours compares?{' '}
+              <Link href="/analyze" className="font-semibold text-ember-400 hover:text-ember-500">
+                Upload a shot
+              </Link>{' '}
+              — your first analysis is free.
+            </p>
+          </div>
+
           <Link href="/" className="text-sm font-semibold text-ember-400 hover:text-ember-500 transition-colors py-2">
             ← Back to home
           </Link>

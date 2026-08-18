@@ -6,6 +6,7 @@ import { sendAbandonedCheckoutEmail, sendClaimCreditsEmail, sendClassPurchaseCon
 import { sendClassPurchaseConfirmationSms } from '@/lib/sms'
 import { grantBallCreditsOnce } from '@/lib/grant-ball-credits'
 import { claimStripeSession, releaseStripeSessionClaim } from '@/lib/stripe-idempotency'
+import { recordPurchase } from '@/lib/record-purchase'
 
 export async function POST(req: NextRequest) {
   try {
@@ -90,6 +91,14 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
           if (claim === 'claimed') await releaseStripeSessionClaim(session.id, 'coach_self_credits_failed')
           return NextResponse.json({ received: true, handled: false })
         }
+        await recordPurchase(session, {
+          kind: 'coach_credits',
+          description: `${quantity} coach upload credit${quantity === 1 ? '' : 's'}`,
+          quantity,
+          email: coachEmail,
+          buyerKind: 'coach',
+          buyerRef: coachEmail,
+        })
       }
       return NextResponse.json({ received: true })
     }
@@ -125,6 +134,13 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
         } catch (err) {
           console.error('Failed to send org token purchase confirmation email:', err)
         }
+        await recordPurchase(session, {
+          kind: 'org_tokens',
+          description: `${quantity} analysis token${quantity === 1 ? '' : 's'} for the organization`,
+          quantity,
+          buyerKind: 'org',
+          buyerRef: orgId,
+        })
       }
       return NextResponse.json({ received: true })
     }
@@ -151,6 +167,12 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
           console.error('Failed to grant player tokens (PARTIAL GRANT POSSIBLE, session kept claimed):', session.id, err)
           return NextResponse.json({ received: true, handled: false })
         }
+        const total = tokensEach * recipientIds.length
+        await recordPurchase(session, {
+          kind: 'player_tokens',
+          description: `${tokensEach} token${tokensEach === 1 ? '' : 's'} each to ${recipientIds.length} player${recipientIds.length === 1 ? '' : 's'}`,
+          quantity: total,
+        })
       }
       return NextResponse.json({ received: true })
     }
@@ -169,6 +191,13 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
           if (claim === 'claimed') await releaseStripeSessionClaim(session.id, 'team_credits_failed')
           return NextResponse.json({ received: true, handled: false })
         }
+        await recordPurchase(session, {
+          kind: 'team_credits',
+          description: `${quantity} team upload credit${quantity === 1 ? '' : 's'}`,
+          quantity,
+          buyerKind: 'team',
+          buyerRef: teamId,
+        })
       }
       return NextResponse.json({ received: true })
     }
@@ -192,6 +221,14 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
         if (claim === 'claimed') await releaseStripeSessionClaim(session.id, 'analysis_token_failed')
         return NextResponse.json({ received: true, handled: false })
       }
+      await recordPurchase(session, {
+        kind: 'analysis_tokens',
+        description: `${quantity} shot analysis token${quantity === 1 ? '' : 's'}`,
+        quantity,
+        email: emailLower,
+        buyerKind: 'user',
+        buyerRef: userId ?? emailLower ?? null,
+      })
       return NextResponse.json({ received: true })
     }
 

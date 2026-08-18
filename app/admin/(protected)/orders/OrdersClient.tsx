@@ -30,13 +30,35 @@ interface Order {
   kind: string
   quantity: number
   class_package_id: string | null
+  description: string | null
+  buyer_kind: string | null
+  buyer_ref: string | null
 }
 
 const sizeInches: Record<string, string> = { '5': '27.5"', '6': '28.5"', '7': '29.5"' }
-const fmt = (cents: number) => `$${(cents / 100).toFixed(2)}`
+const fmt = (cents: number, currency = 'usd') =>
+  `$${(cents / 100).toFixed(2)}${currency && currency.toLowerCase() !== 'usd' ? ` ${currency.toUpperCase()}` : ''}`
 
 function isBallOrder(o: Order) {
   return o.variant === 'left' || o.variant === 'right'
+}
+
+// What each kind is called, and how it is coloured, so a token sale and a
+// ball shipment are distinguishable at a glance down the list.
+const KINDS: Record<string, { label: string; className: string }> = {
+  single: { label: 'Ball', className: 'bg-orange-500/10 text-orange-400' },
+  bundle: { label: 'Ball bundle', className: 'bg-orange-500/10 text-orange-400' },
+  class_package: { label: 'Class package', className: 'bg-purple-500/10 text-purple-300' },
+  analysis_tokens: { label: 'Analysis tokens', className: 'bg-sky-500/10 text-sky-300' },
+  coach_credits: { label: 'Coach credits', className: 'bg-emerald-500/10 text-emerald-300' },
+  team_credits: { label: 'Team credits', className: 'bg-emerald-500/10 text-emerald-300' },
+  player_tokens: { label: 'Player tokens', className: 'bg-emerald-500/10 text-emerald-300' },
+  org_tokens: { label: 'Org tokens', className: 'bg-indigo-500/10 text-indigo-300' },
+  subscription: { label: 'Subscription', className: 'bg-zinc-500/10 text-zinc-300' },
+}
+
+function kindOf(o: Order) {
+  return KINDS[o.kind] ?? { label: o.kind, className: 'bg-zinc-500/10 text-zinc-300' }
 }
 
 export default function OrdersClient({ orders }: { orders: Order[] }) {
@@ -203,7 +225,7 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
                 />
               </th>
               <th className="text-left px-4 py-3">Customer</th>
-              <th className="text-left px-4 py-3">Ball</th>
+              <th className="text-left px-4 py-3">What they bought</th>
               <th className="text-left px-4 py-3">Amount</th>
               <th className="text-left px-4 py-3">Shipping address</th>
               <th className="text-left px-4 py-3">Status</th>
@@ -240,29 +262,34 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
                       {o.phone && <div className="text-zinc-400 text-xs">{o.phone}</div>}
                     </td>
                     <td className="px-4 py-3">
-                      {hasBall ? (
-                        <div className="space-y-0.5">
-                          {o.kind === 'class_package' && (
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-300 font-medium mr-1">
-                              Class Package
+                      <div className="space-y-0.5">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${kindOf(o).className}`}>
+                          {kindOf(o).label}
+                        </span>
+                        {hasBall ? (
+                          <>
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-400 font-medium ml-1">
+                              {o.variant === 'left' ? 'Left-handed' : 'Right-handed'}
                             </span>
-                          )}
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-400 font-medium">
-                            {o.variant === 'left' ? 'Left-handed' : 'Right-handed'}
-                          </span>
-                          {o.size && (
-                            <div className="text-zinc-300 text-sm font-semibold">
-                              {o.quantity > 1 ? `${o.quantity}× ` : ''}
-                              Size {o.size} <span className="text-zinc-500 font-normal">({sizeInches[String(o.size)] ?? '—'})</span>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-zinc-500 text-xs">—</span>
-                      )}
+                            {o.size && (
+                              <div className="text-zinc-300 text-sm font-semibold">
+                                {o.quantity > 1 ? `${o.quantity}× ` : ''}
+                                Size {o.size} <span className="text-zinc-500 font-normal">({sizeInches[String(o.size)] ?? '—'})</span>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div className="text-zinc-300 text-sm">
+                            {o.description || (o.quantity > 0 ? `${o.quantity}×` : '—')}
+                          </div>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="text-orange-400 font-bold">{fmt(Number(o.amount_total))}</div>
+                      <div className="text-orange-400 font-bold">{fmt(Number(o.amount_total), o.currency)}</div>
+                      {Number(o.amount_total) === 0 && (
+                        <div className="text-zinc-500 text-xs mt-0.5">comped / test</div>
+                      )}
                       {o.shipping_cost_cents != null && (
                         <div className="text-zinc-400 text-xs mt-0.5">
                           incl. {fmt(Number(o.shipping_cost_cents))} ship

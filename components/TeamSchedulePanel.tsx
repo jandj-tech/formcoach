@@ -168,12 +168,20 @@ function repeatCaption(v: FormValues): string | null {
 function TimeSelect({ value, onChange, dark }: { value: string; onChange: (v: string) => void; dark: boolean }) {
   const t = themeClasses(dark)
   // value is 24h "HH:MM"; render as tap-only hour/minute/AM-PM controls.
+  // Minutes stay on quarter-hour presets, with a "Type…" escape hatch for
+  // off-grid times (e.g. 6:20). Once typed, the minute joins the option list.
+  const [typingMin, setTypingMin] = useState(false)
   const [hh, mm] = value ? value.split(':').map(n => parseInt(n, 10)) : [18, 0]
   const isPM = hh >= 12
   const hour12 = hh % 12 === 0 ? 12 : hh % 12
   const apply = (h12: number, minutes: number, pm: boolean) => {
     const h24 = pm ? (h12 % 12) + 12 : h12 % 12
     onChange(`${String(h24).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`)
+  }
+  const commitTypedMin = (raw: string) => {
+    const n = parseInt(raw, 10)
+    if (Number.isFinite(n) && n >= 0 && n <= 59) apply(hour12, n, isPM)
+    setTypingMin(false)
   }
   const selCls = `rounded-xl px-2.5 py-2.5 text-sm font-bold focus:outline-none cursor-pointer ${t.input}`
   return (
@@ -182,11 +190,32 @@ function TimeSelect({ value, onChange, dark }: { value: string; onChange: (v: st
         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(h => <option key={h} value={h}>{h}</option>)}
       </select>
       <span className={`font-bold ${t.dim}`}>:</span>
-      <select value={mm} onChange={e => apply(hour12, parseInt(e.target.value, 10), isPM)} className={selCls} aria-label="Minutes">
-        {Array.from(new Set([0, 15, 30, 45, mm])).sort((a, b) => a - b).map(m => (
-          <option key={m} value={m}>{String(m).padStart(2, '0')}</option>
-        ))}
-      </select>
+      {typingMin ? (
+        <input
+          type="text"
+          inputMode="numeric"
+          maxLength={2}
+          defaultValue={String(mm).padStart(2, '0')}
+          autoFocus
+          onFocus={e => e.target.select()}
+          onBlur={e => commitTypedMin(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
+          className={`w-12 rounded-xl px-2.5 py-2.5 text-center text-sm font-bold focus:outline-none ${t.input}`}
+          aria-label="Minutes"
+        />
+      ) : (
+        <select
+          value={mm}
+          onChange={e => (e.target.value === 'type' ? setTypingMin(true) : apply(hour12, parseInt(e.target.value, 10), isPM))}
+          className={selCls}
+          aria-label="Minutes"
+        >
+          {Array.from(new Set([0, 15, 30, 45, mm])).sort((a, b) => a - b).map(m => (
+            <option key={m} value={m}>{String(m).padStart(2, '0')}</option>
+          ))}
+          <option value="type">Type…</option>
+        </select>
+      )}
       <span className={`inline-flex rounded-xl overflow-hidden ${t.segBorder}`}>
         {(['AM', 'PM'] as const).map(ap => (
           <button

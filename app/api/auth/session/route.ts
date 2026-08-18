@@ -39,10 +39,33 @@ export async function GET(req: NextRequest) {
     }
 
     if (user) {
-      const isSubscribed =
+      let isSubscribed =
         !!user.subscription_type &&
         !!user.subscription_expires_at &&
         new Date(user.subscription_expires_at) > new Date()
+
+      // Admin complimentary grants land in email_list; signup carries them
+      // onto the users row, but a grant made AFTER the account existed never
+      // reached it. Sync it here so grants apply to existing accounts too.
+      if (!isSubscribed) {
+        try {
+          const [comp] = (await db`
+            SELECT subscription_type, subscription_expires_at
+            FROM email_list
+            WHERE email = ${user.email} AND subscription_type IS NOT NULL
+          `) as unknown as [{ subscription_type: string; subscription_expires_at: string | null } | undefined]
+          if (comp?.subscription_expires_at && new Date(comp.subscription_expires_at) > new Date()) {
+            await db`
+              UPDATE users
+              SET subscription_type = ${comp.subscription_type}, subscription_expires_at = ${comp.subscription_expires_at}
+              WHERE id = ${user.id}
+            `
+            isSubscribed = true
+          }
+        } catch {
+          // email_list may be missing columns in old environments — non-fatal
+        }
+      }
 
       const tokens = user.analysis_tokens ?? 0
       const subscribed = isSubscribed || tokens > 0
@@ -66,8 +89,19 @@ export async function GET(req: NextRequest) {
       // preview). Only meaningful when they have no tokens or subscription.
       const freeUpload = !isSubscribed && tokens <= 0 && user.free_analysis_used === false
 
+      // App builds ≤14 gate the Analyze tab on tokens > 0 and predate the
+      // freeUpload flag, so the free analysis is presented to them as a
+      // token. Build 15+ label the free analysis distinctly and must see
+      // real numbers (a virtual token would show a bogus "1 TOKEN" badge on
+      // Home). iOS native UAs look like "LearnHoops/<build> CFNetwork/…";
+      // if the format ever differs, no inflation — new builds stay correct
+      // and old builds just fall back to their pre-existing paywall.
+      const buildMatch = (req.headers.get('user-agent') ?? '').match(/\bLearnHoops\/(\d+)\b/)
+      const legacyAppBuild = !!buildMatch && parseInt(buildMatch[1], 10) <= 14
+      const appTokens = legacyAppBuild && freeUpload ? tokens + 1 : tokens
+
       return NextResponse.json({
-        user: { id: user.id, email: user.email, subscribed, tokens, onTeam, onInitiatedTeam, freeUpload },
+        user: { id: user.id, email: user.email, subscribed, tokens: appTokens, onTeam, onInitiatedTeam, freeUpload },
         account: { type: 'player', dashboard: '/dashboard' },
       })
     }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { del } from '@vercel/blob'
+import { deleteObjects } from '@/lib/storage'
 import { db } from '@/lib/db'
 import { getSessionFromRequest } from '@/lib/auth'
 
@@ -45,7 +45,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   // Best-effort blob cleanup — don't fail the request if storage is unreachable.
   if (blobUrls.length > 0) {
     try {
-      await del(blobUrls)
+      await deleteObjects(blobUrls)
     } catch (err) {
       console.warn('Blob cleanup failed:', err instanceof Error ? err.message : err)
     }

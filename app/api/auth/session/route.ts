@@ -39,10 +39,33 @@ export async function GET(req: NextRequest) {
     }
 
     if (user) {
-      const isSubscribed =
+      let isSubscribed =
         !!user.subscription_type &&
         !!user.subscription_expires_at &&
         new Date(user.subscription_expires_at) > new Date()
+
+      // Admin complimentary grants land in email_list; signup carries them
+      // onto the users row, but a grant made AFTER the account existed never
+      // reached it. Sync it here so grants apply to existing accounts too.
+      if (!isSubscribed) {
+        try {
+          const [comp] = (await db`
+            SELECT subscription_type, subscription_expires_at
+            FROM email_list
+            WHERE email = ${user.email} AND subscription_type IS NOT NULL
+          `) as unknown as [{ subscription_type: string; subscription_expires_at: string | null } | undefined]
+          if (comp?.subscription_expires_at && new Date(comp.subscription_expires_at) > new Date()) {
+            await db`
+              UPDATE users
+              SET subscription_type = ${comp.subscription_type}, subscription_expires_at = ${comp.subscription_expires_at}
+              WHERE id = ${user.id}
+            `
+            isSubscribed = true
+          }
+        } catch {
+          // email_list may be missing columns in old environments — non-fatal
+        }
+      }
 
       const tokens = user.analysis_tokens ?? 0
       const subscribed = isSubscribed || tokens > 0

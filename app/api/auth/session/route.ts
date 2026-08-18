@@ -66,8 +66,16 @@ export async function GET(req: NextRequest) {
       // preview). Only meaningful when they have no tokens or subscription.
       const freeUpload = !isSubscribed && tokens <= 0 && user.free_analysis_used === false
 
+      // The iOS app's Analyze tab unlocks on tokens > 0 and predates the
+      // freeUpload flag, so it would paywall brand-new accounts that still
+      // have their free analysis. Present that free analysis as a token to
+      // app clients only (native iOS requests carry CFNetwork in the UA;
+      // browsers never do — web handles freeUpload itself).
+      const isNativeApp = (req.headers.get('user-agent') ?? '').includes('CFNetwork')
+      const appTokens = isNativeApp && freeUpload ? tokens + 1 : tokens
+
       return NextResponse.json({
-        user: { id: user.id, email: user.email, subscribed, tokens, onTeam, onInitiatedTeam, freeUpload },
+        user: { id: user.id, email: user.email, subscribed, tokens: appTokens, onTeam, onInitiatedTeam, freeUpload },
         account: { type: 'player', dashboard: '/dashboard' },
       })
     }

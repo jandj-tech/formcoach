@@ -6,10 +6,31 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
   const { token } = await params
 
   const [submission] = (await db`
-    SELECT id, status FROM submissions WHERE token = ${token}
-  `) as unknown as [{ id: string; status: string } | undefined]
+    SELECT id, status, user_id, is_free_preview FROM submissions WHERE token = ${token}
+  `) as unknown as [{ id: string; status: string; user_id: string | null; is_free_preview: boolean | null } | undefined]
 
   if (!submission) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  // Free-preview gate, mirroring the web results page: the free signup
+  // analysis exposes only the overall score and the criterion names. Once
+  // the owner's account holds a token (or an active subscription/comp) the
+  // report unlocks permanently — buying is enough, unlocking consumes nothing.
+  let locked = !!submission.is_free_preview
+  if (locked && submission.user_id) {
+    const [owner] = (await db`
+      SELECT analysis_tokens, subscription_type, subscription_expires_at
+      FROM users WHERE id = ${submission.user_id}
+    `) as unknown as [{ analysis_tokens: number | null; subscription_type: string | null; subscription_expires_at: string | null } | undefined]
+    const ownerHasAccess =
+      (owner?.analysis_tokens ?? 0) > 0 ||
+      (!!owner?.subscription_type &&
+        !!owner?.subscription_expires_at &&
+        new Date(owner.subscription_expires_at) > new Date())
+    if (ownerHasAccess) {
+      await db`UPDATE submissions SET is_free_preview = false WHERE id = ${submission.id}`
+      locked = false
+    }
+  }
 
   const [analysis] = (await db`
     SELECT id, overall_score, frame_urls, video_url
@@ -37,16 +58,19 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
 
   return NextResponse.json({
     submissionStatus: submission.status,
+    locked,
     overallScore: Number(analysis.overall_score),
     frameUrls: analysis.frame_urls ?? [],
     videoUrl: analysis.video_url ?? null,
+    // On a locked preview the real scores and reasoning never leave the
+    // server — criterion names only, so the app can render locked cards.
     scores: scores.map((s) => ({
       id: s.id,
       name: s.name,
-      score: s.ai_score !== null ? Number(s.ai_score) : null,
-      // Same sanitizing the web ScoreCard applies — this feeds the mobile app,
-      // so raw internal wording must not reach players here either.
-      reasoning: humanizeReasoning(s.ai_reasoning),
+      score: locked ? null : s.ai_score !== null ? Number(s.ai_score) : null,
+      reasoning: locked
+        ? 'Buy an analysis token to unlock your full breakdown.'
+        : humanizeReasoning(s.ai_reasoning),
     })),
   })
 }

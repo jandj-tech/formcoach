@@ -70,7 +70,7 @@ export default async function LearnPage() {
             <li>Straight head-on is fine, and so is <strong>a little off to one side</strong> — as long as you stay in front. If you angle it, go toward the <strong>guide-hand side</strong>: that shows whether the shooting arm makes a proper <strong>L</strong> or opens into a wide <strong>V</strong>.</li>
             <li>Frame the <strong>whole body, head to feet</strong> — cropped at the waist loses stance, knee bend and foot position.</li>
             <li>But <strong>not from across the gym</strong> — that far away, the elbow and hands are too small to read.</li>
-            <li>One shot per video works best. MP4 or MOV, up to 5 minutes.</li>
+            <li><strong>Just the shot</strong> — a few seconds is all it needs. One shot per video, MP4 or MOV.</li>
             <li>Want <strong>arc and rotation</strong> graded too? Film a second clip from the side, with the ball&apos;s whole flight and the rim in frame.</li>
           </ul>
 

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { del } from '@vercel/blob'
+import { deleteObjects } from '@/lib/storage'
 import { getSession } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { clearAllSessions } from '@/lib/sessions'
@@ -63,7 +63,7 @@ export async function DELETE() {
   // Best-effort blob cleanup — don't fail the deletion if storage is unreachable.
   if (blobUrls.length > 0) {
     try {
-      await del(blobUrls)
+      await deleteObjects(blobUrls)
     } catch (err) {
       console.warn('Delete-account blob cleanup failed:', err instanceof Error ? err.message : err)
     }

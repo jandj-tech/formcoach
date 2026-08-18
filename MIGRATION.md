@@ -42,6 +42,7 @@ Copy every existing Vercel env var over, then change/add these:
 | `S3_SECRET_ACCESS_KEY` | R2 secret |
 | `S3_PUBLIC_BASE_URL` | public base URL of the bucket (e.g. `https://cdn.learnhoops.com`) |
 | `NEXT_PUBLIC_BASE_URL` | `https://learnhoops.com` (fixes email links; replaces the Vercel `VERCEL_URL` fallback) |
+| `REVENUECAT_WEBHOOK_SECRET` | must equal the Authorization header value configured in RevenueCat → Integrations → Webhooks; `/api/iap/webhook` rejects mismatches once set |
 
 Keep all the others as-is: `ANTHROPIC_API_KEY`, `STRIPE_SECRET_KEY`,
 `TWILIO_*`, `RESEND_API_KEY`, `JWT_SECRET`, `META_*`, `YOUTUBE_*`, etc.

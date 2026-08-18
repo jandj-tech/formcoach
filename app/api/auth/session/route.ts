@@ -66,13 +66,16 @@ export async function GET(req: NextRequest) {
       // preview). Only meaningful when they have no tokens or subscription.
       const freeUpload = !isSubscribed && tokens <= 0 && user.free_analysis_used === false
 
-      // The iOS app's Analyze tab unlocks on tokens > 0 and predates the
-      // freeUpload flag, so it would paywall brand-new accounts that still
-      // have their free analysis. Present that free analysis as a token to
-      // app clients only (native iOS requests carry CFNetwork in the UA;
-      // browsers never do — web handles freeUpload itself).
-      const isNativeApp = (req.headers.get('user-agent') ?? '').includes('CFNetwork')
-      const appTokens = isNativeApp && freeUpload ? tokens + 1 : tokens
+      // App builds ≤14 gate the Analyze tab on tokens > 0 and predate the
+      // freeUpload flag, so the free analysis is presented to them as a
+      // token. Build 15+ label the free analysis distinctly and must see
+      // real numbers (a virtual token would show a bogus "1 TOKEN" badge on
+      // Home). iOS native UAs look like "LearnHoops/<build> CFNetwork/…";
+      // if the format ever differs, no inflation — new builds stay correct
+      // and old builds just fall back to their pre-existing paywall.
+      const buildMatch = (req.headers.get('user-agent') ?? '').match(/\bLearnHoops\/(\d+)\b/)
+      const legacyAppBuild = !!buildMatch && parseInt(buildMatch[1], 10) <= 14
+      const appTokens = legacyAppBuild && freeUpload ? tokens + 1 : tokens
 
       return NextResponse.json({
         user: { id: user.id, email: user.email, subscribed, tokens: appTokens, onTeam, onInitiatedTeam, freeUpload },

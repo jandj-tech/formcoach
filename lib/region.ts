@@ -22,9 +22,34 @@ import type { NextRequest } from 'next/server'
 export type Region = 'CA' | 'US'
 export type Currency = 'cad' | 'usd'
 
-/** The buyer's country, as Vercel resolved it. Anything but Canada reads as US. */
+/**
+ * Headers that carry the caller's country, in the order they are trusted.
+ *
+ * Only the platform sets these — a client cannot, because the edge overwrites
+ * whatever arrived. Listing several is what keeps currency correct across a
+ * host move: on Vercel only the first exists, behind Cloudflare only the
+ * second, and Render/Fly/Netlify use the third or fourth. Without this,
+ * leaving Vercel silently bills every Canadian in USD, because the lookup
+ * fails closed to 'US' and nothing errors.
+ */
+const COUNTRY_HEADERS = [
+  'x-vercel-ip-country', // Vercel
+  'cf-ipcountry', // Cloudflare (incl. R2/Workers in front of any origin)
+  'x-nf-client-connection-country', // Netlify
+  'fly-client-country', // Fly.io
+  'x-geo-country', // common reverse-proxy convention
+  'x-country-code',
+] as const
+
+/** The buyer's country, from whichever platform header is present. Non-Canada reads as US. */
 export function regionFromRequest(req: NextRequest): Region {
-  return req.headers.get('x-vercel-ip-country') === 'CA' ? 'CA' : 'US'
+  for (const h of COUNTRY_HEADERS) {
+    const v = req.headers.get(h)
+    if (v && v.trim().toUpperCase() === 'CA') return 'CA'
+    // A present-but-different header is an answer: this caller is not in Canada.
+    if (v && v.trim()) return 'US'
+  }
+  return 'US'
 }
 
 /** The Stripe currency for a region. */

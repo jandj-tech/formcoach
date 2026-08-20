@@ -34,14 +34,18 @@ export default function VolumeNudge({
   const more = nextTier.minQty - Math.max(0, Math.floor(quantity) || 0)
   if (jumped.savingsCents <= 0 || more <= 0) return null
 
+  // Tiers may carry fractional percentages (tuned to land exact bundle
+  // totals); the offer reads as a round number.
+  const pct = Math.round(nextTier.percentOff)
+
   const body = (
     <>
       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-green-600 text-xs font-black text-white">
-        −{nextTier.percentOff}%
+        −{pct}%
       </span>
       <span className="min-w-0 text-left">
         <span className="block text-sm font-black leading-tight text-green-900">
-          Add {more} more and save {nextTier.percentOff}%
+          Add {more} more and save {pct}%
         </span>
         <span className="block text-xs font-semibold text-green-800/80">
           {nextTier.minQty} {label} for {usd(jumped.totalCents)} — {usd(jumped.unitCents)} each

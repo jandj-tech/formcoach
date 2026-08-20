@@ -5,6 +5,7 @@ import { trackInitiateCheckout } from '@/lib/meta-pixel'
 import { useIsInApp } from '@/lib/useIsInApp'
 import { orderPricing, usd, REGULAR_ANALYSIS_PRICE_CENTS, MAX_TOKENS_PER_ORDER } from '@/lib/team-pricing'
 import QuantityStepper from '@/components/QuantityStepper'
+import VolumeNudge from '@/components/VolumeNudge'
 
 // The classic credit-shop pack picker: preset tiers with the recommended one
 // highlighted, per-token anchoring against the single price, and a custom
@@ -113,11 +114,23 @@ export default function TokenPacks() {
             <div className="min-w-0">
               <p className="text-ink-950 font-black text-base">Custom amount</p>
               <p className="text-ink-950/50 text-xs mt-0.5">
-                {usd(custom.unitCents)} per analysis — down to {usd(floorUnit)} each at 15+
+                {usd(custom.unitCents)} per analysis
+                {custom.savingsCents > 0 ? (
+                  <span className="text-ember-700 font-bold"> · save {usd(custom.savingsCents)} ({Math.round(custom.percentOff)}%)</span>
+                ) : (
+                  <span> — down to {usd(floorUnit)} each at 15+</span>
+                )}
               </p>
             </div>
             <QuantityStepper value={customQty} onChange={setCustomQty} min={1} max={MAX_TOKENS_PER_ORDER} size="sm" ariaLabel="Number of analysis tokens" />
           </div>
+          <VolumeNudge
+            baseUnitCents={REGULAR_ANALYSIS_PRICE_CENTS}
+            quantity={customQty}
+            onJump={(q) => setCustomQty(Math.min(MAX_TOKENS_PER_ORDER, q))}
+            label="tokens"
+            className="mt-3"
+          />
           <button
             onClick={() => buy(customQty)}
             disabled={buyingQty !== null}

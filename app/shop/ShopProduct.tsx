@@ -7,7 +7,7 @@ import useEmblaCarousel from 'embla-carousel-react'
 import { useCart } from '@/lib/cart'
 import type { Variant, Size } from '@/lib/cart'
 import QuantityStepper from '@/components/QuantityStepper'
-import PremiumCTA from '@/components/PremiumCTA'
+import TokenPacks from './TokenPacks'
 
 const SIZES: { value: Size; inches: string; label: string }[] = [
   { value: '5', inches: '27.5"', label: 'Youth' },
@@ -304,7 +304,7 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
             </div>
 
             <div className="space-y-4 lg:pt-16">
-              <PremiumCTA />
+              <TokenPacks />
               <Link
                 href="/analyze"
                 className="block text-center bg-ink-950 hover:bg-ink-800 active:scale-[0.98] text-chalk font-bold px-8 py-4 rounded-full text-base transition-all"

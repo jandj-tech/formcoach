@@ -45,14 +45,11 @@ export type VolumeTier = { minQty: number; percentOff: number }
  * Ordered highest-first — `find` returns the best tier the quantity qualifies for.
  */
 export const REGULAR_VOLUME_TIERS: ReadonlyArray<VolumeTier> = [
-  // 3 and 5 are the advertised bundles: 3 for $6.99 ($2.33/ea) and
-  // 5 for $8.95 ($1.79/ea) off the $3.49 single. The deeper tiers keep
-  // coach/org bulk orders near the per-token prices they paid before the
-  // 2026-08 base-price increase (179¢ → 349¢).
-  { minQty: 100, percentOff: 67 },
-  { minQty: 50, percentOff: 64 },
-  { minQty: 25, percentOff: 60 },
-  { minQty: 10, percentOff: 55 },
+  // The advertised curve: 3 for $6.99 ($2.33/ea), 5–9 at the 5-pack rate
+  // ($1.79/ea), 10–14 another 10% off ($1.61/ea), and from 15 the price
+  // floors at $1.49/ea — larger orders never go below the floor.
+  { minQty: 15, percentOff: 57.3 },
+  { minQty: 10, percentOff: 53.9 },
   { minQty: 5, percentOff: 48.7 },
   { minQty: 3, percentOff: 33.2 },
 ]

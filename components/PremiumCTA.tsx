@@ -108,7 +108,7 @@ export default function PremiumCTA({ dark = false, initiated = false }: { dark?:
             </p>
             {percentOff > 0 && (
               <p className="text-xs text-green-500 font-semibold mt-0.5">
-                {percentOff}% volume discount — you save {usd(savingsCents)}
+                {Math.round(percentOff)}% volume discount — you save {usd(savingsCents)}
               </p>
             )}
           </div>

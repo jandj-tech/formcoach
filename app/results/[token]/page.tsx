@@ -12,6 +12,8 @@ import { getCriteriaVideoMap } from '@/lib/youtube'
 import FrameViewer from './FrameViewer'
 import ShareResultButton from './ShareResultButton'
 import UnlockCta from './UnlockCta'
+import { getSession } from '@/lib/auth'
+import { shouldShowInboxNotice } from '@/lib/filming-tips'
 import CoachNoteEditor from '@/components/CoachNoteEditor'
 import PersonalNoteEditor from '@/components/PersonalNoteEditor'
 import { resolveAnalysisNoteAuthor, getAnalysisNotes } from '@/lib/analysis-notes'
@@ -170,6 +172,16 @@ export default async function ResultsPage({
     analysisNoteAuthor?.authorKey ?? null,
   )
 
+  // "Check your inbox" — only on the owner's own first report, and only once
+  // the filming email is recorded as actually sent to them. Suppressed in the
+  // player preview, which exists to show exactly what a visitor sees.
+  const viewer = previewAsPlayer ? null : await getSession()
+  const showInboxNotice = await shouldShowInboxNotice({
+    viewerUserId: viewer?.userId,
+    viewerEmail: viewer?.email,
+    ownerUserId: submission.user_id as string | null,
+  })
+
   // Load tutorial-video map for the criteria the player needs help with (< 7.5).
   // The video map function handles manual overrides and YouTube auto-matching.
   const needsHelp = scores
@@ -204,6 +216,17 @@ export default async function ResultsPage({
             score={analysis.overall_score != null ? Number(analysis.overall_score) : null}
           />
         </div>
+
+        {showInboxNotice && (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 bg-orange-50 border-2 border-orange-200 rounded-2xl px-5 py-4">
+            <p className="text-sm font-black text-orange-700">📬 Check your inbox</p>
+            <p className="text-sm text-orange-900/80 leading-relaxed">
+              We&apos;ve emailed you a short guide to filming your next shot — where to stand and
+              what to keep in frame. Following it is the single biggest thing you can do to make
+              your next score accurate.
+            </p>
+          </div>
+        )}
 
         {noteAuthor && (
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-2.5">

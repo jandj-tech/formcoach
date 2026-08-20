@@ -2,6 +2,53 @@ import { db } from './db'
 import { sendFilmingTipsEmail } from './email'
 
 /**
+ * Whether to tell this viewer, on this report, that a filming email is waiting.
+ *
+ * Three conditions, all required, because the claim is specific and a results
+ * link is shareable:
+ *
+ *   - the viewer owns this report (a stranger opening the link must not be
+ *     told to check an inbox that is not theirs),
+ *   - the email was actually LOGGED as sent to them, so an unsubscribed or
+ *     failed send never produces a notice pointing at an email that isn't
+ *     there,
+ *   - and this is still their only analysis, which is what makes it "your
+ *     first".
+ *
+ * Never throws: a report must render even if this lookup fails.
+ */
+export async function shouldShowInboxNotice(args: {
+  viewerUserId?: string | null
+  viewerEmail?: string | null
+  ownerUserId?: string | null
+}): Promise<boolean> {
+  const { viewerUserId, viewerEmail, ownerUserId } = args
+  if (!viewerUserId || !ownerUserId || viewerUserId !== ownerUserId) return false
+  const email = viewerEmail?.trim().toLowerCase()
+  if (!email) return false
+
+  try {
+    const [row] = (await db`
+      SELECT
+        (
+          SELECT count(*)::int
+          FROM submissions s
+          JOIN analyses a ON a.submission_id = s.id
+          WHERE s.user_id = ${ownerUserId}
+        ) AS analyses,
+        EXISTS (
+          SELECT 1 FROM email_logs
+          WHERE lower(email) = ${email} AND email_type = 'filming_tips'
+        ) AS mailed
+    `) as unknown as [{ analyses: number; mailed: boolean } | undefined]
+    return !!row && row.analyses <= 1 && row.mailed
+  } catch (err) {
+    console.error('[filming-tips] inbox notice check failed:', err)
+    return false
+  }
+}
+
+/**
  * Sends the filming guide to someone who has just had their first analysis
  * graded — once, ever.
  *

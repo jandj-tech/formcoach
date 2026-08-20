@@ -47,6 +47,25 @@ Copy every existing Vercel env var over, then change/add these:
 Keep all the others as-is: `ANTHROPIC_API_KEY`, `STRIPE_SECRET_KEY`,
 `TWILIO_*`, `RESEND_API_KEY`, `JWT_SECRET`, `META_*`, `YOUTUBE_*`, etc.
 
+### Warehouse addresses (shipping)
+
+Stock sits in two places and every order ships domestically from the nearer
+one, which is why the zone tables in `lib/shipping.ts` price the way they do.
+These are only read when buying labels or fetching live carrier rates
+(`SHIPPO_API_KEY`); the built-in tables quote fine without them, which is why a
+missing address stays invisible until the first label purchase fails.
+
+| Var | Value |
+| --- | --- |
+| `SHIP_FROM_CA_NAME` / `SHIP_FROM_US_NAME` | `LearnHoops` |
+| `SHIP_FROM_CA_LINE1` | `15 Timna Crescent` |
+| `SHIP_FROM_CA_CITY` / `_STATE` / `_ZIP` | `Maple` / `ON` / `L6A 0W7` |
+| `SHIP_FROM_US_LINE1` | `1114 Spottswoode St` |
+| `SHIP_FROM_US_CITY` / `_STATE` / `_ZIP` | `Henderson` / `NV` / `89002` |
+
+The US origin ZIP matters beyond labels: the US zone table is calibrated on
+distance from `89xxx`, so an origin elsewhere would mis-zone every US quote.
+
 ---
 
 ## Code: the R2 storage driver

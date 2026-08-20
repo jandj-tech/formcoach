@@ -1175,7 +1175,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                             A team becomes active (&ldquo;initiated&rdquo;) at
                             8 players, or automatically when it&rsquo;s part of
                             a class package. Once any of your teams is active,
-                            tokens drop from $1.79 to $0.99 across your whole
+                            tokens drop from $3.49 to $0.99 across your whole
                             organization.
                           </InfoTip>
                         </p>
@@ -1491,7 +1491,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                     {isBuyOpen && (
                       <div className="px-4 py-4 space-y-3">
                         {!team.initiated && !teams.some(t => t.initiated) && (
-                          <p className="text-xs text-orange-600 font-semibold">Team not yet active — tokens are $1.79 each until any of your teams reaches 8 players.</p>
+                          <p className="text-xs text-orange-600 font-semibold">Team not yet active — tokens are $3.49 each until any of your teams reaches 8 players.</p>
                         )}
                         <div className="space-y-1">
                           <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Send to</label>

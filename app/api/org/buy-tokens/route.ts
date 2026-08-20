@@ -13,7 +13,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL && process.env.NEXT_PUBLIC_BAS
 
 // An organization buys analysis tokens into its own balance. From there the
 // org can assign them to players, give them to a coach, or use them itself.
-// $0.99 each once the org has a team with 8+ players, $1.79 before.
+// $0.99 each once the org has a team with 8+ players, $3.49 before.
 export async function POST(req: NextRequest) {
   // Digital goods cannot be sold via Stripe inside the iOS app (guideline 3.1.1).
   const inAppBlock = rejectInAppPurchase(req)

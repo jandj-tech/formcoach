@@ -94,7 +94,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     'Upload a video of your basketball jump shot and AI grades your shooting form on 18 coaching criteria — elbow alignment, stance, arc, follow-through — with personalized drills to improve.',
                   offers: {
                     '@type': 'Offer',
-                    price: '1.79',
+                    price: '3.49',
                     priceCurrency: 'USD',
                     description: 'Per shot analysis. First analysis free with a new account.',
                   },

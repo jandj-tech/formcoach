@@ -8,7 +8,7 @@
 export const INITIATION_MIN_PLAYERS = 8
 
 /** Regular per-analysis price (cents) — players, and coaches/orgs before their team is initiated. */
-export const REGULAR_ANALYSIS_PRICE_CENTS = 179
+export const REGULAR_ANALYSIS_PRICE_CENTS = 349
 
 /** Discounted per-token price (cents) once a team is initiated. */
 export const TEAM_TOKEN_PRICE_CENTS = 99
@@ -45,12 +45,16 @@ export type VolumeTier = { minQty: number; percentOff: number }
  * Ordered highest-first — `find` returns the best tier the quantity qualifies for.
  */
 export const REGULAR_VOLUME_TIERS: ReadonlyArray<VolumeTier> = [
-  { minQty: 100, percentOff: 30 },
-  { minQty: 50, percentOff: 25 },
-  { minQty: 25, percentOff: 20 },
-  { minQty: 10, percentOff: 15 },
-  { minQty: 5, percentOff: 10 },
-  { minQty: 3, percentOff: 5 },
+  // 3 and 5 are the advertised bundles: 3 for $6.99 ($2.33/ea) and
+  // 5 for $8.95 ($1.79/ea) off the $3.49 single. The deeper tiers keep
+  // coach/org bulk orders near the per-token prices they paid before the
+  // 2026-08 base-price increase (179¢ → 349¢).
+  { minQty: 100, percentOff: 67 },
+  { minQty: 50, percentOff: 64 },
+  { minQty: 25, percentOff: 60 },
+  { minQty: 10, percentOff: 55 },
+  { minQty: 5, percentOff: 48.7 },
+  { minQty: 3, percentOff: 33.2 },
 ]
 
 /**

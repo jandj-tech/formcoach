@@ -32,14 +32,22 @@ function check(name: string, ok: boolean, detail = '') {
 const REGULAR = REGULAR_ANALYSIS_PRICE_CENTS // 179
 const TEAM = TEAM_TOKEN_PRICE_CENTS // 99
 
-/** The regular ladder, stated independently of the module. */
+/**
+ * The regular ladder, stated independently of the module.
+ *
+ * Updated 2026-08 when the single price went 179¢ → 349¢ and the tiers were
+ * rewritten to land on advertised bundle prices (3 for $6.99, 5 for $8.95).
+ * The percentages are odd numbers because they are derived from those totals
+ * rather than chosen — which is exactly why the prices, not the percentages,
+ * are what this file pins.
+ */
 function expectedRegularPercent(q: number): number {
-  if (q >= 100) return 30
-  if (q >= 50) return 25
-  if (q >= 25) return 20
-  if (q >= 10) return 15
-  if (q >= 5) return 10
-  if (q >= 3) return 5
+  if (q >= 100) return 67
+  if (q >= 50) return 64
+  if (q >= 25) return 60
+  if (q >= 10) return 55
+  if (q >= 5) return 48.7
+  if (q >= 3) return 33.2
   return 0
 }
 
@@ -61,6 +69,10 @@ const LADDERS = [
 for (const { name, base, expected } of LADDERS) {
   let prevUnit = Infinity
   const inversions: number[] = []
+  // Per-ladder, not the global count: reading `failures.length` meant one
+  // ladder's failure marked every later ladder failed too, which sends you
+  // hunting a bug in the wrong table.
+  const failuresBefore = failures.length
 
   for (let q = 1; q <= MAX_TOKENS_PER_ORDER; q++) {
     const { percentOff, unitCents, totalCents, fullTotalCents, savingsCents, nextTier } =
@@ -98,15 +110,22 @@ for (const { name, base, expected } of LADDERS) {
     prevUnit = unitCents
   }
 
-  check(`${name}: every quantity 1..${MAX_TOKENS_PER_ORDER} priced correctly`, failures.length === 0)
-
-  // Total cost is NOT monotonic — a deeper tier can outrun the extra unit, so
-  // 25 costs less than 24. That is the ladder working as intended (the buyer
-  // is never punished for buying more), and the same three points inverted
-  // before the split. Assert the set is unchanged rather than empty.
   check(
-    `${name}: cheaper-than-the-step-below points are exactly {24, 49, 99}`,
-    JSON.stringify(inversions) === JSON.stringify([24, 49, 99]),
+    `${name}: every quantity 1..${MAX_TOKENS_PER_ORDER} priced correctly`,
+    failures.length === failuresBefore,
+  )
+
+  // Total cost can fall as quantity rises when a tier jump outruns the extra
+  // unit — harmless (the buyer is never punished for buying more), but worth
+  // pinning so a tier edit cannot introduce a surprise cliff unnoticed.
+  // The regular ladder had {24, 49, 99} before the 2026-08 re-pricing. The
+  // bundle tiers added 4 and 9: five analyses ($8.95) genuinely cost less than
+  // four ($9.32), which is the bundle doing its job. The team ladder is
+  // unchanged.
+  const expectedInversions = name === 'team' ? [24, 49, 99] : [4, 9, 24, 49, 99]
+  check(
+    `${name}: cheaper-than-the-step-below points are exactly {${expectedInversions.join(', ')}}`,
+    JSON.stringify(inversions) === JSON.stringify(expectedInversions),
     `got {${inversions.join(', ')}}`,
   )
 
@@ -127,10 +146,12 @@ check('team rate undercuts regular at every quantity', crossed === null, crossed
 
 // --- spot values, hardcoded ------------------------------------------------
 const SPOTS: Array<[number, number, number]> = [
-  [REGULAR, 1, 179], [REGULAR, 2, 179], [REGULAR, 3, 170], [REGULAR, 4, 170],
-  [REGULAR, 5, 161], [REGULAR, 9, 161], [REGULAR, 10, 152], [REGULAR, 24, 152],
-  [REGULAR, 25, 143], [REGULAR, 49, 143], [REGULAR, 50, 134], [REGULAR, 99, 134],
-  [REGULAR, 100, 125], [REGULAR, 1000, 125],
+  // The advertised prices. These are the product promise; if one of these
+  // moves, a page somewhere is now lying about what checkout charges.
+  [REGULAR, 1, 349], [REGULAR, 2, 349], [REGULAR, 3, 233], [REGULAR, 4, 233],
+  [REGULAR, 5, 179], [REGULAR, 9, 179], [REGULAR, 10, 157], [REGULAR, 24, 157],
+  [REGULAR, 25, 140], [REGULAR, 49, 140], [REGULAR, 50, 126], [REGULAR, 99, 126],
+  [REGULAR, 100, 115], [REGULAR, 1000, 115],
   [TEAM, 1, 99], [TEAM, 3, 99], [TEAM, 5, 99], [TEAM, 9, 99], [TEAM, 10, 94],
   [TEAM, 25, 89], [TEAM, 50, 84], [TEAM, 100, 74],
 ]

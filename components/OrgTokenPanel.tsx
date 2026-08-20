@@ -231,7 +231,7 @@ export default function OrgTokenPanel({
             {!anyInitiated && teams.length > 0 && (
               <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-4 space-y-3">
                 <p className="text-sm font-black text-orange-900">Tokens drop to $0.99 once a team reaches 8 players</p>
-                <p className="text-xs text-orange-700">Currently $1.79 each — get more players to unlock the lower price.</p>
+                <p className="text-xs text-orange-700">Currently $3.49 each — get more players to unlock the lower price.</p>
                 <div className="space-y-2 pt-1">
                   {teams.map(t => {
                     const pct = Math.min(100, (t.memberCount / 8) * 100)

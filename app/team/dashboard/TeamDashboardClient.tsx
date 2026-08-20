@@ -898,7 +898,7 @@ export default function TeamDashboardClient({
             <div className="flex items-center gap-1.5">
               <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wide">Credit price</h2>
               <InfoTip label="What does initiation mean?" align="right">
-                Credits start at $1.79. Once your team is initiated — 8 players
+                Credits start at $3.49. Once your team is initiated — 8 players
                 have joined, or a class package was purchased for it — the
                 price drops to $0.99 per credit.
               </InfoTip>

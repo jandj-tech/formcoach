@@ -13,7 +13,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL && process.env.NEXT_PUBLIC_BAS
     : 'http://localhost:3000'
 
 // A coach or org owner buys analysis credits for their own shot uploads.
-// $0.99 each once their team has 8+ players, $1.79 before.
+// $0.99 each once their team has 8+ players, $3.49 before.
 export async function POST(req: NextRequest) {
   // Digital goods cannot be sold via Stripe inside the iOS app (guideline 3.1.1).
   const inAppBlock = rejectInAppPurchase(req)

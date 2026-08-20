@@ -107,12 +107,15 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
               <div className="inline-flex items-center gap-2 bg-green-500/10 border border-green-500/30 rounded-full px-4 py-1.5">
                 <span className="text-green-500 text-xs font-semibold tracking-wider uppercase">In Stock</span>
               </div>
-              {!isInApp && (
-                <span className="inline-flex items-center bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-semibold px-3 py-1.5 rounded-full">
-                  {FREE_ANALYSES_PER_BALL * quantity} Shot Analyses Included Free
-                  {quantity > 1 ? ` (${FREE_ANALYSES_PER_BALL} per ball)` : ''}
-                </span>
-              )}
+              {/* Product-inclusion facts about a physical good — shown in the
+                  app too; the ball itself is legitimately sold via Stripe. */}
+              <span className="inline-flex items-center bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-semibold px-3 py-1.5 rounded-full">
+                {FREE_ANALYSES_PER_BALL * quantity} Shot Analyses Included Free
+                {quantity > 1 ? ` (${FREE_ANALYSES_PER_BALL} per ball)` : ''}
+              </span>
+              <span className="inline-flex items-center bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-black tracking-wider uppercase px-3 py-1.5 rounded-full">
+                Best Value
+              </span>
             </div>
 
             <h2 className="font-display font-black uppercase text-[clamp(1.7rem,3vw,2.4rem)] text-chalk leading-[0.95] break-words">

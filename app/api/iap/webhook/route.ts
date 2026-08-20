@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
-const TOKEN_PRODUCT_ID = 'com.learnhoops.app.token'
+// Consumable token products and how many analysis tokens each grants.
+const TOKEN_PRODUCTS: Record<string, number> = {
+  'com.learnhoops.app.token': 1,
+  'com.learnhoops.app.token3': 3,
+  'com.learnhoops.app.token5': 5,
+}
 const PURCHASE_EVENT_TYPES = ['INITIAL_PURCHASE', 'NON_SUBSCRIPTION_PURCHASE', 'NON_RENEWING_PURCHASE']
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -25,7 +30,8 @@ export async function POST(req: NextRequest) {
     const event = body.event
     if (!event) return NextResponse.json({ ok: true })
 
-    if ((event.product_id ?? '') !== TOKEN_PRODUCT_ID) return NextResponse.json({ ok: true })
+    const tokensForProduct = TOKEN_PRODUCTS[event.product_id ?? '']
+    if (!tokensForProduct) return NextResponse.json({ ok: true })
     if (!PURCHASE_EVENT_TYPES.includes(event.type ?? '')) return NextResponse.json({ ok: true })
 
     const eventId: string | undefined = event.id ?? event.transaction_id
@@ -51,14 +57,14 @@ export async function POST(req: NextRequest) {
 
     const inserted = await db`
       INSERT INTO iap_events (event_id, transaction_id, user_id, product_id, tokens_granted)
-      VALUES (${eventId}, ${event.transaction_id ?? null}, ${userId}, ${event.product_id}, ${userId ? 1 : 0})
+      VALUES (${eventId}, ${event.transaction_id ?? null}, ${userId}, ${event.product_id}, ${userId ? tokensForProduct : 0})
       ON CONFLICT (event_id) DO NOTHING
       RETURNING event_id
     `
     if (inserted.length > 0 && userId) {
       await db`
         UPDATE users
-        SET analysis_tokens = COALESCE(analysis_tokens, 0) + 1
+        SET analysis_tokens = COALESCE(analysis_tokens, 0) + ${tokensForProduct}
         WHERE id = ${userId}
       `
     }

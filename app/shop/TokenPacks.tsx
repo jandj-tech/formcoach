@@ -136,6 +136,10 @@ export default function TokenPacks() {
       )}
 
       {error ? <p className="text-red-600 text-xs">{error}</p> : null}
+
+      <p className="text-ink-950/45 text-[11px] text-center">
+        Best prices, any quantity — tokens bought here work everywhere, including the iPhone app.
+      </p>
     </div>
   )
 }

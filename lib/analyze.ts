@@ -742,6 +742,76 @@ function majority(bools: boolean[]): boolean {
   return bools.filter(Boolean).length * 2 > bools.length
 }
 
+/**
+ * The release gate. Grading passes narrate an entire shot from a follow-through
+ * pose plus ambient frames when the extraction window misses the actual shot
+ * (observed in production: a post-release + dribbling clip graded 8.2). A
+ * single pointed question is far harder to confabulate than an 18-criterion
+ * grading task, so before any grading we ask ONLY for the release frame. No
+ * release visible → no shot, regardless of what full passes would have said.
+ * Fails open on transport errors: a gate outage must not take grading down.
+ */
+async function findReleaseFrame(
+  frameBase64Array: string[],
+  frameMimeTypes: string[],
+  model: string
+): Promise<number | null | 'error'> {
+  try {
+    const imageBlocks: Anthropic.ImageBlockParam[] = frameBase64Array.map((data, i) => ({
+      type: 'image',
+      source: { type: 'base64', media_type: (frameMimeTypes[i] || 'image/jpeg') as 'image/jpeg', data },
+    }))
+    const n = frameBase64Array.length
+    const response = await getAnthropic().messages.create({
+      temperature: 0,
+      model,
+      max_tokens: 300,
+      messages: [{
+        role: 'user',
+        content: [
+          ...imageBlocks,
+          {
+            type: 'text',
+            text: `These are ${n} frames, numbered 0 to ${n - 1} in order, from one basketball video.
+
+Your ONLY task: find the RELEASE — a frame where the ball is leaving or has just left the shooter's hand(s) at the top of a shooting motion, with the frames immediately before it showing that shooting motion (ball held, rising toward a set point).
+
+Be strict. A follow-through pose with the ball already gone and NO prior frame showing the ball in the shooter's hands going up is NOT a visible release. Dribbling, standing, walking, or holding the ball is NOT a release.
+
+Output ONLY this JSON: {"release_frame": <number>, "why": "<one short sentence>"} — or {"release_frame": -1, "why": "<one short sentence>"} if no release is visible in these frames.`,
+          },
+        ],
+      }],
+    })
+    const text = response.content[0]?.type === 'text' ? response.content[0].text : ''
+    const match = text.match(/\{[\s\S]*?\}/)
+    if (!match) return 'error'
+    const parsed = JSON.parse(match[0])
+    const frame = Number(parsed.release_frame)
+    if (!Number.isFinite(frame)) return 'error'
+    return frame >= 0 && frame < n ? frame : null
+  } catch {
+    return 'error'
+  }
+}
+
+/** The no-shot result the release gate returns without running any grading pass. */
+function noShotResult(criteriaIds: number[], graderVersion: GraderVersion): AnalysisResult {
+  return {
+    overall_score: 0,
+    shot_detected: false,
+    player_assessment: { player_type: 'recreational', player_name: null },
+    critical_flags: {
+      elbow_severely_out: false,
+      followthrough_flick_to_side: false,
+      arc_too_flat: false,
+      chest_pass_hands: false,
+    },
+    grader_version: graderVersion,
+    criteria: criteriaIds.map((id) => ({ id, score: null, reasoning: '' })),
+  }
+}
+
 export async function analyzeShot(
   frameBase64Array: string[],
   frameMimeTypes: string[],
@@ -760,6 +830,12 @@ export async function analyzeShot(
     model,
     passes,
     calibration_version: ctx.calibrationVersion,
+  }
+
+  // Release gate before any grading pass (see findReleaseFrame).
+  const releaseFrame = await findReleaseFrame(frameBase64Array, frameMimeTypes, model)
+  if (releaseFrame === null) {
+    return noShotResult(ctx.activeCriteria.map((c) => c.id), graderVersion)
   }
 
   // Sequential on purpose: pass 1 writes the prompt+image prefix into the

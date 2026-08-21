@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import MobileNav from './MobileNav'
 import CartLink from './CartLink'
+import TokenBanner from './TokenBanner'
 import { useIsInApp } from '@/lib/useIsInApp'
 
 const tabs = [
@@ -49,17 +50,25 @@ export default function TopNav() {
   // brand bar with just the logo and cart so pages don't read as a website.
   if (inApp) {
     return (
-      <nav className="h-16 flex items-center justify-between px-4 border-b border-zinc-800 bg-black">
-        <Image
-          src="/learnhoops-logo.png"
-          alt="LearnHoops.com"
-          width={578}
-          height={113}
-          style={{ height: '40px', width: 'auto' }}
-          priority
-        />
-        <CartLink />
-      </nav>
+      <>
+        {/* safe-area padding keeps the logo/cart clear of the notch and
+            status bar — the WebView runs edge-to-edge (viewport-fit=cover) */}
+        <nav
+          className="flex items-center justify-between px-4 border-b border-zinc-800 bg-black"
+          style={{ paddingTop: 'calc(env(safe-area-inset-top) + 8px)', paddingBottom: 8, minHeight: 56 }}
+        >
+          <Image
+            src="/learnhoops-logo.png"
+            alt="LearnHoops.com"
+            width={578}
+            height={113}
+            style={{ height: '40px', width: 'auto' }}
+            priority
+          />
+          <CartLink />
+        </nav>
+        <TokenBanner pathname={pathname} inApp />
+      </>
     )
   }
 
@@ -120,6 +129,7 @@ export default function TopNav() {
           <MobileNav tabs={mobileTabs} />
         </div>
       </div>
+      <TokenBanner pathname={pathname} />
     </nav>
   )
 }

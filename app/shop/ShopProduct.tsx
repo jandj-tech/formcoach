@@ -89,6 +89,24 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
         </div>
       </section>
 
+      {/* Analysis tokens — the shop's top seller leads the page. Dark like
+          the rest of the store; the ball hero follows immediately below. */}
+      <section id="analysis-tokens" className="px-4 pt-8 pb-12 scroll-mt-20">
+        <div className="max-w-6xl mx-auto">
+          <p className="eyebrow text-ember-400 mb-2 select-none">Analysis tokens</p>
+          <h2 className="font-display font-black uppercase text-[clamp(1.6rem,3.5vw,2.4rem)] text-chalk leading-[0.95]">
+            Get your shot <span className="text-gradient-ember">analyzed</span>
+          </h2>
+          <p className="text-chalk-dim text-sm mt-2 mb-6 max-w-xl">
+            1 token = 1 AI shot analysis with your full breakdown across all 18 coaching
+            criteria. Tokens never expire.
+          </p>
+          <div className="max-w-2xl">
+            <TokenPacks dark />
+          </div>
+        </div>
+      </section>
+
       {/* Product hero: sticky gallery left, buy box card right */}
       <section id="training-ball" className="hero-glow grain relative px-4 pt-10 pb-14 sm:pt-14 sm:pb-20 scroll-mt-20">
         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
@@ -301,7 +319,12 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
             </div>
 
             <div className="space-y-4 lg:pt-16">
-              <TokenPacks />
+              <a
+                href="#analysis-tokens"
+                className="block text-center bg-ember-500 hover:bg-ember-400 active:scale-[0.98] text-white font-bold px-8 py-4 rounded-full text-base transition-all"
+              >
+                Get analysis tokens ↑
+              </a>
               <Link
                 href="/analyze"
                 className="block text-center bg-ink-950 hover:bg-ink-800 active:scale-[0.98] text-chalk font-bold px-8 py-4 rounded-full text-base transition-all"

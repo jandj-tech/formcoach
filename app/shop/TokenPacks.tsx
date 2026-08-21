@@ -142,9 +142,15 @@ export default function TokenPacks() {
       ) : (
         <button
           onClick={() => setCustomOpen(true)}
-          className="w-full text-center text-ink-950/60 hover:text-ink-950 text-xs font-semibold underline underline-offset-2 py-1"
+          className="w-full rounded-xl border-2 border-dashed border-ink-950/25 hover:border-ember-500 bg-white p-4 flex items-center justify-between gap-3 text-left transition-colors"
         >
-          Need more? Choose a custom amount — as low as {usd(floorUnit)} per analysis
+          <span className="min-w-0">
+            <span className="block text-ink-950 font-black text-base">Custom amount</span>
+            <span className="block text-ink-950/50 text-xs mt-0.5">
+              Pick any number — as low as {usd(floorUnit)} per analysis at 15+
+            </span>
+          </span>
+          <span className="shrink-0 text-ember-500 font-black text-xl" aria-hidden>＋</span>
         </button>
       )}
 

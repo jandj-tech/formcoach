@@ -73,14 +73,12 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
             >
               Training Ball
             </a>
-            {!isInApp && (
-              <a
-                href="#shot-analysis"
-                className="shrink-0 bg-ink-900 border border-courtline hover:border-ember-500/60 text-chalk text-sm font-bold px-5 py-2.5 rounded-full transition-colors"
-              >
-                Shot Analysis
-              </a>
-            )}
+            <a
+              href="#shot-analysis"
+              className="shrink-0 bg-ink-900 border border-courtline hover:border-ember-500/60 text-chalk text-sm font-bold px-5 py-2.5 rounded-full transition-colors"
+            >
+              Shot Analysis
+            </a>
             <a
               href="#portable-net"
               className="shrink-0 bg-ink-900 border border-courtline hover:border-ember-500/60 text-chalk text-sm font-bold px-5 py-2.5 rounded-full transition-colors"
@@ -221,14 +219,9 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
             {/* Product details — collapsible so the buy box stays compact */}
             <div className="space-y-2 pt-1">
               <ShopAccordion title="What's included" dark>
-                One training ball in your chosen size and edition
-                {!isInApp && (
-                  <>
-                    , plus <strong className="text-chalk">{FREE_ANALYSES_PER_BALL} free AI shot analyses</strong> added
-                    to your account after purchase
-                  </>
-                )}
-                . The printed grip lines mark exactly where your fingers belong.
+                One training ball in your chosen size and edition, plus{' '}
+                <strong className="text-chalk">{FREE_ANALYSES_PER_BALL} free AI shot analyses</strong> added
+                to your account after purchase. The printed grip lines mark exactly where your fingers belong.
               </ShopAccordion>
               <ShopAccordion title="Sizing guide" dark>
                 Size 5 (27.5&quot;) fits youth players, size 6 (28.5&quot;) is the
@@ -269,8 +262,9 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
       </section>
 
       {/* AI shot analysis — light band so the product sections read as
-          distinct blocks instead of one long black page */}
-      {!isInApp && (
+          distinct blocks instead of one long black page. Shown in-app too:
+          TokenPacks renders IAP-bridged packs there, never web checkout. */}
+      {(
         <section id="shot-analysis" className="bg-chalk text-ink-950 px-4 py-16 sm:py-20 scroll-mt-20">
           <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-start">
             <div className="space-y-5">
@@ -537,17 +531,15 @@ function BundleSection({ isInApp = false }: { isInApp?: boolean }) {
               <span className="inline-flex items-center bg-ember-500 text-white text-xs font-bold tracking-wider uppercase px-3 py-1 rounded-full select-none">
                 Best Value
               </span>
-              {!isInApp && (
-                <span className="inline-flex items-center bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-semibold px-3 py-1 rounded-full">
-                  10 Shot Analyses Included Free
-                </span>
-              )}
+              <span className="inline-flex items-center bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-semibold px-3 py-1 rounded-full">
+                10 Shot Analyses Included Free
+              </span>
             </div>
             <h2 className="font-display font-black uppercase text-[clamp(1.9rem,4.5vw,3rem)] text-chalk leading-[0.95] mt-3">
               2-Ball Bundle
             </h2>
             <p className="text-chalk-dim text-sm max-w-md">
-              {isInApp ? 'Get 2 training balls. Second ball 50% off.' : 'Get 2 training balls + 10 free AI shot analyses. Second ball 50% off.'}
+              Get 2 training balls + 10 free AI shot analyses. Second ball 50% off.
             </p>
           </div>
           <div className="text-right">

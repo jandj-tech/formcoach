@@ -18,6 +18,23 @@ const PACKS: Array<{ qty: number; badge?: string; highlight?: boolean }> = [
   { qty: 5, badge: 'BEST VALUE', highlight: true },
 ]
 
+// Inside the iOS app the packs render as part of this same page (so the shop
+// reads as one continuous store), but tapping one hands off to the native
+// Apple in-app purchase — no web checkout ever runs in-app (guideline 3.1.1).
+// The app injects its localized StoreKit prices before the page loads.
+type AppPackPrices = Partial<Record<1 | 3 | 5, { label: string; amount: number }>>
+const APP_FALLBACK_PRICES: AppPackPrices = {
+  1: { label: '$3.99', amount: 3.99 },
+  3: { label: '$7.99', amount: 7.99 },
+  5: { label: '$9.99', amount: 9.99 },
+}
+
+function appPackPrices(): AppPackPrices {
+  if (typeof window === 'undefined') return APP_FALLBACK_PRICES
+  const injected = (window as unknown as { __LH_IAP_PRICES?: AppPackPrices }).__LH_IAP_PRICES
+  return { ...APP_FALLBACK_PRICES, ...(injected ?? {}) }
+}
+
 export default function TokenPacks() {
   const inApp = useIsInApp()
   const [currency, setCurrency] = useState<string | null>(null)
@@ -27,11 +44,63 @@ export default function TokenPacks() {
   const [error, setError] = useState('')
 
   useEffect(() => {
+    if (inApp) return
     fetch('/api/region').then(r => r.json()).then(({ currency: c }) => setCurrency(typeof c === 'string' ? c : null)).catch(() => {})
-  }, [])
+  }, [inApp])
 
-  // Digital purchases inside the iOS app must use native in-app purchase.
-  if (inApp) return null
+  if (inApp) {
+    const appPrices = appPackPrices()
+    const single = appPrices[1]
+    return (
+      <div className="space-y-3">
+        {PACKS.map(({ qty, badge, highlight }) => {
+          const price = appPrices[qty as 1 | 3 | 5]
+          if (!price) return null
+          const save = single && qty > 1
+            ? Math.round((1 - price.amount / (single.amount * qty)) * 100)
+            : 0
+          return (
+            <div
+              key={qty}
+              className={`relative rounded-xl border p-4 flex items-center justify-between gap-3 ${
+                highlight ? 'border-ember-500 bg-ember-500/5' : 'border-ink-950/15 bg-white'
+              }`}
+            >
+              {badge ? (
+                <span className={`absolute -top-2.5 left-4 text-[10px] font-black tracking-widest px-2.5 py-0.5 rounded-full ${
+                  highlight ? 'bg-ember-500 text-white' : 'bg-ink-950 text-chalk'
+                }`}>
+                  {badge}
+                </span>
+              ) : null}
+              <div className="min-w-0">
+                <p className="text-ink-950 font-black text-base">
+                  {qty} {qty === 1 ? 'Analysis Token' : 'Analysis Tokens'}
+                </p>
+                <p className="text-ink-950/50 text-xs mt-0.5">
+                  {qty === 1 ? 'One shot analysis' : `${qty} shot analyses`}
+                  {save > 0 ? <span className="text-ember-700 font-bold"> · save {save}%</span> : null}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  const rn = (window as unknown as { ReactNativeWebView?: { postMessage: (s: string) => void } }).ReactNativeWebView
+                  rn?.postMessage(JSON.stringify({ type: 'iap-buy', pack: qty }))
+                }}
+                className={`shrink-0 font-bold text-sm px-4 py-2.5 rounded-lg transition-colors whitespace-nowrap ${
+                  highlight
+                    ? 'bg-ember-500 hover:bg-ember-400 text-white'
+                    : 'border-2 border-ember-500 text-ember-700 hover:bg-ember-500/10'
+                }`}
+              >
+                {price.label}
+              </button>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
 
   async function buy(quantity: number) {
     trackInitiateCheckout()

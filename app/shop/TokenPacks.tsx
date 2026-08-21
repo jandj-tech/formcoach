@@ -76,7 +76,7 @@ export default function TokenPacks({ dark = false }: { dark?: boolean }) {
     const appPrices = appPackPrices()
     const single = appPrices[1]
     return (
-      <div className="space-y-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {PACKS.map(({ qty, badge, highlight }) => {
           const price = appPrices[qty as 1 | 3 | 5]
           if (!price) return null
@@ -86,7 +86,7 @@ export default function TokenPacks({ dark = false }: { dark?: boolean }) {
           return (
             <div
               key={qty}
-              className={`relative rounded-xl border p-4 flex items-center justify-between gap-3 ${highlight ? s.cardHighlight : s.card}`}
+              className={`relative rounded-xl border p-4 flex items-center justify-between gap-3 sm:flex-col sm:items-start ${highlight ? s.cardHighlight : s.card}`}
             >
               {badge ? (
                 <span className={`absolute -top-2.5 left-4 text-[10px] font-black tracking-widest px-2.5 py-0.5 rounded-full ${
@@ -109,7 +109,7 @@ export default function TokenPacks({ dark = false }: { dark?: boolean }) {
                   const rn = (window as unknown as { ReactNativeWebView?: { postMessage: (m: string) => void } }).ReactNativeWebView
                   rn?.postMessage(JSON.stringify({ type: 'iap-buy', pack: qty }))
                 }}
-                className={`shrink-0 font-bold text-sm px-4 py-2.5 rounded-lg transition-colors whitespace-nowrap ${
+                className={`shrink-0 font-bold text-sm px-4 py-2.5 rounded-lg transition-colors whitespace-nowrap sm:w-full sm:mt-auto ${
                   highlight ? s.buyFill : s.buyOutline
                 }`}
               >
@@ -156,12 +156,13 @@ export default function TokenPacks({ dark = false }: { dark?: boolean }) {
 
   return (
     <div className="space-y-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
       {PACKS.map(({ qty, badge, highlight }) => {
         const p = orderPricing(REGULAR_ANALYSIS_PRICE_CENTS, qty)
         return (
           <div
             key={qty}
-            className={`relative rounded-xl border p-4 flex items-center justify-between gap-3 ${highlight ? s.cardHighlight : s.card}`}
+            className={`relative rounded-xl border p-4 flex items-center justify-between gap-3 sm:flex-col sm:items-start ${highlight ? s.cardHighlight : s.card}`}
           >
             {badge ? (
               <span className={`absolute -top-2.5 left-4 text-[10px] font-black tracking-widest px-2.5 py-0.5 rounded-full ${
@@ -182,7 +183,7 @@ export default function TokenPacks({ dark = false }: { dark?: boolean }) {
             <button
               onClick={() => buy(qty)}
               disabled={buyingQty !== null}
-              className={`shrink-0 font-bold text-sm px-4 py-2.5 rounded-lg transition-colors whitespace-nowrap disabled:opacity-50 ${
+              className={`shrink-0 font-bold text-sm px-4 py-2.5 rounded-lg transition-colors whitespace-nowrap disabled:opacity-50 sm:w-full sm:mt-auto ${
                 highlight ? s.buyFill : s.buyOutline
               }`}
             >
@@ -191,6 +192,7 @@ export default function TokenPacks({ dark = false }: { dark?: boolean }) {
           </div>
         )
       })}
+      </div>
 
       {/* Bulk buyers: any amount, ladder pricing down to the floor. */}
       {customOpen ? (

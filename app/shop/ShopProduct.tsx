@@ -101,9 +101,7 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
             1 token = 1 AI shot analysis with your full breakdown across all 18 coaching
             criteria. Tokens never expire.
           </p>
-          <div className="max-w-2xl">
-            <TokenPacks dark />
-          </div>
+          <TokenPacks dark />
         </div>
       </section>
 

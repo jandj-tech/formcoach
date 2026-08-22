@@ -97,6 +97,7 @@ interface AnalysisResult {
     followthrough_flick_to_side: boolean
     arc_too_flat: boolean
     chest_pass_hands: boolean
+    ball_behind_head: boolean
   }
   /** Raw 0-10 flag confidences from a single pass (pre-merge). */
   flag_confidence?: {
@@ -104,6 +105,7 @@ interface AnalysisResult {
     followthrough_flick_to_side: number
     arc_too_flat: number
     chest_pass_hands: number
+    ball_behind_head: number
   }
   /** Set by analyzeShot on the merged result; absent on per-pass results. */
   grader_version?: GraderVersion
@@ -283,11 +285,13 @@ BURDEN OF PROOF — deductions require evidence of a visible flaw: You need to c
 
 MANDATORY 10 RULE: If you cannot name a specific visible flaw, the score is 10 — not 9 "to be safe," not 9.5. A score below 10 requires you to state exactly what was wrong. Never give 9 as a hedge when everything looks correct. 9 means you saw one small specific thing off; if you didn't see that thing, the score is 10.
 
+SET POINT ABOVE OR BEHIND THE HEAD — CATCH THE CATAPULT: A distinct, severe set-point fault is the ball being brought DIRECTLY ABOVE or BEHIND the head and slung from there — both elbows high and wide, forearm laid back, the release starting from over the skull like a soccer throw-in or catapult rather than from a set point in front of and slightly above the forehead. When you see the ball travel behind the hairline or the release begin from directly over the top of the head, score the set-point, shot-pocket and elbow criteria 4 or below and say so plainly in the reasoning. This is one of the most damaging habits in young shooters and must never pass unremarked.
+
 A CLEAN FINISH NEVER RESCUES A BROKEN SET POINT. The follow-through and the flight of the ball are the most eye-catching part of a clip, and a tidy goose-neck finish — or the ball going in — makes the whole shot read as good. It does not make the set point good. Inspect the frames where the ball is coming up and level with the head, BEFORE it is released, and score the arm on what you see THERE. If the elbow is flared out, the arm is opened well past a right angle into a wide V rather than folded into an L, or the ball is sitting beside the head instead of stacked above the elbow, then the elbow, shot pocket and power criteria are all low — no matter how clean the release and follow-through look afterwards. A shot can finish beautifully and still have been built wrong, and the pre-release frames are the only place that shows.
 
 CONSISTENCY CHECK (apply before finalizing every score): If your reasoning for a criterion describes good mechanics, no flaws, or nothing wrong — the score MUST be 10. A positive or neutral reasoning combined with a score below 10 is a direct contradiction. Fix the score to 10, not the reasoning.
 
-USER-FACING LANGUAGE RULE: The "reasoning" string is shown directly to the player. Write it as natural, plain-English coaching feedback — say what they did wrong and how to correct it. NEVER mention internal flag names like elbow_severely_out, followthrough_flick_to_side, arc_too_flat, chest_pass_hands, or critical_flags. NEVER write meta-phrases like "flag triggered," "cap applied," "score capped at X," or "per the rules." NEVER write "hip width" — stance width is measured against the hips internally, but players are only ever taught the "shoulder width" cue, so always word stance feedback as "shoulder width." Just describe the flaw and a tip to fix it, the way a coach would speak to a player.
+USER-FACING LANGUAGE RULE: The "reasoning" string is shown directly to the player. Write it as natural, plain-English coaching feedback — say what they did wrong and how to correct it. NEVER mention internal flag names like elbow_severely_out, followthrough_flick_to_side, arc_too_flat, chest_pass_hands, ball_behind_head, or critical_flags. NEVER write meta-phrases like "flag triggered," "cap applied," "score capped at X," or "per the rules." NEVER write "hip width" — stance width is measured against the hips internally, but players are only ever taught the "shoulder width" cue, so always word stance feedback as "shoulder width." Just describe the flaw and a tip to fix it, the way a coach would speak to a player.
 
 VISIBILITY RULE (null decisions only): If a criterion cannot be assessed AT ALL because the relevant body part or ball position is not clearly visible in any frame, return null. This is the only place visibility matters.
 
@@ -307,7 +311,15 @@ FOLLOW-THROUGH — ARMS DROPPING DOWN IS NOT A FLAW: After the ball leaves the h
 
 GUIDE HAND — SCRUTINIZE EVERY RELEASE, FRAME BY FRAME: The guide (off) hand must leave the ball completely BEFORE the ball leaves the shooting hand, and must add zero force. Step through each release and follow-through frame specifically for the guide hand — the peel is a motion, not a pose, and one tidy finish frame proves nothing about the frames before it. A two-hand release — where the guide hand is still on the ball at release, visibly pushes or steers it, or converges on the shooting hand as the arms rise so the two hands finish together — is a real and common flaw, and is NOT the same as the natural post-shot arm drop described above. It is also NOT the same as both arms simply finishing extended overhead: hands high but clearly APART, with the guide hand flat and passive, is correct form. When you see a genuine two-hand release or guide-hand flick, score "Shooting Through Guide Hand / One Hand Release" and "Guide Hand Follow Through" 4 or below and set followthrough_flick_to_side. Do not overlook this — it is one of the most score-relevant flaws, and it is easy to miss from front or elevated camera angles where the two hands overlap.
 
+ESTABLISHING THE TARGET LINE: Direction-based criteria (follow-through direction, feet squared) are judged relative to where the BASKET is. Establish it once per clip: if the rim, backboard, or net is visible in any frame, that is the target line — use it. If the basket is never visible, use the direction the shooter's TORSO faces at the moment of release as the assumed target line — shooters face their target, so the chest at release is the most reliable proxy the footage offers. Never invent a third reference; state in your reasoning which of the two you used.
+
+SHOOTING HAND FOLLOW-THROUGH — THE SNAP MUST BE STRAIGHT AND SMOOTH THROUGH THE WHOLE MOTION: Track the shooting hand across EVERY release and follow-through frame as one continuous motion. A correct snap travels straight along the target line from start to finish — wrist breaking down toward the rim, fingers pointing at the basket, palm settling toward the floor, one smooth uninterrupted path. Any sideways deviation AT ANY POINT in that motion is the flaw: a snap that starts crooked and flicks, a snap that starts clean and then whips left or right mid-motion, the palm rolling outward, or the wrist crossing the body — all of these are the same major fault and all are caught only by following the hand frame to frame. A tidy final pose proves nothing about the frames before it, and a clean start proves nothing about the finish; only a smooth, straight, single-direction snap earns a high score. When you see any of it, score the shooting-hand follow-through criterion 4 or below and set followthrough_flick_to_side.
+
+FEET AND SQUARING — CHECK THE TOES AGAINST THE TARGET LINE, THROUGH THE WHOLE SHOT: At Moment 1, before scoring the base, actively find both feet and read where the toes point relative to the target line established above. Feet pointing clearly sideways — the player's body fully open to the left or right of the target rather than facing it — is a major stance flaw and must pull the stance/squared-to-basket scoring down to 4 or below, even if the width and knee bend look fine. And like the follow-through, the base is a MOTION, not a pose: a player who sets up square but twists open sideways as they rise, or lands with the body rotated away from the target, has the same fault as one who started sideways — check the feet and hips at the set-up, through the rise, AND at the landing, and only a base that stays square to the target throughout earns a high score. A slight, deliberate angling of the feet is normal for many shooters; fully facing the side, or turning to face the side mid-shot, is not. State in your own reasoning which way the toes point — if you cannot say, you have not actually checked.
+
 CAMERA ANGLE — ELBOW ASSESSMENT: When the video is filmed from the side (player facing left or right), a side view can make the elbow appear further out than it really is. Use your best judgment — if the arm forms a clear L-shape with the elbow tucked under the ball even from the side view, give full credit. Only penalize or flag elbow_severely_out if the elbow looks clearly wrong even accounting for the side angle — do not assume it is out simply because the angle is imperfect.
+
+CAMERA ANGLE FORGIVENESS HAS A HARD BOUNDARY: An imperfect or unusual camera angle excuses only what the angle actually hides. It is a reason to withhold judgment on details the angle makes AMBIGUOUS — it is never a reason to soften a flaw that is plainly visible despite the angle. Sideways feet, a sideways wrist flick, or a two-hand release that you can clearly see from the footage you have must be scored at full severity no matter how odd the camera position is. Ask yourself: can I see this flaw in these frames? If yes, the angle is irrelevant.
 
 CATCH-AND-SHOOT: If the player catches a pass before shooting, identify catch frames (another player/hand visible passing, ball arriving, player still rotating to face basket) and ignore them completely. The elbow being out during a catch is normal. Only evaluate from when the player has the ball fully in control and is facing the basket.
 
@@ -358,6 +370,7 @@ CRITICAL FLAGS — these operate on their own detection standard, independent of
   DO NOT set this flag just because both hands are on the ball — every shot starts that way and two hands on the ball during the gather is completely normal. Set it ONLY when ALL of these hold: the ball is shoved from chest-to-chin height without ever loading above the face, the two hands stay mirrored with no hand under the ball, and the release is visibly two-handed. If any one of those is missing, leave the flag low.
   When true: "Shot Pocket — Elbow", "Source of Shot Power" and "Shooting Through Guide Hand / One Hand Release" MUST each score 4 or below. Pushing the ball from the chest with both hands means it is not loaded in a shot pocket, the power is coming from the arms rather than the legs, and the release cannot be one-handed.
 
+- ball_behind_head: the ball is brought DIRECTLY ABOVE or BEHIND the top of the head and released from there — the catapult. The tells: at the set point the ball sits over the crown of the head or behind the hairline rather than in front of and slightly above the forehead; both elbows are high and winged wide; the forearms lay back so the ball is slung forward from over the skull like a soccer throw-in. This is distinct from a normal high set point (ball in front of the forehead, shooting elbow roughly under the ball). Set the 0-10 confidence by how clearly the ball goes above/behind the head. When true (>=7): the elbow, shot pocket, and shot-power criteria are all severe — the whole shot is built on a catapult and none of those three can be credited.
 - arc_too_flat: the ball travels on a low, flat trajectory rather than a proper high arc (45–60 degrees). If the ball visibly shoots out nearly flat or at a shallow angle with little height, set true. A flat shot has almost no arc and the ball comes in at a low angle toward the basket. Do NOT apply benefit-of-the-doubt here. When true: the shot arc criterion MUST score 4 or below.
 
 NOTE: These flags are the most important flaws to detect. Report each as a 0-10 confidence, not a guess: 0-2 clearly absent, 3-6 borderline or partially suggestive, 7-10 clearly present with a frame you can point to. Confidence 7+ is treated as the flaw being present.
@@ -365,6 +378,8 @@ NOTE: These flags are the most important flaws to detect. Report each as a 0-10 
 For overall_score: average only scored criteria (exclude nulls).
 
 SHOT DETECTION — do these specific frames actually show a shot being taken? This is the FIRST thing to decide, before any scoring. Look at the frames as a sequence. To be analyzable, the frames must actually capture the shooting motion of ONE player: gathering the ball, lifting it to a set point, rising or jumping, releasing it, and following through.
+
+THE RELEASE FRAME IS THE PROOF: before setting shot_detected true, identify the specific frame (or adjacent pair of frames) where the ball actually leaves the shooting hand. If you cannot point to a frame where the release itself is visible — the ball in the hand in one frame and departing or airborne in the next — then these frames do not capture the shot, whatever else they show, and shot_detected must be FALSE. A player holding a ball, gathering, or standing ready is preparation, not a shot.
 
 Set "shot_detected" to FALSE whenever the frames do NOT clearly show that shooting motion — for example: players running, walking off or up the court, dribbling, passing, playing defense, standing around, or celebrating; the aftermath of a shot with no actual release visible; a wide or TV-broadcast view where the action is far away or there are many players; or any clip where you cannot clearly watch one player take a shot from set-up through release. A person simply being on a basketball court, or simply being a basketball player, is NOT a shot — you must actually SEE the shooting motion happen in these frames.
 
@@ -382,7 +397,8 @@ Return ONLY valid JSON, no other text:
     "elbow_severely_out": <0-10 confidence that this flaw is clearly present: 0 = definitely not, 10 = unmistakable. 8+ means you can point at the exact frame and describe the flaw>,
     "followthrough_flick_to_side": <0-10 confidence, same standard>,
     "arc_too_flat": <0-10 confidence, same standard>,
-    "chest_pass_hands": <0-10 confidence, same standard>
+    "chest_pass_hands": <0-10 confidence, same standard>,
+    "ball_behind_head": <0-10 confidence, same standard>
   },
   "criteria": [
     { "id": <criterion_id>, "score": <1-10 or null>, "reasoning": "<1-2 sentences>" },
@@ -497,6 +513,7 @@ async function analyzeShotOnce(
     followthrough_flick_to_side: conf(rawFlags.followthrough_flick_to_side),
     arc_too_flat: conf(rawFlags.arc_too_flat),
     chest_pass_hands: conf(rawFlags.chest_pass_hands),
+    ball_behind_head: conf(rawFlags.ball_behind_head),
   }
   // Within a single pass the flaw counts as present at confidence >= 7.
   result.critical_flags = {
@@ -504,6 +521,7 @@ async function analyzeShotOnce(
     followthrough_flick_to_side: result.flag_confidence.followthrough_flick_to_side >= 7,
     arc_too_flat: result.flag_confidence.arc_too_flat >= 7,
     chest_pass_hands: result.flag_confidence.chest_pass_hands >= 7,
+    ball_behind_head: result.flag_confidence.ball_behind_head >= 7,
   }
 
   // Arc and rotation are resolved by name rather than by the seed id, because
@@ -627,6 +645,26 @@ function finalizeResult(result: AnalysisResult, activeCriteria: CriteriaRow[]): 
     }
   }
 
+  // A behind/above-the-head catapult is three flaws at once: the arm is opened
+  // into a wide V instead of an L, the ball was never loaded in a real pocket,
+  // and the power comes from slinging with the arms rather than the legs. Caps
+  // all three, mirroring the chest-pass cap.
+  if (result.critical_flags.ball_behind_head) {
+    const catapultCriteria = [
+      'Elbow L-Shape — Under the Ball',
+      'Shot Pocket — Elbow',
+      'Source of Shot Power',
+    ]
+    const capIds = activeCriteria
+      .filter((c) => catapultCriteria.includes(c.name as string))
+      .map((c) => c.id as number)
+    for (const c of result.criteria) {
+      if (capIds.includes(c.id) && c.score !== null) {
+        c.score = Math.min(c.score as number, 4)
+      }
+    }
+  }
+
   // Recalculate overall using weighted average (weight column from DB)
   const activeCriteriaRows = activeCriteria as unknown as Array<{ id: number; weight: unknown }>
   const weightMap: Record<number, number> = Object.fromEntries(
@@ -640,8 +678,8 @@ function finalizeResult(result: AnalysisResult, activeCriteria: CriteriaRow[]): 
   }
 
   // Apply critical flag caps FIRST — stacking penalties for multiple flaws
-  const { elbow_severely_out, followthrough_flick_to_side, arc_too_flat, chest_pass_hands } = result.critical_flags
-  const flagCount = [elbow_severely_out, followthrough_flick_to_side, arc_too_flat, chest_pass_hands].filter(Boolean).length
+  const { elbow_severely_out, followthrough_flick_to_side, arc_too_flat, chest_pass_hands, ball_behind_head } = result.critical_flags
+  const flagCount = [elbow_severely_out, followthrough_flick_to_side, arc_too_flat, chest_pass_hands, ball_behind_head].filter(Boolean).length
   const flagsTriggered = flagCount > 0
   if (flagCount >= 3) {
     result.overall_score = Math.min(result.overall_score, 5.0)
@@ -730,6 +768,77 @@ function majority(bools: boolean[]): boolean {
   return bools.filter(Boolean).length * 2 > bools.length
 }
 
+/**
+ * The release gate. Grading passes narrate an entire shot from a follow-through
+ * pose plus ambient frames when the extraction window misses the actual shot
+ * (observed in production: a post-release + dribbling clip graded 8.2). A
+ * single pointed question is far harder to confabulate than an 18-criterion
+ * grading task, so before any grading we ask ONLY for the release frame. No
+ * release visible → no shot, regardless of what full passes would have said.
+ * Fails open on transport errors: a gate outage must not take grading down.
+ */
+async function findReleaseFrame(
+  frameBase64Array: string[],
+  frameMimeTypes: string[],
+  model: string
+): Promise<number | null | 'error'> {
+  try {
+    const imageBlocks: Anthropic.ImageBlockParam[] = frameBase64Array.map((data, i) => ({
+      type: 'image',
+      source: { type: 'base64', media_type: (frameMimeTypes[i] || 'image/jpeg') as 'image/jpeg', data },
+    }))
+    const n = frameBase64Array.length
+    const response = await getAnthropic().messages.create({
+      temperature: 0,
+      model,
+      max_tokens: 300,
+      messages: [{
+        role: 'user',
+        content: [
+          ...imageBlocks,
+          {
+            type: 'text',
+            text: `These are ${n} frames, numbered 0 to ${n - 1} in order, from one basketball video.
+
+Your ONLY task: find the RELEASE — a frame where the ball is leaving or has just left the shooter's hand(s) at the top of a shooting motion, with the frames immediately before it showing that shooting motion (ball held, rising toward a set point).
+
+Be strict. A follow-through pose with the ball already gone and NO prior frame showing the ball in the shooter's hands going up is NOT a visible release. Dribbling, standing, walking, or holding the ball is NOT a release.
+
+Output ONLY this JSON: {"release_frame": <number>, "why": "<one short sentence>"} — or {"release_frame": -1, "why": "<one short sentence>"} if no release is visible in these frames.`,
+          },
+        ],
+      }],
+    })
+    const text = response.content[0]?.type === 'text' ? response.content[0].text : ''
+    const match = text.match(/\{[\s\S]*?\}/)
+    if (!match) return 'error'
+    const parsed = JSON.parse(match[0])
+    const frame = Number(parsed.release_frame)
+    if (!Number.isFinite(frame)) return 'error'
+    return frame >= 0 && frame < n ? frame : null
+  } catch {
+    return 'error'
+  }
+}
+
+/** The no-shot result the release gate returns without running any grading pass. */
+function noShotResult(criteriaIds: number[], graderVersion: GraderVersion): AnalysisResult {
+  return {
+    overall_score: 0,
+    shot_detected: false,
+    player_assessment: { player_type: 'recreational', player_name: null },
+    critical_flags: {
+      elbow_severely_out: false,
+      followthrough_flick_to_side: false,
+      arc_too_flat: false,
+      chest_pass_hands: false,
+      ball_behind_head: false,
+    },
+    grader_version: graderVersion,
+    criteria: criteriaIds.map((id) => ({ id, score: null, reasoning: '' })),
+  }
+}
+
 export async function analyzeShot(
   frameBase64Array: string[],
   frameMimeTypes: string[],
@@ -748,6 +857,12 @@ export async function analyzeShot(
     model,
     passes,
     calibration_version: ctx.calibrationVersion,
+  }
+
+  // Release gate before any grading pass (see findReleaseFrame).
+  const releaseFrame = await findReleaseFrame(frameBase64Array, frameMimeTypes, model)
+  if (releaseFrame === null) {
+    return noShotResult(ctx.activeCriteria.map((c) => c.id), graderVersion)
   }
 
   // Sequential on purpose: pass 1 writes the prompt+image prefix into the
@@ -783,6 +898,7 @@ export async function analyzeShot(
       followthrough_flick_to_side: median(detected.map(r => r.flag_confidence?.followthrough_flick_to_side ?? (r.critical_flags.followthrough_flick_to_side ? 10 : 0))) >= 7,
       arc_too_flat: median(detected.map(r => r.flag_confidence?.arc_too_flat ?? (r.critical_flags.arc_too_flat ? 10 : 0))) >= 7,
       chest_pass_hands: median(detected.map(r => r.flag_confidence?.chest_pass_hands ?? (r.critical_flags.chest_pass_hands ? 10 : 0))) >= 7,
+      ball_behind_head: median(detected.map(r => r.flag_confidence?.ball_behind_head ?? (r.critical_flags.ball_behind_head ? 10 : 0))) >= 7,
     },
     criteria: activeCriteria.map(ac => {
       const perPass = detected

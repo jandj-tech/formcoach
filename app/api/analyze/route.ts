@@ -68,11 +68,12 @@ export async function POST(req: NextRequest) {
 
     const userId = session?.userId ?? null
 
-    // Check + reserve token before doing any expensive work. An account that
-    // has never used its free signup analysis gets this one on the house —
-    // flagged as a preview so the results page shows the overall score but
-    // keeps the criteria breakdown locked until a token is purchased.
-    let isFreePreview = false
+    // Check + reserve token before doing any expensive work. Every analysis is
+    // paid: an account needs an analysis token or an active subscription, or it
+    // is turned away below. There is no free signup analysis. (isFreePreview is
+    // kept as always-false so the submissions.is_free_preview column and the
+    // results page continue to work without a schema/UI change.)
+    const isFreePreview = false
     if (!isTeamUpload && userId) {
       const [user] = await db`
         SELECT analysis_tokens, subscription_type, subscription_expires_at, free_analysis_used
@@ -87,11 +88,8 @@ export async function POST(req: NextRequest) {
       const tokens = user?.analysis_tokens ?? 0
 
       if (!isSubscribed && tokens <= 0) {
-        if (user?.free_analysis_used === false) {
-          isFreePreview = true
-        } else {
-          return NextResponse.json({ error: 'No analysis tokens' }, { status: 402 })
-        }
+        // No free signup shot anymore — every analysis is paid.
+        return NextResponse.json({ error: 'No analysis tokens' }, { status: 402 })
       }
     }
 
@@ -380,18 +378,14 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Deduct token after successful analysis. The free preview consumes the
-    // one-time freebie instead of a token — and only here, after success, so
-    // a failed or no-shot upload never burns it.
+    // Deduct token after successful analysis — only here, after success, so a
+    // failed or no-shot upload never burns a token. Every analysis is paid;
+    // there is no free-preview branch.
     if (!isTeamUpload && userId) {
-      if (isFreePreview) {
-        await db`UPDATE users SET free_analysis_used = true WHERE id = ${userId}`
-      } else {
-        await db`
-          UPDATE users SET analysis_tokens = analysis_tokens - 1
-          WHERE id = ${userId} AND analysis_tokens > 0
-        `
-      }
+      await db`
+        UPDATE users SET analysis_tokens = analysis_tokens - 1
+        WHERE id = ${userId} AND analysis_tokens > 0
+      `
     }
 
     if (isTeamUpload && teamId) {

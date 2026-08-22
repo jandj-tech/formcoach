@@ -23,8 +23,12 @@ const nextConfig: NextConfig = {
     return [{ source: '/:path*', headers: SECURITY_HEADERS }]
   },
   // 'standalone' emits a self-contained .next/standalone/server.js that Phusion
-  // Passenger runs directly (cPanel Application Manager). No-op on Vercel.
-  output: "standalone",
+  // Passenger runs directly (cPanel Application Manager). It is not merely a
+  // no-op on Vercel as of next 16.3.2 — it breaks their file-tracing step with
+  // "ENOENT .next/next-server.js.nft.json" and fails the deploy. Vercel builds
+  // its own serverless output and never reads .next/standalone, so ask for it
+  // only off-Vercel, where the cPanel target actually needs it.
+  ...(process.env.VERCEL ? {} : { output: 'standalone' as const }),
   // No experimental.viewTransition flag: next 16.3 rejects it as an invalid key
   // ("Invalid next.config.ts options detected"). <ViewTransition> in
   // app/layout.tsx renders correctly without it on react 19.2 — verified against

@@ -4,12 +4,17 @@ import { db } from '@/lib/db'
 import { signTeamSession, teamSessionCookieOptions } from '@/lib/team-auth'
 import { isCleanDisplayText, BLOCKED_TEXT_ERROR } from '@/lib/moderation'
 import { addToEmailList } from '@/lib/email-list'
+import { randomInt } from 'crypto'
+import { BCRYPT_COST } from '@/lib/password'
 
 function generateAccessCode(): string {
+  // randomInt, not Math.random: an access code is a bearer credential (it lets
+  // an anonymous player spend the coach's credits), and Math.random is
+  // predictable from prior outputs.
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
   let code = ''
   for (let i = 0; i < 8; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)]
+    code += chars[randomInt(chars.length)]
   }
   return code
 }
@@ -46,7 +51,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'A team already exists for this email. Please log in.' }, { status: 409 })
     }
 
-    const hash = await bcrypt.hash(password, 10)
+    const hash = await bcrypt.hash(password, BCRYPT_COST)
 
     // Generate a unique access code (retry on rare collision)
     let accessCode = generateAccessCode()

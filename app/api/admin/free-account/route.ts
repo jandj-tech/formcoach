@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { cookies } from 'next/headers'
 import { Resend } from 'resend'
+import { isAdminSession } from '@/lib/admin-auth'
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://learnhoops.com'
 
 async function isAdminAuthed(): Promise<boolean> {
-  const cookieStore = await cookies()
-  return cookieStore.get('admin_auth')?.value === process.env.ADMIN_PASSWORD
+  return isAdminSession()
 }
 
 export async function GET() {

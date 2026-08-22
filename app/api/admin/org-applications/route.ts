@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
 import { db } from '@/lib/db'
 import { sendOrgApprovalEmail } from '@/lib/email'
+import { isAdminSession } from '@/lib/admin-auth'
 
 async function isAdminAuthed(): Promise<boolean> {
-  const cookieStore = await cookies()
-  return cookieStore.get('admin_auth')?.value === process.env.ADMIN_PASSWORD
+  return isAdminSession()
 }
 
 export async function GET() {

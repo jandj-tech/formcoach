@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
 import { db } from '@/lib/db'
 import { coerceJson } from '@/lib/eval'
+import { isAdminSession } from '@/lib/admin-auth'
 
 async function isAdmin() {
-  const cookieStore = await cookies()
-  return cookieStore.get('admin_auth')?.value === process.env.ADMIN_PASSWORD
+  return isAdminSession()
 }
 
 // Update a fixture's editable parts: expected ranges, description, active.

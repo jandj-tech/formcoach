@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
 import { db } from '@/lib/db'
 import { authorFixtureFromAnalysis, listFixtures, latestBaseline } from '@/lib/eval'
+import { isAdminSession } from '@/lib/admin-auth'
 
 async function isAdmin() {
-  const cookieStore = await cookies()
-  return cookieStore.get('admin_auth')?.value === process.env.ADMIN_PASSWORD
+  return isAdminSession()
 }
 
 // Everything the Test Bench page needs on load: fixtures, the current

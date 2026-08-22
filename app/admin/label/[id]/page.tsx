@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
-import { cookies } from 'next/headers'
 import { redirect, notFound } from 'next/navigation'
 import { db } from '@/lib/db'
+import { isAdminSession } from '@/lib/admin-auth'
 
 interface Order {
   id: string
@@ -49,8 +49,7 @@ function getFrom(shippingCountry: string | null) {
 }
 
 export default async function LabelPage({ params }: { params: Promise<{ id: string }> }) {
-  const cookieStore = await cookies()
-  if (cookieStore.get('admin_auth')?.value !== process.env.ADMIN_PASSWORD) {
+  if (!(await isAdminSession())) {
     redirect('/admin/login')
   }
 

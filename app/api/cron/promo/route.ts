@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { requireEnv, safeEqual } from '@/lib/env'
 import { sendPromoEmail } from '@/lib/email'
 
 export const maxDuration = 300
@@ -7,8 +8,10 @@ export const maxDuration = 300
 // Monthly promotional email (1st of the month) to every signed-up (not
 // unsubscribed) address. Scheduled in vercel.json.
 export async function GET(req: NextRequest) {
+  // requireEnv rather than reading CRON_SECRET directly: with the variable
+  // unset, the old comparison accepted the literal header "Bearer undefined".
   const authHeader = req.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!safeEqual(authHeader, `Bearer ${requireEnv('CRON_SECRET')}`)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

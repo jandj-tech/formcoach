@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
 import { db } from '@/lib/db'
 import { runFixtureOnce } from '@/lib/eval'
 import type { EvalFixtureRow } from '@/lib/eval'
+import { isAdminSession } from '@/lib/admin-auth'
 
 // One request = ONE full grading of ONE fixture (the normal N-pass ensemble,
 // or 1 pass in quick mode). The Test Bench page loops fixtures/runs and
@@ -11,8 +11,7 @@ import type { EvalFixtureRow } from '@/lib/eval'
 export const maxDuration = 300
 
 async function isAdmin() {
-  const cookieStore = await cookies()
-  return cookieStore.get('admin_auth')?.value === process.env.ADMIN_PASSWORD
+  return isAdminSession()
 }
 
 export async function POST(req: NextRequest) {

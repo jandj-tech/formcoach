@@ -6,10 +6,13 @@ import { sendCoachInviteEmail, sendCoachAddedEmail, sendTeamCreatedEmail } from 
 import { isCleanDisplayText, BLOCKED_TEXT_ERROR } from '@/lib/moderation'
 
 function generateAccessCode(): string {
+  // randomInt, not Math.random: an access code is a bearer credential (it lets
+  // an anonymous player spend the coach's credits), and Math.random is
+  // predictable from prior outputs.
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
   let code = ''
   for (let i = 0; i < 8; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)]
+    code += chars[crypto.randomInt(chars.length)]
   }
   return code
 }

@@ -2,9 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
 import { signOrgSession, orgSessionCookieOptions } from '@/lib/org-auth'
+import { rateLimitByIp } from '@/lib/rate-limit'
 
 export async function POST(req: NextRequest) {
   try {
+    const limit = await rateLimitByIp(req, 'org-login', 10, 900)
+    if (!limit.ok) {
+      return NextResponse.json(
+        { error: 'Too many attempts — try again later' },
+        { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } }
+      )
+    }
+
     const { email, password } = await req.json()
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password required' }, { status: 400 })

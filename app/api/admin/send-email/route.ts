@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
 import { db } from '@/lib/db'
+import { isAdminSession } from '@/lib/admin-auth'
 import {
   renderBroadcastHtml,
   sendBroadcast,
@@ -12,8 +12,7 @@ import {
 export const maxDuration = 60
 
 async function isAdmin() {
-  const cookieStore = await cookies()
-  return cookieStore.get('admin_auth')?.value === process.env.ADMIN_PASSWORD
+  return isAdminSession()
 }
 
 export type Audience = 'all' | 'players' | 'coaches' | 'orgs' | 'single'

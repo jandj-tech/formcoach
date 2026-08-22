@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe'
-import { cookies } from 'next/headers'
+import { isAdminSession } from '@/lib/admin-auth'
 
 async function isAdminAuthed(): Promise<boolean> {
-  const cookieStore = await cookies()
-  return cookieStore.get('admin_auth')?.value === process.env.ADMIN_PASSWORD
+  return isAdminSession()
 }
 
 export async function GET() {

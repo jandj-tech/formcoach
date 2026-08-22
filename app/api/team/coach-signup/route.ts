@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
 import { signTeamSession, teamSessionCookieOptions } from '@/lib/team-auth'
+import { BCRYPT_COST } from '@/lib/password'
 
 // A newly-invited coach sets their password via the signup link, which logs
 // them into the team dashboard.
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'This signup link is invalid or already used.' }, { status: 404 })
     }
 
-    const hash = await bcrypt.hash(password, 10)
+    const hash = await bcrypt.hash(password, BCRYPT_COST)
     await db`
       UPDATE team_coaches SET password_hash = ${hash}, invite_token = NULL WHERE id = ${coach.id}
     `

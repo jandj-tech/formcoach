@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
-import { cookies } from 'next/headers'
 import { db } from '@/lib/db'
+import { isAdminSession } from '@/lib/admin-auth'
+import { BCRYPT_COST } from '@/lib/password'
 
 async function isAdmin() {
-  const cookieStore = await cookies()
-  return cookieStore.get('admin_auth')?.value === process.env.ADMIN_PASSWORD
+  return isAdminSession()
 }
 
 // Lets an admin set a new password for an organization. Existing passwords
@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'orgId and a 6+ character password are required' }, { status: 400 })
   }
 
-  const hash = await bcrypt.hash(password, 10)
+  const hash = await bcrypt.hash(password, BCRYPT_COST)
   await db`UPDATE organizations SET password_hash = ${hash} WHERE id = ${orgId}`
 
   return NextResponse.json({ success: true })

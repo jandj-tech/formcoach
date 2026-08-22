@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server'
 import { deleteObjects } from '@/lib/storage'
 import { db } from '@/lib/db'
-import { cookies } from 'next/headers'
+import { isAdminSession } from '@/lib/admin-auth'
 
 async function isAdmin() {
-  const cookieStore = await cookies()
-  return cookieStore.get('admin_auth')?.value === process.env.ADMIN_PASSWORD
+  return isAdminSession()
 }
 
 export async function GET() {

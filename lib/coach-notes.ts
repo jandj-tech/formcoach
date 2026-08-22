@@ -1,9 +1,8 @@
-import { cookies } from 'next/headers'
 import { db } from './db'
 import { getSession } from './auth'
 import { getTeamSession, type TeamSessionPayload } from './team-auth'
 import { getOrgSession } from './org-auth'
-import { ADMIN_COOKIE } from './sessions'
+import { isAdminSession } from '@/lib/admin-auth'
 
 /**
  * Coach's Notes — a coach's (or the owner's) own read of one criterion, shown
@@ -93,13 +92,9 @@ export type NoteAuthor =
   | { authorType: 'coach'; teamId: string; authorEmail: string }
 
 async function isAdminCookie(): Promise<boolean> {
-  // Both halves must be present. Were ADMIN_PASSWORD ever unset, a bare
-  // `cookie === process.env.ADMIN_PASSWORD` would compare undefined to
-  // undefined and hand coach mode to every visitor.
-  const expected = process.env.ADMIN_PASSWORD
-  if (!expected) return false
-  const store = await cookies()
-  return store.get(ADMIN_COOKIE)?.value === expected
+  // Delegates to the shared signed-session check. The cookie no longer carries
+  // the admin password itself, so a value comparison would never match.
+  return isAdminSession()
 }
 
 /**

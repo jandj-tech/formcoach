@@ -5,9 +5,19 @@ import { signSession, sessionCookieOptions } from '@/lib/auth'
 import { grantFreeOrgTokensIfEligible } from '@/lib/team-tokens'
 import { addToEmailList } from '@/lib/email-list'
 import { sendMetaEvent, makeRegistrationEvent } from '@/lib/meta-server'
+import { BCRYPT_COST } from '@/lib/password'
+import { rateLimitByIp } from '@/lib/rate-limit'
 
 export async function POST(req: NextRequest) {
   try {
+    const limit = await rateLimitByIp(req, 'signup', 10, 3600)
+    if (!limit.ok) {
+      return NextResponse.json(
+        { error: 'Too many attempts — try again later' },
+        { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } }
+      )
+    }
+
     const { email, password, nickname, teamInviteToken, claimToken } = await req.json()
     if (!email || !password || password.length < 6) {
       return NextResponse.json({ error: 'Email and password (6+ chars) required' }, { status: 400 })
@@ -28,7 +38,7 @@ export async function POST(req: NextRequest) {
       WHERE email = ${emailLower}
     `
 
-    const hash = await bcrypt.hash(password, 10)
+    const hash = await bcrypt.hash(password, BCRYPT_COST)
 
     const nicknameTrimmed = nickname?.trim() || null
 

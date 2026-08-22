@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { requireEnv, safeEqual } from '@/lib/env'
 import { sendNextMarketingEmail } from '@/lib/email'
 
 export const maxDuration = 300
 
 export async function GET(req: NextRequest) {
   // Protect cron endpoint — Vercel sets this header automatically
+  // requireEnv rather than reading CRON_SECRET directly: with the variable
+  // unset, the old comparison accepted the literal header "Bearer undefined".
   const authHeader = req.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!safeEqual(authHeader, `Bearer ${requireEnv('CRON_SECRET')}`)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

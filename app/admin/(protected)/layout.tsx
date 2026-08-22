@@ -1,12 +1,9 @@
-import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import AdminNav from './AdminNav'
+import { isAdminSession } from '@/lib/admin-auth'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const cookieStore = await cookies()
-  const auth = cookieStore.get('admin_auth')?.value
-
-  if (auth !== process.env.ADMIN_PASSWORD) {
+  if (!(await isAdminSession())) {
     redirect('/admin/login')
   }
 

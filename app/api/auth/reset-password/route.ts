@@ -6,11 +6,21 @@ import { signTeamSession, teamSessionCookieOptions } from '@/lib/team-auth'
 import { signOrgSession, orgSessionCookieOptions } from '@/lib/org-auth'
 import { clearOtherSessions, PLAYER_COOKIE, TEAM_COOKIE, ORG_COOKIE } from '@/lib/sessions'
 import { sendPasswordChangedEmail } from '@/lib/email'
+import { BCRYPT_COST } from '@/lib/password'
+import { rateLimitByIp } from '@/lib/rate-limit'
 
 // Completes a password reset: verifies the token, sets the new password on the
 // matching account (player, coach, or organization), and logs them in.
 export async function POST(req: NextRequest) {
   try {
+    const limit = await rateLimitByIp(req, 'reset-password', 10, 3600)
+    if (!limit.ok) {
+      return NextResponse.json(
+        { error: 'Too many attempts — try again later' },
+        { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } }
+      )
+    }
+
     const { token, password } = (await req.json().catch(() => ({}))) as {
       token?: string
       password?: string
@@ -22,7 +32,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Password (6+ characters) required' }, { status: 400 })
     }
 
-    const hash = await bcrypt.hash(password, 10)
+    const hash = await bcrypt.hash(password, BCRYPT_COST)
     const target = await consumeResetToken(token, hash)
 
     if (!target) {

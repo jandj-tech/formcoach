@@ -1,10 +1,8 @@
 import { SignJWT, jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
 import { NextRequest } from 'next/server'
+import { jwtSecret } from '@/lib/env'
 
-const SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'formcoach-fallback-secret-change-in-prod'
-)
 const COOKIE = 'fc_team_session'
 const TTL = 60 * 60 * 24 * 30 // 30 days
 
@@ -18,12 +16,12 @@ export async function signTeamSession(payload: TeamSessionPayload): Promise<stri
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime(`${TTL}s`)
-    .sign(SECRET)
+    .sign(jwtSecret())
 }
 
 export async function verifyTeamSession(token: string): Promise<TeamSessionPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, SECRET)
+    const { payload } = await jwtVerify(token, jwtSecret())
     return payload as unknown as TeamSessionPayload
   } catch {
     return null

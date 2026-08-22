@@ -252,7 +252,7 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
           const regionRes = await fetch('/api/detect-shot-region', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ frames: roughBase64 }),
+            body: JSON.stringify({ frames: roughBase64, teamCode: teamMode?.code ?? null }),
           })
           if (regionRes.ok) {
             const { region } = await regionRes.json()
@@ -313,7 +313,7 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
           const windowRes = await fetch('/api/detect-shot-window', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ frames: probeBase64 }),
+            body: JSON.stringify({ frames: probeBase64, teamCode: teamMode?.code ?? null }),
           })
           if (windowRes.ok) {
             const { release } = await windowRes.json()
@@ -403,7 +403,7 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
 
       video.src = url
     })
-  }, [])
+  }, [teamMode?.code])
 
   const handleFile = useCallback(
     async (file: File) => {
@@ -477,6 +477,7 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
             const blob = await upload(pathname, file, {
               access: 'public',
               handleUploadUrl: '/api/upload-video',
+              clientPayload: JSON.stringify({ teamCode: teamMode?.code ?? null }),
               abortSignal: controller.signal,
             })
             videoUrl = blob.url

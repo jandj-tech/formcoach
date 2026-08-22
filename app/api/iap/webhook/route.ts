@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { requireEnv, safeEqual } from '@/lib/env'
 
 // Consumable token products and how many analysis tokens each grants.
 const TOKEN_PRODUCTS: Record<string, number> = {
@@ -15,14 +16,22 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 export async function POST(req: NextRequest) {
   // RevenueCat sends the Authorization header value configured in its
   // webhook settings verbatim; it must equal REVENUECAT_WEBHOOK_SECRET.
-  const secret = process.env.REVENUECAT_WEBHOOK_SECRET
-  if (secret) {
-    const auth = req.headers.get('authorization')
-    if (auth !== secret && auth !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-  } else {
-    console.error('IAP webhook: REVENUECAT_WEBHOOK_SECRET is not set — accepting unauthenticated webhooks')
+  //
+  // This used to fall through to "accepting unauthenticated webhooks" when the
+  // secret was unset, which let anyone grant themselves analysis tokens by
+  // POSTing a forged event naming their own users.id. A missing secret now
+  // rejects every call instead of waving it through.
+  let secret: string
+  try {
+    secret = requireEnv('REVENUECAT_WEBHOOK_SECRET')
+  } catch {
+    console.error('IAP webhook: REVENUECAT_WEBHOOK_SECRET is not set — rejecting webhook')
+    return NextResponse.json({ error: 'Webhook not configured' }, { status: 503 })
+  }
+
+  const auth = req.headers.get('authorization')
+  if (!safeEqual(auth, secret) && !safeEqual(auth, `Bearer ${secret}`)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   try {

@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
+import sharp from 'sharp'
 import { createHash } from 'crypto'
 import { db } from './db'
 
@@ -777,11 +778,68 @@ function majority(bools: boolean[]): boolean {
  * release visible → no shot, regardless of what full passes would have said.
  * Fails open on transport errors: a gate outage must not take grading down.
  */
+type PlayerBox = { x: number; y: number; w: number; h: number }
+
+/**
+ * Expand a raw player box by a generous margin and clamp to [0,1]. Returns null
+ * if the box is missing, malformed, or implausibly small (a too-tight box would
+ * clip the feet and wreck the stance grade) or basically the whole frame (no
+ * point cropping) — the caller then falls back to full frames.
+ */
+function sanitizePlayerBox(raw: unknown): PlayerBox | null {
+  if (!raw || typeof raw !== 'object') return null
+  const b = raw as Record<string, unknown>
+  const x = Number(b.x), y = Number(b.y), w = Number(b.w), h = Number(b.h)
+  if (![x, y, w, h].every(Number.isFinite)) return null
+  if (w < 0.12 || h < 0.3 || w > 1.01 || h > 1.01) return null
+  const M = 0.1 // margin so raised arms / spread feet are never clipped
+  const x0 = Math.max(0, x - M)
+  const y0 = Math.max(0, y - M)
+  const x1 = Math.min(1, x + w + M)
+  const y1 = Math.min(1, y + h + M)
+  const nw = x1 - x0, nh = y1 - y0
+  if (nw > 0.92 && nh > 0.92) return null // padded box ≈ whole frame
+  return { x: x0, y: y0, w: nw, h: nh }
+}
+
+/**
+ * Crop every frame to the player's box. Frames are ~90% empty court, so this
+ * cuts image tokens ~10x with no loss of player detail. Any per-frame failure
+ * falls back to that original frame, so a bad crop never loses a frame.
+ */
+async function cropFramesToBox(
+  frameBase64Array: string[],
+  box: PlayerBox
+): Promise<string[]> {
+  return Promise.all(
+    frameBase64Array.map(async (data) => {
+      try {
+        const buf = Buffer.from(data, 'base64')
+        const meta = await sharp(buf).metadata()
+        const W = meta.width, H = meta.height
+        if (!W || !H) return data
+        let left = Math.round(box.x * W)
+        let top = Math.round(box.y * H)
+        let width = Math.round(box.w * W)
+        let height = Math.round(box.h * H)
+        left = Math.max(0, Math.min(left, W - 1))
+        top = Math.max(0, Math.min(top, H - 1))
+        width = Math.max(1, Math.min(width, W - left))
+        height = Math.max(1, Math.min(height, H - top))
+        const out = await sharp(buf).extract({ left, top, width, height }).jpeg({ quality: 90 }).toBuffer()
+        return out.toString('base64')
+      } catch {
+        return data
+      }
+    })
+  )
+}
+
 async function findReleaseFrame(
   frameBase64Array: string[],
   frameMimeTypes: string[],
   model: string
-): Promise<number | null | 'error'> {
+): Promise<{ release: number | null; box: PlayerBox | null } | 'error'> {
   try {
     const imageBlocks: Anthropic.ImageBlockParam[] = frameBase64Array.map((data, i) => ({
       type: 'image',
@@ -800,22 +858,25 @@ async function findReleaseFrame(
             type: 'text',
             text: `These are ${n} frames, numbered 0 to ${n - 1} in order, from one basketball video.
 
-Your ONLY task: find the RELEASE — a frame where the ball is leaving or has just left the shooter's hand(s) at the top of a shooting motion, with the frames immediately before it showing that shooting motion (ball held, rising toward a set point).
+Two tasks:
 
-Be strict. A follow-through pose with the ball already gone and NO prior frame showing the ball in the shooter's hands going up is NOT a visible release. Dribbling, standing, walking, or holding the ball is NOT a release.
+1. Find the RELEASE — a frame where the ball is leaving or has just left the shooter's hand(s) at the top of a shooting motion, with the frames immediately before it showing that shooting motion (ball held, rising toward a set point). Be strict. A follow-through pose with the ball already gone and NO prior frame showing the ball in the shooter's hands going up is NOT a visible release. Dribbling, standing, walking, or holding the ball is NOT a release.
 
-Output ONLY this JSON: {"release_frame": <number>, "why": "<one short sentence>"} — or {"release_frame": -1, "why": "<one short sentence>"} if no release is visible in these frames.`,
+2. Give the player's BOUNDING BOX as fractions of the image (0 to 1): the smallest box containing the WHOLE player — head to feet, including raised arms and any foot spread — across ALL frames combined. Be GENEROUS; far better too big than too tight, and the feet must never be cut off.
+
+Output ONLY this JSON: {"release_frame": <number, or -1 if no release is visible>, "why": "<one short sentence>", "player_box": {"x": <left 0-1>, "y": <top 0-1>, "w": <width 0-1>, "h": <height 0-1>}}`,
           },
         ],
       }],
     })
     const text = response.content[0]?.type === 'text' ? response.content[0].text : ''
-    const match = text.match(/\{[\s\S]*?\}/)
+    const match = text.match(/\{[\s\S]*\}/)
     if (!match) return 'error'
     const parsed = JSON.parse(match[0])
-    const frame = Number(parsed.release_frame)
-    if (!Number.isFinite(frame)) return 'error'
-    return frame >= 0 && frame < n ? frame : null
+    const frameNum = Number(parsed.release_frame)
+    if (!Number.isFinite(frameNum)) return 'error'
+    const release = frameNum >= 0 && frameNum < n ? frameNum : null
+    return { release, box: sanitizePlayerBox(parsed.player_box) }
   } catch {
     return 'error'
   }
@@ -866,10 +927,29 @@ export async function analyzeShot(
   }
 
   // Release gate before any grading pass (see findReleaseFrame). Runs on the
-  // cheaper gateModel — it's a single detection question, not a full grade.
-  const releaseFrame = await findReleaseFrame(frameBase64Array, frameMimeTypes, gateModel)
-  if (releaseFrame === null) {
+  // cheaper gateModel — it's a single detection question, not a full grade. The
+  // same call also returns the player's bounding box, used to crop below.
+  const gate = await findReleaseFrame(frameBase64Array, frameMimeTypes, gateModel)
+  // release === null (not 'error') means no shot. 'error' fails open — grade anyway.
+  if (gate !== 'error' && gate.release === null) {
     return noShotResult(ctx.activeCriteria.map((c) => c.id), graderVersion)
+  }
+
+  // Crop every frame to the player before grading. Frames are ~90% empty court,
+  // so this cuts image tokens ~10x with no loss of player detail — the single
+  // biggest cost lever. Any missing/implausible box, ANALYSIS_CROP=off, or a
+  // crop error falls back to the full frames, so grading never breaks on it.
+  let gradeFrames = frameBase64Array
+  let gradeMimes = frameMimeTypes
+  const box = gate !== 'error' ? gate.box : null
+  if (box && process.env.ANALYSIS_CROP !== 'off') {
+    try {
+      gradeFrames = await cropFramesToBox(frameBase64Array, box)
+      gradeMimes = gradeFrames.map(() => 'image/jpeg')
+    } catch {
+      gradeFrames = frameBase64Array
+      gradeMimes = frameMimeTypes
+    }
   }
 
   // Sequential on purpose: pass 1 writes the prompt+image prefix into the
@@ -877,7 +957,7 @@ export async function analyzeShot(
   const results: AnalysisResult[] = []
   for (let i = 0; i < passes; i++) {
     // A non-shot verdict is decisive only by majority — collect and continue.
-    results.push(await analyzeShotOnce(frameBase64Array, frameMimeTypes, ctx, { ...opts, model }))
+    results.push(await analyzeShotOnce(gradeFrames, gradeMimes, ctx, { ...opts, model }))
   }
 
   const activeCriteria = ctx.activeCriteria

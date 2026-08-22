@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSessionFromRequest } from '@/lib/auth'
 import { db } from '@/lib/db'
-import { grantFreeOrgTokensIfEligible } from '@/lib/team-tokens'
 import { isCleanDisplayText, BLOCKED_TEXT_ERROR } from '@/lib/moderation'
 
 export async function POST(req: NextRequest) {
@@ -121,12 +120,6 @@ export async function POST(req: NextRequest) {
       ON CONFLICT (user_id, team_id) DO UPDATE
         SET first_name = ${firstNameClean}, last_name_initial = ${lastInitialClean}
     `
-
-    // Free-token grant for the legacy (non-class) org-team flow. Class teams
-    // skip this because their credits live on the team via the webhook.
-    if (!team.class_package_id) {
-      await grantFreeOrgTokensIfEligible(team.id)
-    }
 
     return NextResponse.json({ success: true, teamName: team.name })
   } catch (err) {

@@ -168,6 +168,17 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
           return NextResponse.json({ received: true, handled: false })
         }
         const total = tokensEach * recipientIds.length
+        // Count these tokens toward the team's buy-in when the purchase was
+        // scoped to a team (team dashboard, or an org buying for one of its
+        // teams). Best-effort — the player grant above already succeeded.
+        const grantTeamId = session.metadata?.teamId
+        if (grantTeamId) {
+          try {
+            await db`UPDATE teams SET tokens_purchased = COALESCE(tokens_purchased, 0) + ${total} WHERE id = ${grantTeamId}`
+          } catch (err) {
+            console.error('[team_token_grant] could not bump tokens_purchased:', grantTeamId, err)
+          }
+        }
         await recordPurchase(session, {
           kind: 'player_tokens',
           description: `${tokensEach} token${tokensEach === 1 ? '' : 's'} each to ${recipientIds.length} player${recipientIds.length === 1 ? '' : 's'}`,
@@ -185,7 +196,10 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
         const claim = await claimStripeSession(session.id, quantity, `team:${teamId}`)
         if (claim === 'already_processed') return NextResponse.json({ received: true })
         try {
-          await db`UPDATE teams SET credits = credits + ${quantity} WHERE id = ${teamId}`
+          // credits is the spendable balance; tokens_purchased is the
+          // cumulative buy-in that never decrements. Both move together so the
+          // team's purchases count toward unlocking the discounted team rate.
+          await db`UPDATE teams SET credits = credits + ${quantity}, tokens_purchased = COALESCE(tokens_purchased, 0) + ${quantity} WHERE id = ${teamId}`
         } catch (err) {
           console.error('Failed to credit team uploads:', err)
           if (claim === 'claimed') await releaseStripeSessionClaim(session.id, 'team_credits_failed')

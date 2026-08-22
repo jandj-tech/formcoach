@@ -1172,10 +1172,11 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                         <p className="text-sm font-bold text-black flex items-center gap-1.5">
                           Team not yet active
                           <InfoTip label="What does active mean?" align="left">
-                            A team becomes active (&ldquo;initiated&rdquo;) at
-                            8 players, or automatically when it&rsquo;s part of
-                            a class package. Once any of your teams is active,
-                            tokens drop from $3.49 to $0.99 across your whole
+                            A team becomes active (&ldquo;initiated&rdquo;) once
+                            it has 8 players and has bought 8 tokens, or
+                            automatically when it&rsquo;s part of a class
+                            package. Once any of your teams is active, tokens
+                            drop from $3.49 to $1.49 across your whole
                             organization.
                           </InfoTip>
                         </p>
@@ -1186,7 +1187,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                           style={{ width: `${Math.min(100, (team.members.length / 8) * 100)}%` }} />
                       </div>
                       <p className="text-xs text-gray-500">
-                        {Math.max(0, 8 - team.members.length)} more player{Math.max(0, 8 - team.members.length) !== 1 ? 's' : ''} needed — at 8, every player gets 1 free token{inApp ? '' : ' and tokens unlock at $0.99 each'}.
+                        {Math.max(0, 8 - team.members.length)} more player{Math.max(0, 8 - team.members.length) !== 1 ? 's' : ''} needed{inApp ? ' to activate this team' : ' — then, once the team buys 8 tokens, tokens unlock at $1.49 each'}.
                       </p>
                       <p className="text-xs text-gray-400">Share the player signup link below to invite players to this team.</p>
                     </div>
@@ -1491,7 +1492,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                     {isBuyOpen && (
                       <div className="px-4 py-4 space-y-3">
                         {!team.initiated && !teams.some(t => t.initiated) && (
-                          <p className="text-xs text-orange-600 font-semibold">Team not yet active — tokens are $3.49 each until any of your teams reaches 8 players.</p>
+                          <p className="text-xs text-orange-600 font-semibold">Team not yet active — tokens are $3.49 each until a team reaches 8 players and buys 8 tokens.</p>
                         )}
                         <div className="space-y-1">
                           <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Send to</label>
@@ -1583,7 +1584,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
           $40 per player ($36.99 each for 30+). Every player gets a training
           ball, 2 AI shot analyses (start and end of the class), and a
           personalized completion certificate. Buying a package also creates a
-          class team and unlocks the $0.99 token rate for your organization.
+          class team and unlocks the $1.49 token rate for your organization.
         </InfoTip>
       </div>
       {classProgramSection}

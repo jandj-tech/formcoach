@@ -195,7 +195,7 @@ WHERE NOT EXISTS (SELECT 1 FROM criteria WHERE name = 'Feet Shoulder Width Apart
 -- requires that tell to be checked before ANY "too close" call, and adds the
 -- misread frame as an anchor.
 UPDATE criteria
-SET grading_notes = 'STANCE RUBRIC v21 — how many of the player''s own shoes would fit in the gap between their feet? Fewer than one is too narrow, three or more is too wide. Then take up to 2 points off if they did not hold it.
+SET grading_notes = 'STANCE RUBRIC v22 — how many of the player''s own shoes would fit in the gap between their feet? Fewer than one is too narrow, three or more is too wide. A far-away player''s gap looks smaller than it is, so measure the strip of bare floor between the shoes rather than eyeballing "touching". Then take up to 2 points off if they did not hold it.
 
 THE TARGET IS HIP WIDTH. "Shoulder width apart" is the phrase coaches say and the phrase you write back to the player, but it is a cue, not a measurement — taken literally it is wider than anyone actually shoots from. When you ANALYSE the base, the target you are grading against is HIP WIDTH: the feet under the hips, straight down from the hip joints.
 THE TOE-TOUCH TEST is the plain-English version of the same thing. A correct base is one the player could bend straight down from and touch their toes without shifting their feet. Feet bunched together will not let them balance; feet splayed wide will not let them fold straight down. Hip width is where they can.
@@ -241,6 +241,7 @@ JUDGE THE SHOES ON THE FLOOR, NOT THE LEGS. Knees or thighs that converge while 
 WHEN THE SHOES OVERLAP IN THE IMAGE, MEASURE THE GAP HIGHER UP INSTEAD. Correct form puts the shooting-side foot slightly AHEAD of the other, and a front-on camera flattens that depth offset so the near shoe visually overlaps the far one. A base at a perfectly good width can then show a gap of zero at the shoes. The tell that you are in this situation: a strip of floor is visible BETWEEN THE LOWER LEGS, somewhere between the ankles and the knees — the legs reading as two columns, an A rather than a single post. When you see that, do not score the overlapping shoes as a zero gap. Measure the gap between the two LEGS at its widest visible point instead, still counting in shoe widths, and run the ladder on that. A genuinely bunched base shows the legs as ONE column with no floor between them at any height, and that one really is a 3.
 
 WHEN THE PLAYER IS SMALL IN THE FRAME the shoe ruler is the only test you can trust, so use it and nothing else. Shoulder and hip edges go soft at distance and lines dropped from them will mislead you. The gap in shoe widths is still readable because both quantities shrink together — a half-shoe gap is a half-shoe gap whether the player is six feet from the camera or thirty.
+  BUT DISTANCE COMPRESSES A REAL GAP, AND THIS IS THE COMMONEST WAY A GOOD BASE GETS FAILED. Foreshortening and a few soft pixels between the shoes make a genuine strip of bare floor read as "nearly touching, no daylight" when it is nothing of the kind. So from far away do not eyeball "touching" — find the strip of bare floor between the shoes and measure IT against the shoe. If you can see ANY bare floor between the shoes, the gap is not zero and the base is NOT a 3. A floor strip about one shoe wide is a CORRECT base — 9-10 — however small the player is in the frame; half a shoe or less is the failing band; only shoes with NO floor visible between them at all is the 3. When the shoes plainly sit under the hips with daylight between them and the plumb lines are too soft to place, read that as the correct base it is — never mark it down for looking small.
 
 THIS CRITERION IS DIRECTLY MEASURABLE, SO NEVER DEFAULT TO A HIGH SCORE. The gap and the shoe are both right there in the frame, which makes a bad base a specific, countable flaw. The general burden-of-proof and default-to-10 rules do NOT soften this criterion. Judge the feet and nothing else: a square torso, a clean rise, good balance and a tidy upper body tell you nothing about the base and must never pull a narrow or wide stance back up toward 9.
 
@@ -252,6 +253,7 @@ THE FOUR WAYS THIS GETS GRADED WRONG:
 
 MEASURED CALIBRATION — every case below has its gap measured against the width of that player''s own shoe, so you can check your own answer to the fit question against a graded example:
   - COUNT 0 — nothing could pass between the shoes. Distant and small in frame, square, ball at the set point: 3. Repeat runs scored this 8, 9, 9 and 4 before the expert set it at 3.
+  - COUNT about 1 — a clear strip of bare floor roughly one shoe wide between the shoes, shooting foot slightly ahead, the base held through the landing. Distant and small in the frame, square to a front-on camera: a correct base, 9 (an 8 if you can see a slight settle inward on the landing). Scored 4 across repeated passes, described as "nearly touching with almost no daylight" — that description was simply wrong: there was a full shoe of daylight the distance had compressed. The discriminator against the COUNT-0 case above is the strip of bare floor: a clear one-shoe strip is a correct base however small the player is in the frame; only NO floor between the shoes at all is the 3.
   - COUNT under 1 — a shoe plainly would not fit, the gap two fifths of a shoe. Set point, ball up beside the head, square to a front-on camera, floor visible between the lower legs: 4-5. The expert graded this 4-5 on review. Note the floor between the legs does NOT lift it out of the band — that tell only tells you the shoes are not fused, and this gap is still under half a shoe.
   - COUNT 1 — one shoe fits exactly. Crouched gather, ball at the chest: 9.
   - COUNT between 1 and 2 — a shoe fits with room to spare, and the shoes sit inside the shoulder lines. Squared up in the gather, knees bent, ball at chest: 9. Scored 4 once because an earlier standing frame was measured instead of the gather.
@@ -289,7 +291,7 @@ CONFIRM YOU CAN ACTUALLY SEE THE FEET. Before measuring, check that BOTH shoes a
 
 If the feet are never clearly visible during the shooting motion, return null. A landing you cannot see is never a reason to return null.'
 WHERE name = 'Feet Shoulder Width Apart'
-  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'STANCE RUBRIC v21%');
+  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'STANCE RUBRIC v22%');
 
 -- Canonical "Square to the Basket" rubric, same versioned-guard pattern as the
 -- stance rubric above. Added because the criterion shipped with only its

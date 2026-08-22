@@ -847,6 +847,12 @@ export async function analyzeShot(
   const envPasses = parseInt(process.env.ANALYSIS_PASSES || '3', 10) || 3
   const passes = Math.max(1, Math.min(5, opts?.passes ?? envPasses))
   const model = opts?.model || process.env.ANALYSIS_MODEL || 'claude-sonnet-4-6'
+  // The release gate asks one cheap yes/no question (is there a real shot with a
+  // visible release?), so it runs on a smaller, cheaper model by default —
+  // saving ~6c/upload on the ~31k image tokens it sends. Override with
+  // ANALYSIS_GATE_MODEL; set it back to the grading model if the cheaper gate
+  // starts returning false "no shot" verdicts on real shots.
+  const gateModel = process.env.ANALYSIS_GATE_MODEL || 'claude-haiku-4-5'
 
   // One grader context for the whole ensemble: every pass grades with the
   // byte-identical prompt, even if an admin correction lands mid-analysis.
@@ -859,8 +865,9 @@ export async function analyzeShot(
     calibration_version: ctx.calibrationVersion,
   }
 
-  // Release gate before any grading pass (see findReleaseFrame).
-  const releaseFrame = await findReleaseFrame(frameBase64Array, frameMimeTypes, model)
+  // Release gate before any grading pass (see findReleaseFrame). Runs on the
+  // cheaper gateModel — it's a single detection question, not a full grade.
+  const releaseFrame = await findReleaseFrame(frameBase64Array, frameMimeTypes, gateModel)
   if (releaseFrame === null) {
     return noShotResult(ctx.activeCriteria.map((c) => c.id), graderVersion)
   }

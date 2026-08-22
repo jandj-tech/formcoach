@@ -225,7 +225,7 @@ export async function POST(req: NextRequest) {
               player_type: (prior.player_type ?? 'recreational') as AnalyzeResult['player_assessment']['player_type'],
               player_name: prior.player_name ?? null,
             },
-            critical_flags: prior.critical_flags ?? { elbow_severely_out: false, followthrough_flick_to_side: false, arc_too_flat: false, chest_pass_hands: false },
+            critical_flags: prior.critical_flags ?? { elbow_severely_out: false, followthrough_flick_to_side: false, arc_too_flat: false, chest_pass_hands: false, ball_behind_head: false },
             criteria: priorScores.map(ps => ({
               id: ps.criterion_id,
               score: ps.ai_score === null ? null : Number(ps.ai_score),

@@ -54,6 +54,7 @@ const FLAG_LABELS: Record<string, string> = {
   followthrough_flick_to_side: 'Follow-through flick to side',
   arc_too_flat: 'Arc too flat',
   chest_pass_hands: 'Chest-pass hands',
+  ball_behind_head: 'Catapult — ball behind head',
 }
 const PLAYER_TYPES = ['child', 'recreational', 'college_pro', 'nba_bad_form', 'nba_decent', 'nba_elite']
 const FULL_RUNS = 2

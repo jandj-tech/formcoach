@@ -97,6 +97,7 @@ interface AnalysisResult {
     followthrough_flick_to_side: boolean
     arc_too_flat: boolean
     chest_pass_hands: boolean
+    ball_behind_head: boolean
   }
   /** Raw 0-10 flag confidences from a single pass (pre-merge). */
   flag_confidence?: {
@@ -104,6 +105,7 @@ interface AnalysisResult {
     followthrough_flick_to_side: number
     arc_too_flat: number
     chest_pass_hands: number
+    ball_behind_head: number
   }
   /** Set by analyzeShot on the merged result; absent on per-pass results. */
   grader_version?: GraderVersion
@@ -289,7 +291,7 @@ A CLEAN FINISH NEVER RESCUES A BROKEN SET POINT. The follow-through and the flig
 
 CONSISTENCY CHECK (apply before finalizing every score): If your reasoning for a criterion describes good mechanics, no flaws, or nothing wrong — the score MUST be 10. A positive or neutral reasoning combined with a score below 10 is a direct contradiction. Fix the score to 10, not the reasoning.
 
-USER-FACING LANGUAGE RULE: The "reasoning" string is shown directly to the player. Write it as natural, plain-English coaching feedback — say what they did wrong and how to correct it. NEVER mention internal flag names like elbow_severely_out, followthrough_flick_to_side, arc_too_flat, chest_pass_hands, or critical_flags. NEVER write meta-phrases like "flag triggered," "cap applied," "score capped at X," or "per the rules." NEVER write "hip width" — stance width is measured against the hips internally, but players are only ever taught the "shoulder width" cue, so always word stance feedback as "shoulder width." Just describe the flaw and a tip to fix it, the way a coach would speak to a player.
+USER-FACING LANGUAGE RULE: The "reasoning" string is shown directly to the player. Write it as natural, plain-English coaching feedback — say what they did wrong and how to correct it. NEVER mention internal flag names like elbow_severely_out, followthrough_flick_to_side, arc_too_flat, chest_pass_hands, ball_behind_head, or critical_flags. NEVER write meta-phrases like "flag triggered," "cap applied," "score capped at X," or "per the rules." NEVER write "hip width" — stance width is measured against the hips internally, but players are only ever taught the "shoulder width" cue, so always word stance feedback as "shoulder width." Just describe the flaw and a tip to fix it, the way a coach would speak to a player.
 
 VISIBILITY RULE (null decisions only): If a criterion cannot be assessed AT ALL because the relevant body part or ball position is not clearly visible in any frame, return null. This is the only place visibility matters.
 
@@ -368,6 +370,7 @@ CRITICAL FLAGS — these operate on their own detection standard, independent of
   DO NOT set this flag just because both hands are on the ball — every shot starts that way and two hands on the ball during the gather is completely normal. Set it ONLY when ALL of these hold: the ball is shoved from chest-to-chin height without ever loading above the face, the two hands stay mirrored with no hand under the ball, and the release is visibly two-handed. If any one of those is missing, leave the flag low.
   When true: "Shot Pocket — Elbow", "Source of Shot Power" and "Shooting Through Guide Hand / One Hand Release" MUST each score 4 or below. Pushing the ball from the chest with both hands means it is not loaded in a shot pocket, the power is coming from the arms rather than the legs, and the release cannot be one-handed.
 
+- ball_behind_head: the ball is brought DIRECTLY ABOVE or BEHIND the top of the head and released from there — the catapult. The tells: at the set point the ball sits over the crown of the head or behind the hairline rather than in front of and slightly above the forehead; both elbows are high and winged wide; the forearms lay back so the ball is slung forward from over the skull like a soccer throw-in. This is distinct from a normal high set point (ball in front of the forehead, shooting elbow roughly under the ball). Set the 0-10 confidence by how clearly the ball goes above/behind the head. When true (>=7): the elbow, shot pocket, and shot-power criteria are all severe — the whole shot is built on a catapult and none of those three can be credited.
 - arc_too_flat: the ball travels on a low, flat trajectory rather than a proper high arc (45–60 degrees). If the ball visibly shoots out nearly flat or at a shallow angle with little height, set true. A flat shot has almost no arc and the ball comes in at a low angle toward the basket. Do NOT apply benefit-of-the-doubt here. When true: the shot arc criterion MUST score 4 or below.
 
 NOTE: These flags are the most important flaws to detect. Report each as a 0-10 confidence, not a guess: 0-2 clearly absent, 3-6 borderline or partially suggestive, 7-10 clearly present with a frame you can point to. Confidence 7+ is treated as the flaw being present.
@@ -394,7 +397,8 @@ Return ONLY valid JSON, no other text:
     "elbow_severely_out": <0-10 confidence that this flaw is clearly present: 0 = definitely not, 10 = unmistakable. 8+ means you can point at the exact frame and describe the flaw>,
     "followthrough_flick_to_side": <0-10 confidence, same standard>,
     "arc_too_flat": <0-10 confidence, same standard>,
-    "chest_pass_hands": <0-10 confidence, same standard>
+    "chest_pass_hands": <0-10 confidence, same standard>,
+    "ball_behind_head": <0-10 confidence, same standard>
   },
   "criteria": [
     { "id": <criterion_id>, "score": <1-10 or null>, "reasoning": "<1-2 sentences>" },
@@ -509,6 +513,7 @@ async function analyzeShotOnce(
     followthrough_flick_to_side: conf(rawFlags.followthrough_flick_to_side),
     arc_too_flat: conf(rawFlags.arc_too_flat),
     chest_pass_hands: conf(rawFlags.chest_pass_hands),
+    ball_behind_head: conf(rawFlags.ball_behind_head),
   }
   // Within a single pass the flaw counts as present at confidence >= 7.
   result.critical_flags = {
@@ -516,6 +521,7 @@ async function analyzeShotOnce(
     followthrough_flick_to_side: result.flag_confidence.followthrough_flick_to_side >= 7,
     arc_too_flat: result.flag_confidence.arc_too_flat >= 7,
     chest_pass_hands: result.flag_confidence.chest_pass_hands >= 7,
+    ball_behind_head: result.flag_confidence.ball_behind_head >= 7,
   }
 
   // Arc and rotation are resolved by name rather than by the seed id, because
@@ -639,6 +645,26 @@ function finalizeResult(result: AnalysisResult, activeCriteria: CriteriaRow[]): 
     }
   }
 
+  // A behind/above-the-head catapult is three flaws at once: the arm is opened
+  // into a wide V instead of an L, the ball was never loaded in a real pocket,
+  // and the power comes from slinging with the arms rather than the legs. Caps
+  // all three, mirroring the chest-pass cap.
+  if (result.critical_flags.ball_behind_head) {
+    const catapultCriteria = [
+      'Elbow L-Shape — Under the Ball',
+      'Shot Pocket — Elbow',
+      'Source of Shot Power',
+    ]
+    const capIds = activeCriteria
+      .filter((c) => catapultCriteria.includes(c.name as string))
+      .map((c) => c.id as number)
+    for (const c of result.criteria) {
+      if (capIds.includes(c.id) && c.score !== null) {
+        c.score = Math.min(c.score as number, 4)
+      }
+    }
+  }
+
   // Recalculate overall using weighted average (weight column from DB)
   const activeCriteriaRows = activeCriteria as unknown as Array<{ id: number; weight: unknown }>
   const weightMap: Record<number, number> = Object.fromEntries(
@@ -652,8 +678,8 @@ function finalizeResult(result: AnalysisResult, activeCriteria: CriteriaRow[]): 
   }
 
   // Apply critical flag caps FIRST — stacking penalties for multiple flaws
-  const { elbow_severely_out, followthrough_flick_to_side, arc_too_flat, chest_pass_hands } = result.critical_flags
-  const flagCount = [elbow_severely_out, followthrough_flick_to_side, arc_too_flat, chest_pass_hands].filter(Boolean).length
+  const { elbow_severely_out, followthrough_flick_to_side, arc_too_flat, chest_pass_hands, ball_behind_head } = result.critical_flags
+  const flagCount = [elbow_severely_out, followthrough_flick_to_side, arc_too_flat, chest_pass_hands, ball_behind_head].filter(Boolean).length
   const flagsTriggered = flagCount > 0
   if (flagCount >= 3) {
     result.overall_score = Math.min(result.overall_score, 5.0)
@@ -806,6 +832,7 @@ function noShotResult(criteriaIds: number[], graderVersion: GraderVersion): Anal
       followthrough_flick_to_side: false,
       arc_too_flat: false,
       chest_pass_hands: false,
+      ball_behind_head: false,
     },
     grader_version: graderVersion,
     criteria: criteriaIds.map((id) => ({ id, score: null, reasoning: '' })),
@@ -871,6 +898,7 @@ export async function analyzeShot(
       followthrough_flick_to_side: median(detected.map(r => r.flag_confidence?.followthrough_flick_to_side ?? (r.critical_flags.followthrough_flick_to_side ? 10 : 0))) >= 7,
       arc_too_flat: median(detected.map(r => r.flag_confidence?.arc_too_flat ?? (r.critical_flags.arc_too_flat ? 10 : 0))) >= 7,
       chest_pass_hands: median(detected.map(r => r.flag_confidence?.chest_pass_hands ?? (r.critical_flags.chest_pass_hands ? 10 : 0))) >= 7,
+      ball_behind_head: median(detected.map(r => r.flag_confidence?.ball_behind_head ?? (r.critical_flags.ball_behind_head ? 10 : 0))) >= 7,
     },
     criteria: activeCriteria.map(ac => {
       const perPass = detected

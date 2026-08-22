@@ -6,7 +6,7 @@ import { analysisUnitCents, orderPricing, usd, MAX_COACH_CREDITS_PER_ORDER } fro
 import QuantityStepper from '@/components/QuantityStepper'
 
 // Buys analysis credits for a coach / org owner's own uploads —
-// $0.99 each if their team is initiated, $3.49 otherwise, with the same
+// $1.49 each if their team is initiated, $3.49 otherwise, with the same
 // volume tiers every other buy flow uses.
 export default function BuySelfCreditsButton({ initiated }: { initiated: boolean }) {
   const inApp = useIsInApp()

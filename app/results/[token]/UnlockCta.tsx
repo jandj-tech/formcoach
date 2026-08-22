@@ -85,7 +85,7 @@ export default function UnlockCta({ resultsPath, justPurchased }: { resultsPath:
         Buy a Shot Analysis Token to see everything
       </p>
       <p className="text-gray-500 text-xs leading-relaxed">
-        Your free analysis includes the overall score. Unlock every criterion&apos;s
+        This preview shows the overall score. Unlock every criterion&apos;s
         grade, the coaching notes on your form, and how to fix each one.
       </p>
       {waiting ? (

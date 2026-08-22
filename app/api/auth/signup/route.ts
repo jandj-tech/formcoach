@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
 import { signSession, sessionCookieOptions } from '@/lib/auth'
-import { grantFreeOrgTokensIfEligible } from '@/lib/team-tokens'
 import { addToEmailList } from '@/lib/email-list'
 import { sendMetaEvent, makeRegistrationEvent } from '@/lib/meta-server'
 import { BCRYPT_COST } from '@/lib/password'
@@ -42,11 +41,12 @@ export async function POST(req: NextRequest) {
 
     const nicknameTrimmed = nickname?.trim() || null
 
-    // free_analysis_used = false grants the one free score-only analysis
-    // (the column defaults to true so pre-existing accounts don't get one).
+    // No free trial analysis: new accounts pay from their first upload. The
+    // free_analysis_used column defaults to true, so leaving it out of the
+    // INSERT marks the account as having no free analysis available.
     const [user] = await db`
-      INSERT INTO users (email, password_hash, subscription_type, subscription_expires_at, nickname, free_analysis_used)
-      VALUES (${emailLower}, ${hash}, ${sub?.subscription_type ?? null}, ${sub?.subscription_expires_at ?? null}, ${nicknameTrimmed}, false)
+      INSERT INTO users (email, password_hash, subscription_type, subscription_expires_at, nickname)
+      VALUES (${emailLower}, ${hash}, ${sub?.subscription_type ?? null}, ${sub?.subscription_expires_at ?? null}, ${nicknameTrimmed})
       RETURNING id, email
     ` as unknown as [{ id: string; email: string }]
 
@@ -92,7 +92,6 @@ export async function POST(req: NextRequest) {
               SET first_name = EXCLUDED.first_name, last_name_initial = EXCLUDED.last_name_initial
           `
           await db`DELETE FROM pending_team_members WHERE id = ${pending.id}`
-          await grantFreeOrgTokensIfEligible(pending.team_id)
         }
       } catch {
         // Non-fatal: still create the account even if invite claim fails

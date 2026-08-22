@@ -28,7 +28,7 @@ export default function CoachSelfUploader({
               {credits} analysis credit{credits !== 1 ? 's' : ''} remaining
             </p>
             <p className="text-xs text-gray-500 mt-0.5">
-              {initiated ? `${usd(analysisUnitCents(true))} per analysis.` : `${usd(analysisUnitCents(false))} per analysis until your team has 8+ players.`}
+              {initiated ? `${usd(analysisUnitCents(true))} per analysis.` : `${usd(analysisUnitCents(false))} per analysis until your team has 8+ players and has bought 8 tokens.`}
             </p>
           </div>
           <BuySelfCreditsButton initiated={initiated} />

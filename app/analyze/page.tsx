@@ -32,11 +32,11 @@ export default async function AnalyzePage() {
     let initiated = false
     try {
       if (teamSession) {
-        // A team coach only gets $0.99 if their own team is initiated.
+        // A team coach only gets $1.49 if their own team is initiated.
         const state = await getTeamTokenState(teamSession.teamId)
         initiated = !!state?.initiated
       } else if (orgSession) {
-        // An org owner gets $0.99 once any of their teams is initiated.
+        // An org owner gets $1.49 once any of their teams is initiated.
         initiated = await orgHasInitiatedTeam(orgSession.orgId)
       }
     } catch {
@@ -78,7 +78,7 @@ export default async function AnalyzePage() {
         {!playerSession && !coachSelf && (
           <p className="inline-flex items-center gap-2 mt-4 bg-ember-500/10 border border-ember-500/30 rounded-full px-4 py-1.5 text-ember-400 text-sm font-bold select-none">
             <span className="w-1.5 h-1.5 rounded-full bg-ember-500 animate-pulse" aria-hidden />
-            Your first analysis is free — sign up below
+            Create a free account below to analyze your shot
           </p>
         )}
       </section>

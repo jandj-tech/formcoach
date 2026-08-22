@@ -113,10 +113,11 @@ export default async function OrgDashboardPage() {
     const teamRows = (await db`
       SELECT id, name, age_group, access_code, admin_email,
              COALESCE(credits, 0)::int AS credits,
+             COALESCE(tokens_purchased, 0)::int AS tokens_purchased,
              class_package_id
       FROM teams WHERE organization_id = ${org.id}
       ORDER BY created_at ASC
-    `) as unknown as Array<{ id: string; name: string; age_group: string | null; access_code: string; admin_email: string; credits: number; class_package_id: string | null }>
+    `) as unknown as Array<{ id: string; name: string; age_group: string | null; access_code: string; admin_email: string; credits: number; tokens_purchased: number; class_package_id: string | null }>
 
     teams = await Promise.all(
       teamRows.map(async (t) => {
@@ -154,10 +155,10 @@ export default async function OrgDashboardPage() {
         } catch {
           // coach_nickname / token_pool columns may not exist yet
         }
-        // A team is initiated if it has a class package OR has reached the
-        // player threshold. Both unlock the $0.99 rate everywhere this team
-        // is involved.
-        const initiated = !!t.class_package_id || members.length >= 8
+        // A team is initiated if it has a class package OR has BOTH reached the
+        // player threshold AND bought its 8-token buy-in. Either path unlocks
+        // the $1.49 rate everywhere this team is involved.
+        const initiated = !!t.class_package_id || (members.length >= 8 && (t.tokens_purchased ?? 0) >= 8)
 
         // Leaderboard: account players (by user_id) + coach-added players (by team_player_id).
         let leaderboard: LeaderboardRow[] = []

@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Select at least one player' }, { status: 400 })
     }
 
-    // $0.99 per token once the team has 8+ players, $3.49 before.
+    // $1.49 per token once the team has 8+ players, $3.49 before.
     const state = await getTeamTokenState(session.teamId)
     const baseAmount = state?.initiated ? TEAM_TOKEN_PRICE_CENTS : REGULAR_ANALYSIS_PRICE_CENTS
 

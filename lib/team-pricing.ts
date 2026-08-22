@@ -2,16 +2,25 @@
 // file is safe to import from client components.
 
 /**
- * A team unlocks the discounted token price once it reaches this many joined
- * players (or has a class package bought for it).
+ * A team unlocks the discounted token price once it BOTH reaches this many
+ * joined players AND has bought at least INITIATION_MIN_TOKENS tokens for the
+ * team. (A class package bought for the team also unlocks it outright.)
  */
 export const INITIATION_MIN_PLAYERS = 8
+
+/**
+ * The team's buy-in: it must have purchased at least this many tokens — at the
+ * regular rate — before the discounted rate unlocks. So the first 8 tokens are
+ * bought at REGULAR_ANALYSIS_PRICE_CENTS, and (once the roster is full too)
+ * every token after that is TEAM_TOKEN_PRICE_CENTS.
+ */
+export const INITIATION_MIN_TOKENS = 8
 
 /** Regular per-analysis price (cents) — players, and coaches/orgs before their team is initiated. */
 export const REGULAR_ANALYSIS_PRICE_CENTS = 349
 
 /** Discounted per-token price (cents) once a team is initiated. */
-export const TEAM_TOKEN_PRICE_CENTS = 99
+export const TEAM_TOKEN_PRICE_CENTS = 149
 
 /**
  * Per-order quantity ceilings, shared by the buy UI and the routes that
@@ -26,7 +35,7 @@ export const MAX_COACH_CREDITS_PER_ORDER = 500
  *
  * Every surface that shows or charges an analysis price goes through here —
  * players, coaches and orgs alike. Reading the two constants directly is what
- * let the same player see $1.79 on one page and $0.99 on another.
+ * let the same player see $3.49 on one page and $1.49 on another.
  */
 export function analysisUnitCents(initiated: boolean): number {
   return initiated ? TEAM_TOKEN_PRICE_CENTS : REGULAR_ANALYSIS_PRICE_CENTS
@@ -45,11 +54,11 @@ export type VolumeTier = { minQty: number; percentOff: number }
  * Ordered highest-first — `find` returns the best tier the quantity qualifies for.
  */
 export const REGULAR_VOLUME_TIERS: ReadonlyArray<VolumeTier> = [
-  // The advertised curve: 3 for $6.99 ($2.33/ea), 5–9 at the 5-pack rate
-  // ($1.79/ea), 10–14 another 10% off ($1.61/ea), and from 15 the price
-  // floors at $1.49/ea — larger orders never go below the floor.
-  { minQty: 15, percentOff: 57.3 },
-  { minQty: 10, percentOff: 53.9 },
+  // The advertised curve: 3 for $6.99 ($2.33/ea), and from 5 up the price
+  // floors at $1.79/ea — the cheapest anyone NOT on an initiated team can
+  // reach. Larger orders never go below that floor; the only way lower is to
+  // initiate a team (fill an 8-player roster and buy the 8-token buy-in),
+  // which unlocks TEAM_TOKEN_PRICE_CENTS and its own ladder below.
   { minQty: 5, percentOff: 48.7 },
   { minQty: 3, percentOff: 33.2 },
 ]
@@ -58,8 +67,8 @@ export const REGULAR_VOLUME_TIERS: ReadonlyArray<VolumeTier> = [
  * The ladder for buyers already on the discounted team rate — deliberately
  * shallower, and starting later, than the regular one.
  *
- * TEAM_TOKEN_PRICE_CENTS is itself the volume discount: 45% off list, given
- * for filling a roster rather than for the size of one order. Stacking the
+ * TEAM_TOKEN_PRICE_CENTS is itself the volume discount: ~57% off list, given
+ * for filling a roster (and buying in) rather than for the size of one order. Stacking the
  * regular ladder on top of it would compound two discounts and take an
  * analysis to well under half what a single one earns, so a team's bulk
  * pricing starts where the reward for a genuinely large order begins.

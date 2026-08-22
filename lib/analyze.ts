@@ -408,6 +408,13 @@ Return ONLY valid JSON, no other text:
 }`
 }
 
+// Sonnet 5, Opus 4.7/4.8, and Fable 5 reject temperature/top_p/top_k (400).
+// Older models (Sonnet 4.6 and earlier, Haiku 4.5) accept them. Send
+// temperature:0 only where it is accepted, for determinism.
+function acceptsTemperature(model: string): boolean {
+  return !/(sonnet-5|opus-4-7|opus-4-8|fable-5|mythos-5)/.test(model)
+}
+
 async function analyzeShotOnce(
   frameBase64Array: string[],
   frameMimeTypes: string[],
@@ -445,10 +452,11 @@ async function analyzeShotOnce(
   const response = await getAnthropic().messages.create({
     model,
     max_tokens: 6000,
-    // Determinism: identical frames must grade identically. Temperature 0
-    // collapses sampling variance; the median-of-N ensemble below absorbs
-    // what little remains.
-    temperature: 0,
+    // Determinism: on models that accept it (Sonnet 4.6 and earlier),
+    // temperature 0 collapses sampling variance; the median-of-N ensemble
+    // absorbs the rest. Sonnet 5 / Opus 4.7+ / Fable reject temperature (400),
+    // so omit it there and rely on thinking:disabled + the ensemble.
+    ...(acceptsTemperature(model) ? { temperature: 0 } : {}),
     // Explicit thinking mode: on Sonnet 5, omitting `thinking` silently
     // enables adaptive thinking (extra cost); 'disabled' matches Sonnet
     // 4.6's no-thinking default.
@@ -847,7 +855,7 @@ async function findReleaseFrame(
     }))
     const n = frameBase64Array.length
     const response = await getAnthropic().messages.create({
-      temperature: 0,
+      ...(acceptsTemperature(model) ? { temperature: 0 } : {}),
       model,
       max_tokens: 300,
       messages: [{

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { ClipboardListIcon } from 'lucide-react'
 import HubSection from '@/components/HubSection'
 import TeamChatPanel from '@/components/TeamChatPanel'
 import TeamSchedulePanel from '@/components/TeamSchedulePanel'
@@ -84,6 +85,25 @@ function TeamHubBody({
           </div>
         )}
       </HubSection>
+
+      {/* Flagship program — a featured (not loud) card for the org 10-week
+          program; a member may want to bring it to their coach/club. Placed
+          under Roster so it never outranks the everyday Schedule section. */}
+      <Link
+        href="/org/signup"
+        className="card-lift w-full bg-ink-900 border border-ember-500/30 hover:border-ember-500/60 rounded-2xl px-5 py-4 flex items-center gap-4 transition-colors"
+      >
+        <ClipboardListIcon className="w-7 h-7 text-ember-400 shrink-0" aria-hidden />
+        <div className="flex-1 min-w-0">
+          <p className="font-display font-bold uppercase text-chalk text-sm leading-tight">
+            Run the 10-Week Shooting Development Program
+          </p>
+          <p className="text-chalk-dim text-xs mt-1">
+            Ball, baseline + final AI analysis, a certificate, and a coach&apos;s guide — $40/player.
+          </p>
+        </div>
+        <span className="shrink-0 text-ember-400 font-bold text-lg select-none" aria-hidden>→</span>
+      </Link>
 
       {/* Leaderboard — a link row, not an embed. It lives where it lives. */}
       <Link

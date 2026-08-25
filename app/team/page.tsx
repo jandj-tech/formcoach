@@ -8,7 +8,7 @@ import { getTeamSession } from '@/lib/team-auth'
 import { getOrgSession } from '@/lib/org-auth'
 import { db } from '@/lib/db'
 import TeamHubClient, { type HubTeam } from './TeamHubClient'
-import { GraduationCapIcon, TrendingUpIcon, TrophyIcon } from 'lucide-react'
+import { TrendingUpIcon, TrophyIcon, PackageIcon, TargetIcon, AwardIcon, ClipboardListIcon } from 'lucide-react'
 import { TEAM_TOKEN_PRICE_CENTS, TEAM_VOLUME_TIERS, usd } from '@/lib/team-pricing'
 
 // The deepest tier a team can reach, read off the ladder rather than typed.
@@ -184,26 +184,48 @@ export default async function TeamLandingPage() {
         </div>
       </div>
 
-      {/* CTA band */}
-      <div className="bg-ink-900 border-y border-courtline w-full py-10 flex flex-col items-center gap-6 text-center px-6">
-        <p className="font-display font-black uppercase text-xl sm:text-2xl max-w-md leading-tight">
-          Ready to take your organization to the next level?
-        </p>
-        <div className="flex flex-col sm:flex-row gap-3 w-full max-w-md sm:w-auto">
-          <Link
-            href="/org/signup"
-            className="bg-ember-500 hover:bg-ember-400 active:scale-[0.98] text-ink-950 font-bold px-8 py-4 rounded-full transition-all shadow-[0_0_40px_-8px_rgba(255,92,26,0.55)]"
-          >
-            Register Organization
-          </Link>
-          {!session && !teamSession && !orgSession && (
+      {/* Flagship program — the org 10-week program, featured full-width as
+          the second thing every visitor sees (not a footer link). */}
+      <div className="hero-glow grain relative bg-ink-900 border-y border-courtline w-full px-6 py-16">
+        <div className="max-w-5xl mx-auto space-y-8">
+          <div className="space-y-3">
+            <p className="eyebrow text-ember-400 select-none">The flagship program</p>
+            <h2 className="font-display font-black uppercase text-[clamp(2rem,5vw,3.25rem)] leading-[0.95]">
+              The 10-Week Shooting <span className="text-gradient-ember">Development Program</span>
+            </h2>
+            <p className="text-chalk-dim text-lg max-w-2xl">
+              One ball. Two graded analyses. A certificate that proves the improvement — plus a coach&apos;s
+              guide for every week in between. $40 per player, everything included.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              { Icon: PackageIcon, title: 'Real ball, shipped', body: 'Every enrolled player gets a LearnHoops training ball, sized to their age group.' },
+              { Icon: TargetIcon, title: 'Two graded analyses', body: 'A Week 1 baseline and a Week 10 retest — a measured before-and-after, not a guess.' },
+              { Icon: AwardIcon, title: 'Certificate of completion', body: 'A shareable certificate showing exactly how each player’s shot score changed.' },
+              { Icon: ClipboardListIcon, title: 'Full coach’s guide', body: 'Every week laid out — demonstrations, drills, timing, and coaching cues.' },
+            ].map(({ Icon, title, body }) => (
+              <div key={title} className="card-lift bg-ink-950 border border-courtline rounded-2xl p-5 text-left">
+                <Icon className="w-6 h-6 text-ember-400" aria-hidden />
+                <p className="font-display font-bold uppercase text-chalk text-sm mt-3 leading-tight">{title}</p>
+                <p className="text-chalk-dim text-sm mt-1 leading-relaxed">{body}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="shrink-0 rounded-2xl border border-courtline bg-ink-950 px-4 py-2.5 text-center">
+              <p className="font-numeric font-black text-ember-500 text-2xl leading-none">$40</p>
+              <p className="font-display uppercase text-chalk-dim text-[10px] tracking-wide mt-1">per player</p>
+            </div>
             <Link
-              href="/login"
-              className="border border-courtline hover:border-chalk-dim active:scale-[0.98] text-chalk font-bold px-8 py-4 rounded-full transition-all"
+              href="/org/signup"
+              className="bg-ember-500 hover:bg-ember-400 active:scale-[0.98] text-ink-950 font-bold px-8 py-4 rounded-full transition-all shadow-[0_0_40px_-8px_rgba(255,92,26,0.55)]"
             >
-              Log In
+              Bring the Program to Your Club →
             </Link>
-          )}
+          </div>
         </div>
       </div>
 
@@ -232,20 +254,6 @@ export default async function TeamLandingPage() {
             <div className="text-chalk-dim text-sm">{inApp ? <>Watch the leaderboard fill up and see who&apos;s improving across every team.</> : <>Buy credits for players, watch the leaderboard fill up, and see who&apos;s improving across every team.</>}</div>
           </div>
         </div>
-
-        {!inApp && (
-        <Link
-          href="/org/signup"
-          className="card-lift w-full bg-ember-500 hover:bg-ember-400 rounded-2xl px-6 py-5 flex items-center gap-4 text-ink-950 transition-colors"
-        >
-          <GraduationCapIcon className="w-8 h-8 shrink-0" aria-hidden />
-          <div className="text-left flex-1">
-            <p className="font-display font-black uppercase text-base leading-tight">10-Week Shooting Development Program — for organizations</p>
-            <p className="text-ink-950/80 text-sm mt-1">Each player gets a ball, 2 shot analyses, and a certificate of completion that shows their improvement. Starting at $40/player.</p>
-          </div>
-          <span className="shrink-0 font-bold text-lg select-none" aria-hidden>→</span>
-        </Link>
-        )}
       </div>
 
       </>)}

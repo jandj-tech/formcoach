@@ -129,7 +129,7 @@ export default async function TeamLandingPage() {
         <div className="space-y-5 max-w-2xl">
           <p className="eyebrow text-ember-400 select-none">For clubs, schools &amp; academies</p>
           <h1 className="font-display font-black uppercase text-[clamp(2.2rem,6vw,4.5rem)] leading-[0.95]">
-            LearnHoops <span className="text-gradient-ember">Team Plan</span>
+            LearnHoops <span className="text-ember-500">Team Plan</span>
           </h1>
           <p className="text-chalk-dim text-lg">
             Get your whole team analyzed. AI grades every player&apos;s shot form — see who&apos;s ranked best and who&apos;s improving the most.
@@ -137,7 +137,7 @@ export default async function TeamLandingPage() {
           <div className="pt-2">
             <Link
               href="/org/signup"
-              className="inline-block bg-ember-500 hover:bg-ember-400 active:scale-[0.98] text-ink-950 font-bold px-8 py-4 rounded-full transition-all shadow-[0_0_40px_-8px_rgba(255,92,26,0.55)]"
+              className="inline-block bg-ember-500 hover:bg-ember-400 active:scale-[0.98] text-ink-950 font-bold px-8 py-4 rounded-full transition-all"
             >
               Register Organization
             </Link>
@@ -148,7 +148,7 @@ export default async function TeamLandingPage() {
           <div className="card-lift bg-ink-900 border border-courtline rounded-2xl p-6 space-y-2">
             {inApp ? (
               <>
-                <div className="font-numeric text-3xl text-ember-500">🎯</div>
+                <TargetIcon className="w-7 h-7 text-ember-400" aria-hidden />
                 <div className="font-display font-bold uppercase text-chalk">Pay as you go</div>
                 <div className="text-chalk-dim text-sm">Use analysis credits whenever your team needs them.</div>
               </>
@@ -186,7 +186,7 @@ export default async function TeamLandingPage() {
 
       {/* Flagship program — the org 10-week program, featured full-width as
           the second thing every visitor sees (not a footer link). */}
-      <div className="hero-glow grain relative bg-ink-900 border-y border-courtline w-full px-6 py-16">
+      <div className="bg-ink-900 border-y border-courtline w-full px-6 py-16">
         <div className="max-w-5xl mx-auto space-y-8">
           <div className="space-y-3">
             <p className="eyebrow text-ember-400 select-none">The flagship program</p>
@@ -214,7 +214,7 @@ export default async function TeamLandingPage() {
             ))}
           </div>
 
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-4">
             <div className="shrink-0 rounded-2xl border border-courtline bg-ink-950 px-4 py-2.5 text-center">
               <p className="font-numeric font-black text-ember-500 text-2xl leading-none">$40</p>
               <p className="font-display uppercase text-chalk-dim text-[10px] tracking-wide mt-1">per player</p>

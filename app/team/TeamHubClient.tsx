@@ -91,10 +91,11 @@ function TeamHubBody({
           under Roster so it never outranks the everyday Schedule section. */}
       <Link
         href="/org/signup"
-        className="card-lift w-full bg-ink-900 border border-ember-500/30 hover:border-ember-500/60 rounded-2xl px-5 py-4 flex items-center gap-4 transition-colors"
+        className="card-lift w-full bg-ember-500/[0.04] border border-ember-500/30 hover:border-ember-500/60 rounded-2xl px-5 py-5 flex items-center gap-4 transition-colors"
       >
         <ClipboardListIcon className="w-7 h-7 text-ember-400 shrink-0" aria-hidden />
         <div className="flex-1 min-w-0">
+          <p className="eyebrow text-ember-400 select-none mb-1.5">Flagship program</p>
           <p className="font-display font-bold uppercase text-chalk text-sm leading-tight">
             Run the 10-Week Shooting Development Program
           </p>

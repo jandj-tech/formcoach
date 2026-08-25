@@ -1609,8 +1609,8 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
           ball, 2 AI shot analyses (start and end of the program), and a
           personalized completion certificate. You also get a full 10-week
           coach&rsquo;s guide with drills, cues, and checkpoints. Buying a
-          package creates a class team and unlocks the $0.99 token rate for your
-          organization.
+          package creates a class team and unlocks the discounted $1.49 token
+          rate for your organization.
         </InfoTip>
       </div>
 

@@ -35,7 +35,7 @@ const PRIMARY: { Icon: LucideIcon; title: string; body: string }[] = [
 const EXTRAS: { Icon: LucideIcon; label: string }[] = [
   { Icon: AwardIcon, label: 'Completion certificate' },
   { Icon: LayoutDashboardIcon, label: 'Org dashboard' },
-  { Icon: TagIcon, label: '$0.99 analysis rate' },
+  { Icon: TagIcon, label: '$1.49 analysis rate' },
 ]
 
 function OrgSignupInner() {

@@ -1638,7 +1638,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
               </div>
             ))}
           <p className="text-xs text-gray-400 pt-1">
-            Need another? Start a new package below — pick your ball sizes and check out. It creates a fresh class team automatically.
+            Starting another package below creates a fresh class team automatically.
           </p>
         </div>
       )}

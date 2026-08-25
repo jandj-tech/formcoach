@@ -6,42 +6,36 @@ import Image from 'next/image'
 import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
 import PasswordInput from '@/components/PasswordInput'
+import { ClipboardListIcon, PackageIcon, TargetIcon, AwardIcon, LayoutDashboardIcon, TagIcon, type LucideIcon } from 'lucide-react'
 
 const INPUT =
   'w-full bg-ink-800 border border-courtline rounded-xl px-4 py-3 text-chalk placeholder-chalk-dim focus:outline-none focus:border-ember-500 transition-colors'
 const LABEL = 'block text-xs font-semibold uppercase tracking-wide text-chalk-dim mb-1.5'
 
-const BENEFITS: { icon: string; title: string; body: string }[] = [
+// The three things that answer "what do I physically/measurably get" — full cards.
+const PRIMARY: { Icon: LucideIcon; title: string; body: string }[] = [
   {
-    icon: '📋',
+    Icon: ClipboardListIcon,
     title: 'The full 10-week program',
     body: 'A turnkey coach’s guide — every week laid out with demonstrations, drills, timing, coaching cues, and a game. Open a week and run the hour.',
   },
   {
-    icon: '🏀',
+    Icon: PackageIcon,
     title: 'A training ball for every player',
     body: 'Each enrolled player gets a LearnHoops training ball sized to their age group, shipped to you.',
   },
   {
-    icon: '🎯',
+    Icon: TargetIcon,
     title: '2 AI shot analyses per player',
     body: 'A Week 1 baseline and a Week 10 retest — a measurable before-and-after of every player’s shooting form.',
   },
-  {
-    icon: '🏆',
-    title: 'A completion certificate',
-    body: 'Each player finishes with a personalized certificate showing their scores and how much they improved.',
-  },
-  {
-    icon: '📊',
-    title: 'An organization dashboard',
-    body: 'Manage teams, coaches and players in one place, with join codes and per-player progress.',
-  },
-  {
-    icon: '💸',
-    title: 'A $0.99 analysis rate',
-    body: 'Buying a program package unlocks the discounted $0.99 per-analysis rate for your whole organization.',
-  },
+]
+
+// Secondary perks folded into a tighter row rather than six stacked cards.
+const EXTRAS: { Icon: LucideIcon; label: string }[] = [
+  { Icon: AwardIcon, label: 'Completion certificate' },
+  { Icon: LayoutDashboardIcon, label: 'Org dashboard' },
+  { Icon: TagIcon, label: '$0.99 analysis rate' },
 ]
 
 function OrgSignupInner() {
@@ -193,29 +187,61 @@ function OrgSignupInner() {
 
           {/* Pitch panel */}
           <div className="space-y-6">
-            <span className="inline-block text-[11px] font-bold uppercase tracking-widest text-ember-400 bg-ember-500/10 border border-ember-500/30 rounded-full px-3 py-1">
-              For clubs &amp; organizations
-            </span>
-            <h1 className="font-display font-black uppercase text-4xl sm:text-5xl leading-[0.95]">
+            <p className="eyebrow text-ember-400 select-none">For clubs &amp; organizations</p>
+            <h1 className="font-display font-black uppercase text-[clamp(2.1rem,4.8vw,3.5rem)] leading-[0.95]">
               Bring AI shot analysis
               <span className="text-gradient-ember"> to your whole club</span>
             </h1>
             <p className="text-chalk-dim text-base leading-relaxed max-w-md">
               Apply for an organization account to run the <strong className="text-chalk">10-Week Shooting
               Development Program</strong> — a complete, coach-ready plan that measures every player’s shot before and
-              after with LearnHoops AI. Starting at <span className="font-numeric text-chalk">$40</span>/player.
+              after with LearnHoops AI.
             </p>
 
+            {/* Price — its own figure, the first objection a decision-maker has. */}
+            <div className="flex items-center gap-3">
+              <div className="shrink-0 rounded-2xl border border-courtline bg-ink-900 px-4 py-2.5 text-center">
+                <p className="font-numeric font-black text-ember-500 text-2xl leading-none">$40</p>
+                <p className="font-display uppercase text-chalk-dim text-[10px] tracking-wide mt-1">per player</p>
+              </div>
+              <p className="text-chalk-dim text-sm">
+                <span className="font-numeric text-chalk">$36.99</span>/player for 30+. Everything below is included.
+              </p>
+            </div>
+
+            {/* Primary benefits — monochrome ember icons, matching the site's icon system. */}
             <div className="space-y-3">
-              {BENEFITS.map(b => (
-                <div key={b.title} className="flex gap-3 bg-ink-900/60 border border-courtline rounded-xl p-3.5">
-                  <div className="shrink-0 text-xl leading-none mt-0.5" aria-hidden>{b.icon}</div>
+              {PRIMARY.map(({ Icon, title, body }) => (
+                <div key={title} className="flex gap-3 bg-ink-900/60 border border-courtline rounded-xl p-3.5">
+                  <Icon className="w-6 h-6 text-ember-400 shrink-0 mt-0.5" aria-hidden />
                   <div className="min-w-0">
-                    <p className="font-bold text-sm text-chalk leading-tight">{b.title}</p>
-                    <p className="text-chalk-dim text-sm leading-relaxed mt-0.5">{b.body}</p>
+                    <p className="font-bold text-sm text-chalk leading-tight">{title}</p>
+                    <p className="text-chalk-dim text-sm leading-relaxed mt-0.5">{body}</p>
                   </div>
                 </div>
               ))}
+            </div>
+
+            {/* Secondary perks — compact row. */}
+            <div className="flex flex-wrap gap-2">
+              {EXTRAS.map(({ Icon, label }) => (
+                <span key={label} className="inline-flex items-center gap-1.5 bg-ink-900/60 border border-courtline rounded-full px-3 py-1.5 text-xs text-chalk">
+                  <Icon className="w-3.5 h-3.5 text-ember-400 shrink-0" aria-hidden />
+                  {label}
+                </span>
+              ))}
+            </div>
+
+            {/* Real trust signal — reuse the home page's org card, not an invented stat. */}
+            <div>
+              <p className="eyebrow text-hardwood mb-2 select-none">Trusted on the court</p>
+              <div className="card-lift inline-flex items-center gap-4 bg-ink-800 border border-courtline rounded-2xl px-5 py-3">
+                <Image src="/maple-basketball-logo.png" alt="Maple Basketball logo" width={48} height={48} className="object-contain rounded-xl" />
+                <div>
+                  <p className="text-chalk text-sm font-bold leading-tight">Maple Basketball</p>
+                  <p className="text-chalk-dim text-xs">Vaughan, ON</p>
+                </div>
+              </div>
             </div>
           </div>
 

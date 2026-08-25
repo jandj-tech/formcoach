@@ -449,6 +449,12 @@ export default async function CurriculumPage({ params }: Props) {
           body { background: white !important; }
           .card { break-inside: avoid; }
           .page-break { page-break-before: always; }
+          /* Force the intentional ember/ink fills to print where color is load-bearing. */
+          .print-color { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          /* The dark header would print white-on-white; flip it to ink-on-white for print. */
+          .doc-header { background: #fff !important; border: 1px solid #e5e7eb; }
+          .doc-header h1, .doc-header p { color: #111 !important; }
+          .doc-header .brandmark { color: #e8430a !important; }
         }
       `}</style>
 
@@ -461,9 +467,9 @@ export default async function CurriculumPage({ params }: Props) {
           </div>
 
           {/* Header */}
-          <div className="bg-black rounded-2xl p-8 mb-8 text-white">
-            <div className="text-orange-500 font-black text-2xl tracking-tight mb-1">LearnHoops.com</div>
-            <h1 className="text-3xl font-black leading-tight mb-2">10-Week Shooting Development Program</h1>
+          <div className="doc-header bg-ink-950 rounded-2xl p-8 mb-8 text-white">
+            <div className="brandmark text-ember-500 font-display font-black text-2xl tracking-tight mb-1">LearnHoops.com</div>
+            <h1 className="font-display font-black text-3xl leading-tight mb-2">10-Week Shooting Development Program</h1>
             <p className="text-gray-400 text-sm">
               {pkg.org_name} &nbsp;·&nbsp; {pkg.player_count} Players &nbsp;·&nbsp; Coach’s Session Guide
             </p>
@@ -471,7 +477,7 @@ export default async function CurriculumPage({ params }: Props) {
 
           {/* Program overview */}
           <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6 card">
-            <h2 className="font-black text-lg mb-3">Program overview</h2>
+            <h2 className="font-display font-black text-lg mb-3">Program overview</h2>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-5">
               {[
@@ -493,9 +499,9 @@ export default async function CurriculumPage({ params }: Props) {
             </p>
 
             {/* Design principle */}
-            <div className="mt-4 rounded-lg bg-black text-white px-4 py-3">
-              <p className="text-[11px] font-black uppercase tracking-widest text-orange-400 mb-1">Design principle</p>
-              <p className="font-black text-lg tracking-tight">Teach → Feel → Practice → Compete</p>
+            <div className="print-color mt-4 rounded-lg bg-ink-950 text-white px-4 py-3">
+              <p className="text-[11px] font-black uppercase tracking-widest text-ember-400 mb-1">Design principle</p>
+              <p className="font-display font-black text-lg tracking-tight">Teach → Feel → Practice → Compete</p>
               <p className="text-gray-300 text-sm leading-relaxed mt-1">
                 Players shouldn’t spend 20 minutes listening. Each week’s two concepts are explained through a
                 short physical demonstration, immediately followed by a drill that makes the player <em>feel</em> the
@@ -506,13 +512,13 @@ export default async function CurriculumPage({ params }: Props) {
             {/* Standardized 60-minute formula */}
             <div className="mt-4">
               <p className="text-[11px] font-black uppercase tracking-wide text-gray-400 mb-2">The standard 60-minute class</p>
-              <div className="rounded-lg border border-gray-100 overflow-hidden">
+              <div className="rounded-lg border border-gray-200 overflow-hidden divide-y divide-gray-100">
                 {HOUR.map((h, i) => (
                   <div
                     key={h.t}
                     className={`flex items-center gap-3 px-3 py-2 text-sm ${i % 2 ? 'bg-gray-50' : 'bg-white'}`}
                   >
-                    <span className="shrink-0 w-16 font-black text-orange-600 tabular-nums">{h.t}</span>
+                    <span className="shrink-0 w-16 font-black font-numeric text-ember-600 tabular-nums">{h.t}</span>
                     <span className="text-gray-700">{h.label}</span>
                   </div>
                 ))}
@@ -524,8 +530,8 @@ export default async function CurriculumPage({ params }: Props) {
             </div>
 
             {/* Required videos */}
-            <div className="mt-4 rounded-lg bg-orange-50 border border-orange-100 px-4 py-3">
-              <p className="text-orange-900 text-sm leading-relaxed">
+            <div className="mt-4 rounded-lg bg-ember-500/10 border border-ember-500/20 border-l-4 border-l-ember-500 px-4 py-3">
+              <p className="text-gray-800 text-sm leading-relaxed">
                 <strong>Two required videos:</strong> the <strong>Week 1 baseline analysis</strong> and the
                 <strong> Week 10 final analysis</strong>. The AI compares them to measure each player’s improvement
                 and generate their completion certificate — so film both the same way, from the side.
@@ -535,7 +541,7 @@ export default async function CurriculumPage({ params }: Props) {
 
           {/* How to use */}
           <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8 card">
-            <h2 className="font-black text-lg mb-2">How to use these coach cards</h2>
+            <h2 className="font-display font-black text-lg mb-2">How to use these coach cards</h2>
             <p className="text-gray-600 text-sm leading-relaxed">
               Each week below is a turnkey coach card. Open the week, and you can run the entire hour without planning
               anything: the two LearnHoops criteria, the physical demonstrations, the exact drills and timing, the
@@ -549,20 +555,20 @@ export default async function CurriculumPage({ params }: Props) {
               <div
                 key={w.n}
                 className={`page-break card bg-white rounded-xl border p-6 ${
-                  w.required ? 'border-orange-300 ring-1 ring-orange-100' : 'border-gray-200'
+                  w.required ? 'border-ember-500/40 ring-1 ring-ember-500/20' : 'border-gray-200'
                 }`}
               >
                 {/* Card header */}
                 <div className="flex gap-4 items-start mb-4">
-                  <div className="shrink-0 w-14 h-14 rounded-2xl bg-orange-500 text-white flex flex-col items-center justify-center leading-none">
+                  <div className="print-color shrink-0 w-14 h-14 rounded-2xl bg-ember-500 text-white flex flex-col items-center justify-center leading-none">
                     <span className="text-[9px] font-bold uppercase tracking-wide opacity-90">Week</span>
-                    <span className="font-black text-2xl">{w.n}</span>
+                    <span className="font-black font-numeric text-2xl">{w.n}</span>
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-black text-xl leading-tight">{w.title}</h3>
+                      <h3 className="font-display font-black text-xl leading-tight">{w.title}</h3>
                       {w.required && (
-                        <span className="text-[10px] font-black uppercase tracking-wide bg-orange-500 text-white px-2 py-0.5 rounded-full">
+                        <span className="print-color text-[10px] font-black uppercase tracking-wide bg-ember-500 text-white px-2 py-0.5 rounded-full">
                           Required video
                         </span>
                       )}
@@ -576,9 +582,9 @@ export default async function CurriculumPage({ params }: Props) {
                   {w.criteria.map(c => (
                     <span
                       key={c.num}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-gray-900 text-white text-xs font-semibold pl-1.5 pr-3 py-1"
+                      className="print-color inline-flex items-center gap-1.5 rounded-full bg-ink-950 text-white text-xs font-semibold pl-1.5 pr-3 py-1"
                     >
-                      <span className="rounded-full bg-orange-500 text-white text-[10px] font-black px-1.5 py-0.5 tabular-nums">#{c.num}</span>
+                      <span className="rounded-full bg-ember-500 text-white text-[10px] font-black font-numeric px-1.5 py-0.5 tabular-nums">#{c.num}</span>
                       {c.name}
                     </span>
                   ))}
@@ -593,19 +599,19 @@ export default async function CurriculumPage({ params }: Props) {
                     {w.lessons.map(l => (
                       <div key={l.name} className="rounded-lg bg-gray-50 border border-gray-100 p-4">
                         <div className="flex items-center gap-2 mb-1.5">
-                          <span className="text-[9px] font-black uppercase tracking-wide bg-gray-900 text-white px-1.5 py-0.5 rounded">{l.tag}</span>
+                          <span className="print-color text-[9px] font-black uppercase tracking-wide bg-ink-950 text-white px-1.5 py-0.5 rounded">{l.tag}</span>
                           <span className="font-black text-sm">“{l.name}”</span>
                         </div>
                         <ol className="space-y-1">
                           {l.steps.map((s, i) => (
                             <li key={i} className="flex gap-2 text-sm text-gray-700 leading-relaxed">
-                              <span className="text-orange-500 font-black shrink-0 tabular-nums">{i + 1}.</span>
+                              <span className="text-ember-500 font-black font-numeric shrink-0 tabular-nums">{i + 1}.</span>
                               <span>{s}</span>
                             </li>
                           ))}
                         </ol>
                         {l.cue && (
-                          <p className="mt-2 text-sm text-orange-800 bg-orange-50 border border-orange-100 rounded px-2.5 py-1.5">
+                          <p className="mt-2 text-sm text-ember-700 bg-ember-500/10 border border-ember-500/20 border-l-4 border-l-ember-500 rounded px-2.5 py-1.5">
                             <span className="font-black uppercase text-[10px] tracking-wide mr-1">Cue</span>“{l.cue}”
                           </p>
                         )}
@@ -617,10 +623,13 @@ export default async function CurriculumPage({ params }: Props) {
                 {/* Drills */}
                 <div className="mb-5">
                   <p className="text-[11px] font-black uppercase tracking-wide text-gray-400 mb-2">Drills</p>
-                  <div className="rounded-lg border border-gray-100 overflow-hidden">
-                    {w.drills.map((d, i) => (
-                      <div key={d.name} className={`flex gap-3 px-3 py-2.5 ${i % 2 ? 'bg-gray-50' : 'bg-white'}`}>
-                        <span className="shrink-0 w-16 text-xs font-black text-orange-600">{d.time}</span>
+                  <div className="rounded-lg border border-gray-200 overflow-hidden divide-y divide-gray-200">
+                    <div className="flex gap-3 px-3 py-1.5 text-[10px] font-black uppercase tracking-wide text-gray-400">
+                      <span className="w-16 shrink-0 font-numeric">Time</span><span>Drill</span>
+                    </div>
+                    {w.drills.map((d) => (
+                      <div key={d.name} className="flex gap-3 px-3 py-2.5 bg-white">
+                        <span className="shrink-0 w-16 text-xs font-black font-numeric text-ember-600">{d.time}</span>
                         <div className="min-w-0">
                           <p className="text-sm font-bold text-gray-900 leading-snug">{d.name}</p>
                           <p className="text-sm text-gray-600 leading-relaxed">{d.detail}</p>
@@ -630,12 +639,12 @@ export default async function CurriculumPage({ params }: Props) {
                   </div>
                 </div>
 
-                {/* Game */}
-                <div className="rounded-lg bg-green-50 border border-green-100 px-4 py-3">
-                  <p className="text-[11px] font-black uppercase tracking-wide text-green-700/70 mb-0.5">
+                {/* Game — the compete moment, in a solid ember callout (prints reliably). */}
+                <div className="print-color rounded-lg bg-ember-500 border-l-4 border-ember-700 px-4 py-3">
+                  <p className="text-[11px] font-black uppercase tracking-wide text-white/80 mb-0.5">
                     {w.game.label || 'Game'}
                   </p>
-                  <p className="text-sm text-green-900 leading-relaxed">
+                  <p className="text-sm text-white leading-relaxed">
                     <span className="font-black">{w.game.name}.</span> {w.game.detail}
                   </p>
                 </div>

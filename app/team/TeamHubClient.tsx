@@ -1,7 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { ClipboardListIcon } from 'lucide-react'
 import HubSection from '@/components/HubSection'
 import TeamChatPanel from '@/components/TeamChatPanel'
 import TeamSchedulePanel from '@/components/TeamSchedulePanel'
@@ -84,6 +86,26 @@ function TeamHubBody({
         )}
       </HubSection>
 
+      {/* Flagship program — a featured (not loud) card for the org 10-week
+          program; a member may want to bring it to their coach/club. Placed
+          under Roster so it never outranks the everyday Schedule section. */}
+      <Link
+        href="/org/signup"
+        className="card-lift w-full bg-ember-500/[0.04] border border-ember-500/30 hover:border-ember-500/60 rounded-2xl px-5 py-5 flex items-center gap-4 transition-colors"
+      >
+        <ClipboardListIcon className="w-7 h-7 text-ember-400 shrink-0" aria-hidden />
+        <div className="flex-1 min-w-0">
+          <p className="eyebrow text-ember-400 select-none mb-1.5">Flagship program</p>
+          <p className="font-display font-bold uppercase text-chalk text-sm leading-tight">
+            Run the 10-Week Shooting Development Program
+          </p>
+          <p className="text-chalk-dim text-xs mt-1">
+            Ball, baseline + final AI analysis, a certificate, and a coach&apos;s guide — $40/player.
+          </p>
+        </div>
+        <span className="shrink-0 text-ember-400 font-bold text-lg select-none" aria-hidden>→</span>
+      </Link>
+
       {/* Leaderboard — a link row, not an embed. It lives where it lives. */}
       <Link
         href={`/dashboard/leaderboard?team=${team.id}`}
@@ -147,6 +169,144 @@ export default function TeamHubClient({ teams }: { teams: HubTeam[] }) {
         </div>
       )}
       <TeamHubBody key={team.id} team={team} eyebrow={eyebrow} />
+      <ManageTeams teams={teams} />
+    </div>
+  )
+}
+
+// Small "just in case" management block at the bottom of the hub: join
+// another team by code, leave a team you're on, or set up an organization.
+// Uses the existing /api/team/join and /api/team/leave endpoints.
+function ManageTeams({ teams }: { teams: HubTeam[] }) {
+  const router = useRouter()
+  const [open, setOpen] = useState(false)
+  const [code, setCode] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [leavingId, setLeavingId] = useState<string | null>(null)
+  const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
+
+  async function join(e: React.FormEvent) {
+    e.preventDefault()
+    const teamCode = code.trim().toUpperCase()
+    if (!teamCode) return
+    setBusy(true)
+    setMsg(null)
+    try {
+      const res = await fetch('/api/team/join', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teamCode }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setMsg({ kind: 'err', text: data.error || 'Could not join that team.' })
+        setBusy(false)
+        return
+      }
+      setCode('')
+      setMsg({ kind: 'ok', text: 'Joined! Refreshing your teams…' })
+      router.refresh()
+    } catch {
+      setMsg({ kind: 'err', text: 'Something went wrong. Please try again.' })
+    }
+    setBusy(false)
+  }
+
+  async function leave(teamId: string, name: string) {
+    if (!window.confirm(`Leave "${name}"? You can rejoin later with the team code.`)) return
+    setLeavingId(teamId)
+    setMsg(null)
+    try {
+      const res = await fetch('/api/team/leave', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teamId }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setMsg({ kind: 'err', text: data.error || 'Could not leave that team.' })
+        setLeavingId(null)
+        return
+      }
+      router.refresh()
+    } catch {
+      setMsg({ kind: 'err', text: 'Something went wrong. Please try again.' })
+    }
+    setLeavingId(null)
+  }
+
+  return (
+    <div className="mt-8 pt-6 border-t border-courtline">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between gap-3 text-left"
+      >
+        <span className="eyebrow text-chalk-dim select-none">Manage teams &amp; organizations</span>
+        <span className="text-chalk-dim text-lg leading-none">{open ? '−' : '+'}</span>
+      </button>
+
+      {open && (
+        <div className="mt-4 space-y-5">
+          {/* Join another team by code */}
+          <div className="space-y-2">
+            <p className="text-chalk text-sm font-bold">Join another team</p>
+            <form onSubmit={join} className="flex gap-2">
+              <input
+                value={code}
+                onChange={e => setCode(e.target.value.toUpperCase())}
+                placeholder="Enter a team code"
+                aria-label="Team code"
+                className="flex-1 bg-ink-800 border border-courtline rounded-xl px-4 py-2.5 text-chalk placeholder-chalk-dim focus:outline-none focus:border-ember-500 transition-colors"
+              />
+              <button
+                type="submit"
+                disabled={busy || !code.trim()}
+                className="shrink-0 bg-ember-500 hover:bg-ember-400 disabled:opacity-50 text-ink-950 font-bold px-5 py-2.5 rounded-xl transition-colors"
+              >
+                {busy ? 'Joining…' : 'Join'}
+              </button>
+            </form>
+          </div>
+
+          {/* Leave a team you're on */}
+          {teams.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-chalk text-sm font-bold">Leave a team</p>
+              <div className="space-y-2">
+                {teams.map(t => (
+                  <div key={t.id} className="flex items-center justify-between gap-3 bg-ink-900 border border-courtline rounded-xl px-4 py-2.5">
+                    <span className="text-chalk text-sm truncate">{t.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => leave(t.id, t.name)}
+                      disabled={leavingId === t.id}
+                      className="shrink-0 text-xs font-bold text-red-400 hover:text-red-300 disabled:opacity-50 border border-red-500/30 hover:border-red-400 rounded-lg px-3 py-1.5 transition-colors"
+                    >
+                      {leavingId === t.id ? 'Leaving…' : 'Leave'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {msg && (
+            <p className={`text-sm ${msg.kind === 'ok' ? 'text-ember-400' : 'text-red-400'}`}>{msg.text}</p>
+          )}
+
+          {/* Set up an organization */}
+          <div className="flex items-center justify-between gap-3 border border-dashed border-courtline rounded-xl px-4 py-3">
+            <div className="min-w-0">
+              <p className="text-chalk text-sm font-bold">Run a club or organization?</p>
+              <p className="text-chalk-dim text-xs mt-0.5">Set up an org to manage teams, coaches and the 10-week program.</p>
+            </div>
+            <Link href="/org/signup" className="shrink-0 text-sm font-bold text-ember-400 hover:text-ember-500 transition-colors">
+              Set up →
+            </Link>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

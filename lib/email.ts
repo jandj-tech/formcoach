@@ -729,16 +729,16 @@ export async function sendClassPurchaseConfirmationEmail(
     from: FROM,
     to,
     replyTo: 'noreply@learnhoops.com',
-    subject: '10-Week Shooting Class — your program is confirmed',
+    subject: '10-Week Shooting Development Program — your program is confirmed',
     text: [
       `Hi ${orgName},`,
       ``,
-      `Your 10-Week Shooting Class program is confirmed and ready.`,
+      `Your 10-Week Shooting Development Program is confirmed and ready.`,
       ``,
       `Players enrolled: ${playerCount}`,
       `Team access code: ${teamAccessCode}`,
       ``,
-      `Your team "10 Week Shooting Class" has been created on your dashboard. Players can join with the access code above.`,
+      `Your team "10-Week Shooting Development Program" has been created on your dashboard. Players can join with the access code above.`,
       ``,
       `Balls will ship to the address you provided. You'll receive a separate shipping confirmation when they're on the way.`,
       ``,
@@ -761,7 +761,7 @@ export async function sendClassPurchaseConfirmationEmail(
       </td></tr>
 
       <tr><td style="padding:36px 32px 8px;">
-        <h1 style="margin:0 0 10px;color:#111111;font-size:24px;line-height:1.25;font-weight:800;">Your 10-Week Shooting Class is confirmed!</h1>
+        <h1 style="margin:0 0 10px;color:#111111;font-size:24px;line-height:1.25;font-weight:800;">Your 10-Week Shooting Development Program is confirmed!</h1>
         <p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;">
           Hi <strong>${escHtml(orgName)}</strong> — your program is set up and ready to go. Here's everything you need.
         </p>
@@ -776,14 +776,14 @@ export async function sendClassPurchaseConfirmationEmail(
           <tr><td style="padding:0 20px 16px;">
             <div style="color:#71717A;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Team Access Code</div>
             <div style="color:#F97316;font-size:26px;font-weight:900;letter-spacing:2px;">${escHtml(teamAccessCode)}</div>
-            <div style="color:#52525B;font-size:12px;margin-top:4px;">Players use this code to join the "10 Week Shooting Class" team</div>
+            <div style="color:#52525B;font-size:12px;margin-top:4px;">Players use this code to join the "10-Week Shooting Development Program" team</div>
           </td></tr>
         </table>
       </td></tr>
 
       <tr><td style="padding:16px 32px 8px;">
         <p style="margin:0;color:#52525B;font-size:14px;line-height:1.6;">
-          ✅ <strong>Team created</strong> — "10 Week Shooting Class" is live on your dashboard<br/>
+          ✅ <strong>Team created</strong> — "10-Week Shooting Development Program" is live on your dashboard<br/>
           ✅ <strong>Balls shipping</strong> — to the address you entered at checkout<br/>
           ✅ <strong>2 shot analyses per player</strong> — tokens are ready to assign
         </p>

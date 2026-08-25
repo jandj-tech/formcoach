@@ -350,7 +350,7 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
         }
         if (!teamAccessCode) throw new Error('Failed to generate unique access code')
 
-        const teamName = `10-Week Class — ${playerCount} Players`
+        const teamName = `10-Week Shooting Development Program — ${playerCount} Players`
         // teams.credits is the coach-upload budget (one credit per analysis the
         // org leader / team coach burns). Players don't get personal tokens —
         // the org leader uploads on their behalf out of this credit pool.

@@ -618,9 +618,11 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
           className="w-full flex items-center justify-between gap-4 bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 rounded-2xl px-5 py-4 text-white text-left transition-colors"
         >
           <div className="min-w-0">
-            <p className="text-orange-100 text-[10px] font-bold uppercase tracking-widest">New</p>
-            <p className="font-black text-base truncate">10-Week Shooting Class · $40/player</p>
-            <p className="text-orange-100 text-xs mt-0.5">{classPackages.length > 0 ? 'Buy another class package' : 'Tap to expand the buy form'}</p>
+            <p className="text-orange-100 text-[10px] font-bold uppercase tracking-widest">{classPackages.length > 0 ? 'Add another' : 'New'}</p>
+            <p className="font-black text-base truncate">
+              {classPackages.length > 0 ? 'Start another program package' : '10-Week Shooting Development Program · $40/player'}
+            </p>
+            <p className="text-orange-100 text-xs mt-0.5">{classPackages.length > 0 ? 'Pick ball sizes and check out →' : 'Tap to open the buy form →'}</p>
           </div>
           <span className="text-2xl font-black shrink-0">+</span>
         </button>
@@ -630,10 +632,11 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="space-y-1">
             <p className="text-orange-100 text-xs font-bold uppercase tracking-widest">New</p>
-            <h2 className="text-2xl font-black">10-Week Shooting Class</h2>
+            <h2 className="text-2xl font-black">10-Week Shooting Development Program</h2>
             <p className="text-orange-100 text-sm max-w-sm">
-              A structured program that turns your organization into a coaching powerhouse.
-              Each player gets a ball, 2 shot analyses, and a personalized completion certificate.
+              A structured, week-by-week program that turns your organization into a coaching powerhouse.
+              Each player gets a ball, 2 shot analyses, and a personalized completion certificate — plus a
+              full coach&apos;s guide with drills, cues, and checkpoints.
             </p>
           </div>
           <div className="flex items-start gap-2 shrink-0">
@@ -673,16 +676,16 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
           </summary>
           <div className="mt-3 grid grid-cols-2 gap-1.5 text-xs">
             {[
-              'Session 1 — Initial shot analysis',
-              'Session 2 — Grip & hand placement',
-              'Session 3 — Elbow alignment',
-              'Session 4 — Stance & base',
-              'Session 5 — Shot pocket',
-              'Session 6 — Release mechanics',
-              'Session 7 — Shot arc (45–60°)',
-              'Session 8 — Guide hand discipline',
-              'Session 9 — Full shot flow',
-              'Session 10 — Final evaluation + certificate',
+              'Week 1 — Initial shot analysis',
+              'Week 2 — Grip & hand placement',
+              'Week 3 — Stance & base',
+              'Week 4 — Elbow alignment & set point',
+              'Week 5 — Shot pocket & load',
+              'Week 6 — Legs & upward force',
+              'Week 7 — Release & follow-through',
+              'Week 8 — Guide hand discipline',
+              'Week 9 — Arc, range & game speed',
+              'Week 10 — Final evaluation + certificate',
             ].map(s => (
               <div key={s} className="bg-white/10 rounded-lg px-2.5 py-1.5 text-orange-50 font-medium">{s}</div>
             ))}
@@ -774,17 +777,22 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
 
   const addTeamSection = (
     <div className="border border-gray-200 rounded-2xl p-5 space-y-3">
-      <div className="flex items-center justify-between gap-4">
-        <h2 className="text-xl font-black text-black">Add a Team</h2>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-black text-black">Add a Team</h2>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Create as many teams as you like — one per squad, age group, or coach.
+          </p>
+        </div>
         <button
           onClick={() => {
             setAddOpen(o => !o)
             setAddStatus('idle')
             setAddError('')
           }}
-          className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+          className="shrink-0 bg-orange-500 hover:bg-orange-400 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
         >
-          {addOpen ? 'Cancel' : 'Add Team'}
+          {addOpen ? 'Cancel' : '＋ Create a Team'}
         </button>
       </div>
 
@@ -967,8 +975,8 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                         {/* 10-week curriculum PDF */}
                         <div className="flex items-center justify-between bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
                           <div>
-                            <p className="text-sm font-bold text-blue-900">10-Week Session Guide</p>
-                            <p className="text-xs text-blue-600">Optional week-by-week curriculum PDF</p>
+                            <p className="text-sm font-bold text-blue-900">10-Week Program Guide</p>
+                            <p className="text-xs text-blue-600">Week-by-week drills, cues &amp; checkpoints (PDF)</p>
                           </div>
                           <a
                             href={`/org/curriculum/${pkg.id}`}
@@ -1572,20 +1580,69 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
           )
         })}
       </div>
+
+      {/* Managing more than one club — each org is a separate login, so point
+          them at a fresh application rather than leaving them stuck. */}
+      <div className="border border-dashed border-gray-300 rounded-2xl px-5 py-4 flex items-center justify-between gap-4 flex-wrap">
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-black">Running more than one club?</p>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Each organization has its own separate login and dashboard.
+          </p>
+        </div>
+        <a
+          href="/org/signup"
+          className="shrink-0 text-sm font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 px-4 py-2 rounded-xl transition-colors"
+        >
+          Set up another organization →
+        </a>
+      </div>
     </div>
   )
 
   const classTab = (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <h2 className="text-xl font-black text-black">10-Week Shooting Class</h2>
-        <InfoTip label="What does the 10-week class include?" align="left">
+        <h2 className="text-xl font-black text-black">10-Week Shooting Development Program</h2>
+        <InfoTip label="What does the 10-week program include?" align="left">
           $40 per player ($36.99 each for 30+). Every player gets a training
-          ball, 2 AI shot analyses (start and end of the class), and a
-          personalized completion certificate. Buying a package also creates a
-          class team and unlocks the $0.99 token rate for your organization.
+          ball, 2 AI shot analyses (start and end of the program), and a
+          personalized completion certificate. You also get a full 10-week
+          coach&rsquo;s guide with drills, cues, and checkpoints. Buying a
+          package creates a class team and unlocks the discounted $1.49 token
+          rate for your organization.
         </InfoTip>
       </div>
+
+      {/* Existing packages — at-a-glance list with a link to each coach guide,
+          so buying another is an obvious repeat action rather than a hunt. */}
+      {classPackages.length > 0 && (
+        <div className="border border-gray-200 rounded-2xl p-4 space-y-2">
+          <p className="text-sm font-black text-black">Your program packages</p>
+          {[...classPackages]
+            .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
+            .map(pkg => (
+              <div key={pkg.id} className="flex items-center justify-between gap-3 bg-gray-50 border border-gray-100 rounded-xl px-4 py-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-black">{pkg.player_count}-player package</p>
+                  <p className="text-xs text-gray-500">{pkg.enrolled_count} enrolled · {pkg.completed_count} completed</p>
+                </div>
+                <a
+                  href={`/org/curriculum/${pkg.id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="shrink-0 text-xs font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  Coach guide →
+                </a>
+              </div>
+            ))}
+          <p className="text-xs text-gray-400 pt-1">
+            Starting another package below creates a fresh class team automatically.
+          </p>
+        </div>
+      )}
+
       {classProgramSection}
     </div>
   )
@@ -1915,7 +1972,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
         tabs={[
           { id: 'teams', label: 'Teams', count: teams.length, content: teamsTab },
           // The class purchase pitch is hidden in the iOS app (guideline 3.1.1).
-          ...(inApp ? [] : [{ id: 'class', label: 'Shooting Class', content: classTab }]),
+          ...(inApp ? [] : [{ id: 'class', label: 'Shooting Program', content: classTab }]),
           { id: 'tokens', label: 'Tokens', content: tokensTab },
           { id: 'players', label: 'Players', count: uniquePlayerCount, content: playersTab },
           { id: 'uploads', label: 'My Uploads', count: myUploads.length, content: uploadsTab },

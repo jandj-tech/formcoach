@@ -311,7 +311,7 @@ export default function SendEmailPanel() {
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1 sm:col-span-2">
               <label className={labelCls}>Subject line</label>
-              <input value={subject} onChange={e => setSubject(e.target.value)} placeholder="e.g. New: 10-Week Shooting Class" className={inputCls} />
+              <input value={subject} onChange={e => setSubject(e.target.value)} placeholder="e.g. New: 10-Week Shooting Development Program" className={inputCls} />
             </div>
             <div className="space-y-1 sm:col-span-2">
               <label className={labelCls}>Headline (big text at the top)</label>

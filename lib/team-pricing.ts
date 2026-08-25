@@ -10,8 +10,18 @@ export const INITIATION_MIN_PLAYERS = 8
 /** Regular per-analysis price (cents) — players, and coaches/orgs before their team is initiated. */
 export const REGULAR_ANALYSIS_PRICE_CENTS = 349
 
-/** Discounted per-token price (cents) once a team is initiated. */
-export const TEAM_TOKEN_PRICE_CENTS = 99
+/**
+ * Discounted per-token price (cents) once a team is initiated — this is the
+ * org/team HARD FLOOR: no volume discount ever prices an org/team analysis
+ * below this.
+ */
+export const TEAM_TOKEN_PRICE_CENTS = 149
+
+/**
+ * Hard floor (cents) for regular (non-initiated) buyers — even the deepest
+ * bulk order never prices a regular analysis below this.
+ */
+export const REGULAR_FLOOR_CENTS = 179
 
 /**
  * Per-order quantity ceilings, shared by the buy UI and the routes that
@@ -26,7 +36,7 @@ export const MAX_COACH_CREDITS_PER_ORDER = 500
  *
  * Every surface that shows or charges an analysis price goes through here —
  * players, coaches and orgs alike. Reading the two constants directly is what
- * let the same player see $1.79 on one page and $0.99 on another.
+ * let the same player see $1.79 on one page and $1.49 on another.
  */
 export function analysisUnitCents(initiated: boolean): number {
   return initiated ? TEAM_TOKEN_PRICE_CENTS : REGULAR_ANALYSIS_PRICE_CENTS
@@ -45,11 +55,8 @@ export type VolumeTier = { minQty: number; percentOff: number }
  * Ordered highest-first — `find` returns the best tier the quantity qualifies for.
  */
 export const REGULAR_VOLUME_TIERS: ReadonlyArray<VolumeTier> = [
-  // The advertised curve: 3 for $6.99 ($2.33/ea), 5–9 at the 5-pack rate
-  // ($1.79/ea), 10–14 another 10% off ($1.61/ea), and from 15 the price
-  // floors at $1.49/ea — larger orders never go below the floor.
-  { minQty: 15, percentOff: 57.3 },
-  { minQty: 10, percentOff: 53.9 },
+  // The advertised curve: 3 for $6.99 ($2.33/ea), and from 5 the price floors
+  // at $1.79/ea (REGULAR_FLOOR_CENTS) — larger orders never go below the floor.
   { minQty: 5, percentOff: 48.7 },
   { minQty: 3, percentOff: 33.2 },
 ]
@@ -67,12 +74,9 @@ export const REGULAR_VOLUME_TIERS: ReadonlyArray<VolumeTier> = [
  * These four tiers are the single ladder everyone shared before the split, so
  * no existing team's price moved when the regular ladder was deepened.
  */
-export const TEAM_VOLUME_TIERS: ReadonlyArray<VolumeTier> = [
-  { minQty: 100, percentOff: 25 },
-  { minQty: 50, percentOff: 15 },
-  { minQty: 25, percentOff: 10 },
-  { minQty: 10, percentOff: 5 },
-]
+// The org/team rate ($1.49) is itself the hard floor — the cheapest price
+// anyone can get — so there is no further bulk discount on top of it.
+export const TEAM_VOLUME_TIERS: ReadonlyArray<VolumeTier> = []
 
 /**
  * Which ladder a base rate earns.
@@ -110,8 +114,13 @@ export function volumeDiscountPercent(baseUnitCents: number, quantity: number): 
  */
 export function discountedUnitCents(baseUnitCents: number, quantity: number): number {
   const percentOff = volumeDiscountPercent(baseUnitCents, quantity)
-  if (percentOff === 0) return baseUnitCents
-  return Math.round((baseUnitCents * (100 - percentOff)) / 100)
+  const raw = percentOff === 0
+    ? baseUnitCents
+    : Math.round((baseUnitCents * (100 - percentOff)) / 100)
+  // Hard floors: org/team never below TEAM_TOKEN_PRICE_CENTS ($1.49), regular
+  // never below REGULAR_FLOOR_CENTS ($1.79) — even at the deepest bulk tier.
+  const floor = baseUnitCents <= TEAM_TOKEN_PRICE_CENTS ? TEAM_TOKEN_PRICE_CENTS : REGULAR_FLOOR_CENTS
+  return Math.max(floor, raw)
 }
 
 /**

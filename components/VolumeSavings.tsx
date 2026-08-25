@@ -74,6 +74,17 @@ export function VolumeTierList({
 }) {
   const ascending = [...tiersFor(baseUnitCents)].reverse()
   const onTeamRate = baseUnitCents <= TEAM_TOKEN_PRICE_CENTS
+  // The team/org rate is a flat floor with no further bulk discount, so there
+  // are no tiers to list — say so plainly instead of an empty "bulk pricing:".
+  if (ascending.length === 0) {
+    return onTeamRate ? (
+      <div className={`flex flex-wrap items-center gap-1.5 ${className}`}>
+        <span className="text-[11px] text-gray-500">
+          Your flat {usd(baseUnitCents)} team rate — the lowest price we offer.
+        </span>
+      </div>
+    ) : null
+  }
   return (
     <div className={`flex flex-wrap items-center gap-1.5 ${className}`}>
       <span className="text-[11px] text-gray-500">

@@ -152,7 +152,7 @@ export default function TokenPacks({ dark = false }: { dark?: boolean }) {
 
   const cur = currency ? ` ${currency}` : ''
   const custom = orderPricing(REGULAR_ANALYSIS_PRICE_CENTS, customQty)
-  const floorUnit = orderPricing(REGULAR_ANALYSIS_PRICE_CENTS, 15).unitCents
+  const floorUnit = orderPricing(REGULAR_ANALYSIS_PRICE_CENTS, 5).unitCents
 
   return (
     <div className="space-y-3">
@@ -205,7 +205,7 @@ export default function TokenPacks({ dark = false }: { dark?: boolean }) {
                 {custom.savingsCents > 0 ? (
                   <span className={`font-bold ${s.save}`}> · save {usd(custom.savingsCents)} ({Math.round(custom.percentOff)}%)</span>
                 ) : (
-                  <span> — down to {usd(floorUnit)} each at 15+</span>
+                  <span> — down to {usd(floorUnit)} each at 5+</span>
                 )}
               </p>
             </div>
@@ -234,7 +234,7 @@ export default function TokenPacks({ dark = false }: { dark?: boolean }) {
           <span className="min-w-0">
             <span className={`block font-black text-base ${s.title}`}>Custom amount</span>
             <span className={`block text-xs mt-0.5 ${s.sub}`}>
-              Pick any number — as low as {usd(floorUnit)} per analysis at 15+
+              Pick any number — as low as {usd(floorUnit)} per analysis at 5+
             </span>
           </span>
           <span className="shrink-0 text-ember-500 font-black text-xl" aria-hidden>＋</span>

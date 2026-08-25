@@ -9,13 +9,7 @@ import { getOrgSession } from '@/lib/org-auth'
 import { db } from '@/lib/db'
 import TeamHubClient, { type HubTeam } from './TeamHubClient'
 import { TrendingUpIcon, TrophyIcon, PackageIcon, TargetIcon, AwardIcon, ClipboardListIcon } from 'lucide-react'
-import { TEAM_TOKEN_PRICE_CENTS, TEAM_VOLUME_TIERS, usd } from '@/lib/team-pricing'
-
-// The deepest tier a team can reach, read off the ladder rather than typed.
-const bestTeamDiscount = TEAM_VOLUME_TIERS.reduce(
-  (top, tier) => Math.max(top, tier.percentOff),
-  0,
-)
+import { TEAM_TOKEN_PRICE_CENTS, REGULAR_ANALYSIS_PRICE_CENTS, usd } from '@/lib/team-pricing'
 
 export const metadata: Metadata = {
   title: 'Basketball Team & Organization Shot Analysis | LearnHoops',
@@ -157,16 +151,16 @@ export default async function TeamLandingPage() {
                 <div className="font-numeric text-3xl text-ember-500">{usd(TEAM_TOKEN_PRICE_CENTS)}</div>
                 <div className="font-display font-bold uppercase text-chalk">Per upload</div>
                 <div className="text-chalk-dim text-sm">Buy credits and use them when you need them.</div>
-                {/* The team rate was the only number here, which read as the
-                    whole offer — bulk tiers stack on top of it. Stated as one
-                    percentage rather than a grid of per-analysis prices, and
-                    read off TEAM_VOLUME_TIERS so it cannot outlive a change to
-                    the ladder. */}
+                {/* The team rate is a flat floor now (no bulk stacking on top),
+                    so we frame it against the regular list price rather than a
+                    volume-discount ladder. */}
                 <div className="pt-3 mt-1 border-t border-courtline">
                   <div className="font-display font-black uppercase text-ember-500 text-xl leading-none">
-                    Up to {bestTeamDiscount}% off
+                    Your team rate
                   </div>
-                  <div className="text-chalk-dim text-sm mt-1">when you buy credits in bulk.</div>
+                  <div className="text-chalk-dim text-sm mt-1">
+                    A flat {usd(TEAM_TOKEN_PRICE_CENTS)} per analysis once your team is set up — well below the {usd(REGULAR_ANALYSIS_PRICE_CENTS)} regular price.
+                  </div>
                 </div>
               </>
             )}

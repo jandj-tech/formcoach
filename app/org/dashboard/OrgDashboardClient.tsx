@@ -1183,7 +1183,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                             A team becomes active (&ldquo;initiated&rdquo;) at
                             8 players, or automatically when it&rsquo;s part of
                             a class package. Once any of your teams is active,
-                            tokens drop from $3.49 to $0.99 across your whole
+                            tokens drop from $3.49 to $1.49 across your whole
                             organization.
                           </InfoTip>
                         </p>
@@ -1194,7 +1194,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                           style={{ width: `${Math.min(100, (team.members.length / 8) * 100)}%` }} />
                       </div>
                       <p className="text-xs text-gray-500">
-                        {Math.max(0, 8 - team.members.length)} more player{Math.max(0, 8 - team.members.length) !== 1 ? 's' : ''} needed — at 8, every player gets 1 free token{inApp ? '' : ' and tokens unlock at $0.99 each'}.
+                        {Math.max(0, 8 - team.members.length)} more player{Math.max(0, 8 - team.members.length) !== 1 ? 's' : ''} needed — at 8, every player gets 1 free token{inApp ? '' : ' and tokens unlock at $1.49 each'}.
                       </p>
                       <p className="text-xs text-gray-400">Share the player signup link below to invite players to this team.</p>
                     </div>

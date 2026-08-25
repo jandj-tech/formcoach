@@ -155,7 +155,7 @@ export default async function OrgDashboardPage() {
           // coach_nickname / token_pool columns may not exist yet
         }
         // A team is initiated if it has a class package OR has reached the
-        // player threshold. Both unlock the $0.99 rate everywhere this team
+        // player threshold. Both unlock the $1.49 rate everywhere this team
         // is involved.
         const initiated = !!t.class_package_id || members.length >= 8
 

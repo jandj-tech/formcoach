@@ -13,7 +13,7 @@ export async function sendClassPurchaseConfirmationSms(
   teamAccessCode: string,
 ) {
   const body = [
-    `LearnHoops: Your 10-Week Shooting Class is confirmed!`,
+    `LearnHoops: Your 10-Week Shooting Development Program is confirmed!`,
     `Org: ${orgName}`,
     `Players: ${playerCount}`,
     `Team code: ${teamAccessCode}`,

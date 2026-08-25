@@ -240,7 +240,7 @@ export default async function TeamLandingPage() {
         >
           <GraduationCapIcon className="w-8 h-8 shrink-0" aria-hidden />
           <div className="text-left flex-1">
-            <p className="font-display font-black uppercase text-base leading-tight">10-Week Shooting Class — for organizations</p>
+            <p className="font-display font-black uppercase text-base leading-tight">10-Week Shooting Development Program — for organizations</p>
             <p className="text-ink-950/80 text-sm mt-1">Each player gets a ball, 2 shot analyses, and a certificate of completion that shows their improvement. Starting at $40/player.</p>
           </div>
           <span className="shrink-0 font-bold text-lg select-none" aria-hidden>→</span>

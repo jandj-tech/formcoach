@@ -619,7 +619,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
         >
           <div className="min-w-0">
             <p className="text-orange-100 text-[10px] font-bold uppercase tracking-widest">New</p>
-            <p className="font-black text-base truncate">10-Week Shooting Class · $40/player</p>
+            <p className="font-black text-base truncate">10-Week Shooting Development Program · $40/player</p>
             <p className="text-orange-100 text-xs mt-0.5">{classPackages.length > 0 ? 'Buy another class package' : 'Tap to expand the buy form'}</p>
           </div>
           <span className="text-2xl font-black shrink-0">+</span>
@@ -630,10 +630,11 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="space-y-1">
             <p className="text-orange-100 text-xs font-bold uppercase tracking-widest">New</p>
-            <h2 className="text-2xl font-black">10-Week Shooting Class</h2>
+            <h2 className="text-2xl font-black">10-Week Shooting Development Program</h2>
             <p className="text-orange-100 text-sm max-w-sm">
-              A structured program that turns your organization into a coaching powerhouse.
-              Each player gets a ball, 2 shot analyses, and a personalized completion certificate.
+              A structured, week-by-week program that turns your organization into a coaching powerhouse.
+              Each player gets a ball, 2 shot analyses, and a personalized completion certificate — plus a
+              full coach&apos;s guide with drills, cues, and checkpoints.
             </p>
           </div>
           <div className="flex items-start gap-2 shrink-0">
@@ -673,16 +674,16 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
           </summary>
           <div className="mt-3 grid grid-cols-2 gap-1.5 text-xs">
             {[
-              'Session 1 — Initial shot analysis',
-              'Session 2 — Grip & hand placement',
-              'Session 3 — Elbow alignment',
-              'Session 4 — Stance & base',
-              'Session 5 — Shot pocket',
-              'Session 6 — Release mechanics',
-              'Session 7 — Shot arc (45–60°)',
-              'Session 8 — Guide hand discipline',
-              'Session 9 — Full shot flow',
-              'Session 10 — Final evaluation + certificate',
+              'Week 1 — Initial shot analysis',
+              'Week 2 — Grip & hand placement',
+              'Week 3 — Stance & base',
+              'Week 4 — Elbow alignment & set point',
+              'Week 5 — Shot pocket & load',
+              'Week 6 — Legs & upward force',
+              'Week 7 — Release & follow-through',
+              'Week 8 — Guide hand discipline',
+              'Week 9 — Arc, range & game speed',
+              'Week 10 — Final evaluation + certificate',
             ].map(s => (
               <div key={s} className="bg-white/10 rounded-lg px-2.5 py-1.5 text-orange-50 font-medium">{s}</div>
             ))}
@@ -967,8 +968,8 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                         {/* 10-week curriculum PDF */}
                         <div className="flex items-center justify-between bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
                           <div>
-                            <p className="text-sm font-bold text-blue-900">10-Week Session Guide</p>
-                            <p className="text-xs text-blue-600">Optional week-by-week curriculum PDF</p>
+                            <p className="text-sm font-bold text-blue-900">10-Week Program Guide</p>
+                            <p className="text-xs text-blue-600">Week-by-week drills, cues &amp; checkpoints (PDF)</p>
                           </div>
                           <a
                             href={`/org/curriculum/${pkg.id}`}
@@ -1578,12 +1579,14 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   const classTab = (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <h2 className="text-xl font-black text-black">10-Week Shooting Class</h2>
-        <InfoTip label="What does the 10-week class include?" align="left">
+        <h2 className="text-xl font-black text-black">10-Week Shooting Development Program</h2>
+        <InfoTip label="What does the 10-week program include?" align="left">
           $40 per player ($36.99 each for 30+). Every player gets a training
-          ball, 2 AI shot analyses (start and end of the class), and a
-          personalized completion certificate. Buying a package also creates a
-          class team and unlocks the $0.99 token rate for your organization.
+          ball, 2 AI shot analyses (start and end of the program), and a
+          personalized completion certificate. You also get a full 10-week
+          coach&rsquo;s guide with drills, cues, and checkpoints. Buying a
+          package creates a class team and unlocks the $0.99 token rate for your
+          organization.
         </InfoTip>
       </div>
       {classProgramSection}
@@ -1915,7 +1918,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
         tabs={[
           { id: 'teams', label: 'Teams', count: teams.length, content: teamsTab },
           // The class purchase pitch is hidden in the iOS app (guideline 3.1.1).
-          ...(inApp ? [] : [{ id: 'class', label: 'Shooting Class', content: classTab }]),
+          ...(inApp ? [] : [{ id: 'class', label: 'Shooting Program', content: classTab }]),
           { id: 'tokens', label: 'Tokens', content: tokensTab },
           { id: 'players', label: 'Players', count: uniquePlayerCount, content: playersTab },
           { id: 'uploads', label: 'My Uploads', count: myUploads.length, content: uploadsTab },

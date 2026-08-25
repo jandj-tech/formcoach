@@ -618,9 +618,11 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
           className="w-full flex items-center justify-between gap-4 bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 rounded-2xl px-5 py-4 text-white text-left transition-colors"
         >
           <div className="min-w-0">
-            <p className="text-orange-100 text-[10px] font-bold uppercase tracking-widest">New</p>
-            <p className="font-black text-base truncate">10-Week Shooting Development Program · $40/player</p>
-            <p className="text-orange-100 text-xs mt-0.5">{classPackages.length > 0 ? 'Buy another class package' : 'Tap to expand the buy form'}</p>
+            <p className="text-orange-100 text-[10px] font-bold uppercase tracking-widest">{classPackages.length > 0 ? 'Add another' : 'New'}</p>
+            <p className="font-black text-base truncate">
+              {classPackages.length > 0 ? 'Start another program package' : '10-Week Shooting Development Program · $40/player'}
+            </p>
+            <p className="text-orange-100 text-xs mt-0.5">{classPackages.length > 0 ? 'Pick ball sizes and check out →' : 'Tap to open the buy form →'}</p>
           </div>
           <span className="text-2xl font-black shrink-0">+</span>
         </button>
@@ -775,17 +777,22 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
 
   const addTeamSection = (
     <div className="border border-gray-200 rounded-2xl p-5 space-y-3">
-      <div className="flex items-center justify-between gap-4">
-        <h2 className="text-xl font-black text-black">Add a Team</h2>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-black text-black">Add a Team</h2>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Create as many teams as you like — one per squad, age group, or coach.
+          </p>
+        </div>
         <button
           onClick={() => {
             setAddOpen(o => !o)
             setAddStatus('idle')
             setAddError('')
           }}
-          className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+          className="shrink-0 bg-orange-500 hover:bg-orange-400 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
         >
-          {addOpen ? 'Cancel' : 'Add Team'}
+          {addOpen ? 'Cancel' : '＋ Create a Team'}
         </button>
       </div>
 
@@ -1573,6 +1580,23 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
           )
         })}
       </div>
+
+      {/* Managing more than one club — each org is a separate login, so point
+          them at a fresh application rather than leaving them stuck. */}
+      <div className="border border-dashed border-gray-300 rounded-2xl px-5 py-4 flex items-center justify-between gap-4 flex-wrap">
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-black">Running more than one club?</p>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Each organization has its own separate login and dashboard.
+          </p>
+        </div>
+        <a
+          href="/org/signup"
+          className="shrink-0 text-sm font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 px-4 py-2 rounded-xl transition-colors"
+        >
+          Set up another organization →
+        </a>
+      </div>
     </div>
   )
 
@@ -1589,6 +1613,36 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
           organization.
         </InfoTip>
       </div>
+
+      {/* Existing packages — at-a-glance list with a link to each coach guide,
+          so buying another is an obvious repeat action rather than a hunt. */}
+      {classPackages.length > 0 && (
+        <div className="border border-gray-200 rounded-2xl p-4 space-y-2">
+          <p className="text-sm font-black text-black">Your program packages</p>
+          {[...classPackages]
+            .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
+            .map(pkg => (
+              <div key={pkg.id} className="flex items-center justify-between gap-3 bg-gray-50 border border-gray-100 rounded-xl px-4 py-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-black">{pkg.player_count}-player package</p>
+                  <p className="text-xs text-gray-500">{pkg.enrolled_count} enrolled · {pkg.completed_count} completed</p>
+                </div>
+                <a
+                  href={`/org/curriculum/${pkg.id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="shrink-0 text-xs font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  Coach guide →
+                </a>
+              </div>
+            ))}
+          <p className="text-xs text-gray-400 pt-1">
+            Need another? Start a new package below — pick your ball sizes and check out. It creates a fresh class team automatically.
+          </p>
+        </div>
+      )}
+
       {classProgramSection}
     </div>
   )

@@ -2,9 +2,47 @@
 
 import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Image from 'next/image'
 import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
 import PasswordInput from '@/components/PasswordInput'
+
+const INPUT =
+  'w-full bg-ink-800 border border-courtline rounded-xl px-4 py-3 text-chalk placeholder-chalk-dim focus:outline-none focus:border-ember-500 transition-colors'
+const LABEL = 'block text-xs font-semibold uppercase tracking-wide text-chalk-dim mb-1.5'
+
+const BENEFITS: { icon: string; title: string; body: string }[] = [
+  {
+    icon: '📋',
+    title: 'The full 10-week program',
+    body: 'A turnkey coach’s guide — every week laid out with demonstrations, drills, timing, coaching cues, and a game. Open a week and run the hour.',
+  },
+  {
+    icon: '🏀',
+    title: 'A training ball for every player',
+    body: 'Each enrolled player gets a LearnHoops training ball sized to their age group, shipped to you.',
+  },
+  {
+    icon: '🎯',
+    title: '2 AI shot analyses per player',
+    body: 'A Week 1 baseline and a Week 10 retest — a measurable before-and-after of every player’s shooting form.',
+  },
+  {
+    icon: '🏆',
+    title: 'A completion certificate',
+    body: 'Each player finishes with a personalized certificate showing their scores and how much they improved.',
+  },
+  {
+    icon: '📊',
+    title: 'An organization dashboard',
+    body: 'Manage teams, coaches and players in one place, with join codes and per-player progress.',
+  },
+  {
+    icon: '💸',
+    title: 'A $0.99 analysis rate',
+    body: 'Buying a program package unlocks the discounted $0.99 per-analysis rate for your whole organization.',
+  },
+]
 
 function OrgSignupInner() {
   const router = useRouter()
@@ -74,56 +112,45 @@ function OrgSignupInner() {
     }
   }
 
-  // Token flow — show full registration form
+  // Token flow — approved applicant creates their account.
   if (token) {
     return (
-      <main className="min-h-screen bg-white flex flex-col">
+      <main className="min-h-screen bg-ink-950 text-chalk flex flex-col">
         <TopNav />
-        <div className="flex-1 flex items-center justify-center px-6 py-12">
+        <div className="hero-glow grain relative flex-1 flex items-center justify-center px-6 py-16">
           <div className="w-full max-w-sm space-y-6">
-            <div className="text-center space-y-2">
-              <div className="text-4xl">🏀</div>
-              <h1 className="text-2xl font-black text-black">Set up your organization</h1>
-              <p className="text-gray-500 text-sm">Your application was approved — create your account below.</p>
+            <div className="text-center space-y-3">
+              <Image src="/icon.png" alt="" width={48} height={48} className="mx-auto rounded-2xl select-none" aria-hidden />
+              <span className="inline-block text-[11px] font-bold uppercase tracking-widest text-ember-400 bg-ember-500/10 border border-ember-500/30 rounded-full px-3 py-1">
+                Application approved
+              </span>
+              <h1 className="font-display font-black uppercase text-2xl leading-tight">Set up your organization</h1>
+              <p className="text-chalk-dim text-sm">Create your account to open your dashboard.</p>
             </div>
-            <form onSubmit={handleRegister} className="space-y-4">
+            <form onSubmit={handleRegister} className="space-y-4 bg-ink-900 border border-courtline rounded-2xl p-5">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Organization name</label>
-                <input
-                  type="text"
-                  required
-                  value={regOrgName}
-                  onChange={e => setRegOrgName(e.target.value)}
-                  placeholder="e.g. Metro Youth Basketball"
-                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500"
-                />
+                <label className={LABEL}>Organization name</label>
+                <input type="text" required value={regOrgName} onChange={e => setRegOrgName(e.target.value)} placeholder="e.g. Metro Youth Basketball" className={INPUT} />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Email</label>
-                <input
-                  type="email"
-                  required
-                  value={regEmail}
-                  onChange={e => setRegEmail(e.target.value)}
-                  placeholder="admin@yourorg.com"
-                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500"
-                />
+                <label className={LABEL}>Email</label>
+                <input type="email" required value={regEmail} onChange={e => setRegEmail(e.target.value)} placeholder="admin@yourorg.com" className={INPUT} />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Password</label>
-                <PasswordInput value={password} onChange={e => setPassword(e.target.value)} placeholder="6+ characters" />
+                <label className={LABEL}>Password</label>
+                <PasswordInput value={password} onChange={e => setPassword(e.target.value)} placeholder="6+ characters" className={`${INPUT} pr-11`} />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Confirm password</label>
-                <PasswordInput value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Repeat password" />
+                <label className={LABEL}>Confirm password</label>
+                <PasswordInput value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Repeat password" className={`${INPUT} pr-11`} />
               </div>
-              {error && <p className="text-red-500 text-sm">{error}</p>}
+              {error && <p className="text-red-400 text-sm">{error}</p>}
               <button
                 type="submit"
                 disabled={status === 'loading'}
-                className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-black py-3 rounded-xl transition-colors"
+                className="w-full bg-ember-500 hover:bg-ember-400 disabled:opacity-50 active:scale-[0.99] text-ink-950 font-bold py-3.5 rounded-full transition-all"
               >
-                {status === 'loading' ? 'Creating account…' : 'Create account'}
+                {status === 'loading' ? 'Creating account…' : 'Create account →'}
               </button>
             </form>
           </div>
@@ -133,18 +160,23 @@ function OrgSignupInner() {
     )
   }
 
-  // Application submitted confirmation
+  // Application submitted confirmation.
   if (applied) {
     return (
-      <main className="min-h-screen bg-white flex flex-col">
+      <main className="min-h-screen bg-ink-950 text-chalk flex flex-col">
         <TopNav />
-        <div className="flex-1 flex items-center justify-center px-6 py-12">
-          <div className="w-full max-w-sm text-center space-y-4">
-            <div className="text-5xl">✅</div>
-            <h1 className="text-2xl font-black text-black">Application submitted</h1>
-            <p className="text-gray-500 text-sm">
-              We&apos;ll review your application and send a setup link to <strong>{email}</strong> if approved.
+        <div className="hero-glow grain relative flex-1 flex items-center justify-center px-6 py-16">
+          <div className="w-full max-w-md text-center space-y-5 bg-ink-900 border border-courtline rounded-2xl p-8">
+            <div className="mx-auto w-14 h-14 rounded-full bg-ember-500/15 border border-ember-500/30 flex items-center justify-center text-2xl">✓</div>
+            <h1 className="font-display font-black uppercase text-2xl leading-tight">Application submitted</h1>
+            <p className="text-chalk-dim text-sm leading-relaxed">
+              Thanks — we’ve got it. We’ll review your organization and send a setup link to{' '}
+              <strong className="text-chalk">{email}</strong> once you’re approved. Approvals usually land within a
+              business day.
             </p>
+            <a href="/" className="inline-block text-ember-400 hover:text-ember-500 font-semibold text-sm transition-colors">
+              ← Back to home
+            </a>
           </div>
         </div>
         <SiteFooter />
@@ -152,60 +184,84 @@ function OrgSignupInner() {
     )
   }
 
-  // Default — application form
+  // Default — application form with a full pitch panel.
   return (
-    <main className="min-h-screen bg-white flex flex-col">
+    <main className="min-h-screen bg-ink-950 text-chalk flex flex-col">
       <TopNav />
-      <div className="flex-1 flex items-center justify-center px-6 py-12">
-        <div className="w-full max-w-sm space-y-6">
-          <div className="text-center space-y-2">
-            <div className="text-4xl">🏀</div>
-            <h1 className="text-2xl font-black text-black">Apply for an organization account</h1>
-            <p className="text-gray-500 text-sm">Tell us about your organization and we&apos;ll be in touch.</p>
+      <div className="hero-glow grain relative flex-1 px-6 py-14 sm:py-16">
+        <div className="w-full max-w-5xl mx-auto grid lg:grid-cols-2 gap-10 lg:gap-14 items-start">
+
+          {/* Pitch panel */}
+          <div className="space-y-6">
+            <span className="inline-block text-[11px] font-bold uppercase tracking-widest text-ember-400 bg-ember-500/10 border border-ember-500/30 rounded-full px-3 py-1">
+              For clubs &amp; organizations
+            </span>
+            <h1 className="font-display font-black uppercase text-4xl sm:text-5xl leading-[0.95]">
+              Bring AI shot analysis
+              <span className="text-gradient-ember"> to your whole club</span>
+            </h1>
+            <p className="text-chalk-dim text-base leading-relaxed max-w-md">
+              Apply for an organization account to run the <strong className="text-chalk">10-Week Shooting
+              Development Program</strong> — a complete, coach-ready plan that measures every player’s shot before and
+              after with LearnHoops AI. Starting at <span className="font-numeric text-chalk">$40</span>/player.
+            </p>
+
+            <div className="space-y-3">
+              {BENEFITS.map(b => (
+                <div key={b.title} className="flex gap-3 bg-ink-900/60 border border-courtline rounded-xl p-3.5">
+                  <div className="shrink-0 text-xl leading-none mt-0.5" aria-hidden>{b.icon}</div>
+                  <div className="min-w-0">
+                    <p className="font-bold text-sm text-chalk leading-tight">{b.title}</p>
+                    <p className="text-chalk-dim text-sm leading-relaxed mt-0.5">{b.body}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-          <form onSubmit={handleApply} className="space-y-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Organization name</label>
-              <input
-                type="text"
-                required
-                value={orgName}
-                onChange={e => setOrgName(e.target.value)}
-                placeholder="e.g. Metro Youth Basketball"
-                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500"
-              />
+
+          {/* Application form */}
+          <div className="lg:sticky lg:top-24">
+            <div className="bg-ink-900 border border-courtline rounded-2xl p-6 sm:p-7 space-y-5">
+              <div className="space-y-1.5">
+                <h2 className="font-display font-black uppercase text-xl leading-tight">Apply for an organization account</h2>
+                <p className="text-chalk-dim text-sm">
+                  Tell us about your club and we’ll follow up with next steps. No payment now — this is just an application.
+                </p>
+              </div>
+
+              <form onSubmit={handleApply} className="space-y-4">
+                <div>
+                  <label className={LABEL}>Organization name</label>
+                  <input type="text" required value={orgName} onChange={e => setOrgName(e.target.value)} placeholder="e.g. Metro Youth Basketball" className={INPUT} />
+                </div>
+                <div>
+                  <label className={LABEL}>Your email</label>
+                  <input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="admin@yourorg.com" className={INPUT} />
+                </div>
+                <div>
+                  <label className={LABEL}>Players in your club (estimate)</label>
+                  <input type="number" min={1} value={playerCount} onChange={e => setPlayerCount(e.target.value)} placeholder="e.g. 45" className={INPUT} />
+                  <p className="text-xs text-chalk-dim mt-1.5">Just a rough number — it helps us tailor your setup.</p>
+                </div>
+                {error && <p className="text-red-400 text-sm">{error}</p>}
+                <button
+                  type="submit"
+                  disabled={status === 'loading'}
+                  className="w-full bg-ember-500 hover:bg-ember-400 disabled:opacity-50 active:scale-[0.99] text-ink-950 font-bold py-3.5 rounded-full transition-all"
+                >
+                  {status === 'loading' ? 'Submitting…' : 'Submit application →'}
+                </button>
+              </form>
+
+              <p className="text-center text-sm text-chalk-dim">
+                Already have an organization?{' '}
+                <a href="/org/login" className="text-ember-400 hover:text-ember-500 font-semibold transition-colors">
+                  Log in
+                </a>
+              </p>
             </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Your email</label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="admin@yourorg.com"
-                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Number of players in your club (estimate)</label>
-              <input
-                type="number"
-                min={1}
-                value={playerCount}
-                onChange={e => setPlayerCount(e.target.value)}
-                placeholder="e.g. 45"
-                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500"
-              />
-            </div>
-            {error && <p className="text-red-500 text-sm">{error}</p>}
-            <button
-              type="submit"
-              disabled={status === 'loading'}
-              className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-black py-3 rounded-xl transition-colors"
-            >
-              {status === 'loading' ? 'Submitting…' : 'Submit application'}
-            </button>
-          </form>
+          </div>
+
         </div>
       </div>
       <SiteFooter />

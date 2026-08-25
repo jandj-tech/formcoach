@@ -476,32 +476,29 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
             const clientPayload = JSON.stringify({ teamCode: teamMode?.code ?? null })
 
             if (process.env.NEXT_PUBLIC_STORAGE_DRIVER === 's3') {
-              // Cloudflare R2: ask our route for a presigned PUT URL, then PUT
-              // the file straight to R2. contentType must match what the URL was
-              // signed with, so send the same value in both requests.
+              // Cloudflare R2: POST the file to our own route, which streams it
+              // to the private R2 bucket server-side. No presigned URL and no
+              // bucket CORS needed — the browser only ever talks to our origin.
               const contentType = file.type || 'application/octet-stream'
-              console.log('[VideoUploader] requesting R2 upload URL:', pathname, contentType, file.size)
-              const presignRes = await fetch('/api/upload-video', {
+              console.log('[VideoUploader] uploading video to R2 via server:', pathname, contentType, file.size)
+              const res = await fetch('/api/upload-video', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ pathname, contentType, clientPayload }),
-                signal: controller.signal,
-              })
-              if (!presignRes.ok) {
-                const { error } = await presignRes.json().catch(() => ({ error: 'Upload authorization failed' }))
-                throw new Error(error || 'Upload authorization failed')
-              }
-              const { uploadUrl, publicUrl } = (await presignRes.json()) as { uploadUrl: string; publicUrl: string }
-              const putRes = await fetch(uploadUrl, {
-                method: 'PUT',
-                headers: { 'Content-Type': contentType },
+                headers: {
+                  'Content-Type': contentType,
+                  'x-upload-pathname': pathname,
+                  'x-team-code': teamMode?.code ?? '',
+                },
                 body: file,
                 signal: controller.signal,
               })
-              if (!putRes.ok) throw new Error(`Storage rejected the upload (${putRes.status})`)
-              videoUrl = publicUrl
+              if (!res.ok) {
+                const { error } = await res.json().catch(() => ({ error: `Upload failed (${res.status})` }))
+                throw new Error(error || `Upload failed (${res.status})`)
+              }
+              const { url } = (await res.json()) as { url: string }
+              videoUrl = url
               console.log('[VideoUploader] video uploaded:', videoUrl)
-              setVideoUploadStatus({ state: 'ok', url: publicUrl })
+              setVideoUploadStatus({ state: 'ok', url })
             } else {
               console.log('[VideoUploader] uploading video to Blob:', pathname, file.type, file.size)
               const blob = await upload(pathname, file, {

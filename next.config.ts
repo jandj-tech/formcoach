@@ -29,6 +29,13 @@ const nextConfig: NextConfig = {
   // its own serverless output and never reads .next/standalone, so ask for it
   // only off-Vercel, where the cPanel target actually needs it.
   ...(process.env.VERCEL ? {} : { output: 'standalone' as const }),
+  // The offline IP→country database (lib/region.ts) is read from disk at
+  // runtime. Standalone output only copies files the tracer sees, and a raw
+  // fs.readFileSync isn't traced — so name it explicitly here, or the box's
+  // .next/standalone build ships without it and every buyer falls back to USD.
+  outputFileTracingIncludes: {
+    '/api/**': ['./lib/geo/country.mmdb'],
+  },
   // No experimental.viewTransition flag: next 16.3 rejects it as an invalid key
   // ("Invalid next.config.ts options detected"). <ViewTransition> in
   // app/layout.tsx renders correctly without it on react 19.2 — verified against

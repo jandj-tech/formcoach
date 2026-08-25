@@ -68,11 +68,12 @@ export async function POST(req: NextRequest) {
 
     const userId = session?.userId ?? null
 
-    // Check + reserve token before doing any expensive work. An account that
-    // has never used its free signup analysis gets this one on the house —
-    // flagged as a preview so the results page shows the overall score but
-    // keeps the criteria breakdown locked until a token is purchased.
-    let isFreePreview = false
+    // Check + reserve token before doing any expensive work. Every analysis
+    // now requires a token or an active subscription — the free signup
+    // analysis has been discontinued, so an account with neither is turned
+    // away here before any work happens. `isFreePreview` is retained (always
+    // false) so historical free-preview submissions still read correctly.
+    const isFreePreview = false
     if (!isTeamUpload && userId) {
       const [user] = await db`
         SELECT analysis_tokens, subscription_type, subscription_expires_at, free_analysis_used
@@ -87,11 +88,7 @@ export async function POST(req: NextRequest) {
       const tokens = user?.analysis_tokens ?? 0
 
       if (!isSubscribed && tokens <= 0) {
-        if (user?.free_analysis_used === false) {
-          isFreePreview = true
-        } else {
-          return NextResponse.json({ error: 'No analysis tokens' }, { status: 402 })
-        }
+        return NextResponse.json({ error: 'No analysis tokens' }, { status: 402 })
       }
     }
 

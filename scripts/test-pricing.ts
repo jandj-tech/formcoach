@@ -29,8 +29,8 @@ function check(name: string, ok: boolean, detail = '') {
   else failures.push(`${name}${detail ? ` — ${detail}` : ''}`)
 }
 
-const REGULAR = REGULAR_ANALYSIS_PRICE_CENTS // 179
-const TEAM = TEAM_TOKEN_PRICE_CENTS // 99
+const REGULAR = REGULAR_ANALYSIS_PRICE_CENTS // 349
+const TEAM = TEAM_TOKEN_PRICE_CENTS // 149
 
 /**
  * The regular ladder, stated independently of the module.
@@ -135,8 +135,8 @@ for (const { name, base, expected } of LADDERS) {
 
 // --- team must always undercut regular -------------------------------------
 // The tightest stretch is 3..9, where a regular buyer has a discount and a
-// team buyer does not: 99 against 170 and 161. This is what would break first
-// if the regular ladder were ever deepened much past 45%.
+// team buyer does not: 149 against 233 and 179. This is what would break first
+// if the regular ladder were ever deepened much further.
 let crossed: number | null = null
 for (let q = 1; q <= MAX_TOKENS_PER_ORDER; q++) {
   if (discountedUnitCents(TEAM, q) >= discountedUnitCents(REGULAR, q)) { crossed = q; break }
@@ -151,8 +151,8 @@ const SPOTS: Array<[number, number, number]> = [
   [REGULAR, 5, 179], [REGULAR, 9, 179], [REGULAR, 10, 161], [REGULAR, 14, 161],
   // From 15 the price floors at $1.49 and stays there however large the order.
   [REGULAR, 15, 149], [REGULAR, 50, 149], [REGULAR, 100, 149], [REGULAR, 1000, 149],
-  [TEAM, 1, 99], [TEAM, 3, 99], [TEAM, 5, 99], [TEAM, 9, 99], [TEAM, 10, 94],
-  [TEAM, 25, 89], [TEAM, 50, 84], [TEAM, 100, 74],
+  [TEAM, 1, 149], [TEAM, 3, 149], [TEAM, 5, 149], [TEAM, 9, 149], [TEAM, 10, 142],
+  [TEAM, 25, 134], [TEAM, 50, 127], [TEAM, 100, 112],
 ]
 for (const [base, q, want] of SPOTS) {
   const got = discountedUnitCents(base, q)
@@ -160,11 +160,11 @@ for (const [base, q, want] of SPOTS) {
 }
 
 // --- ladder dispatch -------------------------------------------------------
-check('tiersFor(179) -> regular', tiersFor(179) === REGULAR_VOLUME_TIERS)
-check('tiersFor(100) -> regular', tiersFor(100) === REGULAR_VOLUME_TIERS)
+check('tiersFor(349) -> regular', tiersFor(349) === REGULAR_VOLUME_TIERS)
+check('tiersFor(150) -> regular', tiersFor(150) === REGULAR_VOLUME_TIERS)
 check('tiersFor(1_000_000) -> regular', tiersFor(1_000_000) === REGULAR_VOLUME_TIERS)
-check('tiersFor(99) -> team', tiersFor(99) === TEAM_VOLUME_TIERS)
-check('tiersFor(98) -> team (cheaper rate fails safe)', tiersFor(98) === TEAM_VOLUME_TIERS)
+check('tiersFor(149) -> team', tiersFor(149) === TEAM_VOLUME_TIERS)
+check('tiersFor(148) -> team (cheaper rate fails safe)', tiersFor(148) === TEAM_VOLUME_TIERS)
 check('tiersFor(0) -> team', tiersFor(0) === TEAM_VOLUME_TIERS)
 check('tiersFor(-1) -> team', tiersFor(-1) === TEAM_VOLUME_TIERS)
 

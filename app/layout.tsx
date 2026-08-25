@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://www.learnhoops.com'),
   title: 'AI Basketball Shot Analysis & Shooting Form Coach | LearnHoops',
   description:
-    'AI basketball shot analysis that fixes your shooting form. Upload a video of your jump shot and get graded on 18 coaching criteria — elbow, stance, arc, follow-through — with drills to improve, in minutes. First analysis free.',
+    'AI basketball shot analysis that fixes your shooting form. Upload a video of your jump shot and get graded on 18 coaching criteria — elbow, stance, arc, follow-through — with drills to improve, in minutes.',
   keywords: [
     'basketball shot analysis',
     'AI basketball',
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
   alternates: { canonical: '/' },
   openGraph: {
     title: 'AI Basketball Shot Analysis & Shooting Form Coach | LearnHoops',
-    description: 'Upload a video of your jump shot, get graded on 18 shooting-form criteria with drills to improve. First analysis free.',
+    description: 'Upload a video of your jump shot, get graded on 18 shooting-form criteria with drills to improve.',
     siteName: 'LearnHoops',
     url: 'https://www.learnhoops.com',
     type: 'website',
@@ -96,7 +96,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     '@type': 'Offer',
                     price: '3.49',
                     priceCurrency: 'USD',
-                    description: 'Per shot analysis. First analysis free with a new account.',
+                    description: 'Per shot analysis.',
                   },
                 },
               ],

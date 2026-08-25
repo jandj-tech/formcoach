@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
     if (!team) {
       return NextResponse.json({ error: 'Team not found' }, { status: 404 })
     }
-    // Org owners unlock $0.99 org-wide once ANY of their teams is initiated.
+    // Org owners unlock $1.49 org-wide once ANY of their teams is initiated.
     const orgInitiated = await orgHasInitiatedTeam(session.orgId)
     const baseAmount = orgInitiated ? TEAM_TOKEN_PRICE_CENTS : REGULAR_ANALYSIS_PRICE_CENTS
     const qty = typeof quantity === 'number' ? Math.floor(quantity) : 1

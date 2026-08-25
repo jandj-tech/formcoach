@@ -107,7 +107,7 @@ export default async function HomePage() {
 
         {!session && (
           <p className="text-ember-400 text-sm font-bold mt-5">
-            Your first shot analysis is free — sign up and upload your video.
+            Sign up and upload your video to get your shot graded.
           </p>
         )}
 
@@ -316,8 +316,8 @@ export default async function HomePage() {
             video. Film one jump shot on your phone, upload it, and in minutes the AI grades your
             shot against 18 coaching criteria — stance, elbow alignment, shot pocket, release,
             follow-through, arc, and more — then tells you exactly what to fix and the drill that
-            fixes it. It&apos;s the feedback of a private shooting coach, on demand, for less than
-            two dollars a shot — and your first analysis is free.
+            fixes it. It&apos;s the feedback of a private shooting coach, on demand, for a fraction
+            of the cost of a private lesson.
           </p>
           <p className="text-chalk-dim text-sm sm:text-base leading-relaxed">
             It works for everyone who wants a better jump shot: youth players building form from
@@ -353,7 +353,7 @@ export default async function HomePage() {
         </div>
         {!session && (
           <p className="mt-6 text-ink-950 font-bold text-sm">
-            New here? Your first analysis is free.
+            New here? Sign up to analyze your first shot.
           </p>
         )}
         <p className="mt-8 text-sm">

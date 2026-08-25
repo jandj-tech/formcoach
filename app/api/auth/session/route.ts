@@ -82,12 +82,12 @@ export async function GET(req: NextRequest) {
       }
 
       // If any of their teams has reached the initiated player count, the
-      // per-analysis price is $0.99 instead of $3.49.
+      // per-analysis price is $1.49 instead of $3.49.
       const onInitiatedTeam = onTeam && (await userHasInitiatedTeam(user.id))
 
-      // The one-time free signup analysis is still available (score-only
-      // preview). Only meaningful when they have no tokens or subscription.
-      const freeUpload = !isSubscribed && tokens <= 0 && user.free_analysis_used === false
+      // The free signup analysis has been discontinued — no account gets a
+      // free upload, so this is always false.
+      const freeUpload = false
 
       // App builds ≤14 gate the Analyze tab on tokens > 0 and predate the
       // freeUpload flag, so the free analysis is presented to them as a

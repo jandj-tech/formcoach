@@ -11,7 +11,7 @@ export const INITIATION_MIN_PLAYERS = 8
 export const REGULAR_ANALYSIS_PRICE_CENTS = 349
 
 /** Discounted per-token price (cents) once a team is initiated. */
-export const TEAM_TOKEN_PRICE_CENTS = 99
+export const TEAM_TOKEN_PRICE_CENTS = 149
 
 /**
  * Per-order quantity ceilings, shared by the buy UI and the routes that
@@ -26,7 +26,7 @@ export const MAX_COACH_CREDITS_PER_ORDER = 500
  *
  * Every surface that shows or charges an analysis price goes through here —
  * players, coaches and orgs alike. Reading the two constants directly is what
- * let the same player see $1.79 on one page and $0.99 on another.
+ * let the same player see $1.79 on one page and $1.49 on another.
  */
 export function analysisUnitCents(initiated: boolean): number {
   return initiated ? TEAM_TOKEN_PRICE_CENTS : REGULAR_ANALYSIS_PRICE_CENTS
@@ -58,7 +58,7 @@ export const REGULAR_VOLUME_TIERS: ReadonlyArray<VolumeTier> = [
  * The ladder for buyers already on the discounted team rate — deliberately
  * shallower, and starting later, than the regular one.
  *
- * TEAM_TOKEN_PRICE_CENTS is itself the volume discount: 45% off list, given
+ * TEAM_TOKEN_PRICE_CENTS is itself the volume discount: 57% off list, given
  * for filling a roster rather than for the size of one order. Stacking the
  * regular ladder on top of it would compound two discounts and take an
  * analysis to well under half what a single one earns, so a team's bulk

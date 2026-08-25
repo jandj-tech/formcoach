@@ -765,16 +765,6 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
   return (
     <div className="w-full max-w-lg mx-auto space-y-4 px-2">
 
-      {/* Free first analysis for new accounts */}
-      {sessionUser && !sessionUser.subscribed && sessionUser.tokens === 0 && sessionUser.freeUpload && (
-        <div className="bg-orange-50 border border-orange-300 rounded-xl px-4 py-2.5 text-center">
-          <p className="text-orange-700 text-sm font-black tracking-wide">YOUR FIRST ANALYSIS IS FREE</p>
-          <p className="text-orange-700/80 text-xs mt-0.5">
-            You&apos;ll get your overall score — buy a token any time to unlock the full report.
-          </p>
-        </div>
-      )}
-
       {/* Token count for logged-in users */}
       {sessionUser && !sessionUser.subscribed && sessionUser.tokens > 0 && (
         sessionUser.tokens === 1 ? (
@@ -816,10 +806,10 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
           <div className="absolute inset-0 flex flex-col items-center justify-center px-6 bg-white/60 backdrop-blur-[1px] rounded-2xl">
             <div className="flex flex-col items-center gap-2.5 bg-white border border-gray-200 shadow-xl rounded-2xl px-5 py-4">
               <p className="text-black font-black text-base sm:text-lg text-center leading-snug">
-                Sign up now for your free shot analysis
+                Sign up now to analyze your shot
               </p>
               <p className="text-gray-500 text-xs text-center">
-                New accounts get their first analysis free — upload your shot and see your score.
+                Create an account, then upload your shot to see your score.
               </p>
               <div className="flex gap-2">
                 <a

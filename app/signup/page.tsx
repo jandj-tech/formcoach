@@ -87,7 +87,7 @@ function SignupForm() {
               </p>
             ) : (
               <p className="text-sm font-semibold text-ember-400 bg-ember-500/10 border border-ember-500/30 rounded-xl px-4 py-2">
-                Your first shot analysis is free — create your account to claim it.
+                Create your account to start analyzing your shots.
               </p>
             )}
           </div>

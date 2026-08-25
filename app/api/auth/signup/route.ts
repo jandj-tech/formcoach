@@ -42,11 +42,11 @@ export async function POST(req: NextRequest) {
 
     const nicknameTrimmed = nickname?.trim() || null
 
-    // free_analysis_used = false grants the one free score-only analysis
-    // (the column defaults to true so pre-existing accounts don't get one).
+    // free_analysis_used = true: the free signup analysis has been
+    // discontinued, so new accounts start with no free upload.
     const [user] = await db`
       INSERT INTO users (email, password_hash, subscription_type, subscription_expires_at, nickname, free_analysis_used)
-      VALUES (${emailLower}, ${hash}, ${sub?.subscription_type ?? null}, ${sub?.subscription_expires_at ?? null}, ${nicknameTrimmed}, false)
+      VALUES (${emailLower}, ${hash}, ${sub?.subscription_type ?? null}, ${sub?.subscription_expires_at ?? null}, ${nicknameTrimmed}, true)
       RETURNING id, email
     ` as unknown as [{ id: string; email: string }]
 

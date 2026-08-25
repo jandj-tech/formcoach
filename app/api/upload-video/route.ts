@@ -2,19 +2,19 @@ import { handleUpload, type HandleUploadBody } from '@vercel/blob/client'
 import { NextRequest, NextResponse } from 'next/server'
 import { resolveUploader, uploaderKey } from '@/lib/upload-guard'
 import { rateLimit, rateLimitByIp } from '@/lib/rate-limit'
-import { storageDriver, s3Bucket, s3PublicBase } from '@/lib/storage'
+import { storageDriver, putObject } from '@/lib/storage'
 
-// Direct browser → object-storage upload handler. Bypasses the 4.5MB
-// serverless body-size limit so users can upload videos up to 200MB without
-// proxying through our route.
-//
-// Two backends, chosen by STORAGE_DRIVER (see lib/storage.ts):
-//   - 'vercel': Vercel Blob's handleUpload mints a short-lived write token.
-//   - 's3'    : we mint a presigned PUT URL for Cloudflare R2.
-// Both authenticate the caller first — this endpoint hands out write access, so
-// it previously authenticated nobody and anyone could push unlimited objects.
-// The client sends its team code (when in team mode) as the payload so an
-// anonymous team upload still works.
+// Video upload handler, one flow per storage backend (STORAGE_DRIVER):
+//   - 'vercel': Vercel Blob's handleUpload mints a browser write token so the
+//     browser uploads straight to Blob (bypassing the 4.5MB serverless limit).
+//   - 's3'    : the browser POSTs the file HERE and we stream it to Cloudflare
+//     R2 server-side. The app runs on a normal Node host (not serverless), so
+//     there's no small-body limit to bypass, and going through the server means
+//     the private R2 bucket needs no CORS config and no presigned URLs.
+// Both authenticate the caller first — this endpoint writes to storage, so it
+// must not accept anonymous writes.
+
+export const maxDuration = 300
 
 const ROUTE = 'upload-video'
 
@@ -29,8 +29,7 @@ const ALLOWED_CONTENT_TYPES = [
 ]
 const MAX_BYTES = 200 * 1024 * 1024
 
-// Shared gate for both backends. Throws with a user-facing message on any
-// failure; returns nothing on success.
+// Shared gate for both backends. Throws with a user-facing message on failure.
 async function authorizeUpload(
   request: NextRequest,
   pathname: string,
@@ -41,17 +40,14 @@ async function authorizeUpload(
     throw new Error('Login required to upload a video')
   }
 
-  // Storage costs money and a write grant is reusable for the life of the
-  // upload, so cap how many a caller can mint.
   const perCaller = await rateLimit(`${ROUTE}:${uploaderKey(uploader)}`, 40, 3600)
   if (!perCaller.ok) throw new Error('Too many uploads — try again later')
   const perIp = await rateLimitByIp(request, ROUTE, 80, 3600)
   if (!perIp.ok) throw new Error('Too many uploads — try again later')
 
-  // The content-type list keeps application/octet-stream because iOS Safari and
-  // some Android pickers send it for ordinary .mov/.mp4 files. That makes the
-  // extension the only real filter on what lands in the store, so enforce it
-  // here rather than trusting the declared type.
+  // application/octet-stream stays allowed because iOS Safari / some Android
+  // pickers send it for ordinary .mov/.mp4 files, so the extension is the real
+  // filter on what lands in the store.
   const ext = pathname.split('.').pop()?.toLowerCase() ?? ''
   if (!ALLOWED_EXTENSIONS.includes(ext)) {
     throw new Error('Only video files can be uploaded')
@@ -68,52 +64,26 @@ function parseTeamCode(clientPayload: string | null): string | null {
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  // --- Cloudflare R2 (presigned PUT) -----------------------------------------
+  // --- Cloudflare R2 (upload through the server) -----------------------------
   if (storageDriver() === 's3') {
     try {
-      const { pathname, contentType, clientPayload } = (await request.json()) as {
-        pathname?: string
-        contentType?: string
-        clientPayload?: string | null
-      }
+      const pathname = (request.headers.get('x-upload-pathname') || '').trim()
+      const teamCode = (request.headers.get('x-team-code') || '').trim() || null
+      const contentType = request.headers.get('content-type') || 'application/octet-stream'
       if (!pathname) throw new Error('Missing upload path')
 
-      await authorizeUpload(request, pathname, parseTeamCode(clientPayload ?? null))
+      await authorizeUpload(request, pathname, teamCode)
 
-      const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3')
-      const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner')
-      const s3 = new S3Client({
-        region: 'auto',
-        endpoint: process.env.S3_ENDPOINT!,
-        credentials: {
-          accessKeyId: process.env.S3_ACCESS_KEY_ID!,
-          secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
-        },
-      })
+      const buffer = Buffer.from(await request.arrayBuffer())
+      if (buffer.length === 0) throw new Error('Empty upload')
+      if (buffer.length > MAX_BYTES) throw new Error('Video is too large')
 
       const key = pathname.replace(/^\/+/, '')
-      const uploadUrl = await getSignedUrl(
-        s3,
-        new PutObjectCommand({
-          Bucket: s3Bucket(),
-          Key: key,
-          ContentType: contentType || undefined,
-        }),
-        { expiresIn: 600 },
-      )
-
-      // publicUrl is what the client posts to /api/analyze and we store; it
-      // resolves through the /api/media proxy (bucket stays private).
-      return NextResponse.json({
-        driver: 's3',
-        uploadUrl,
-        publicUrl: `${s3PublicBase()}/${key}`,
-        maxBytes: MAX_BYTES,
-        allowedContentTypes: ALLOWED_CONTENT_TYPES,
-      })
+      const { url } = await putObject(key, buffer, { contentType })
+      return NextResponse.json({ url })
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Upload failed'
-      console.error('[upload-video] s3 presign error:', msg)
+      console.error('[upload-video] s3 upload error:', msg)
       return NextResponse.json({ error: msg }, { status: 400 })
     }
   }

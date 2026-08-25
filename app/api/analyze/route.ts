@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { putObject } from '@/lib/storage'
+import { putObject, storageDriver } from '@/lib/storage'
 import { db } from '@/lib/db'
 import { analyzeShot } from '@/lib/analyze'
 import { getSessionFromRequest } from '@/lib/auth'
@@ -165,7 +165,13 @@ export async function POST(req: NextRequest) {
     const frameMimeTypes: string[] = []
     const frameUrls: string[] = []
 
-    const hasBlobToken = !!process.env.BLOB_READ_WRITE_TOKEN
+    // Whether object storage is configured for the active driver. On Vercel
+    // Blob that's the write token; on the s3/R2 driver it's the bucket. Frames
+    // are only pushed to storage (and their URLs recorded) when it is.
+    const hasBlobToken =
+      storageDriver() === 's3'
+        ? !!process.env.S3_BUCKET
+        : !!process.env.BLOB_READ_WRITE_TOKEN
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i]

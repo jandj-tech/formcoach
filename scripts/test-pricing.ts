@@ -42,8 +42,7 @@ const TEAM = TEAM_TOKEN_PRICE_CENTS // 149
  * are what this file pins.
  */
 function expectedRegularPercent(q: number): number {
-  if (q >= 15) return 57.3
-  if (q >= 10) return 53.9
+  if (q >= 10) return 52.7
   if (q >= 5) return 48.7
   if (q >= 3) return 33.2
   return 0
@@ -116,12 +115,12 @@ for (const { name, base, expected } of LADDERS) {
   // Total cost can fall as quantity rises when a tier jump outruns the extra
   // unit — harmless (the buyer is never punished for buying more), but worth
   // pinning so a tier edit cannot introduce a surprise cliff unnoticed.
-  // Regular: each bundle boundary undercuts the quantity below it — five
-  // analyses ($8.95) cost less than four ($9.32), and the same at 10 and at
-  // the 15+ floor. That is the bundle doing its job. The deeper points moved
-  // when the ladder floored at $1.49, which is why this is pinned: a tier edit
-  // that adds a cliff somewhere unexpected should fail here rather than ship.
-  const expectedInversions = name === 'team' ? [24, 49, 99] : [4, 9, 14]
+  // Regular: the 5-pack boundary undercuts the quantity below it — five
+  // analyses ($8.95) cost less than four ($9.32). The $1.65 floor at 10 is a
+  // shallow enough step down from the $1.79 five-pack that buying ten never
+  // costs less than nine, so 4 is the only regular inversion. Pinned so a tier
+  // edit that adds a cliff somewhere unexpected fails here rather than ships.
+  const expectedInversions = name === 'team' ? [24, 49, 99] : [4]
   check(
     `${name}: cheaper-than-the-step-below points are exactly {${expectedInversions.join(', ')}}`,
     JSON.stringify(inversions) === JSON.stringify(expectedInversions),
@@ -148,9 +147,10 @@ const SPOTS: Array<[number, number, number]> = [
   // The advertised prices. These are the product promise; if one of these
   // moves, a page somewhere is now lying about what checkout charges.
   [REGULAR, 1, 349], [REGULAR, 2, 349], [REGULAR, 3, 233], [REGULAR, 4, 233],
-  [REGULAR, 5, 179], [REGULAR, 9, 179], [REGULAR, 10, 161], [REGULAR, 14, 161],
-  // From 15 the price floors at $1.49 and stays there however large the order.
-  [REGULAR, 15, 149], [REGULAR, 50, 149], [REGULAR, 100, 149], [REGULAR, 1000, 149],
+  [REGULAR, 5, 179], [REGULAR, 9, 179],
+  // From 10 the price floors at $1.65 and stays there however large the order.
+  [REGULAR, 10, 165], [REGULAR, 14, 165], [REGULAR, 15, 165], [REGULAR, 50, 165],
+  [REGULAR, 100, 165], [REGULAR, 1000, 165],
   [TEAM, 1, 149], [TEAM, 3, 149], [TEAM, 5, 149], [TEAM, 9, 149], [TEAM, 10, 142],
   [TEAM, 25, 134], [TEAM, 50, 127], [TEAM, 100, 112],
 ]

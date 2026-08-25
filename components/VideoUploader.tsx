@@ -473,16 +473,47 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
           try {
             const ext = (file.name.split('.').pop() || 'mp4').toLowerCase()
             const pathname = `videos/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`
-            console.log('[VideoUploader] uploading video to Blob:', pathname, file.type, file.size)
-            const blob = await upload(pathname, file, {
-              access: 'public',
-              handleUploadUrl: '/api/upload-video',
-              clientPayload: JSON.stringify({ teamCode: teamMode?.code ?? null }),
-              abortSignal: controller.signal,
-            })
-            videoUrl = blob.url
-            console.log('[VideoUploader] video uploaded:', videoUrl)
-            setVideoUploadStatus({ state: 'ok', url: blob.url })
+            const clientPayload = JSON.stringify({ teamCode: teamMode?.code ?? null })
+
+            if (process.env.NEXT_PUBLIC_STORAGE_DRIVER === 's3') {
+              // Cloudflare R2: ask our route for a presigned PUT URL, then PUT
+              // the file straight to R2. contentType must match what the URL was
+              // signed with, so send the same value in both requests.
+              const contentType = file.type || 'application/octet-stream'
+              console.log('[VideoUploader] requesting R2 upload URL:', pathname, contentType, file.size)
+              const presignRes = await fetch('/api/upload-video', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pathname, contentType, clientPayload }),
+                signal: controller.signal,
+              })
+              if (!presignRes.ok) {
+                const { error } = await presignRes.json().catch(() => ({ error: 'Upload authorization failed' }))
+                throw new Error(error || 'Upload authorization failed')
+              }
+              const { uploadUrl, publicUrl } = (await presignRes.json()) as { uploadUrl: string; publicUrl: string }
+              const putRes = await fetch(uploadUrl, {
+                method: 'PUT',
+                headers: { 'Content-Type': contentType },
+                body: file,
+                signal: controller.signal,
+              })
+              if (!putRes.ok) throw new Error(`Storage rejected the upload (${putRes.status})`)
+              videoUrl = publicUrl
+              console.log('[VideoUploader] video uploaded:', videoUrl)
+              setVideoUploadStatus({ state: 'ok', url: publicUrl })
+            } else {
+              console.log('[VideoUploader] uploading video to Blob:', pathname, file.type, file.size)
+              const blob = await upload(pathname, file, {
+                access: 'public',
+                handleUploadUrl: '/api/upload-video',
+                clientPayload,
+                abortSignal: controller.signal,
+              })
+              videoUrl = blob.url
+              console.log('[VideoUploader] video uploaded:', videoUrl)
+              setVideoUploadStatus({ state: 'ok', url: blob.url })
+            }
           } catch (err) {
             // Non-fatal: continue without the video if blob upload fails.
             const errMsg = err instanceof Error ? `${err.name}: ${err.message}` : String(err)

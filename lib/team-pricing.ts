@@ -46,10 +46,10 @@ export type VolumeTier = { minQty: number; percentOff: number }
  */
 export const REGULAR_VOLUME_TIERS: ReadonlyArray<VolumeTier> = [
   // The advertised curve: 3 for $6.99 ($2.33/ea), 5–9 at the 5-pack rate
-  // ($1.79/ea), 10–14 another 10% off ($1.61/ea), and from 15 the price
-  // floors at $1.49/ea — larger orders never go below the floor.
-  { minQty: 15, percentOff: 57.3 },
-  { minQty: 10, percentOff: 53.9 },
+  // ($1.79/ea), and from 10 the price floors at $1.65/ea. Individual (non-team)
+  // buyers never go below this floor — the deep bulk discount is reserved for
+  // initiated teams, whose rate ($1.49 and lower) stays the cheapest anywhere.
+  { minQty: 10, percentOff: 52.7 },
   { minQty: 5, percentOff: 48.7 },
   { minQty: 3, percentOff: 33.2 },
 ]

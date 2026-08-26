@@ -8,6 +8,7 @@ import { useCart } from '@/lib/cart'
 import type { Variant, Size } from '@/lib/cart'
 import QuantityStepper from '@/components/QuantityStepper'
 import TokenPacks from './TokenPacks'
+import { READY_GEAR } from './gear'
 
 const SIZES: { value: Size; inches: string; label: string }[] = [
   { value: '5', inches: '27.5"', label: 'Youth' },
@@ -85,6 +86,14 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
             >
               Portable Net <span className="text-ember-400">· coming soon</span>
             </a>
+            {READY_GEAR.length > 0 && (
+              <a
+                href="#gear-we-like"
+                className="shrink-0 bg-ink-900 border border-courtline hover:border-ember-500/60 text-chalk text-sm font-bold px-5 py-2.5 rounded-full transition-colors"
+              >
+                Gear We Like
+              </a>
+            )}
           </nav>
         </div>
       </section>

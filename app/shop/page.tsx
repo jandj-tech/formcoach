@@ -1,6 +1,7 @@
 import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
 import ShopProduct from './ShopProduct'
+import GearWeLike from './GearWeLike'
 import { isInAppRequest } from '@/lib/in-app'
 
 export const metadata = {
@@ -43,6 +44,11 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
       <TopNav />
 
       <ShopProduct isInApp={isInApp} />
+
+      {/* Affiliate recommendations. Deliberately below every LearnHoops
+          product so an outbound link never intercepts our own sale, and
+          outside ShopProduct so it stays a Server Component. */}
+      <GearWeLike />
 
       <SiteFooter />
     </main>

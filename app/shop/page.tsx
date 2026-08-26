@@ -3,6 +3,8 @@ import SiteFooter from '@/components/SiteFooter'
 import ShopProduct from './ShopProduct'
 import GearWeLike from './GearWeLike'
 import { isInAppRequest } from '@/lib/in-app'
+import { regionFromServerHeaders } from '@/lib/region'
+import { readyGear } from './gear'
 
 export const metadata = {
   title: 'Basketball Shooting Training Ball with Finger Placement Guides | LearnHoops',
@@ -16,6 +18,9 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
   // The ?app=ios param is lost on in-page navigation, so also check the
   // app WebView's User-Agent marker.
   const isInApp = params.app === 'ios' || (await isInAppRequest())
+  // The gear shelf is region-specific, so whether there is anything to jump to
+  // is too. ShopProduct is a Client Component and cannot read headers itself.
+  const hasGear = readyGear(await regionFromServerHeaders()).length > 0
   return (
     <main className="flex flex-col min-h-screen bg-ink-950 text-chalk">
       {/* Product structured data — feeds Google Shopping / rich results. Keep
@@ -43,7 +48,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
       />
       <TopNav />
 
-      <ShopProduct isInApp={isInApp} />
+      <ShopProduct isInApp={isInApp} hasGear={hasGear} />
 
       {/* Affiliate recommendations. Deliberately below every LearnHoops
           product so an outbound link never intercepts our own sale, and

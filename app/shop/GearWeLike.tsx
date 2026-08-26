@@ -1,4 +1,5 @@
-import { READY_GEAR, amazonUrl } from './gear'
+import { regionFromServerHeaders } from '@/lib/region'
+import { readyGear, amazonUrl } from './gear'
 
 /**
  * Horizontally scrolling shelf of Amazon recommendations, sitting below the
@@ -7,9 +8,16 @@ import { READY_GEAR, amazonUrl } from './gear'
  * Deliberately a Server Component: it is static markup and native CSS
  * scroll-snap, so it ships no JavaScript. Renders nothing at all when no item
  * in gear.ts is finished, which keeps an in-progress list off production.
+ *
+ * The store is chosen from the visitor's country, because an Amazon tracking
+ * ID only earns in its own store — a US visitor sent to amazon.ca, or a .ca
+ * tag on an amazon.com link, silently earns nothing. Reading the country here
+ * makes this route dynamic, which it already is.
  */
-export default function GearWeLike() {
-  if (READY_GEAR.length === 0) return null
+export default async function GearWeLike() {
+  const region = await regionFromServerHeaders()
+  const gear = readyGear(region)
+  if (gear.length === 0) return null
 
   return (
     <section id="gear-we-like" className="px-4 pt-4 pb-16 scroll-mt-20">
@@ -35,13 +43,13 @@ export default function GearWeLike() {
           className="flex gap-4 mt-6 overflow-x-auto snap-x snap-mandatory pb-4 -mx-4 px-4 sm:mx-0 sm:px-0"
           style={{ scrollbarWidth: 'thin' }}
         >
-          {READY_GEAR.map((item) => (
+          {gear.map((item) => (
             <li
               key={item.asin}
               className="snap-start shrink-0 w-[78%] sm:w-[320px] flex"
             >
               <a
-                href={amazonUrl(item.asin)}
+                href={amazonUrl(item.asin, region)}
                 target="_blank"
                 rel="sponsored nofollow noopener noreferrer"
                 className="group flex flex-col gap-3 w-full bg-ink-900/60 border border-courtline hover:border-ember-500/60 rounded-2xl p-5 transition-colors"

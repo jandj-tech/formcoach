@@ -45,8 +45,17 @@ const COUNTRY_HEADERS = [
   'x-country-code',
 ] as const
 
+/**
+ * The only thing the detection below needs from a request is the ability to
+ * read a header. Widening the parameter to this lets a Server Component —
+ * which gets a ReadonlyHeaders from next/headers, never a NextRequest —
+ * reuse exactly this logic instead of a second copy that would drift out of
+ * sync. NextRequest already satisfies the shape, so no caller changes.
+ */
+type HeaderSource = { headers: { get(name: string): string | null } }
+
 /** Country from a trusted platform header, or null if the host sets none. */
-function regionFromHeaders(req: NextRequest): Region | null {
+function regionFromHeaders(req: HeaderSource): Region | null {
   for (const h of COUNTRY_HEADERS) {
     const v = req.headers.get(h)
     if (v && v.trim()) return v.trim().toUpperCase() === 'CA' ? 'CA' : 'US'
@@ -114,7 +123,7 @@ function cleanIp(raw: string): string {
  * the original client — skipping private hops the reverse proxy may append
  * (e.g. a localhost Apache→app hop). Falls back to X-Real-IP.
  */
-function clientIp(req: NextRequest): string | null {
+function clientIp(req: HeaderSource): string | null {
   const xff = req.headers.get('x-forwarded-for')
   if (xff) {
     const parts = xff.split(',').map((s) => cleanIp(s)).filter(Boolean)
@@ -127,7 +136,7 @@ function clientIp(req: NextRequest): string | null {
 }
 
 /** Country from the caller's IP, via the offline DB. Unknown/missing → US. */
-function regionFromIp(req: NextRequest): Region {
+function regionFromIp(req: HeaderSource): Region {
   try {
     const ip = clientIp(req)
     if (!ip) return 'US'
@@ -141,6 +150,25 @@ function regionFromIp(req: NextRequest): Region {
 /** The buyer's country: trusted header first, then IP geolocation, else US. */
 export function regionFromRequest(req: NextRequest): Region {
   return regionFromHeaders(req) ?? regionFromIp(req)
+}
+
+/**
+ * The buyer's country inside a Server Component, which never sees a
+ * NextRequest. Same two-step detection as regionFromRequest — platform header
+ * first, then the offline IP lookup — so a page and an API route resolve the
+ * same visitor to the same country.
+ *
+ * next/headers is imported dynamically so it stays out of the module graph of
+ * the API routes that import this file for currency only.
+ */
+export async function regionFromServerHeaders(): Promise<Region> {
+  try {
+    const { headers } = await import('next/headers')
+    const h = await headers()
+    return regionFromRequest({ headers: { get: (n: string) => h.get(n) } } as NextRequest)
+  } catch {
+    return 'US'
+  }
 }
 
 /** The Stripe currency for a region. */

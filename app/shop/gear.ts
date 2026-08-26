@@ -1,3 +1,5 @@
+import type { Region } from '@/lib/region'
+
 /**
  * "Gear we like" — Amazon affiliate recommendations.
  *
@@ -16,30 +18,57 @@
  */
 
 /**
- * The Associates tracking ID, appended to every outbound link. It is public by
- * design — it travels in the URL — so it belongs in source, not in env.
+ * One store per region, each with its OWN Associates account and tracking ID.
+ *
+ * This is the part that is easy to get wrong: a tag only earns in the store it
+ * belongs to. Sending a US visitor to amazon.ca, or putting the .ca tag on an
+ * amazon.com link, pays nothing — the link still works, it just silently earns
+ * zero, which is why the shelf picks the store from the visitor's country
+ * rather than relying on Amazon's own redirect.
+ *
+ * Tags are public by design — they travel in the URL — so they belong in
+ * source, not in env.
+ *
+ * Each account carries its own 180-day probation: three qualifying sales in
+ * that store or Amazon closes THAT account. Two stores means two clocks.
  */
-export const AMAZON_TAG = 'learnhoops-20'
+const STORES: Record<Region, { host: string; tag: string }> = {
+  CA: { host: 'https://www.amazon.ca', tag: 'learnhoops-20' },
+  US: { host: 'https://www.amazon.com', tag: 'learnhoops05-20' },
+}
 
-/** Amazon Canada. OneLink (set up in the Associates dashboard) redirects US
- *  visitors to the .com equivalent and still credits us, so one host is fine. */
-const AMAZON_HOST = 'https://www.amazon.ca'
-
-export type GearItem = {
+/** One store's listing for a piece of gear. */
+export type Listing = {
   /** Amazon's product ID — the only durable part of an Amazon URL. */
   asin: string
-  /** Product name. An item with an empty name is treated as unfinished and
-   *  is not rendered, so a half-filled list never ships a broken card. */
+  /** Product name. An item with an empty name is treated as unfinished and is
+   *  not rendered, so a half-filled list never ships a broken card. */
   name: string
-  /** Short category label shown above the name. */
-  kind: string
   /** Why a LearnHoops player would want it. Honest, first-person, no hype. */
   blurb: string
 }
 
 /**
- * Ordered by how directly each item touches something we actually grade, since
+ * A slot on the shelf, with the listing that fills it in each store.
+ *
+ * Name and blurb are per-region because the stores do not carry the same
+ * products: the pumps are different brands, and the CA "net" is a replacement
+ * rim with the net already on it while the US one is a net that straps onto a
+ * rimless hoop. Only `kind` is shared, because the ROLE the item plays in a
+ * player's kit is the same on both sides of the border — and that role is what
+ * the ordering below is built on.
+ */
+export type GearItem = {
+  /** Short category label shown above the name. */
+  kind: string
+  CA: Listing
+  US: Listing
+}
+
+/**
+ * Ordered by how directly each slot touches something we actually grade, since
  * the shelf scrolls and the first two cards are the only ones most people see.
+ * The bag is last: it is the one item that changes nothing about a shot.
  *
  * Names are deliberately shorter than the Amazon listing titles, which are
  * keyword-stuffed to the point of being unreadable. The ASIN identifies the
@@ -47,55 +76,113 @@ export type GearItem = {
  */
 export const GEAR: GearItem[] = [
   {
-    asin: 'B0BHL3P9R3',
-    name: 'Off-Hand Shooting Trainer',
     kind: 'Shooting Aid',
-    blurb:
-      'A padded disc your guide-hand fingers slip into, so that hand can steer the ball but never push it. Two of the eighteen things we grade are Guide Hand Placement and Guide Hand Follow Through, and a guide-hand push is the hardest fault to feel while you are making it. Comes with goggles that hide the ball from your eyes for dribbling work.',
+    CA: {
+      asin: 'B0BHL3P9R3',
+      name: 'Off-Hand Shooting Trainer',
+      blurb:
+        'A padded disc your guide-hand fingers slip into, so that hand can steer the ball but never push it. Two of the eighteen things we grade are Guide Hand Placement and Guide Hand Follow Through, and a guide-hand push is the hardest fault to feel while you are making it. Comes with goggles that hide the ball from your eyes for dribbling work.',
+    },
+    US: {
+      asin: 'B0FFH3XCJZ',
+      name: 'Off-Hand Shooting Trainer',
+      blurb:
+        'A hand-placement corrector that stops the guide hand interfering with the ball, so it can steer but never push. Two of the eighteen things we grade are Guide Hand Placement and Guide Hand Follow Through, and a guide-hand push is the hardest fault to feel while you are making it. Ships with a 5.3" shooting aid as well.',
+    },
   },
   {
-    asin: 'B08VYKKHWV',
-    name: 'Spalding Back Atcha Ball Return',
     kind: 'Solo Reps',
-    blurb:
-      'A chute that clips onto the rim and kicks makes back out to you instead of leaving you to chase them. If you film your own sessions, this is the single biggest change to how many usable reps you get in twenty minutes.',
+    CA: {
+      asin: 'B08VYKKHWV',
+      name: 'Spalding Back Atcha Ball Return',
+      blurb:
+        'A chute that clips onto the rim and kicks makes back out to you instead of leaving you to chase them. If you film your own sessions, this is the single biggest change to how many usable reps you get in twenty minutes.',
+    },
+    US: {
+      asin: 'B08VYSFGVB',
+      name: 'Spalding Back Atcha Ball Return',
+      blurb:
+        'A chute that clips onto the rim and kicks makes back out to you instead of leaving you to chase them. If you film your own sessions, this is the single biggest change to how many usable reps you get in twenty minutes.',
+    },
   },
   {
-    asin: 'B0F8C35H99',
-    name: 'Hand-in-Face Contest Mask',
     kind: 'Pressure',
-    blurb:
-      'A head strap that holds a padded hand out in front of your face, so every rep is contested instead of wide open. Form that only survives an empty gym is not finished yet, and this is the cheapest way to find out which parts of yours hold up.',
+    CA: {
+      asin: 'B0F8C35H99',
+      name: 'Hand-in-Face Contest Mask',
+      blurb:
+        'A head strap that holds a padded hand out in front of your face, so every rep is contested instead of wide open. Form that only survives an empty gym is not finished yet, and this is the cheapest way to find out which parts of yours hold up.',
+    },
+    US: {
+      asin: 'B0F8C35H99',
+      name: 'Hand-in-Face Contest Mask',
+      blurb:
+        'A head strap that holds a padded hand out in front of your face, so every rep is contested instead of wide open. Form that only survives an empty gym is not finished yet, and this is the cheapest way to find out which parts of yours hold up.',
+    },
   },
   {
-    asin: 'B0F7RLMMJF',
-    name: 'Olgeo Electric Ball Pump',
     kind: 'Maintenance',
-    blurb:
-      'A flat ball changes how it comes off your hand, and a hand pump never gets you to the right pressure twice in a row. This one runs off a battery, hits a set PSI and stops. Works on volleyballs and soccer balls too.',
+    CA: {
+      asin: 'B0F7RLMMJF',
+      name: 'Olgeo Electric Ball Pump',
+      blurb:
+        'A flat ball changes how it comes off your hand, and a hand pump never gets you to the right pressure twice in a row. This one runs off a battery, hits a set PSI and stops. Works on volleyballs and soccer balls too.',
+    },
+    US: {
+      asin: 'B0869379NP',
+      name: 'Electric Ball Pump',
+      blurb:
+        'A flat ball changes how it comes off your hand, and a hand pump never gets you to the right pressure twice in a row. This one runs off a battery, reads out on an LCD, hits a set pressure and stops. Works on volleyballs and soccer balls too.',
+    },
   },
   {
-    asin: 'B0D8RF772B',
-    name: 'Replacement Rim & Net',
     kind: 'Court Repair',
-    blurb:
-      'A rim with the net already laced onto it, for the driveway hoop whose net rotted off two winters ago. Worth fixing before you film anything: on a bare rim, a clean make and a rattle-out look identical on video.',
+    CA: {
+      asin: 'B0D8RF772B',
+      name: 'Replacement Rim & Net',
+      blurb:
+        'A rim with the net already laced onto it, for the driveway hoop whose net rotted off two winters ago. Worth fixing before you film anything: on a bare rim, a clean make and a rattle-out look identical on video.',
+    },
+    US: {
+      asin: 'B0CX952N3X',
+      name: 'Throw-and-Attach Net',
+      blurb:
+        'A net for a hoop that has lost one, and it goes on without a ladder or a single hook — you throw it over the rim and it holds. Worth fixing before you film anything: on a bare rim, a clean make and a rattle-out look identical on video.',
+    },
   },
   {
-    asin: 'B079ZBFBTM',
-    name: 'Nike Hoops Elite Backpack',
     kind: 'Carry',
-    blurb:
-      'The one thing on this shelf that will not change your shot: it is a bag. What it does is keep a pair of sweaty basketball shoes in their own ventilated compartment, away from your clothes and your phone. Big main compartment, insulated pocket for a bottle, and it is the best-selling basketball bag on Amazon for a reason.',
+    CA: {
+      asin: 'B079ZBFBTM',
+      name: 'Nike Hoops Elite Backpack',
+      blurb:
+        'The one thing on this shelf that will not change your shot: it is a bag. What it does is keep a pair of sweaty basketball shoes in their own ventilated compartment, away from your clothes and your phone. Big main compartment, insulated pocket for a bottle, and it is the best-selling basketball bag on Amazon for a reason.',
+    },
+    US: {
+      asin: 'B079ZBFBTM',
+      name: 'Nike Hoops Elite Backpack',
+      blurb:
+        'The one thing on this shelf that will not change your shot: it is a bag. What it does is keep a pair of sweaty basketball shoes in their own ventilated compartment, away from your clothes and your phone. Big main compartment, insulated pocket for a bottle, and it is the best-selling basketball bag on Amazon for a reason.',
+    },
   },
 ]
 
-/** Items that are actually ready to show. */
-export const READY_GEAR = GEAR.filter((item) => item.name && item.kind && item.blurb)
+/** A card, resolved for one store. */
+export type ResolvedGear = Listing & { kind: string }
 
-/** Builds the outbound link. Everything after the ASIN in an Amazon URL is
- *  their own session tracking and is stripped — only the tag is ours. */
-export function amazonUrl(asin: string): string {
-  const base = AMAZON_HOST + '/dp/' + asin
-  return AMAZON_TAG ? base + '?tag=' + AMAZON_TAG : base
+/** The cards to actually show a visitor in `region`, skipping any slot whose
+ *  listing for that store is unfinished. */
+export function readyGear(region: Region): ResolvedGear[] {
+  return GEAR.map((item) => ({ kind: item.kind, ...item[region] })).filter(
+    (g) => g.asin && g.name && g.blurb,
+  )
+}
+
+/** Builds the outbound link for one store. Everything after the ASIN in an
+ *  Amazon URL is their own session tracking and is stripped — only the tag is
+ *  ours, and it must be the tag belonging to that store. */
+export function amazonUrl(asin: string, region: Region): string {
+  const { host, tag } = STORES[region]
+  const base = host + '/dp/' + asin
+  return tag ? base + '?tag=' + tag : base
 }

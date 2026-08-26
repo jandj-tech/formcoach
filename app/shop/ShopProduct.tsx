@@ -8,7 +8,6 @@ import { useCart } from '@/lib/cart'
 import type { Variant, Size } from '@/lib/cart'
 import QuantityStepper from '@/components/QuantityStepper'
 import TokenPacks from './TokenPacks'
-import { READY_GEAR } from './gear'
 
 const SIZES: { value: Size; inches: string; label: string }[] = [
   { value: '5', inches: '27.5"', label: 'Youth' },
@@ -35,7 +34,16 @@ function formatPrice(amount: number): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)
 }
 
-export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) {
+/** `hasGear` comes from the page rather than being read here: which gear shelf
+ *  a visitor sees depends on their country, and a Client Component cannot read
+ *  request headers. */
+export default function ShopProduct({
+  isInApp = false,
+  hasGear = false,
+}: {
+  isInApp?: boolean
+  hasGear?: boolean
+}) {
   const { addBall } = useCart()
   const [variant, setVariant] = useState<Variant>('right')
   const [size, setSize] = useState<Size>('7')
@@ -86,7 +94,7 @@ export default function ShopProduct({ isInApp = false }: { isInApp?: boolean }) 
             >
               Portable Net <span className="text-ember-400">· coming soon</span>
             </a>
-            {READY_GEAR.length > 0 && (
+            {hasGear && (
               <a
                 href="#gear-we-like"
                 className="shrink-0 bg-ink-900 border border-courtline hover:border-ember-500/60 text-chalk text-sm font-bold px-5 py-2.5 rounded-full transition-colors"

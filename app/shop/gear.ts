@@ -81,6 +81,13 @@ export const GEAR: GearItem[] = [
     blurb:
       'A rim with the net already laced onto it, for the driveway hoop whose net rotted off two winters ago. Worth fixing before you film anything: on a bare rim, a clean make and a rattle-out look identical on video.',
   },
+  {
+    asin: 'B079ZBFBTM',
+    name: 'Nike Hoops Elite Backpack',
+    kind: 'Carry',
+    blurb:
+      'The one thing on this shelf that will not change your shot: it is a bag. What it does is keep a pair of sweaty basketball shoes in their own ventilated compartment, away from your clothes and your phone. Big main compartment, insulated pocket for a bottle, and it is the best-selling basketball bag on Amazon for a reason.',
+  },
 ]
 
 /** Items that are actually ready to show. */

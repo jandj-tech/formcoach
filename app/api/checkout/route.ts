@@ -6,14 +6,11 @@ import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { db } from '@/lib/db'
 import { isValidCompCode, getCompCouponId } from '@/lib/comp'
 import { getShippingOptions } from '@/lib/shipping'
+import { resolveBaseUrl } from '@/lib/base-url'
 
 const BALL_DESCRIPTION = 'Training basketball with hand-placement guide lines that build consistent shooting form.'
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL && process.env.NEXT_PUBLIC_BASE_URL !== 'http://localhost:3000'
-  ? process.env.NEXT_PUBLIC_BASE_URL
-  : process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : 'http://localhost:3000'
+const BASE_URL = resolveBaseUrl()
 
 const SIZE_INCHES: Record<string, string> = {
   '5': '27.5"',

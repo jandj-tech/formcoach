@@ -51,7 +51,7 @@ export const GEAR: GearItem[] = [
     name: 'Off-Hand Shooting Trainer',
     kind: 'Shooting Aid',
     blurb:
-      'A padded disc your guide-hand fingers slip into, so that hand can steer the ball but never push it. Two of the fourteen things we grade are Guide Hand Placement and Guide Hand Follow Through, and a guide-hand push is the hardest fault to feel while you are making it. Comes with goggles that hide the ball from your eyes for dribbling work.',
+      'A padded disc your guide-hand fingers slip into, so that hand can steer the ball but never push it. Two of the eighteen things we grade are Guide Hand Placement and Guide Hand Follow Through, and a guide-hand push is the hardest fault to feel while you are making it. Comes with goggles that hide the ball from your eyes for dribbling work.',
   },
   {
     asin: 'B08VYKKHWV',

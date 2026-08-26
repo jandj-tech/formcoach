@@ -46,6 +46,18 @@ export type Listing = {
   name: string
   /** Why a LearnHoops player would want it. Honest, first-person, no hype. */
   blurb: string
+  /**
+   * Optional photo, as a path under /public. NEVER an Amazon product image —
+   * those are the seller's and are not licensed to us (see the header above).
+   * Only our own photography, or a picture we have written permission to use.
+   *
+   * Per LISTING rather than per slot, because the two stores stock different
+   * products on four of the six slots, and a photo of the CA item on a US card
+   * would be a misleading ad.
+   */
+  image?: string
+  /** Describes the photo for screen readers. Required whenever `image` is set. */
+  imageAlt?: string
 }
 
 /**
@@ -80,12 +92,25 @@ export const GEAR: GearItem[] = [
     CA: {
       asin: 'B0BHL3P9R3',
       name: 'Off-Hand Shooting Trainer',
+      // Used with the rights-holder's permission (owner's call, 2026-08-26).
+      // NOTE: this photo shows a strap-on guide-hand board, while both the CA
+      // and US listings here are a black disc. Shown at the owner's explicit
+      // direction as an illustration of the technique, not of the exact item.
+      // If either listing is ever swapped for the board in the picture, this
+      // comment can go.
+      image: '/gear/off-hand-trainer.webp',
+      imageAlt:
+        'A young player shooting, seen from behind, with a training board strapped to the guide hand so it cannot push the ball.',
       blurb:
         'A padded disc your guide-hand fingers slip into, so that hand can steer the ball but never push it. Two of the eighteen things we grade are Guide Hand Placement and Guide Hand Follow Through, and a guide-hand push is the hardest fault to feel while you are making it. Comes with goggles that hide the ball from your eyes for dribbling work.',
     },
     US: {
       asin: 'B0FFH3XCJZ',
       name: 'Off-Hand Shooting Trainer',
+      // Same photo and the same caveat as the CA listing above.
+      image: '/gear/off-hand-trainer.webp',
+      imageAlt:
+        'A young player shooting, seen from behind, with a training board strapped to the guide hand so it cannot push the ball.',
       blurb:
         'A hand-placement corrector that stops the guide hand interfering with the ball, so it can steer but never push. Two of the eighteen things we grade are Guide Hand Placement and Guide Hand Follow Through, and a guide-hand push is the hardest fault to feel while you are making it. Ships with a 5.3" shooting aid as well.',
     },

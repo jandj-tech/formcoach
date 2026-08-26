@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import { regionFromServerHeaders } from '@/lib/region'
 import { readyGear, amazonUrl } from './gear'
 
@@ -54,6 +55,22 @@ export default async function GearWeLike() {
                 rel="sponsored nofollow noopener noreferrer"
                 className="group flex flex-col gap-3 w-full bg-ink-900/60 border border-courtline hover:border-ember-500/60 rounded-2xl p-5 transition-colors"
               >
+                {/* Product shots come on white, so the tile is white on
+                    purpose — an off-white would show a seam. Fixed aspect and
+                    object-contain so an uncropped portrait photo cannot make
+                    one card taller than its neighbours on the shelf. */}
+                {item.image && (
+                  <span className="block relative w-full aspect-square rounded-xl bg-white overflow-hidden">
+                    <Image
+                      src={item.image}
+                      alt={item.imageAlt ?? ''}
+                      fill
+                      loading="lazy"
+                      sizes="(min-width: 640px) 320px, 78vw"
+                      className="object-contain"
+                    />
+                  </span>
+                )}
                 <span className="text-zinc-400 text-xs font-semibold tracking-wider uppercase">
                   {item.kind}
                 </span>

@@ -63,3 +63,57 @@ rollback until you cancel it. Full checklist in MIGRATION.md.
   limit with the provider; may need the analysis moved to a background job.
 - **Build memory** on a shared plan may be too low for `next build`.
 - Entry-process / CPU caps under load.
+
+## Day-to-day deploys — `scripts/box-update.sh`
+
+Once the box is set up, deploys run one script:
+
+    ssh learnhoops-box 'bash ~/box-update.sh'
+
+Use the `learnhoops-box` ssh-config alias. The bare `learnhoops@<ip>` form skips
+the `IdentityFile` and fails with `Permission denied (publickey)`.
+
+**`scripts/box-update.sh` in this repo is the source of truth, but the box runs
+its own copy at `~/box-update.sh`.** Nothing syncs them automatically — after
+editing the script here, push it to the box:
+
+    scp scripts/box-update.sh learnhoops-box:box-update.sh
+
+The script is checked in because it encodes fixes that are invisible in the app
+source and that a rebuilt box would silently lose. It is idempotent; re-run it
+any time.
+
+### Why the script looks strange
+
+The box is glibc 2.17, which is older than several prebuilt native binaries
+shipped in `node_modules`. Each workaround exists because the native path fails:
+
+- **Builds with `--webpack`.** `@next/swc-linux-x64-gnu` needs `GLIBC_2.27` and
+  cannot load, so swc falls back to wasm; Turbopack has no wasm bindings here.
+  Expect a wall of `Attempted to load @next/swc-linux-x64-gnu` warnings in every
+  build log — they are not failures.
+- **Swaps `next.config.ts` for a generated CommonJS `next.config.js`.** wasm-swc
+  mis-compiles the TS config (`Unexpected token 'export'`). Keep the generated
+  config in sync if `next.config.ts` changes upstream.
+- **Re-copies `node_modules/@img` into the standalone output.** `sharp`'s native
+  binary needs `GLIBCXX_3.4.20` and falls back to `@img/sharp-wasm32`, but the
+  standalone tracer copies that package's `.js` without its `.wasm`. Without this
+  step `require('sharp')` throws and `/_next/image` either 502s under concurrent
+  requests or silently serves the **unresized original** — a 2.25 MB PNG — with a
+  `200`. This broke the shop gallery on 2026-08-26.
+- **Wipes `.next/standalone/.next/cache/images`.** Failed optimizations are
+  cached as full-size passthroughs and keep serving after sharp is healthy again.
+
+### Health checks
+
+The script aborts before restarting if the build produced no standalone server,
+then checks the live vhost after the restart. The image check asserts the
+**content type**, not the status code, because a broken optimizer still answers
+`200` — just with the original bytes. A good run ends:
+
+    health / -> 200
+    health /login -> 200
+    health /_next/image -> 200 image/webp
+    === BOX UPDATE DONE ===
+
+`image/png` on that last line means sharp is broken again.

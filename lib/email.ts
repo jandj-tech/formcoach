@@ -10,11 +10,20 @@ function getResend() {
 // back to `onboarding@resend.dev` by setting EMAIL_FROM to it.
 const FROM = process.env.EMAIL_FROM || 'LearnHoops <noreply@learnhoops.com>'
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL && process.env.NEXT_PUBLIC_BASE_URL !== 'http://localhost:3000'
+// Off Vercel (cPanel/Passenger) VERCEL_URL is gone, so an unset
+// NEXT_PUBLIC_BASE_URL fell through to localhost and baked dead links into
+// every email. In production the last resort is the live domain.
+export const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL && process.env.NEXT_PUBLIC_BASE_URL !== 'http://localhost:3000'
   ? process.env.NEXT_PUBLIC_BASE_URL
   : process.env.VERCEL_URL
     ? `https://${process.env.VERCEL_URL}`
-    : 'http://localhost:3000'
+    : process.env.NODE_ENV === 'production'
+      ? 'https://www.learnhoops.com'
+      : 'http://localhost:3000'
+
+export function orgSignupLink(signupToken: string) {
+  return `${BASE_URL}/org/signup?token=${signupToken}`
+}
 
 export async function sendResultsEmail(to: string, token: string) {
   const link = `${BASE_URL}/results/${token}`
@@ -637,7 +646,7 @@ export async function sendOrgApprovalEmail(
   orgName: string,
   signupToken: string,
 ) {
-  const signupLink = `${BASE_URL}/org/signup?token=${signupToken}`
+  const signupLink = orgSignupLink(signupToken)
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,

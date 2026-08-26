@@ -9,19 +9,55 @@ type ApplicationRow = {
   player_count: number | null
   status: string
   created_at: string
+  signupLink: string | null
+}
+
+type SendResult = {
+  emailSent: boolean
+  emailError?: string
+  signupLink: string | null
+  resend: boolean
+}
+
+function SignupLinkBox({ link }: { link: string }) {
+  const [copied, setCopied] = useState(false)
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(link)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setCopied(false)
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-2 mt-1.5 w-full">
+      <code className="flex-1 min-w-0 truncate bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-[11px] text-zinc-300 font-mono">
+        {link}
+      </code>
+      <button
+        onClick={copy}
+        className="shrink-0 bg-zinc-700 hover:bg-zinc-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
+      >
+        {copied ? 'Copied' : 'Copy'}
+      </button>
+    </div>
+  )
 }
 
 export default function OrgApplicationsClient({ initialApplications }: { initialApplications: ApplicationRow[] }) {
   const [applications, setApplications] = useState(initialApplications)
-  const [approving, setApproving] = useState<string | null>(null)
-  const [approved, setApproved] = useState<Record<string, boolean>>({})
+  const [sending, setSending] = useState<string | null>(null)
+  const [result, setResult] = useState<Record<string, SendResult>>({})
   const [error, setError] = useState<Record<string, string>>({})
 
   const pending = applications.filter(a => a.status === 'pending')
   const others = applications.filter(a => a.status !== 'pending')
 
   async function handleApprove(id: string) {
-    setApproving(id)
+    setSending(id)
     setError(prev => ({ ...prev, [id]: '' }))
     try {
       const res = await fetch('/api/admin/org-applications', {
@@ -33,13 +69,28 @@ export default function OrgApplicationsClient({ initialApplications }: { initial
       if (!res.ok) {
         setError(prev => ({ ...prev, [id]: data.error || 'Failed' }))
       } else {
-        setApproved(prev => ({ ...prev, [id]: true }))
-        setApplications(prev => prev.map(a => a.id === id ? { ...a, status: 'approved' } : a))
+        setResult(prev => ({ ...prev, [id]: data as SendResult }))
+        setApplications(prev => prev.map(a =>
+          a.id === id ? { ...a, status: 'approved', signupLink: data.signupLink ?? a.signupLink } : a
+        ))
       }
     } catch {
       setError(prev => ({ ...prev, [id]: 'Something went wrong' }))
     }
-    setApproving(null)
+    setSending(null)
+  }
+
+  function renderSendState(a: ApplicationRow) {
+    const r = result[a.id]
+    if (!r) return null
+    if (r.emailSent) {
+      return <p className="text-green-400 text-xs font-bold">✓ Email sent to {a.email}</p>
+    }
+    return (
+      <p className="text-red-400 text-xs font-bold">
+        ⚠ Approved, but the email failed to send{r.emailError ? `: ${r.emailError}` : ''}. Send the link below by hand.
+      </p>
+    )
   }
 
   return (
@@ -74,17 +125,13 @@ export default function OrgApplicationsClient({ initialApplications }: { initial
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
                       {error[a.id] && <p className="text-red-400 text-xs">{error[a.id]}</p>}
-                      {approved[a.id] ? (
-                        <span className="text-green-400 text-sm font-bold">✓ Approved — email sent</span>
-                      ) : (
-                        <button
-                          onClick={() => handleApprove(a.id)}
-                          disabled={approving === a.id}
-                          className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
-                        >
-                          {approving === a.id ? 'Approving…' : 'Approve & send link'}
-                        </button>
-                      )}
+                      <button
+                        onClick={() => handleApprove(a.id)}
+                        disabled={sending === a.id}
+                        className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+                      >
+                        {sending === a.id ? 'Approving…' : 'Approve & send link'}
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -100,18 +147,34 @@ export default function OrgApplicationsClient({ initialApplications }: { initial
               </div>
               <div className="divide-y divide-zinc-800/50">
                 {others.map(a => (
-                  <div key={a.id} className="flex items-center justify-between gap-4 px-5 py-3 flex-wrap">
-                    <div className="space-y-0.5 min-w-0">
-                      <p className="text-white font-semibold text-sm">{a.org_name}</p>
-                      <p className="text-zinc-500 text-xs">{a.email}{a.player_count != null ? ` · ${a.player_count} players` : ''}</p>
+                  <div key={a.id} className="px-5 py-3 space-y-1.5">
+                    <div className="flex items-center justify-between gap-4 flex-wrap">
+                      <div className="space-y-0.5 min-w-0">
+                        <p className="text-white font-semibold text-sm">{a.org_name}</p>
+                        <p className="text-zinc-500 text-xs">{a.email}{a.player_count != null ? ` · ${a.player_count} players` : ''}</p>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        {error[a.id] && <p className="text-red-400 text-xs">{error[a.id]}</p>}
+                        {a.status === 'approved' && (
+                          <button
+                            onClick={() => handleApprove(a.id)}
+                            disabled={sending === a.id}
+                            className="bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition-colors"
+                          >
+                            {sending === a.id ? 'Sending…' : 'Resend email'}
+                          </button>
+                        )}
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                          a.status === 'approved' ? 'bg-green-900/40 text-green-400' :
+                          a.status === 'registered' ? 'bg-blue-900/40 text-blue-400' :
+                          'bg-zinc-700 text-zinc-400'
+                        }`}>
+                          {a.status}
+                        </span>
+                      </div>
                     </div>
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                      a.status === 'approved' ? 'bg-green-900/40 text-green-400' :
-                      a.status === 'registered' ? 'bg-blue-900/40 text-blue-400' :
-                      'bg-zinc-700 text-zinc-400'
-                    }`}>
-                      {a.status}
-                    </span>
+                    {renderSendState(a)}
+                    {a.status === 'approved' && a.signupLink && <SignupLinkBox link={a.signupLink} />}
                   </div>
                 ))}
               </div>

@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { orgSignupLink } from '@/lib/email'
 import ResetOrgPasswordButton from './ResetOrgPasswordButton'
 import OrgApplicationsClient from './OrgApplicationsClient'
 
@@ -18,6 +19,7 @@ type ApplicationRow = {
   player_count: number | null
   status: string
   created_at: string
+  signupLink: string | null
 }
 
 export default async function OrganizationsPage() {
@@ -39,12 +41,16 @@ export default async function OrganizationsPage() {
   }
 
   try {
-    applications = (await db`
-      SELECT id, org_name, email, player_count, status, created_at
+    const rows = (await db`
+      SELECT id, org_name, email, player_count, status, created_at, signup_token
       FROM org_applications
       ORDER BY created_at DESC
       LIMIT 200
-    `) as unknown as ApplicationRow[]
+    `) as unknown as (Omit<ApplicationRow, 'signupLink'> & { signup_token: string | null })[]
+    applications = rows.map(({ signup_token, ...rest }) => ({
+      ...rest,
+      signupLink: signup_token ? orgSignupLink(signup_token) : null,
+    }))
   } catch (err) {
     console.error('[admin/organizations] applications query failed:', err)
   }

@@ -1,4 +1,5 @@
 import { Resend } from 'resend'
+import { resolveBaseUrl } from './base-url'
 
 // One-off broadcast emails composed in the admin (admin/emails → Send Email).
 // Renders the branded template and sends via Resend's batch API in chunks of
@@ -6,11 +7,7 @@ import { Resend } from 'resend'
 
 const FROM = process.env.EMAIL_FROM || 'LearnHoops <noreply@learnhoops.com>'
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL && process.env.NEXT_PUBLIC_BASE_URL !== 'http://localhost:3000'
-  ? process.env.NEXT_PUBLIC_BASE_URL
-  : process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : 'http://localhost:3000'
+const BASE_URL = resolveBaseUrl()
 
 export interface BroadcastContent {
   subject: string

@@ -5,12 +5,9 @@ import { getStripe } from '@/lib/stripe'
 import { getTeamTokenState, orgHasInitiatedTeam, TEAM_TOKEN_PRICE_CENTS, REGULAR_ANALYSIS_PRICE_CENTS, discountedUnitCents } from '@/lib/team-tokens'
 import { rejectInAppPurchase } from '@/lib/in-app'
 import { currencyForRequest } from '@/lib/region'
+import { resolveBaseUrl } from '@/lib/base-url'
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL && process.env.NEXT_PUBLIC_BASE_URL !== 'http://localhost:3000'
-  ? process.env.NEXT_PUBLIC_BASE_URL
-  : process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : 'http://localhost:3000'
+const BASE_URL = resolveBaseUrl()
 
 // A coach or org owner buys analysis credits for their own shot uploads.
 // $1.49 each once their team has 8+ players, $3.49 before.

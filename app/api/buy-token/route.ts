@@ -6,8 +6,9 @@ import { userHasInitiatedTeam } from '@/lib/team-tokens'
 import { isValidCompCode, getCompCouponId } from '@/lib/comp'
 import { rejectInAppPurchase } from '@/lib/in-app'
 import { currencyForRequest } from '@/lib/region'
+import { resolveBaseUrl } from '@/lib/base-url'
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://learnhoops.com'
+const BASE_URL = resolveBaseUrl()
 
 export async function POST(req: NextRequest) {
   // Digital goods cannot be sold via Stripe inside the iOS app (guideline 3.1.1).

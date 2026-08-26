@@ -4,6 +4,7 @@ import { db } from '@/lib/db'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { sendCoachInviteEmail, sendCoachAddedEmail, sendTeamCreatedEmail } from '@/lib/email'
 import { isCleanDisplayText, BLOCKED_TEXT_ERROR } from '@/lib/moderation'
+import { resolveBaseUrl } from '@/lib/base-url'
 
 function generateAccessCode(): string {
   // randomInt, not Math.random: an access code is a bearer credential (it lets
@@ -62,7 +63,7 @@ export async function POST(req: NextRequest) {
         INSERT INTO teams (name, admin_email, password_hash, access_code, organization_id, age_group, coach_nickname)
         VALUES (${name.trim()}, ${session.adminEmail}, ${null}, ${accessCode}, ${org.id}, ${ageGroupValue}, ${nickname})
       `
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://learnhoops.com'
+      const baseUrl = resolveBaseUrl()
       try {
         await sendTeamCreatedEmail(session.adminEmail, org.name, name.trim(), accessCode, `${baseUrl}/org/dashboard`)
       } catch {}

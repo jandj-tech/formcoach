@@ -3,8 +3,9 @@ import { getTeamSessionFromRequest } from '@/lib/team-auth'
 import { db } from '@/lib/db'
 import { randomBytes } from 'crypto'
 import { isCleanDisplayText, BLOCKED_TEXT_ERROR } from '@/lib/moderation'
+import { resolveBaseUrl } from '@/lib/base-url'
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://learnhoops.com'
+const BASE_URL = resolveBaseUrl()
 
 export async function POST(req: NextRequest) {
   try {

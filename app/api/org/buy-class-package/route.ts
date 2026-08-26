@@ -4,6 +4,7 @@ import { db } from '@/lib/db'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { rejectInAppPurchase } from '@/lib/in-app'
 import { currencyForRequest } from '@/lib/region'
+import { resolveBaseUrl } from '@/lib/base-url'
 import {
   CLASS_MIN_PLAYERS,
   CLASS_PRICE_PER_PLAYER_CENTS,
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest) {
     : CLASS_PRICE_PER_PLAYER_CENTS
   const totalCents = classPriceCents(playerCount)
 
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://learnhoops.com'
+  const baseUrl = resolveBaseUrl()
 
   const ballBreakdown = [
     size5 > 0 ? `${size5}× size 5` : null,

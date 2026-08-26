@@ -4,12 +4,9 @@ import { getStripe } from '@/lib/stripe'
 import { orgHasInitiatedTeam, TEAM_TOKEN_PRICE_CENTS, REGULAR_ANALYSIS_PRICE_CENTS, discountedUnitCents } from '@/lib/team-tokens'
 import { rejectInAppPurchase } from '@/lib/in-app'
 import { currencyForRequest } from '@/lib/region'
+import { resolveBaseUrl } from '@/lib/base-url'
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL && process.env.NEXT_PUBLIC_BASE_URL !== 'http://localhost:3000'
-  ? process.env.NEXT_PUBLIC_BASE_URL
-  : process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : 'http://localhost:3000'
+const BASE_URL = resolveBaseUrl()
 
 // An organization buys analysis tokens into its own balance. From there the
 // org can assign them to players, give them to a coach, or use them itself.

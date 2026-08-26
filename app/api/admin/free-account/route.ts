@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { Resend } from 'resend'
 import { isAdminSession } from '@/lib/admin-auth'
+import { resolveBaseUrl } from '@/lib/base-url'
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://learnhoops.com'
+const BASE_URL = resolveBaseUrl()
 
 async function isAdminAuthed(): Promise<boolean> {
   return isAdminSession()

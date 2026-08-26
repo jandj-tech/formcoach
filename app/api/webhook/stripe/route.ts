@@ -7,6 +7,7 @@ import { sendClassPurchaseConfirmationSms } from '@/lib/sms'
 import { grantBallCreditsOnce } from '@/lib/grant-ball-credits'
 import { claimStripeSession, releaseStripeSessionClaim } from '@/lib/stripe-idempotency'
 import { recordPurchase } from '@/lib/record-purchase'
+import { resolveBaseUrl } from '@/lib/base-url'
 
 export async function POST(req: NextRequest) {
   try {
@@ -126,7 +127,7 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
         try {
           const orgEmail = session.customer_details?.email
           if (orgEmail) {
-            const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://learnhoops.com'
+            const baseUrl = resolveBaseUrl()
             const orgRows = await db`SELECT name FROM organizations WHERE id = ${orgId}` as unknown as { name: string }[]
             const orgName = orgRows[0]?.name || 'Your Organization'
             await sendTokenPurchaseConfirmationEmail(orgEmail, orgName, quantity, `${baseUrl}/org/dashboard`)
@@ -368,7 +369,7 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
 
       // Send confirmation email + SMS with team access code
       if (orgEmail && teamAccessCode) {
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://learnhoops.com'
+        const baseUrl = resolveBaseUrl()
         try {
           await sendClassPurchaseConfirmationEmail(orgEmail, orgName, playerCount, teamAccessCode, `${baseUrl}/org/dashboard`)
         } catch (emailErr) {

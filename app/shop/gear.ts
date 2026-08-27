@@ -47,17 +47,25 @@ export type Listing = {
   /** Why a LearnHoops player would want it. Honest, first-person, no hype. */
   blurb: string
   /**
-   * Optional photo, as a path under /public. NEVER an Amazon product image —
+   * Optional photos, as paths under /public. NEVER an Amazon product image —
    * those are the seller's and are not licensed to us (see the header above).
    * Only our own photography, or a picture we have written permission to use.
    *
    * Per LISTING rather than per slot, because the two stores stock different
    * products on four of the six slots, and a photo of the CA item on a US card
    * would be a misleading ad.
+   *
+   * Every file must be SQUARE. The shelf fills its tile edge to edge, so a
+   * non-square image would either get cropped or leave a band of tile colour
+   * showing — and these do not share a background (one is on white, one on
+   * grey, one is a full-bleed photo of sky), so such a band would read as a
+   * seam on some cards and not others. Pad to square against the image's OWN
+   * background when exporting, never at render time.
+   *
+   * `alt` is part of the pair rather than a sibling field so an image cannot
+   * be added without describing it.
    */
-  image?: string
-  /** Describes the photo for screen readers. Required whenever `image` is set. */
-  imageAlt?: string
+  images?: { src: string; alt: string }[]
 }
 
 /**
@@ -98,9 +106,12 @@ export const GEAR: GearItem[] = [
       // direction as an illustration of the technique, not of the exact item.
       // If either listing is ever swapped for the board in the picture, this
       // comment can go.
-      image: '/gear/off-hand-trainer.webp',
-      imageAlt:
-        'A young player shooting, seen from behind, with a training board strapped to the guide hand so it cannot push the ball.',
+      images: [
+        {
+          src: '/gear/off-hand-trainer.webp',
+          alt: 'A young player shooting, seen from behind, with a training board strapped to the guide hand so it cannot push the ball.',
+        },
+      ],
       blurb:
         'A padded disc your guide-hand fingers slip into, so that hand can steer the ball but never push it. Two of the eighteen things we grade are Guide Hand Placement and Guide Hand Follow Through, and a guide-hand push is the hardest fault to feel while you are making it. Comes with goggles that hide the ball from your eyes for dribbling work.',
     },
@@ -108,9 +119,12 @@ export const GEAR: GearItem[] = [
       asin: 'B0FFH3XCJZ',
       name: 'Off-Hand Shooting Trainer',
       // Same photo and the same caveat as the CA listing above.
-      image: '/gear/off-hand-trainer.webp',
-      imageAlt:
-        'A young player shooting, seen from behind, with a training board strapped to the guide hand so it cannot push the ball.',
+      images: [
+        {
+          src: '/gear/off-hand-trainer.webp',
+          alt: 'A young player shooting, seen from behind, with a training board strapped to the guide hand so it cannot push the ball.',
+        },
+      ],
       blurb:
         'A hand-placement corrector that stops the guide hand interfering with the ball, so it can steer but never push. Two of the eighteen things we grade are Guide Hand Placement and Guide Hand Follow Through, and a guide-hand push is the hardest fault to feel while you are making it. Ships with a 5.3" shooting aid as well.',
     },
@@ -165,6 +179,21 @@ export const GEAR: GearItem[] = [
     CA: {
       asin: 'B0D8RF772B',
       name: 'Replacement Rim & Net',
+      // Used with the rights-holder's permission (owner's call, 2026-08-26).
+      // The mounted shot is cropped from a seller banner: the original had
+      // marketing type across the top half, including "Soild" for "Solid", so
+      // only the photograph below it is kept.
+      // CA only — the US slot is a throw-and-attach net, a different product.
+      images: [
+        {
+          src: '/gear/rim-net-product.webp',
+          alt: 'A black basketball rim with a red, white and blue net already laced onto it.',
+        },
+        {
+          src: '/gear/rim-net-mounted.webp',
+          alt: 'The same rim and net fitted to a glass backboard outdoors, seen from below against a blue sky.',
+        },
+      ],
       blurb:
         'A rim with the net already laced onto it, for the driveway hoop whose net rotted off two winters ago. Worth fixing before you film anything: on a bare rim, a clean make and a rattle-out look identical on video.',
     },

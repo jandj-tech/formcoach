@@ -59,16 +59,31 @@ export default async function GearWeLike() {
                     purpose — an off-white would show a seam. Fixed aspect and
                     object-contain so an uncropped portrait photo cannot make
                     one card taller than its neighbours on the shelf. */}
-                {item.image && (
-                  <span className="block relative w-full aspect-square rounded-xl bg-white overflow-hidden">
-                    <Image
-                      src={item.image}
-                      alt={item.imageAlt ?? ''}
-                      fill
-                      loading="lazy"
-                      sizes="(min-width: 640px) 320px, 78vw"
-                      className="object-contain"
-                    />
+                {/* The tile widens instead of subdividing when there are two
+                    photos, which keeps every CELL square. The files are square
+                    too, so each fills its cell exactly: nothing is cropped and
+                    no tile colour shows through — the images do not share a
+                    background, so any letterboxing would read as a seam. */}
+                {item.images && item.images.length > 0 && (
+                  <span
+                    className={`grid gap-1 w-full rounded-xl overflow-hidden ${
+                      item.images.length > 1
+                        ? 'grid-cols-2 aspect-[2/1]'
+                        : 'grid-cols-1 aspect-square'
+                    }`}
+                  >
+                    {item.images.slice(0, 2).map((img) => (
+                      <span key={img.src} className="relative block h-full w-full">
+                        <Image
+                          src={img.src}
+                          alt={img.alt}
+                          fill
+                          loading="lazy"
+                          sizes="(min-width: 640px) 160px, 39vw"
+                          className="object-cover"
+                        />
+                      </span>
+                    ))}
                   </span>
                 )}
                 <span className="text-zinc-400 text-xs font-semibold tracking-wider uppercase">

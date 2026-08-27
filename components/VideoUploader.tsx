@@ -806,11 +806,28 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
 
       {/* Drop zone */}
       <div className="relative">
+        {/*
+          Accessibility notes on this drop zone:
+
+          - It used to carry aria-hidden={isLocked}, which removed the panel
+            from the accessibility tree while leaving a focusable button inside
+            it. A screen-reader user could tab onto a control that had been
+            declared non-existent, and never hear WHY uploading was
+            unavailable. `inert` is the right tool: it takes the subtree out of
+            the tab order and the accessibility tree together.
+          - The panel is presentational — the real control is the button inside
+            it. Clicking the panel stays a pointer convenience and is
+            deliberately NOT given button semantics, which would announce a
+            duplicate control to screen readers.
+          - The locked state was drawn with opacity-40, which dragged the
+            guidance text to 2.84:1 on white. Explicit greys keep it legible
+            while still reading as inactive.
+        */}
         <div
-          aria-hidden={isLocked || undefined}
+          inert={isLocked || undefined}
           className={`border-2 border-dashed rounded-2xl p-8 sm:p-12 text-center transition-all duration-200
             ${isLocked
-              ? 'border-gray-300 opacity-40 pointer-events-none select-none'
+              ? 'border-gray-300 bg-gray-50 select-none'
               : isDragging
                 ? 'border-orange-500 bg-orange-500/5 cursor-pointer'
                 : 'border-gray-300 hover:border-orange-400 hover:bg-orange-50/50 cursor-pointer'
@@ -820,11 +837,21 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
           onDrop={isLocked ? undefined : onDrop}
           onClick={() => { if (!isLocked) inputRef.current?.click() }}
         >
-          <div className="text-5xl mb-4">🎥</div>
-          <p className="text-black font-semibold text-lg mb-1">Tap to upload your video</p>
-          <p className="text-black text-sm hidden sm:block">or drag and drop</p>
-          <p className="text-black text-xs mt-3">MP4, MOV, AVI · Max 1GB</p>
-          <button className="mt-5 bg-ember-500 hover:bg-ember-400 text-ink-950 font-bold px-8 py-3 rounded-xl text-sm transition-colors w-full sm:w-auto">
+          <div className="text-5xl mb-4" aria-hidden="true">🎥</div>
+          <p className={`font-semibold text-lg mb-1 ${isLocked ? 'text-gray-700' : 'text-black'}`}>
+            Tap to upload your video
+          </p>
+          <p className={`text-sm hidden sm:block ${isLocked ? 'text-gray-700' : 'text-black'}`}>
+            or drag and drop
+          </p>
+          <p className={`text-xs mt-3 ${isLocked ? 'text-gray-700' : 'text-black'}`}>
+            MP4, MOV, AVI · Max 1GB
+          </p>
+          <button
+            type="button"
+            disabled={isLocked}
+            className="mt-5 bg-ember-500 hover:bg-ember-400 text-ink-950 font-bold px-8 py-3 rounded-xl text-sm transition-colors w-full sm:w-auto disabled:bg-gray-200 disabled:text-gray-700"
+          >
             Choose Video
           </button>
         </div>

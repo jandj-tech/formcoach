@@ -15,11 +15,16 @@ export default function PasswordInput({ className, ...props }: React.InputHTMLAt
         type={show ? 'text' : 'password'}
         className={className ?? 'w-full bg-white border border-gray-300 rounded-xl pl-4 pr-11 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors'}
       />
+      {/* The icon is 20x20, which made the whole button a 20x20 target and
+          failed WCAG 2.2 SC 2.5.8 (Target Size, Minimum: 24x24). The icon stays
+          the same size; the button grows around it, so it is easier to hit with
+          a thumb or a shaky hand. right-2 keeps it visually where it was now
+          that the box is wider. */}
       <button
         type="button"
         onClick={() => setShow((s) => !s)}
         aria-label={show ? 'Hide password' : 'Show password'}
-        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:opacity-70 transition-opacity"
+        className="absolute right-2 top-1/2 -translate-y-1/2 min-w-6 min-h-6 flex items-center justify-center text-gray-400 hover:opacity-70 transition-opacity"
       >
         {show ? (
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

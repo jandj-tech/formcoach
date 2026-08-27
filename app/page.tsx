@@ -330,7 +330,7 @@ export default async function HomePage() {
       </section>
 
       {/* Closing CTA — solid ember band for a hard color break before the footer */}
-      <section className="grain relative text-center px-4 py-20 sm:py-28 bg-ember-500 text-white">
+      <section className="grain relative text-center px-4 py-20 sm:py-28 bg-ember-500 text-ink-950">
         <p className="eyebrow text-ink-950 mb-4 select-none">05 — Your move</p>
         <h2 className="font-display font-black uppercase text-[clamp(2.2rem,6vw,5rem)] leading-[0.95] max-w-3xl mx-auto">
           Ready to fix

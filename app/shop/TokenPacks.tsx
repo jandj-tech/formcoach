@@ -39,14 +39,14 @@ function styles(dark: boolean) {
     card: dark ? 'border-courtline bg-ink-900' : 'border-ink-950/15 bg-white',
     cardHighlight: dark ? 'border-ember-500 bg-ember-500/10' : 'border-ember-500 bg-ember-500/5',
     badge: dark ? 'bg-ink-700 text-chalk' : 'bg-ink-950 text-chalk',
-    badgeHighlight: 'bg-ember-500 text-white',
+    badgeHighlight: 'bg-ember-500 text-ink-950',
     title: dark ? 'text-chalk' : 'text-ink-950',
-    sub: dark ? 'text-chalk-dim' : 'text-ink-950/50',
+    sub: dark ? 'text-chalk-dim' : 'text-ink-950/80',
     save: dark ? 'text-ember-400' : 'text-ember-700',
     buyOutline: dark
       ? 'border-2 border-ember-500 text-ember-400 hover:bg-ember-500/10'
       : 'border-2 border-ember-500 text-ember-700 hover:bg-ember-500/10',
-    buyFill: 'bg-ember-500 hover:bg-ember-400 text-white',
+    buyFill: 'bg-ember-500 hover:bg-ember-400 text-ink-950',
     customShell: dark ? 'border-courtline bg-ink-900' : 'border-ink-950/15 bg-white',
     customDashed: dark
       ? 'border-2 border-dashed border-courtline hover:border-ember-500 bg-ink-900'

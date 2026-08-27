@@ -137,13 +137,54 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border;
   }
   body {
     @apply bg-background text-foreground;
   }
   html {
     @apply font-sans;
+  }
+
+}
+
+/*
+ * Keyboard focus indicator — DELIBERATELY UNLAYERED. Do not move this into
+ * @layer base.
+ *
+ * Two separate bugs made keyboard focus invisible across the whole site:
+ *
+ *  1. The `*` rule above used to apply `outline-ring/50`, which set only a
+ *     COLOUR. The browser fell back to its default hairline outline and then
+ *     halved its opacity — measured at 0.57px, 50% alpha. Invisible.
+ *
+ *  2. `focus:outline-none` appears 95 times across 40 component files, which
+ *     removes the outline on most inputs and buttons. Those are Tailwind
+ *     utilities, so anything inside @layer base loses to them.
+ *
+ * Unlayered CSS outranks every @layer regardless of specificity, so this rule
+ * wins over `focus:outline-none` without !important and without editing 40
+ * files. Components that want a different focus treatment should provide their
+ * own :focus-visible rule rather than reinstating outline-none.
+ *
+ * WCAG 2.2 SC 2.4.11 (Focus Appearance) asks for at least 2px thickness and
+ * 3:1 contrast against the adjacent colour. Ember on the ink ground measures
+ * 6.4:1; the white halo guarantees separation on light surfaces such as the
+ * /analyze upload panel.
+ *
+ * :focus-visible, not :focus, so a mouse click does not leave a ring behind.
+ */
+:focus-visible {
+  outline: 2px solid var(--color-ember-400);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgb(255 255 255 / 0.9);
+}
+
+/* Windows High Contrast and similar: let the OS own the indicator. */
+@media (forced-colors: active) {
+  :focus-visible {
+    outline: 3px solid CanvasText;
+    box-shadow: none;
   }
 }
 

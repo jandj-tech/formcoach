@@ -23,6 +23,7 @@ const columns = [
       { href: '/support', label: 'Contact support' },
       { href: '/support#faq', label: 'FAQ' },
       { href: '/privacy', label: 'Privacy policy' },
+      { href: '/accessibility', label: 'Accessibility' },
     ],
   },
 ]

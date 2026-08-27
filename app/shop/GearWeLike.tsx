@@ -32,8 +32,11 @@ export default async function GearWeLike() {
           LearnHoops products — Amazon handles the price, the shipping and the returns.
         </p>
 
-        {/* Disclosure. Amazon requires this near the links, not in the footer. */}
-        <p className="text-chalk-dim/70 text-xs mt-3 max-w-xl">
+        {/* Disclosure. Amazon requires this near the links, not in the footer.
+            Full-strength chalk-dim, not /70 — at 70% opacity this measured
+            3.84:1 against the ink ground, below the 4.5:1 AA floor. A legally
+            required disclosure is the last thing that should be hard to read. */}
+        <p className="text-chalk-dim text-xs mt-3 max-w-xl">
           As an Amazon Associate, LearnHoops earns from qualifying purchases. It costs
           you nothing extra and it helps keep the analysis cheap.
         </p>
@@ -101,7 +104,9 @@ export default async function GearWeLike() {
                     &rarr;
                   </span>
                 </span>
-                <span className="text-chalk-dim/60 text-xs">
+                {/* /60 measured 3.10:1 against the ink ground — under the AA
+                    floor for body text. Full strength instead. */}
+                <span className="text-chalk-dim text-xs">
                   Price and availability on Amazon
                 </span>
               </a>

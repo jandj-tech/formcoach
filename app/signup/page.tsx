@@ -134,8 +134,13 @@ function SignupForm() {
               className="w-full bg-ink-800 border border-courtline rounded-xl pl-4 pr-11 py-3 text-chalk placeholder-chalk-dim focus:outline-none focus:border-ember-500 transition-colors"
             />
             <div>
+              {/* A placeholder is not a label: it disappears the moment
+                  someone types, and it is not reliably announced. The other
+                  fields on this form already carry aria-label; this one was
+                  missed. WCAG 3.3.2 / 4.1.2. */}
               <input
                 type="text"
+                aria-label="Team code (optional)"
                 placeholder="Team code (optional)"
                 value={teamCode}
                 onChange={e => setTeamCode(e.target.value.toUpperCase())}

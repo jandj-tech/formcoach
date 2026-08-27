@@ -73,6 +73,24 @@ export default function TopNav() {
   }
 
   return (
+    <>
+      {/*
+        Skip link — WCAG 2.4.1 (Bypass Blocks).
+        Without it, a keyboard or switch user had to tab through every nav link
+        on every page before reaching content. Visually hidden until focused,
+        then pinned top-left so it is the first thing a keyboard user meets.
+
+        It targets the marker rendered immediately AFTER this nav rather than a
+        per-page id, because every page mounts its TopNav inside its own
+        <main> — so a shared target here is the only version that cannot
+        silently point at nothing.
+      */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:bg-ember-500 focus:text-ink-950 focus:font-bold focus:px-4 focus:py-2.5 focus:rounded-lg"
+      >
+        Skip to main content
+      </a>
     <nav
       className="sticky top-0 z-50 border-b border-courtline bg-ink-950/95 backdrop-blur-md"
       style={{ paddingTop: 'env(safe-area-inset-top)' }}
@@ -131,5 +149,10 @@ export default function TopNav() {
       </div>
       <TokenBanner pathname={pathname} />
     </nav>
+      {/* Landing spot for the skip link. tabIndex -1 means it is reachable
+          programmatically but never lands in the tab order itself, so the next
+          Tab press continues into the page content. */}
+      <div id="main-content" tabIndex={-1} />
+    </>
   )
 }

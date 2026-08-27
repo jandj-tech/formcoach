@@ -336,7 +336,7 @@ export default function ShopProduct({
             <div className="space-y-4 lg:pt-16">
               <a
                 href="#analysis-tokens"
-                className="block text-center bg-ember-500 hover:bg-ember-400 active:scale-[0.98] text-white font-bold px-8 py-4 rounded-full text-base transition-all"
+                className="block text-center bg-ember-500 hover:bg-ember-400 active:scale-[0.98] text-ink-950 font-bold px-8 py-4 rounded-full text-base transition-all"
               >
                 Get analysis tokens ↑
               </a>
@@ -346,7 +346,7 @@ export default function ShopProduct({
               >
                 Analyze your shot →
               </Link>
-              <p className="text-ink-950/50 text-xs text-center">
+              <p className="text-ink-950/80 text-xs text-center">
                 Have a token already? Head straight to the analyzer.
               </p>
             </div>
@@ -523,15 +523,26 @@ function MediaGallery() {
 
       <div className="flex items-center justify-center gap-2 mt-4">
         {GALLERY_MEDIA.map((m, i) => (
+          // The dot used to BE the button, at 8x8 — failing WCAG 2.2 SC 2.5.8
+          // (Target Size, 24x24). The dot keeps its size; the button grows
+          // around it as an invisible 24px hit area, so the design is unchanged
+          // but the target is reachable. aria-current also tells a screen
+          // reader which slide is showing, which colour alone did not.
           <button
             key={m.src}
             type="button"
             aria-label={`Show ${m.label}`}
+            aria-current={selected === i ? 'true' : undefined}
             onClick={() => emblaApi?.scrollTo(i)}
-            className={`h-2 rounded-full transition-all ${
-              selected === i ? 'w-6 bg-ember-500' : 'w-2 bg-chalk-dim/40 hover:bg-chalk-dim/70'
-            }`}
-          />
+            className="min-h-6 min-w-6 flex items-center justify-center"
+          >
+            <span
+              aria-hidden="true"
+              className={`block h-2 rounded-full transition-all ${
+                selected === i ? 'w-6 bg-ember-500' : 'w-2 bg-chalk-dim/40 hover:bg-chalk-dim/70'
+              }`}
+            />
+          </button>
         ))}
       </div>
     </div>
@@ -566,7 +577,7 @@ function BundleSection({ isInApp = false }: { isInApp?: boolean }) {
         <div className="flex flex-wrap items-end gap-6 justify-between">
           <div className="space-y-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="inline-flex items-center bg-ember-500 text-white text-xs font-bold tracking-wider uppercase px-3 py-1 rounded-full select-none">
+              <span className="inline-flex items-center bg-ember-500 text-ink-950 text-xs font-bold tracking-wider uppercase px-3 py-1 rounded-full select-none">
                 Best Value
               </span>
               <span className="inline-flex items-center bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-semibold px-3 py-1 rounded-full">
@@ -584,7 +595,7 @@ function BundleSection({ isInApp = false }: { isInApp?: boolean }) {
             <div className="font-numeric text-4xl font-medium text-chalk">
               {formatPrice(BUNDLE_PRICE)}
             </div>
-            <div className="text-sm text-zinc-500 line-through">
+            <div className="text-sm text-chalk-dim line-through">
               {formatPrice(originalPrice)}
             </div>
             <div className="text-sm text-green-400 font-semibold">
@@ -636,7 +647,7 @@ function BundleSection({ isInApp = false }: { isInApp?: boolean }) {
         </div>
 
         {!isInApp && (
-          <p className="text-zinc-500 text-xs">
+          <p className="text-chalk-dim text-xs">
             10 shot analysis credits will be added to your account automatically after purchase.
           </p>
         )}

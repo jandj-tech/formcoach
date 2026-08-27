@@ -31,8 +31,15 @@ export const FROM = process.env.EMAIL_FROM || `LearnHoops <${SUPPORT_ADDRESS}>`
 
 /**
  * Marketing sender: the monthly promo, the 5-email drip, admin broadcasts.
- * `news.learnhoops.com` must be verified in Resend before this will deliver —
- * until it is, set MARKETING_EMAIL_FROM to the transactional address.
+ *
+ * Defaults to the transactional address, NOT to a marketing subdomain. Resend
+ * rejects any send from a domain it has not verified, so defaulting to
+ * `news.learnhoops.com` before that subdomain exists would fail every
+ * marketing send — silently, because both send crons swallow per-address
+ * errors into a `failed` counter.
+ *
+ * To get the reputation split, verify a subdomain in Resend, publish its three
+ * DNS records, then set MARKETING_EMAIL_FROM to an address on it. Until that is
+ * done the mail still goes out; it just shares reputation with transactional.
  */
-export const MARKETING_FROM =
-  process.env.MARKETING_EMAIL_FROM || 'LearnHoops <news@news.learnhoops.com>'
+export const MARKETING_FROM = process.env.MARKETING_EMAIL_FROM || FROM

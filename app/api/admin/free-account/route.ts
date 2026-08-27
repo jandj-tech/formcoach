@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { Resend } from 'resend'
-import { FROM, REPLY_TO } from '@/lib/email-senders'
+import { NOTIFICATION_FROM } from '@/lib/email-senders'
 import { isAdminSession } from '@/lib/admin-auth'
 import { resolveBaseUrl } from '@/lib/base-url'
 
@@ -59,8 +59,7 @@ export async function POST(req: NextRequest) {
   try {
     const resend = new Resend(process.env.RESEND_API_KEY)
     await resend.emails.send({
-      from: FROM,
-      replyTo: REPLY_TO,
+      from: NOTIFICATION_FROM,
       to: normalizedEmail,
       subject: 'You have free access to FormCoach!',
       html: `
@@ -69,7 +68,7 @@ export async function POST(req: NextRequest) {
           <p>Your account has been set up with complimentary unlimited access to FormCoach shot analysis.</p>
           <p>Visit <a href="${BASE_URL}/analyze" style="color:#f97316">${BASE_URL}/analyze</a> to start uploading your shots.</p>
           <p>You can sign up for an account at <a href="${BASE_URL}/signup" style="color:#f97316">${BASE_URL}/signup</a> to access your shot history dashboard.</p>
-          <p style="color:#666;font-size:13px">Questions? Just reply to this email.</p>
+          <p style="color:#666;font-size:13px">Questions? <a href="${BASE_URL}/support" style="color:#f97316">Contact us here</a>.</p>
         </div>
       `,
     })

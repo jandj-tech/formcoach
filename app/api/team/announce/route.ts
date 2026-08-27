@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
-import { FROM } from '@/lib/email-senders'
+import { NOTIFICATION_FROM } from '@/lib/email-senders'
 import { db } from '@/lib/db'
 import { getTeamSessionFromRequest } from '@/lib/team-auth'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
 
     const results = await Promise.allSettled(players.map(({ email }) =>
       resend.emails.send({
-        from: FROM,
+        from: NOTIFICATION_FROM,
         to: email,
         replyTo: team.admin_email,
         subject,

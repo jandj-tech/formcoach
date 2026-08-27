@@ -36,7 +36,7 @@ We wanted to share a quick update on what's new at LearnHoops.
 
 [Write your update here — new features, schedule changes, announcements.]
 
-Thank you for being part of the LearnHoops community. If you have any questions, just reply to this email.
+Thank you for being part of the LearnHoops community. If you have any questions, reply to this email or contact us at learnhoops.com/support.
 
 — The LearnHoops Team`,
     ctaText: '',

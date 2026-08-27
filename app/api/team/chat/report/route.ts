@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
-import { FROM, INTERNAL_INBOX } from '@/lib/email-senders'
+import { INTERNAL_INBOX, NOTIFICATION_FROM } from '@/lib/email-senders'
 import { db } from '@/lib/db'
 import { resolveChatActorFromRequest } from '@/lib/team-chat'
 
@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
 
     const resend = new Resend(process.env.RESEND_API_KEY!)
     await resend.emails.send({
-      from: FROM,
+      from: NOTIFICATION_FROM,
       to: INTERNAL_INBOX,
       subject: '⚠️ Chat message report',
       text: [

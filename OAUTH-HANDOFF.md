@@ -46,9 +46,9 @@ logged-in Chrome (`mcp__claude-in-chrome`), read-only, asking before any click.
 
 ### The Apple private key
 
-- File: `AuthKey_WRQ5VXZ542.p8`
-- Was at `~/Downloads/`; user was told to move it to
-  `~/Documents/learnhoops-apple-key/` — **confirm they did**
+- File: `~/Documents/learnhoops-apple-key/AuthKey_WRQ5VXZ542.p8`
+- ✅ Moved out of `~/Downloads` on 2026-08-27 and verified still importable.
+  Permissions tightened to `600` on the file, `700` on the directory.
 - **Never** put it in this repo. This repo is public.
 - ⚠️ Its contents were pasted into a chat session on 2026-08-27. Rotating it is
   a ~2 minute job now that the App ID is set up correctly, and worth offering.

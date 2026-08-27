@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
     const [org] = (await db`
       SELECT id, admin_email, password_hash FROM organizations WHERE admin_email = ${emailLower}
     `) as unknown as [{ id: string; admin_email: string; password_hash: string } | undefined]
-    if (org && (await bcrypt.compare(password, org.password_hash))) {
+    if (org?.password_hash && (await bcrypt.compare(password, org.password_hash))) {
       const token = await signOrgSession({ orgId: org.id, adminEmail: org.admin_email })
       const res = NextResponse.json({ success: true, redirect: '/org/dashboard' })
       res.cookies.set(orgSessionCookieOptions(token))
@@ -100,8 +100,37 @@ export async function POST(req: NextRequest) {
     // 4. Player account
     const [user] = (await db`
       SELECT id, email, password_hash FROM users WHERE email = ${emailLower}
-    `) as unknown as [{ id: string; email: string; password_hash: string } | undefined]
-    if (user && (await bcrypt.compare(password, user.password_hash))) {
+    `) as unknown as [{ id: string; email: string; password_hash: string | null } | undefined]
+
+    // Accounts created with Google or Apple have no password. Saying so beats
+    // "invalid email or password", which sends someone who has never had a
+    // password off to reset one they don't have.
+    if (user && !user.password_hash) {
+      let provider: string | undefined
+      try {
+        const [identity] = (await db`
+          SELECT provider FROM user_oauth_identities
+          WHERE user_id = ${user.id}
+          ORDER BY last_login_at DESC NULLS LAST
+          LIMIT 1
+        `) as unknown as [{ provider: string } | undefined]
+        provider = identity?.provider
+      } catch {
+        // Table missing (migration not applied yet) — fall through to the
+        // generic wording rather than failing the login request.
+      }
+      const label = provider === 'apple' ? 'Apple' : provider === 'google' ? 'Google' : null
+      return NextResponse.json(
+        {
+          error: label
+            ? `This account signs in with ${label}. Use the "Continue with ${label}" button above.`
+            : 'This account has no password yet. Use "Forgot password?" to set one.',
+        },
+        { status: 401 }
+      )
+    }
+
+    if (user?.password_hash && (await bcrypt.compare(password, user.password_hash))) {
       await redeemClaim(claimToken, user.id)
       const token = await signSession({ userId: user.id, email: user.email })
       const res = NextResponse.json({ success: true, token })

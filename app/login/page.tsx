@@ -7,6 +7,17 @@ import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
 import Image from 'next/image'
 import PasswordInput from '@/components/PasswordInput'
+import OAuthButtons from '@/components/OAuthButtons'
+
+// Messages for a provider round trip that came back without a session. The
+// callback can only hand back a reason code in the URL, so the wording lives
+// here rather than in the route.
+const OAUTH_ERRORS: Record<string, string> = {
+  oauth_cancelled: 'Sign-in was cancelled.',
+  oauth_no_email: 'That sign-in did not share an email address, so we could not create an account.',
+  oauth_failed: 'That sign-in could not be completed. Please try again.',
+  oauth_unavailable: 'Google and Apple sign-in are not available right now — use your email and password.',
+}
 
 function LoginForm() {
   const router = useRouter()
@@ -17,7 +28,7 @@ function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
-  const [error, setError] = useState('')
+  const [error, setError] = useState(OAUTH_ERRORS[searchParams.get('error') ?? ''] ?? '')
   // Set when a coach has several teams and must pick one before logging in.
   const [teams, setTeams] = useState<Array<{ id: string; name: string }> | null>(null)
 
@@ -131,6 +142,8 @@ function LoginForm() {
             </div>
           ) : (
             <>
+              <OAuthButtons next={next} claimToken={claimToken} />
+
               <form onSubmit={handleSubmit} className="space-y-3 bg-ink-900 border border-courtline rounded-2xl p-5">
                 <input
                   type="email"

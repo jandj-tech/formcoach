@@ -149,6 +149,28 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
       .catch(() => setSessionUser(null))
   }, [teamMode, coachSelf])
 
+  // On a successful analysis we navigate to /results without leaving this
+  // component in 'idle' — so when the user backs out of the report, the
+  // browser's back/forward cache restores this page frozen mid-upload (the
+  // progress bar caught partway through its 90→100 transition, hence the
+  // "stuck at ~97%" loading screen). The analysis actually finished; the UI is
+  // just a stale snapshot. Any in-flight fetch is dead once a page is frozen,
+  // so on restore it is always correct to snap the uploader back to idle.
+  useEffect(() => {
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (!e.persisted) return
+      cancelledRef.current = true
+      abortRef.current?.abort()
+      abortRef.current = null
+      setStatus('idle')
+      setProgress(0)
+      setPreviews([])
+      setVideoUploadStatus({ state: 'idle' })
+    }
+    window.addEventListener('pageshow', onPageShow)
+    return () => window.removeEventListener('pageshow', onPageShow)
+  }, [])
+
   const seekTo = (video: HTMLVideoElement, t: number): Promise<void> =>
     new Promise((res) => {
       let done = false

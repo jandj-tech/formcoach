@@ -20,14 +20,30 @@
  */
 
 /**
- * A real, monitored mailbox. Used as the transactional From and as Reply-To on
- * everything. `support@learnhoops.com` already receives content reports, so it
- * exists; point SUPPORT_EMAIL somewhere else if that changes.
+ * Where replies land, and where the app sends its own internal alerts.
+ *
+ * This MUST be a mailbox that actually accepts mail. It previously pointed at
+ * `support@learnhoops.com`, which does not exist -- Resend has that address on
+ * its suppression list from an earlier hard bounce, so every content report the
+ * app "sent to support" was silently discarded, and any customer who replied to
+ * one of our emails got a bounce. That is the precise failure this constant was
+ * introduced to eliminate.
+ *
+ * Point SUPPORT_EMAIL at a mailbox on learnhoops.com once one exists; a From
+ * and Reply-To on the same domain reads better than a gmail.com reply address.
+ * Until then, a working inbox beats a tidy-looking dead one.
  */
-export const SUPPORT_ADDRESS = process.env.SUPPORT_EMAIL || 'support@learnhoops.com'
+export const REPLY_TO = process.env.SUPPORT_EMAIL || 'learnhoops8@gmail.com'
 
-/** Transactional sender: results, password resets, invites, orders, receipts. */
-export const FROM = process.env.EMAIL_FROM || `LearnHoops <${SUPPORT_ADDRESS}>`
+/**
+ * Transactional sender: results, password resets, invites, orders, receipts.
+ *
+ * Must be an address on a Resend-verified domain -- that is what lets DKIM sign
+ * as learnhoops.com and align with the From header a recipient sees. It does not
+ * have to be a mailbox that receives (bounces go to the Return-Path, and replies
+ * go to REPLY_TO), though creating it is worth doing.
+ */
+export const FROM = process.env.EMAIL_FROM || 'LearnHoops <support@learnhoops.com>'
 
 /**
  * Marketing sender: the monthly promo, the 5-email drip, admin broadcasts.

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
-import { FROM } from '@/lib/email-senders'
+import { FROM, REPLY_TO } from '@/lib/email-senders'
 import { db } from '@/lib/db'
 import { resolveChatActorFromRequest } from '@/lib/team-chat'
 
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     const resend = new Resend(process.env.RESEND_API_KEY!)
     await resend.emails.send({
       from: FROM,
-      to: 'support@learnhoops.com',
+      to: REPLY_TO,
       subject: '⚠️ Chat message report',
       text: [
         'A team chat message was reported.',

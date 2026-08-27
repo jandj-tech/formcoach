@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { Resend } from 'resend'
-import { FROM, SUPPORT_ADDRESS } from '@/lib/email-senders'
+import { FROM, REPLY_TO } from '@/lib/email-senders'
 import { isAdminSession } from '@/lib/admin-auth'
 import { resolveBaseUrl } from '@/lib/base-url'
 
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
     const resend = new Resend(process.env.RESEND_API_KEY)
     await resend.emails.send({
       from: FROM,
-      replyTo: SUPPORT_ADDRESS,
+      replyTo: REPLY_TO,
       to: normalizedEmail,
       subject: 'You have free access to FormCoach!',
       html: `

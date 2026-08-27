@@ -9,7 +9,7 @@ function getResend() {
 // transactional and marketing must not share a From address. The sending
 // domain must be verified in the Resend dashboard before an address will
 // deliver; until then, set EMAIL_FROM to `onboarding@resend.dev`.
-import { FROM, MARKETING_FROM, SUPPORT_ADDRESS } from './email-senders'
+import { FROM, MARKETING_FROM, REPLY_TO } from './email-senders'
 
 export const BASE_URL = resolveBaseUrl()
 
@@ -24,7 +24,7 @@ export async function sendResultsEmail(to: string, token: string) {
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,
-    replyTo: SUPPORT_ADDRESS,
+    replyTo: REPLY_TO,
     subject: 'Your shot analysis is ready',
     headers: {
       'List-Unsubscribe': `<${unsubscribe}>`,
@@ -429,7 +429,7 @@ export async function sendPasswordResetEmail(to: string, token: string) {
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,
-    replyTo: SUPPORT_ADDRESS,
+    replyTo: REPLY_TO,
     subject: 'Reset your LearnHoops password',
     text: [
       `Someone asked to reset the password for your LearnHoops account.`,
@@ -484,7 +484,7 @@ export async function sendPromoEmail(to: string) {
   const { data, error } = await getResend().emails.send({
     from: MARKETING_FROM,
     to,
-    replyTo: SUPPORT_ADDRESS,
+    replyTo: REPLY_TO,
     subject: 'Sharpen your shot with LearnHoops',
     headers: {
       'List-Unsubscribe': `<${unsubscribe}>`,
@@ -572,7 +572,7 @@ export async function sendClaimCreditsEmail(
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,
-    replyTo: SUPPORT_ADDRESS,
+    replyTo: REPLY_TO,
     subject: `Your LearnHoops ball ships soon — claim your ${tokensToGrant} free shot ${tokensToGrant === 1 ? 'analysis' : 'analyses'}`,
     text: [
       `Hey ${name},`,
@@ -658,7 +658,7 @@ export async function sendShippingEmail(
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,
-    replyTo: SUPPORT_ADDRESS,
+    replyTo: REPLY_TO,
     subject: 'Your LearnHoops order has shipped!',
     text: [
       `Hey ${name},`,
@@ -731,7 +731,7 @@ export async function sendOrgApprovalEmail(
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,
-    replyTo: SUPPORT_ADDRESS,
+    replyTo: REPLY_TO,
     subject: 'Your LearnHoops organization application has been approved',
     text: [
       `Hi,`,
@@ -794,7 +794,7 @@ export async function sendNextMarketingEmail(
   await getResend().emails.send({
     from: MARKETING_FROM,
     to,
-    replyTo: SUPPORT_ADDRESS,
+    replyTo: REPLY_TO,
     subject: template.subject,
     headers: {
       'List-Unsubscribe': `<${unsubscribe}>`,
@@ -818,7 +818,7 @@ export async function sendClassPurchaseConfirmationEmail(
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,
-    replyTo: SUPPORT_ADDRESS,
+    replyTo: REPLY_TO,
     subject: '10-Week Shooting Class — your program is confirmed',
     text: [
       `Hi ${orgName},`,
@@ -913,7 +913,7 @@ export async function sendTeamCreatedEmail(
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,
-    replyTo: SUPPORT_ADDRESS,
+    replyTo: REPLY_TO,
     subject: `Team created: ${teamName}`,
     text: [
       `Hi ${orgName},`,
@@ -967,7 +967,7 @@ export async function sendPasswordChangedEmail(to: string) {
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,
-    replyTo: SUPPORT_ADDRESS,
+    replyTo: REPLY_TO,
     subject: 'Your LearnHoops password was changed',
     text: [
       `Your LearnHoops password was just changed.`,
@@ -1014,7 +1014,7 @@ export async function sendTokenPurchaseConfirmationEmail(
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,
-    replyTo: SUPPORT_ADDRESS,
+    replyTo: REPLY_TO,
     subject: `${quantity} analysis token${quantity !== 1 ? 's' : ''} added to your account`,
     text: [
       `Hi ${orgName},`,
@@ -1054,7 +1054,7 @@ export async function sendAccountDeletedEmail(to: string) {
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,
-    replyTo: SUPPORT_ADDRESS,
+    replyTo: REPLY_TO,
     subject: 'Your LearnHoops account has been deleted',
     text: [
       `Your LearnHoops account has been permanently deleted.`,
@@ -1095,7 +1095,7 @@ export async function sendLeftTeamEmail(to: string, teamName: string) {
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,
-    replyTo: SUPPORT_ADDRESS,
+    replyTo: REPLY_TO,
     subject: `You've left ${teamName}`,
     text: [
       `You have left the team "${teamName}" on LearnHoops.`,
@@ -1158,8 +1158,8 @@ export async function sendSupportRequestEmail(req: {
 
   const { data, error } = await getResend().emails.send({
     // Distinct sender name so the inbox can recognize and filter these.
-    from: `LearnHoops Support Form <${SUPPORT_ADDRESS}>`,
-    to: 'learnhoops8@gmail.com',
+    from: `LearnHoops Support Form <${REPLY_TO}>`,
+    to: REPLY_TO,
     replyTo: req.email,
     subject: `Support request from ${req.name} — ${req.topic}`,
     text: [
@@ -1267,7 +1267,7 @@ export async function sendAbandonedCheckoutEmail(
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,
-    replyTo: SUPPORT_ADDRESS,
+    replyTo: REPLY_TO,
     subject: 'Your LearnHoops training ball is still waiting 🏀',
     headers: {
       'List-Unsubscribe': `<${unsubscribe}>`,
@@ -1364,7 +1364,7 @@ export async function sendFilmingTipsEmail(to: string) {
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,
-    replyTo: SUPPORT_ADDRESS,
+    replyTo: REPLY_TO,
     // Plain and descriptive on purpose. A benefit-promise subject ("get a
     // better score…") is a Promotions-tab signal; naming what the email
     // contains reads as the follow-up to an action they just took.

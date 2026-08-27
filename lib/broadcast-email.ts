@@ -7,7 +7,7 @@ import { resolveBaseUrl } from './base-url'
 
 // Admin broadcasts are bulk mail, so they ride the marketing sender and its
 // separate reputation. Replies go to a mailbox a human reads.
-import { MARKETING_FROM, SUPPORT_ADDRESS } from './email-senders'
+import { MARKETING_FROM, REPLY_TO } from './email-senders'
 
 const BASE_URL = resolveBaseUrl()
 
@@ -125,7 +125,7 @@ export async function sendBroadcast(content: BroadcastContent, recipients: Broad
     const payloads = chunk.map(r => ({
       from: MARKETING_FROM,
       to: r.email,
-      replyTo: SUPPORT_ADDRESS,
+      replyTo: REPLY_TO,
       subject: personalize(content.subject, r.name),
       headers: {
         'List-Unsubscribe': `<${BASE_URL}/unsubscribe?email=${encodeURIComponent(r.email)}>`,

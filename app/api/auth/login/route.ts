@@ -54,7 +54,9 @@ export async function POST(req: NextRequest) {
     `) as unknown as [{ id: string; admin_email: string; password_hash: string } | undefined]
     if (org?.password_hash && (await bcrypt.compare(password, org.password_hash))) {
       const token = await signOrgSession({ orgId: org.id, adminEmail: org.admin_email })
-      const res = NextResponse.json({ success: true, redirect: '/org/dashboard' })
+      // `token` is for the mobile app (Bearer auth); the web ignores it and
+      // follows the cookie + redirect.
+      const res = NextResponse.json({ success: true, redirect: '/org/dashboard', token })
       res.cookies.set(orgSessionCookieOptions(token))
       clearOtherSessions(res, ORG_COOKIE)
       return res
@@ -74,7 +76,7 @@ export async function POST(req: NextRequest) {
       }
       const team = teams[0]
       const token = await signTeamSession({ teamId: team.id, adminEmail: team.admin_email })
-      const res = NextResponse.json({ success: true, redirect: '/team/dashboard' })
+      const res = NextResponse.json({ success: true, redirect: '/team/dashboard', token })
       res.cookies.set(teamSessionCookieOptions(token))
       clearOtherSessions(res, TEAM_COOKIE)
       return res
@@ -88,7 +90,7 @@ export async function POST(req: NextRequest) {
       `) as unknown as [{ team_id: string; email: string; password_hash: string } | undefined]
       if (coach && (await bcrypt.compare(password, coach.password_hash))) {
         const token = await signTeamSession({ teamId: coach.team_id, adminEmail: coach.email })
-        const res = NextResponse.json({ success: true, redirect: '/team/dashboard' })
+        const res = NextResponse.json({ success: true, redirect: '/team/dashboard', token })
         res.cookies.set(teamSessionCookieOptions(token))
         clearOtherSessions(res, TEAM_COOKIE)
         return res

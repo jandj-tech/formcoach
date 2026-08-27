@@ -9,10 +9,14 @@ const TTL = 60 * 60 * 24 * 30 // 30 days
 export interface OrgSessionPayload {
   orgId: string
   adminEmail: string
+  // See lib/auth.ts — stamped so an org token is trusted over Bearer (the
+  // mobile app) without a cookie name to identify it. Legacy tokens/cookies
+  // lack it and are still honored on the cookie path.
+  kind?: 'org'
 }
 
 export async function signOrgSession(payload: OrgSessionPayload): Promise<string> {
-  return new SignJWT(payload as unknown as Record<string, unknown>)
+  return new SignJWT({ ...payload, kind: 'org' } as unknown as Record<string, unknown>)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime(`${TTL}s`)
@@ -37,8 +41,17 @@ export async function getOrgSession(): Promise<OrgSessionPayload | null> {
 
 export async function getOrgSessionFromRequest(req: NextRequest): Promise<OrgSessionPayload | null> {
   const token = req.cookies.get(COOKIE)?.value
-  if (!token) return null
-  return verifyOrgSession(token)
+  if (token) return verifyOrgSession(token)
+
+  // Mobile app: org session arrives as a Bearer token. Require kind === 'org'
+  // so a player/team token can't be accepted here.
+  const auth = req.headers.get('Authorization')
+  if (auth?.startsWith('Bearer ')) {
+    const payload = await verifyOrgSession(auth.slice(7))
+    return payload?.kind === 'org' ? payload : null
+  }
+
+  return null
 }
 
 export function orgSessionCookieOptions(token: string) {

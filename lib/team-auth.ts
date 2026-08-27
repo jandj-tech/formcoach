@@ -9,10 +9,14 @@ const TTL = 60 * 60 * 24 * 30 // 30 days
 export interface TeamSessionPayload {
   teamId: string
   adminEmail: string
+  // See lib/auth.ts — stamped so a team token is trusted over Bearer (the
+  // mobile app) without a cookie name to identify it. Legacy tokens/cookies
+  // lack it and are still honored on the cookie path.
+  kind?: 'team'
 }
 
 export async function signTeamSession(payload: TeamSessionPayload): Promise<string> {
-  return new SignJWT(payload as unknown as Record<string, unknown>)
+  return new SignJWT({ ...payload, kind: 'team' } as unknown as Record<string, unknown>)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime(`${TTL}s`)
@@ -37,8 +41,17 @@ export async function getTeamSession(): Promise<TeamSessionPayload | null> {
 
 export async function getTeamSessionFromRequest(req: NextRequest): Promise<TeamSessionPayload | null> {
   const token = req.cookies.get(COOKIE)?.value
-  if (!token) return null
-  return verifyTeamSession(token)
+  if (token) return verifyTeamSession(token)
+
+  // Mobile app: team session arrives as a Bearer token. Require kind === 'team'
+  // so a player/org token can't be accepted here.
+  const auth = req.headers.get('Authorization')
+  if (auth?.startsWith('Bearer ')) {
+    const payload = await verifyTeamSession(auth.slice(7))
+    return payload?.kind === 'team' ? payload : null
+  }
+
+  return null
 }
 
 export function teamSessionCookieOptions(token: string) {

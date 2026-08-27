@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSessionFromRequest } from '@/lib/auth'
-import { getTeamSession } from '@/lib/team-auth'
-import { getOrgSession } from '@/lib/org-auth'
+import { getTeamSessionFromRequest } from '@/lib/team-auth'
+import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { db } from '@/lib/db'
 import { userHasInitiatedTeam } from '@/lib/team-tokens'
 
@@ -107,15 +107,52 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // 2. Coach / organization sessions — so the nav shows a logged-in state.
-  const teamSession = await getTeamSession()
+  // 2. Coach / organization sessions. The mobile app authenticates these over
+  // Bearer (the FromRequest getters read cookie first, then Authorization), and
+  // it drives its own screens off `account` — so it needs the display name and
+  // the spendable balance that funds in-app "analyze my own shot" uploads
+  // (coach_credits for a coach, organizations.token_balance for an org).
+  const teamSession = await getTeamSessionFromRequest(req)
   if (teamSession) {
-    return NextResponse.json({ user: null, account: { type: 'team', dashboard: '/team/dashboard' } })
+    let name: string | null = null
+    let credits = 0
+    try {
+      const [team] = (await db`
+        SELECT name FROM teams WHERE id = ${teamSession.teamId}
+      `) as unknown as [{ name: string | null } | undefined]
+      name = team?.name ?? null
+      const [cc] = (await db`
+        SELECT COALESCE(credits, 0)::int AS credits
+        FROM coach_credits WHERE LOWER(email) = ${teamSession.adminEmail.toLowerCase()}
+      `) as unknown as [{ credits: number } | undefined]
+      credits = cc?.credits ?? 0
+    } catch {
+      // coach_credits may not exist in old environments — report zero balance.
+    }
+    return NextResponse.json({
+      user: null,
+      account: { type: 'team', dashboard: '/team/dashboard', teamId: teamSession.teamId, email: teamSession.adminEmail, name, credits },
+    })
   }
 
-  const orgSession = await getOrgSession()
+  const orgSession = await getOrgSessionFromRequest(req)
   if (orgSession) {
-    return NextResponse.json({ user: null, account: { type: 'org', dashboard: '/org/dashboard' } })
+    let name: string | null = null
+    let credits = 0
+    try {
+      const [org] = (await db`
+        SELECT name, COALESCE(token_balance, 0)::int AS token_balance
+        FROM organizations WHERE id = ${orgSession.orgId}
+      `) as unknown as [{ name: string | null; token_balance: number } | undefined]
+      name = org?.name ?? null
+      credits = org?.token_balance ?? 0
+    } catch {
+      // Defensive: report zero balance rather than failing the session check.
+    }
+    return NextResponse.json({
+      user: null,
+      account: { type: 'org', dashboard: '/org/dashboard', orgId: orgSession.orgId, email: orgSession.adminEmail, name, credits },
+    })
   }
 
   return NextResponse.json({ user: null, account: null })

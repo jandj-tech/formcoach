@@ -20,7 +20,8 @@ export async function POST(req: NextRequest) {
     }
 
     const token = await signTeamSession({ teamId: team.id, adminEmail: team.admin_email })
-    const res = NextResponse.json({ success: true })
+    // `token` is for the mobile app (Bearer auth); the web follows the cookie.
+    const res = NextResponse.json({ success: true, token })
     res.cookies.set(teamSessionCookieOptions(token))
     clearOtherSessions(res, TEAM_COOKIE)
     return res

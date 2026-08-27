@@ -43,7 +43,7 @@ export default function BuySelfCreditsButton({ initiated }: { initiated: boolean
         <button
           onClick={buy}
           disabled={loading}
-          className="shrink-0 bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors"
+          className="shrink-0 bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold text-sm px-4 py-2 rounded-xl transition-colors"
         >
           {loading ? 'Redirecting…' : `Buy ${qty > 1 ? `${qty} credits` : 'credit'} — ${usd(totalCents)}`}
         </button>

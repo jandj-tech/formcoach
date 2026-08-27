@@ -92,7 +92,7 @@ function themeClasses(dark: boolean) {
     card: dark ? 'bg-ink-950 border border-courtline' : 'bg-gray-50 border border-gray-200',
     panel: dark ? 'bg-ink-900 border border-courtline' : 'bg-white border border-gray-200',
     chipPractice: dark ? 'border border-ember-500/60 text-ember-400' : 'bg-orange-100 text-orange-700',
-    chipGame: dark ? 'bg-ember-500 text-ink-950' : 'bg-orange-500 text-white',
+    chipGame: dark ? 'bg-ember-500 text-ink-950' : 'bg-orange-500 text-ink-950',
     chipOther: dark ? 'border border-courtline text-chalk-dim' : 'bg-gray-100 text-gray-600',
     amber: dark ? 'text-amber-400' : 'text-amber-600',
     btnIdle: dark
@@ -103,12 +103,12 @@ function themeClasses(dark: boolean) {
       ? 'bg-ink-950 border border-courtline text-chalk placeholder:text-chalk-dim/60 focus:border-ember-500'
       : 'bg-white border border-gray-300 text-black placeholder:text-gray-400 focus:border-orange-500',
     form: dark ? 'bg-ink-950 border border-courtline' : 'bg-orange-50 border border-orange-200',
-    segActive: dark ? 'bg-ember-500 text-ink-950' : 'bg-orange-500 text-white',
+    segActive: dark ? 'bg-ember-500 text-ink-950' : 'bg-orange-500 text-ink-950',
     segIdle: dark ? 'bg-ink-900 text-chalk-dim hover:text-chalk' : 'bg-white text-gray-600 hover:bg-orange-100',
     segBorder: dark ? 'border border-courtline' : 'border border-orange-300',
     primaryBtn: dark
       ? 'bg-ember-500 hover:bg-ember-400 text-ink-950'
-      : 'bg-orange-500 hover:bg-orange-400 text-white',
+      : 'bg-orange-500 hover:bg-orange-400 text-ink-950',
     accent: dark ? 'accent-[#ff5c1a]' : 'accent-orange-500',
     quietBtn: dark ? 'text-chalk-dim hover:text-chalk' : 'text-gray-500 hover:text-black',
   }
@@ -1123,7 +1123,7 @@ function WeekCalendar({
                 </span>
                 <span
                   className={`text-sm font-bold w-6 h-6 rounded-full inline-flex items-center justify-center ${
-                    isToday ? (dark ? 'bg-ember-500 text-ink-950' : 'bg-orange-500 text-white') : t.text
+                    isToday ? (dark ? 'bg-ember-500 text-ink-950' : 'bg-orange-500 text-ink-950') : t.text
                   }`}
                 >
                   {day.getDate()}

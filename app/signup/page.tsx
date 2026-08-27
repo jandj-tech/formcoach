@@ -106,6 +106,7 @@ function SignupForm() {
             />
             <input
               type="text"
+              aria-label="Nickname (e.g. Buckets, KD, Air)"
               placeholder="Nickname (e.g. Buckets, KD, Air)"
               maxLength={50}
               value={nickname}

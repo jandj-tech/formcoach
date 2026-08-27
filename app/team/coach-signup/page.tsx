@@ -73,7 +73,7 @@ function CoachSignupForm() {
               <button
                 type="submit"
                 disabled={status === 'loading'}
-                className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold py-3 rounded-xl transition-colors"
+                className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold py-3 rounded-xl transition-colors"
               >
                 {status === 'loading' ? 'Creating account...' : 'Create Coach Account →'}
               </button>

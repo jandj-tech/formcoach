@@ -157,7 +157,7 @@ export default function UnlockCta({ resultsPath, justPurchased }: { resultsPath:
           <button
             onClick={buy}
             disabled={loading}
-            className="w-full bg-orange-500 hover:bg-red-600 disabled:opacity-50 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors"
+            className="w-full bg-orange-500 hover:bg-red-600 disabled:opacity-50 text-ink-950 font-bold px-6 py-2.5 rounded-xl text-sm transition-colors"
           >
             {loading
               ? 'Opening checkout…'

@@ -37,7 +37,7 @@ function GateContent({ id }: { id: string }) {
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link
               href={`/signup?next=/gate/${id}`}
-              className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-6 py-3 rounded-xl transition-colors"
+              className="bg-orange-500 hover:bg-orange-400 text-ink-950 font-bold px-6 py-3 rounded-xl transition-colors"
             >
               Sign Up Free
             </Link>

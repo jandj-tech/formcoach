@@ -331,6 +331,7 @@ export default function LearnModePage() {
                             min="1"
                             max="10"
                             step="0.5"
+                            aria-label="Your score (1-10)"
                             placeholder="Your score (1-10)"
                             value={corrections[score.id]?.score ?? ''}
                             onChange={(e) =>
@@ -343,6 +344,7 @@ export default function LearnModePage() {
                           />
                           <input
                             type="text"
+                            aria-label="Notes — what did you see? (optional)"
                             placeholder="Notes — what did you see? (optional)"
                             value={corrections[score.id]?.notes ?? ''}
                             onChange={(e) =>
@@ -356,7 +358,7 @@ export default function LearnModePage() {
                           <button
                             disabled={saving === score.id || (!corrections[score.id]?.score && !corrections[score.id]?.notes)}
                             onClick={() => saveCorrection(score.id)}
-                            className="bg-orange-500 hover:bg-red-600 disabled:opacity-50 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
+                            className="bg-orange-500 hover:bg-red-600 disabled:opacity-50 text-ink-950 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
                           >
                             {saving === score.id ? '...' : 'Save'}
                           </button>

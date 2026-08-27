@@ -51,6 +51,7 @@ export default function JoinTeamForm({ hasName }: { hasName: boolean }) {
         <input
           type="text"
           required
+          aria-label="Team code"
           placeholder="Team code"
           value={teamCode}
           onChange={e => setTeamCode(e.target.value.toUpperCase())}
@@ -59,7 +60,7 @@ export default function JoinTeamForm({ hasName }: { hasName: boolean }) {
         <button
           type="submit"
           disabled={status === 'loading' || !hasName}
-          className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-6 py-3 rounded-xl transition-colors"
+          className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold px-6 py-3 rounded-xl transition-colors"
         >
           {status === 'loading' ? 'Joining...' : 'Join'}
         </button>

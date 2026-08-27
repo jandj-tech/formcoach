@@ -182,6 +182,7 @@ export default function AccessPage() {
               <input
                 type="email"
                 required
+                aria-label="friend@example.com"
                 placeholder="friend@example.com"
                 value={accountEmail}
                 onChange={(e) => setAccountEmail(e.target.value)}
@@ -190,7 +191,7 @@ export default function AccessPage() {
               <button
                 type="submit"
                 disabled={accountLoading}
-                className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-5 py-2.5 rounded-lg text-sm transition-colors whitespace-nowrap"
+                className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold px-5 py-2.5 rounded-lg text-sm transition-colors whitespace-nowrap"
               >
                 {accountLoading ? 'Creating...' : 'Grant Access'}
               </button>
@@ -242,6 +243,7 @@ export default function AccessPage() {
               <div className="flex gap-3">
                 <input
                   type="text"
+                  aria-label="e.g. SAVE20 (optional)"
                   placeholder="e.g. SAVE20 (optional)"
                   value={codeInput}
                   onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
@@ -250,6 +252,7 @@ export default function AccessPage() {
                 <div className="flex items-center gap-1.5 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2.5 w-32">
                   <input
                     type="number"
+                    aria-label="100"
                     placeholder="100"
                     value={percentOff}
                     onChange={(e) => setPercentOff(e.target.value)}
@@ -261,6 +264,7 @@ export default function AccessPage() {
                 </div>
                 <input
                   type="number"
+                  aria-label="Max uses"
                   placeholder="Max uses"
                   value={maxRedemptions}
                   onChange={(e) => setMaxRedemptions(e.target.value)}
@@ -271,7 +275,7 @@ export default function AccessPage() {
               <button
                 type="submit"
                 disabled={codeLoading}
-                className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-5 py-2.5 rounded-lg text-sm transition-colors"
+                className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold px-5 py-2.5 rounded-lg text-sm transition-colors"
               >
                 {codeLoading ? 'Generating...' : 'Generate Code'}
               </button>

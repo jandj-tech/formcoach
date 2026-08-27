@@ -265,7 +265,7 @@ export default function OrgTokenPanel({
                     onClick={() => { setBuyQty(q); setCustomQty('') }}
                     className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-colors ${
                       buyQty === q && !customQty
-                        ? 'bg-orange-500 text-white border-orange-500'
+                        ? 'bg-orange-500 text-ink-950 border-orange-500'
                         : 'bg-white text-black border-gray-300 hover:border-orange-400'
                     }`}
                   >
@@ -308,7 +308,7 @@ export default function OrgTokenPanel({
               type="button"
               onClick={buyTokens}
               disabled={busy}
-              className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-black py-3 rounded-xl transition-colors"
+              className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-black py-3 rounded-xl transition-colors"
             >
               {busy ? 'Redirecting to checkout...' : `Buy ${buyQty} Token${buyQty !== 1 ? 's' : ''} — ${buyTotal}`}
             </button>
@@ -442,7 +442,7 @@ export default function OrgTokenPanel({
                   type="button"
                   onClick={assignToPlayers}
                   disabled={busy || selectedPlayerIds.size === 0 || sourceTooLow}
-                  className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+                  className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors"
                 >
                   {`Assign tokens from ${assignSource === 'balance' ? 'your balance' : 'team credits'}`}
                 </button>
@@ -488,7 +488,7 @@ export default function OrgTokenPanel({
                   type="button"
                   onClick={allocateToTeam}
                   disabled={busy || allocQty < 1 || allocQty > balance}
-                  className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+                  className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors"
                 >
                   Allocate
                 </button>
@@ -526,7 +526,7 @@ export default function OrgTokenPanel({
                   className="w-16 border border-gray-300 rounded-xl px-2 py-2 text-center text-black text-sm focus:outline-none focus:border-orange-500"
                 />
                 <button type="button" onClick={giveToCoach} disabled={busy}
-                  className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors">
+                  className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors">
                   Give credits
                 </button>
               </div>

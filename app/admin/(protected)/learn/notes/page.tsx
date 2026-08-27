@@ -164,6 +164,7 @@ export default function CoachNotesQueuePage() {
                 <div className="flex flex-wrap items-center gap-2">
                   <input
                     type="number" min="0" max="10" step="0.5"
+                    aria-label="Your score"
                     placeholder="Your score"
                     value={draft.score}
                     onChange={(e) => setDrafts((d) => ({ ...d, [n.id]: { ...draft, score: e.target.value } }))}
@@ -171,6 +172,7 @@ export default function CoachNotesQueuePage() {
                   />
                   <input
                     type="text"
+                    aria-label="Your notes, in your own words"
                     placeholder="Your notes, in your own words"
                     value={draft.notes}
                     onChange={(e) => setDrafts((d) => ({ ...d, [n.id]: { ...draft, notes: e.target.value } }))}

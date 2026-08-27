@@ -346,7 +346,7 @@ export default function TeamDashboardClient({
             </p>
             <button
               onClick={() => { setAddOpen(o => !o); setAddStatus('idle'); setAddError(''); setNewInviteUrl('') }}
-              className="shrink-0 bg-orange-500 hover:bg-orange-400 text-white font-bold px-3 py-1.5 rounded-xl text-sm transition-colors"
+              className="shrink-0 bg-orange-500 hover:bg-orange-400 text-ink-950 font-bold px-3 py-1.5 rounded-xl text-sm transition-colors"
             >
               {addOpen ? 'Cancel' : 'Add Player'}
             </button>
@@ -362,6 +362,7 @@ export default function TeamDashboardClient({
                   <input
                     type="text"
                     required
+                    aria-label="First name"
                     placeholder="First name"
                     value={addFirst}
                     onChange={e => setAddFirst(e.target.value)}
@@ -370,6 +371,7 @@ export default function TeamDashboardClient({
                   <input
                     type="text"
                     maxLength={1}
+                    aria-label="Last initial"
                     placeholder="Last initial"
                     value={addInitial}
                     onChange={e => setAddInitial(e.target.value.toUpperCase())}
@@ -380,7 +382,7 @@ export default function TeamDashboardClient({
                 <button
                   type="submit"
                   disabled={addStatus === 'loading'}
-                  className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+                  className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors"
                 >
                   {addStatus === 'loading' ? 'Adding...' : 'Add Player'}
                 </button>
@@ -508,7 +510,7 @@ export default function TeamDashboardClient({
           <div className="flex justify-end">
             <Link
               href="/analyze"
-              className="shrink-0 bg-orange-500 hover:bg-orange-400 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors"
+              className="shrink-0 bg-orange-500 hover:bg-orange-400 text-ink-950 font-bold text-sm px-4 py-2 rounded-xl transition-colors"
             >
               Analyze a shot →
             </Link>
@@ -609,7 +611,7 @@ export default function TeamDashboardClient({
                   onClick={() => setBulkGrantEach(n)}
                   className={`w-10 h-10 rounded-lg text-sm font-bold transition-colors ${
                     bulkGrantEach === n
-                      ? 'bg-orange-500 text-white border border-orange-500'
+                      ? 'bg-orange-500 text-ink-950 border border-orange-500'
                       : 'bg-white text-black border border-orange-200 hover:border-orange-400'
                   }`}
                 >
@@ -619,7 +621,7 @@ export default function TeamDashboardClient({
               <button
                 onClick={grantToAll}
                 disabled={bulkGranting || team.credits < bulkGrantEach * members.length}
-                className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-black text-sm px-4 py-2.5 rounded-xl transition-colors"
+                className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-black text-sm px-4 py-2.5 rounded-xl transition-colors"
               >
                 {bulkGranting
                   ? 'Granting…'
@@ -661,7 +663,7 @@ export default function TeamDashboardClient({
                     onClick={() => { setQuantity(q); setCustomQty('') }}
                     className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-colors ${
                       quantity === q && !customQty
-                        ? 'bg-orange-500 text-white border-orange-500'
+                        ? 'bg-orange-500 text-ink-950 border-orange-500'
                         : 'bg-white text-black border-gray-300 hover:border-orange-400'
                     }`}
                   >
@@ -699,7 +701,7 @@ export default function TeamDashboardClient({
             <button
               onClick={buyCredits}
               disabled={buying}
-              className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-black py-3 rounded-xl transition-colors"
+              className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-black py-3 rounded-xl transition-colors"
             >
               {buying
                 ? 'Redirecting to checkout…'
@@ -814,7 +816,7 @@ export default function TeamDashboardClient({
                   }}
                   className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${
                     t.id === currentTeamId
-                      ? 'bg-orange-500 text-white'
+                      ? 'bg-orange-500 text-ink-950'
                       : 'bg-white border border-gray-300 text-black hover:border-orange-400'
                   }`}
                 >
@@ -834,7 +836,7 @@ export default function TeamDashboardClient({
           <button
             onClick={logout}
             disabled={loggingOut}
-            className="bg-orange-500 hover:bg-red-500 disabled:opacity-60 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors"
+            className="bg-orange-500 hover:bg-red-500 disabled:opacity-60 text-ink-950 font-bold text-sm px-4 py-2 rounded-xl transition-colors"
           >
             {loggingOut ? 'Logging out...' : 'Log out'}
           </button>

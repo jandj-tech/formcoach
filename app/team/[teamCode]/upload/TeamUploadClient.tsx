@@ -49,7 +49,7 @@ export default function TeamUploadClient({ teamName, teamCode, initialCredits }:
               setLastName('')
               setSubmissionId(null)
             }}
-            className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-6 py-3 rounded-xl transition-colors"
+            className="bg-orange-500 hover:bg-orange-400 text-ink-950 font-bold px-6 py-3 rounded-xl transition-colors"
           >
             Analyze Another Shot
           </button>
@@ -113,6 +113,7 @@ export default function TeamUploadClient({ teamName, teamCode, initialCredits }:
           <input
             type="text"
             required
+            aria-label="First name"
             placeholder="First name"
             value={firstName}
             onChange={e => setFirstName(e.target.value)}
@@ -134,6 +135,7 @@ export default function TeamUploadClient({ teamName, teamCode, initialCredits }:
               type="text"
               required
               maxLength={1}
+              aria-label="Last initial (e.g. S)"
               placeholder="Last initial (e.g. S)"
               value={lastName}
               onChange={e => setLastName(e.target.value.toUpperCase())}
@@ -144,6 +146,7 @@ export default function TeamUploadClient({ teamName, teamCode, initialCredits }:
               key="full"
               type="text"
               required
+              aria-label="Last name (e.g. Smith)"
               placeholder="Last name (e.g. Smith)"
               value={lastName}
               onChange={e => setLastName(e.target.value)}
@@ -154,7 +157,7 @@ export default function TeamUploadClient({ teamName, teamCode, initialCredits }:
           {nameError && <p className="text-red-500 text-sm">{nameError}</p>}
           <button
             type="submit"
-            className="w-full bg-orange-500 hover:bg-orange-400 text-white font-bold py-3 rounded-xl transition-colors"
+            className="w-full bg-orange-500 hover:bg-orange-400 text-ink-950 font-bold py-3 rounded-xl transition-colors"
           >
             Continue to Upload
           </button>

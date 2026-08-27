@@ -67,7 +67,7 @@ export default function EmailTeamPanel({ teamId, playerCount }: { teamId?: strin
         <button
           onClick={send}
           disabled={sending || !message.trim()}
-          className="bg-orange-500 hover:bg-orange-400 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors"
+          className="bg-orange-500 hover:bg-orange-400 disabled:bg-gray-200 disabled:text-gray-400 text-ink-950 font-bold px-6 py-2.5 rounded-xl text-sm transition-colors"
         >
           {sending ? 'Sending…' : 'Send to Team'}
         </button>

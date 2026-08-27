@@ -193,7 +193,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <p className="text-black font-semibold">No shots analyzed yet</p>
           <Link
             href="/analyze"
-            className="inline-block bg-orange-500 hover:bg-orange-400 text-white font-bold px-6 py-3 rounded-xl transition-colors"
+            className="inline-block bg-orange-500 hover:bg-orange-400 text-ink-950 font-bold px-6 py-3 rounded-xl transition-colors"
           >
             Analyze Your Shot
           </Link>
@@ -243,7 +243,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <div className="text-center pt-2">
             <Link
               href="/analyze"
-              className="inline-block bg-orange-500 hover:bg-orange-400 text-white font-bold px-8 py-3 rounded-xl transition-colors"
+              className="inline-block bg-orange-500 hover:bg-orange-400 text-ink-950 font-bold px-8 py-3 rounded-xl transition-colors"
             >
               + Analyze Another Shot
             </Link>
@@ -407,7 +407,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               {!isSubscribed && <BuyTokenButton isInApp={isInApp} initiated={onInitiatedTeam} />}
               <Link
                 href="/analyze"
-                className="bg-orange-500 hover:bg-orange-400 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-colors"
+                className="bg-orange-500 hover:bg-orange-400 text-ink-950 font-bold text-sm px-5 py-2.5 rounded-xl transition-colors"
               >
                 Analyze a Shot
               </Link>

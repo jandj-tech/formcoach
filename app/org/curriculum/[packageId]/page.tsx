@@ -83,7 +83,7 @@ export default async function CurriculumPage({ params }: Props) {
           <div className="space-y-4">
             {sessions.map((s) => (
               <div key={s.n} className="bg-white rounded-xl border border-gray-200 p-5 flex gap-5">
-                <div className="shrink-0 w-12 h-12 rounded-full bg-orange-500 text-white flex items-center justify-center font-black text-lg">
+                <div className="shrink-0 w-12 h-12 rounded-full bg-orange-500 text-ink-950 flex items-center justify-center font-black text-lg">
                   {s.n}
                 </div>
                 <div>

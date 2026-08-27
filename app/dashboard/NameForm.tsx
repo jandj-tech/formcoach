@@ -62,6 +62,7 @@ export default function NameForm({ currentFirstName, currentLastInitial }: Props
           type="text"
           required
           maxLength={100}
+          aria-label="First name"
           placeholder="First name"
           value={firstName}
           onChange={e => {
@@ -74,6 +75,7 @@ export default function NameForm({ currentFirstName, currentLastInitial }: Props
           type="text"
           required
           maxLength={1}
+          aria-label="Last initial"
           placeholder="Last initial"
           value={lastInitial}
           onChange={e => setLastInitial(e.target.value.toUpperCase())}
@@ -82,7 +84,7 @@ export default function NameForm({ currentFirstName, currentLastInitial }: Props
         <button
           type="submit"
           disabled={status === 'saving'}
-          className="shrink-0 bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-colors"
+          className="shrink-0 bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold px-5 py-2.5 rounded-xl text-sm transition-colors"
         >
           {status === 'saving' ? 'Saving…' : 'Save'}
         </button>

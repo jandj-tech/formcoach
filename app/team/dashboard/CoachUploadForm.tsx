@@ -60,7 +60,7 @@ export default function CoachUploadForm({ accessCode, members }: Props) {
       <button
         onClick={() => setOpen(true)}
         disabled={members.length === 0}
-        className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl transition-colors"
+        className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-ink-950 font-bold py-3 rounded-xl transition-colors"
       >
         {members.length === 0 ? 'No players have joined yet' : 'Upload Shot for a Player'}
       </button>
@@ -78,6 +78,7 @@ export default function CoachUploadForm({ accessCode, members }: Props) {
         <div className="space-y-3">
           <input
             type="text"
+            aria-label="Search by name..."
             placeholder="Search by name..."
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -129,7 +130,7 @@ export default function CoachUploadForm({ accessCode, members }: Props) {
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button
               onClick={() => router.push(`/results/${resultToken}`)}
-              className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-6 py-2.5 rounded-xl transition-colors text-sm"
+              className="bg-orange-500 hover:bg-orange-400 text-ink-950 font-bold px-6 py-2.5 rounded-xl transition-colors text-sm"
             >
               View Results
             </button>

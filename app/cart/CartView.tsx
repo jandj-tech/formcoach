@@ -176,7 +176,7 @@ export default function CartView() {
           <p className="text-white">Browse the shop and add some balls.</p>
           <Link
             href="/shop"
-            className="inline-block bg-orange-500 hover:bg-red-600 text-white font-bold px-8 py-3 rounded-xl text-sm transition-colors"
+            className="inline-block bg-orange-500 hover:bg-red-600 text-ink-950 font-bold px-8 py-3 rounded-xl text-sm transition-colors"
           >
             Go to shop
           </Link>
@@ -320,7 +320,7 @@ export default function CartView() {
         <button
           onClick={handleCheckout}
           disabled={loading || !destReady}
-          className="bg-orange-500 hover:bg-red-600 disabled:opacity-50 text-white font-bold px-8 py-4 rounded-xl text-base transition-colors w-full"
+          className="bg-orange-500 hover:bg-red-600 disabled:opacity-50 text-ink-950 font-bold px-8 py-4 rounded-xl text-base transition-colors w-full"
         >
           {loading
             ? 'Redirecting to checkout…'

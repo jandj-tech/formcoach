@@ -85,7 +85,7 @@ export default function TeamCoaches({
         <h2 className="text-xl font-black text-black">Coaches</h2>
         <button
           onClick={() => { setAddOpen(o => !o); reset() }}
-          className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+          className="bg-orange-500 hover:bg-orange-400 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors"
         >
           {addOpen ? 'Cancel' : 'Add Coach'}
         </button>
@@ -101,6 +101,7 @@ export default function TeamCoaches({
           </p>
           <input
             type="email"
+            aria-label="Coach email"
             placeholder="Coach email"
             value={email}
             onChange={e => setEmail(e.target.value)}
@@ -111,7 +112,7 @@ export default function TeamCoaches({
               type="button"
               onClick={() => addCoach('email')}
               disabled={loading}
-              className="flex-1 bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-2.5 rounded-xl text-sm transition-colors"
+              className="flex-1 bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold px-4 py-2.5 rounded-xl text-sm transition-colors"
             >
               {loading ? 'Working…' : 'Email the invite'}
             </button>

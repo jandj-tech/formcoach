@@ -64,7 +64,7 @@ export default async function OrganizationsPage() {
         <span className="text-sm text-white">
           <span className="text-orange-500 font-bold">{orgs.length}</span> total
           {pending.length > 0 && (
-            <span className="ml-3 bg-orange-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+            <span className="ml-3 bg-orange-500 text-ink-950 text-xs font-bold px-2 py-0.5 rounded-full">
               {pending.length} pending
             </span>
           )}

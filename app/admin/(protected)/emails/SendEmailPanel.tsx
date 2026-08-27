@@ -213,7 +213,7 @@ export default function SendEmailPanel() {
               <button
                 onClick={handleSend}
                 disabled={busy !== null || preview.recipientCount === 0}
-                className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-5 py-2 rounded-lg text-sm transition-colors"
+                className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold px-5 py-2 rounded-lg text-sm transition-colors"
               >
                 {busy === 'send' ? 'Sending…' : `Send to ${preview.recipientCount} recipient${preview.recipientCount !== 1 ? 's' : ''}`}
               </button>
@@ -234,7 +234,7 @@ export default function SendEmailPanel() {
         <div className="flex items-center gap-3 flex-wrap">
           <button
             onClick={() => { setOpen(true); setNotice(''); setError('') }}
-            className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-5 py-2.5 rounded-lg text-sm transition-colors"
+            className="bg-orange-500 hover:bg-orange-400 text-ink-950 font-bold px-5 py-2.5 rounded-lg text-sm transition-colors"
           >
             ✉️ Send Email
           </button>
@@ -260,7 +260,7 @@ export default function SendEmailPanel() {
                   title={a.hint}
                   className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
                     audience === a.id
-                      ? 'bg-orange-500 text-white'
+                      ? 'bg-orange-500 text-ink-950'
                       : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
                   }`}
                 >
@@ -292,7 +292,7 @@ export default function SendEmailPanel() {
                   onClick={() => applyPreset(p)}
                   className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
                     presetId === p.id
-                      ? 'bg-orange-500 text-white'
+                      ? 'bg-orange-500 text-ink-950'
                       : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
                   }`}
                 >
@@ -342,7 +342,7 @@ export default function SendEmailPanel() {
             <button
               onClick={handlePreview}
               disabled={busy !== null}
-              className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-5 py-2 rounded-lg text-sm transition-colors"
+              className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold px-5 py-2 rounded-lg text-sm transition-colors"
             >
               {busy === 'preview' ? 'Building preview…' : 'Preview & Send'}
             </button>

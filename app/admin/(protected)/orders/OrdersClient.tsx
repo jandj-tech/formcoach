@@ -168,7 +168,7 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
               <button
                 onClick={confirmShipped}
                 disabled={shipping}
-                className="flex-1 bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-2 rounded-lg text-sm transition-colors"
+                className="flex-1 bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold px-4 py-2 rounded-lg text-sm transition-colors"
               >
                 {shipping ? 'Marking shipped...' : `Mark ${selectedPendingBall.length} order${selectedPendingBall.length !== 1 ? 's' : ''} shipped`}
               </button>
@@ -191,7 +191,7 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
             <button
               onClick={openShippingModal}
               disabled={shipping || deleting}
-              className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-1.5 rounded-lg text-sm transition-colors"
+              className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold px-4 py-1.5 rounded-lg text-sm transition-colors"
             >
               {shipping ? 'Marking shipped...' : `Mark ${selectedPendingBall.length} as Shipped`}
             </button>

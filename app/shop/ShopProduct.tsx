@@ -444,10 +444,42 @@ function ShopAccordion({
 
 // The gallery media, in display order: hero product shot first, demo clips
 // after. All slides share one frame so the gallery reads as one even unit.
-const GALLERY_MEDIA: Array<{ type: 'image' | 'video'; src: string; label: string }> = [
-  { type: 'image', src: '/training-ball.png', label: 'Product photo' },
-  { type: 'video', src: '/ball-video-1.mp4', label: 'Demo video 1' },
-  { type: 'video', src: '/ball-video-2.mp4', label: 'Demo video 2' },
+/**
+ * `label` is the short name on the carousel buttons; `description` is the
+ * accessible name for the media itself.
+ *
+ * Both clips are silent, so WCAG 1.2.2 (Captions) does not apply — but SC 1.2.1
+ * still wants a text alternative for video-only content, and the <video>
+ * elements previously had no accessible name at all. A screen reader announced
+ * an unlabelled media player, and "Demo video 1" would have been no better.
+ */
+const GALLERY_MEDIA: Array<{
+  type: 'image' | 'video'
+  src: string
+  label: string
+  description: string
+}> = [
+  {
+    type: 'image',
+    src: '/training-ball.png',
+    label: 'Product photo',
+    description:
+      'The LearnHoops training basketball: black with white seams and the LearnHoops.com wordmark across one panel.',
+  },
+  {
+    type: 'video',
+    src: '/ball-video-1.mp4',
+    label: 'Ball rotating, logo side',
+    description:
+      'Silent clip. The black training ball turns slowly on a white stand, showing the LearnHoops.com wordmark and the edge of the red printed hand-placement guide above it.',
+  },
+  {
+    type: 'video',
+    src: '/ball-video-2.mp4',
+    label: 'Ball rotating, guide side',
+    description:
+      'Silent clip. The same ball keeps turning to show the printed shooting guide in full: a red hand outline with grey pads marking where each finger sits on the ball.',
+  },
 ]
 
 function MediaGallery() {
@@ -494,6 +526,7 @@ function MediaGallery() {
                     controls
                     preload="metadata"
                     playsInline
+                    aria-label={m.description}
                   >
                     <source src={`${m.src}#t=0.001`} type="video/mp4" />
                   </video>

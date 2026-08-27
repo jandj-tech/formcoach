@@ -136,13 +136,13 @@ export default function TeamChatPanel({ teamId, tall = false }: { teamId: string
             <div className="inline-flex rounded-lg border border-orange-300 overflow-hidden">
               <button
                 onClick={() => moderate('mode', { mode: 'coach-only' })}
-                className={`px-3 py-1.5 text-xs font-bold transition-colors ${state.chatMode === 'coach-only' ? 'bg-orange-500 text-white' : 'bg-white text-gray-600 hover:bg-orange-100'}`}
+                className={`px-3 py-1.5 text-xs font-bold transition-colors ${state.chatMode === 'coach-only' ? 'bg-orange-500 text-ink-950' : 'bg-white text-gray-600 hover:bg-orange-100'}`}
               >
                 🔒 Coach + allowed
               </button>
               <button
                 onClick={() => moderate('mode', { mode: 'everyone' })}
-                className={`px-3 py-1.5 text-xs font-bold transition-colors ${state.chatMode === 'everyone' ? 'bg-orange-500 text-white' : 'bg-white text-gray-600 hover:bg-orange-100'}`}
+                className={`px-3 py-1.5 text-xs font-bold transition-colors ${state.chatMode === 'everyone' ? 'bg-orange-500 text-ink-950' : 'bg-white text-gray-600 hover:bg-orange-100'}`}
               >
                 🟢 Everyone
               </button>
@@ -159,7 +159,7 @@ export default function TeamChatPanel({ teamId, tall = false }: { teamId: string
                   {state.members.map(m => (
                     <label
                       key={m.id}
-                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold cursor-pointer transition-colors ${m.allowed ? 'bg-orange-500 border-orange-500 text-white' : 'bg-white border-gray-300 text-gray-600 hover:border-orange-400'}`}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold cursor-pointer transition-colors ${m.allowed ? 'bg-orange-500 border-orange-500 text-ink-950' : 'bg-white border-gray-300 text-gray-600 hover:border-orange-400'}`}
                     >
                       <input
                         type="checkbox"
@@ -190,7 +190,7 @@ export default function TeamChatPanel({ teamId, tall = false }: { teamId: string
                     {m.senderName}
                   </p>
                 )}
-                <div className={`inline-block px-3.5 py-2 rounded-2xl text-left text-sm leading-relaxed ${m.mine ? 'bg-orange-500 text-white' : m.senderRole === 'coach' ? 'bg-orange-50 border border-orange-200 text-black' : 'bg-gray-100 text-black'}`}>
+                <div className={`inline-block px-3.5 py-2 rounded-2xl text-left text-sm leading-relaxed ${m.mine ? 'bg-orange-500 text-ink-950' : m.senderRole === 'coach' ? 'bg-orange-50 border border-orange-200 text-black' : 'bg-gray-100 text-black'}`}>
                   {m.body}
                 </div>
                 <p className="text-[10px] text-gray-300 mt-0.5">
@@ -223,7 +223,7 @@ export default function TeamChatPanel({ teamId, tall = false }: { teamId: string
           <button
             onClick={send}
             disabled={!draft.trim() || sending}
-            className="bg-orange-500 hover:bg-orange-400 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-colors"
+            className="bg-orange-500 hover:bg-orange-400 disabled:bg-gray-200 disabled:text-gray-400 text-ink-950 font-bold px-5 py-2.5 rounded-xl text-sm transition-colors"
           >
             {sending ? '…' : 'Send'}
           </button>

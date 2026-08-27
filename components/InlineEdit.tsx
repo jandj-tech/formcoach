@@ -94,7 +94,7 @@ export default function InlineEdit({
         type="button"
         onClick={save}
         disabled={saving}
-        className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold text-xs px-3 py-1.5 rounded-lg transition-colors"
+        className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold text-xs px-3 py-1.5 rounded-lg transition-colors"
       >
         {saving ? 'Saving…' : 'Save'}
       </button>

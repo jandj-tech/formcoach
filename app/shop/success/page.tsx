@@ -76,7 +76,7 @@ export default async function ShopSuccessPage({ searchParams }: { searchParams: 
           )}
           <Link
             href="/dashboard"
-            className="inline-block mt-4 bg-orange-500 hover:bg-red-600 text-white font-bold px-8 py-3 rounded-xl text-sm transition-colors"
+            className="inline-block mt-4 bg-orange-500 hover:bg-red-600 text-ink-950 font-bold px-8 py-3 rounded-xl text-sm transition-colors"
           >
             Go to dashboard
           </Link>

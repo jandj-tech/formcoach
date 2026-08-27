@@ -359,7 +359,7 @@ export default async function ResultsPage({
                     </p>
                     <Link
                       href="/shop"
-                      className="inline-block mt-2 bg-orange-500 hover:bg-red-600 text-white font-bold px-4 py-1.5 rounded-lg text-xs transition-colors"
+                      className="inline-block mt-2 bg-orange-500 hover:bg-red-600 text-ink-950 font-bold px-4 py-1.5 rounded-lg text-xs transition-colors"
                     >
                       Shop the Ball →
                     </Link>

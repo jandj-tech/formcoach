@@ -36,6 +36,7 @@ export default function CoachNicknameForm({ current }: { current: string | null 
         <input
           type="text"
           maxLength={100}
+          aria-label="e.g. Coach Mike"
           placeholder="e.g. Coach Mike"
           value={nickname}
           onChange={e => setNickname(e.target.value)}
@@ -44,7 +45,7 @@ export default function CoachNicknameForm({ current }: { current: string | null 
         <button
           type="submit"
           disabled={status === 'saving'}
-          className="shrink-0 bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-colors"
+          className="shrink-0 bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold px-5 py-2.5 rounded-xl text-sm transition-colors"
         >
           {status === 'saving' ? 'Saving…' : 'Save'}
         </button>

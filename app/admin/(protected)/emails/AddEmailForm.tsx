@@ -39,6 +39,7 @@ export default function AddEmailForm() {
       <input
         type="email"
         required
+        aria-label="Add an email address"
         placeholder="Add an email address"
         value={email}
         onChange={e => setEmail(e.target.value)}
@@ -47,7 +48,7 @@ export default function AddEmailForm() {
       <button
         type="submit"
         disabled={status === 'loading'}
-        className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-700 text-white font-bold px-4 py-2 rounded-lg text-sm transition-colors"
+        className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-700 text-ink-950 font-bold px-4 py-2 rounded-lg text-sm transition-colors"
       >
         {status === 'loading' ? 'Adding…' : 'Add email'}
       </button>

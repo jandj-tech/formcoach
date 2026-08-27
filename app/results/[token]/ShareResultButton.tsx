@@ -136,7 +136,7 @@ export default function ShareResultButton({ score }: { score: number | null }) {
               {canNativeShare && (
                 <button
                   onClick={nativeShare}
-                  className="flex-1 bg-orange-500 hover:bg-red-600 text-white font-bold py-2.5 rounded-xl text-sm transition-colors"
+                  className="flex-1 bg-orange-500 hover:bg-red-600 text-ink-950 font-bold py-2.5 rounded-xl text-sm transition-colors"
                 >
                   Share…
                 </button>

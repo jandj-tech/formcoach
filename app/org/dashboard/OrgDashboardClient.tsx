@@ -782,7 +782,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
             setAddStatus('idle')
             setAddError('')
           }}
-          className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+          className="bg-orange-500 hover:bg-orange-400 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors"
         >
           {addOpen ? 'Cancel' : 'Add Team'}
         </button>
@@ -793,6 +793,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
           <input
             type="text"
             required
+            aria-label="Team name (e.g. Westside Hawks)"
             placeholder="Team name (e.g. Westside Hawks)"
             value={newName}
             onChange={e => setNewName(e.target.value)}
@@ -800,6 +801,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
           />
           <input
             type="text"
+            aria-label="Age group (optional) — e.g. U14, Varsity, JV"
             placeholder="Age group (optional) — e.g. U14, Varsity, JV"
             value={newAgeGroup}
             onChange={e => setNewAgeGroup(e.target.value)}
@@ -807,6 +809,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
           />
           <input
             type="email"
+            aria-label="Coach email — leave blank to coach it yourself"
             placeholder="Coach email — leave blank to coach it yourself"
             value={newCoachEmail}
             onChange={e => setNewCoachEmail(e.target.value)}
@@ -814,6 +817,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
           />
           <input
             type="text"
+            aria-label="Coach name (shown as the coach)"
             placeholder="Coach name (shown as the coach)"
             value={newCoachName}
             onChange={e => setNewCoachName(e.target.value)}
@@ -834,7 +838,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
           <button
             type="submit"
             disabled={addStatus === 'loading' || addStatus === 'success'}
-            className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+            className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors"
           >
             {addStatus === 'loading'
               ? 'Adding team...'
@@ -996,6 +1000,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                               <div className="space-y-2 bg-white border border-gray-200 rounded-xl p-4">
                                 <input
                                   type="text"
+                                  aria-label="First name *"
                                   placeholder="First name *"
                                   value={enrollFirstName}
                                   onChange={e => setEnrollFirstName(e.target.value)}
@@ -1003,6 +1008,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                                 />
                                 <input
                                   type="text"
+                                  aria-label="Last name initial (optional)"
                                   placeholder="Last name initial (optional)"
                                   value={enrollLastInit}
                                   onChange={e => setEnrollLastInit(e.target.value)}
@@ -1010,6 +1016,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                                 />
                                 <input
                                   type="text"
+                                  aria-label="Player account ID (optional — links to their login)"
                                   placeholder="Player account ID (optional — links to their login)"
                                   value={enrollUserId}
                                   onChange={e => setEnrollUserId(e.target.value)}
@@ -1020,7 +1027,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                                 <button
                                   onClick={() => handleEnroll(pkg.id)}
                                   disabled={enrolling || enrollSuccess}
-                                  className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+                                  className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors"
                                 >
                                   {enrolling ? 'Enrolling...' : 'Enroll Player'}
                                 </button>
@@ -1385,7 +1392,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                                         onClick={() => setTeamAssignEach(prev => ({ ...prev, [team.id]: q }))}
                                         className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-colors ${
                                           each === q
-                                            ? 'bg-orange-500 text-white'
+                                            ? 'bg-orange-500 text-ink-950'
                                             : 'bg-white border border-gray-300 text-black hover:border-orange-400'
                                         }`}
                                       >
@@ -1440,7 +1447,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                                 <button
                                   onClick={() => assignTeamCreditsToPlayers(team.id, team.credits)}
                                   disabled={isAssignBusy || selectedIds.length === 0 || totalNeeded > team.credits}
-                                  className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+                                  className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors"
                                 >
                                   {isAssignBusy ? 'Assigning…' : `Assign ${totalNeeded} credit${totalNeeded !== 1 ? 's' : ''}`}
                                 </button>
@@ -1529,7 +1536,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                           <button
                             onClick={() => handleBuy(team)}
                             disabled={buying}
-                            className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold py-2.5 rounded-xl text-sm transition-colors"
+                            className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold py-2.5 rounded-xl text-sm transition-colors"
                           >
                             {buying ? 'Redirecting...' : 'Buy Tokens'}
                           </button>
@@ -1634,7 +1641,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
             <div className="flex justify-end">
               <Link
                 href="/analyze"
-                className="shrink-0 bg-orange-500 hover:bg-orange-400 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors"
+                className="shrink-0 bg-orange-500 hover:bg-orange-400 text-ink-950 font-bold text-sm px-4 py-2 rounded-xl transition-colors"
               >
                 Analyze a shot →
               </Link>
@@ -1892,7 +1899,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
               type="button"
               onClick={quickSend}
               disabled={quickSendBusy || !quickSendTo || quickSendQty < 1 || quickSendQty > orgTokenBalance}
-              className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+              className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors"
             >
               {quickSendBusy ? 'Sending…' : 'Send'}
             </button>

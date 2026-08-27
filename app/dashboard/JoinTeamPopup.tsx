@@ -86,7 +86,7 @@ export default function JoinTeamPopup({
           {status === 'error' && (
             <button
               onClick={dismiss}
-              className="bg-orange-500 hover:bg-orange-400 text-white font-bold py-2.5 px-5 rounded-xl transition-colors"
+              className="bg-orange-500 hover:bg-orange-400 text-ink-950 font-bold py-2.5 px-5 rounded-xl transition-colors"
             >
               Close
             </button>
@@ -112,6 +112,7 @@ export default function JoinTeamPopup({
           <input
             type="text"
             required
+            aria-label="First name"
             placeholder="First name"
             value={firstName}
             onChange={(e) => {
@@ -124,6 +125,7 @@ export default function JoinTeamPopup({
             type="text"
             required
             maxLength={1}
+            aria-label="Last name initial"
             placeholder="Last name initial"
             value={lastInitial}
             onChange={(e) => setLastInitial(e.target.value.toUpperCase())}
@@ -141,7 +143,7 @@ export default function JoinTeamPopup({
             <button
               type="submit"
               disabled={status === 'loading'}
-              className="flex-1 bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold py-3 rounded-xl transition-colors"
+              className="flex-1 bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold py-3 rounded-xl transition-colors"
             >
               {status === 'loading' ? 'Joining…' : 'Save & Join'}
             </button>

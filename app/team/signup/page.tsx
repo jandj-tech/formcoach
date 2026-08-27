@@ -72,6 +72,7 @@ export default function TeamSignupPage() {
             <input
               type="text"
               required
+              aria-label="Team name (e.g. Westside Hawks)"
               placeholder="Team name (e.g. Westside Hawks)"
               value={teamName}
               onChange={e => setTeamName(e.target.value)}
@@ -80,6 +81,7 @@ export default function TeamSignupPage() {
             <input
               type="email"
               required
+              aria-label="Coach email"
               placeholder="Coach email"
               value={email}
               onChange={e => setEmail(e.target.value)}
@@ -88,18 +90,21 @@ export default function TeamSignupPage() {
             <PasswordInput
               required
               minLength={6}
+              aria-label="Password (6+ characters)"
               placeholder="Password (6+ characters)"
               value={password}
               onChange={e => setPassword(e.target.value)}
             />
             <PasswordInput
               required
+              aria-label="Confirm password"
               placeholder="Confirm password"
               value={confirm}
               onChange={e => setConfirm(e.target.value)}
             />
             <input
               type="text"
+              aria-label="Org code — leave blank if none"
               placeholder="Org code — leave blank if none"
               value={orgCode}
               onChange={e => setOrgCode(e.target.value)}
@@ -107,6 +112,7 @@ export default function TeamSignupPage() {
             />
             <input
               type="text"
+              aria-label="Age group, e.g. U14, Varsity"
               placeholder="Age group, e.g. U14, Varsity"
               value={ageGroup}
               onChange={e => setAgeGroup(e.target.value)}
@@ -116,7 +122,7 @@ export default function TeamSignupPage() {
             <button
               type="submit"
               disabled={status === 'loading'}
-              className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold py-3 rounded-xl transition-colors"
+              className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold py-3 rounded-xl transition-colors"
             >
               {status === 'loading' ? 'Creating team...' : 'Create Team'}
             </button>
@@ -124,7 +130,7 @@ export default function TeamSignupPage() {
 
           <p className="text-center text-sm text-gray-500">
             Already have a team account?{' '}
-            <a href="/login" className="text-orange-500 hover:underline font-medium">Log in</a>
+            <a href="/login" className="text-orange-700 hover:underline font-medium">Log in</a>
           </p>
         </div>
       </div>

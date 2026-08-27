@@ -212,7 +212,7 @@ export default function CoachAssignPanel({
             type="button"
             onClick={assign}
             disabled={busy || selectedIds.length === 0 || tooLow}
-            className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+            className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors"
           >
             {busy
               ? 'Giving…'

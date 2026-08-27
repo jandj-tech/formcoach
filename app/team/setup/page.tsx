@@ -82,7 +82,7 @@ function TeamSetupForm() {
               <button
                 type="submit"
                 disabled={status === 'loading' || status === 'success'}
-                className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold py-3 rounded-xl transition-colors"
+                className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold py-3 rounded-xl transition-colors"
               >
                 {status === 'loading' || status === 'success' ? 'Setting up...' : 'Set Password'}
               </button>

@@ -98,7 +98,7 @@ export default function OrgApplicationsClient({ initialApplications }: { initial
       <h2 className="text-lg font-black text-white mb-3">
         Applications
         {pending.length > 0 && (
-          <span className="ml-2 bg-orange-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">{pending.length} pending</span>
+          <span className="ml-2 bg-orange-500 text-ink-950 text-xs font-bold px-2 py-0.5 rounded-full">{pending.length} pending</span>
         )}
       </h2>
 
@@ -128,7 +128,7 @@ export default function OrgApplicationsClient({ initialApplications }: { initial
                       <button
                         onClick={() => handleApprove(a.id)}
                         disabled={sending === a.id}
-                        className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+                        className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors"
                       >
                         {sending === a.id ? 'Approving…' : 'Approve & send link'}
                       </button>

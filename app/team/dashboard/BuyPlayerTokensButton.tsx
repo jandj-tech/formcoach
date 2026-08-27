@@ -78,7 +78,7 @@ export default function BuyPlayerTokensButton({ players, teamCode }: Props) {
             onClick={() => setQuantity(q)}
             className={`px-3 py-1 rounded-lg text-sm font-bold transition-colors ${
               quantity === q
-                ? 'bg-orange-500 text-white'
+                ? 'bg-orange-500 text-ink-950'
                 : 'bg-white border border-gray-300 text-black hover:border-orange-400'
             }`}
           >
@@ -122,7 +122,7 @@ export default function BuyPlayerTokensButton({ players, teamCode }: Props) {
       <button
         onClick={buy}
         disabled={buying || selectedIds.length === 0}
-        className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+        className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors"
       >
         {buying
           ? 'Redirecting...'

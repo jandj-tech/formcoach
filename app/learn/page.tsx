@@ -119,7 +119,7 @@ export default async function LearnPage() {
           <h2 className="text-2xl sm:text-3xl font-black text-white mb-3">Ready to see your score?</h2>
           <Link
             href="/analyze"
-            className="inline-block bg-orange-500 hover:bg-red-600 text-white font-bold px-8 py-3 rounded-xl text-base transition-colors"
+            className="inline-block bg-orange-500 hover:bg-red-600 text-ink-950 font-bold px-8 py-3 rounded-xl text-base transition-colors"
           >
             Analyze your shot →
           </Link>

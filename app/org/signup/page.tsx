@@ -121,7 +121,7 @@ function OrgSignupInner() {
               <button
                 type="submit"
                 disabled={status === 'loading'}
-                className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-black py-3 rounded-xl transition-colors"
+                className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-black py-3 rounded-xl transition-colors"
               >
                 {status === 'loading' ? 'Creating account…' : 'Create account'}
               </button>
@@ -201,7 +201,7 @@ function OrgSignupInner() {
             <button
               type="submit"
               disabled={status === 'loading'}
-              className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-black py-3 rounded-xl transition-colors"
+              className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-black py-3 rounded-xl transition-colors"
             >
               {status === 'loading' ? 'Submitting…' : 'Submit application'}
             </button>

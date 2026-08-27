@@ -26,15 +26,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Missing code' }, { status: 400 })
   }
 
-  const user = await redeemLoginCode(code)
-  if (!user) {
-    return NextResponse.json({ error: 'That sign-in link has expired. Please try again.' }, { status: 400 })
-  }
+  try {
+    const user = await redeemLoginCode(code)
+    if (!user) {
+      return NextResponse.json({ error: 'That sign-in link has expired. Please try again.' }, { status: 400 })
+    }
 
-  const token = await signSession({ userId: user.id, email: user.email })
-  const res = NextResponse.json({ success: true, token })
-  // The app reads `token`; the cookie is set as well so the same endpoint works
-  // from a browser without a second round trip.
-  res.cookies.set(sessionCookieOptions(token))
-  return res
+    const token = await signSession({ userId: user.id, email: user.email })
+    const res = NextResponse.json({ success: true, token })
+    // The app reads `token`; the cookie is set as well so the same endpoint
+    // works from a browser without a second round trip.
+    res.cookies.set(sessionCookieOptions(token))
+    return res
+  } catch (err) {
+    // Reached when oauth_login_codes is missing (migration not applied) or the
+    // database is unreachable. The app shows whatever `error` says, so an
+    // unhandled throw would surface to the player as a blank failure with
+    // nothing in the log to explain it.
+    console.error('OAuth code exchange failed:', err)
+    return NextResponse.json({ error: 'Sign-in failed. Please try again.' }, { status: 500 })
+  }
 }

@@ -1,4 +1,5 @@
 import Image from 'next/image'
+import SectionBreak from '@/components/SectionBreak'
 import { regionFromServerHeaders } from '@/lib/region'
 import { readyGear, amazonUrl } from './gear'
 
@@ -21,9 +22,10 @@ export default async function GearWeLike() {
   if (gear.length === 0) return null
 
   return (
-    <section id="gear-we-like" className="px-4 pt-4 pb-16 scroll-mt-20">
+    <>
+      <SectionBreak label="Gear we like" />
+      <section id="gear-we-like" className="bg-ink-950 px-4 py-16 sm:py-20 scroll-mt-20">
       <div className="max-w-6xl mx-auto">
-        <p className="eyebrow text-ember-400 mb-2 select-none">Gear we like</p>
         <h2 className="font-display font-black uppercase text-[clamp(1.6rem,3.5vw,2.4rem)] text-chalk leading-[0.95]">
           The rest of the <span className="text-gradient-ember">kit bag</span>
         </h2>
@@ -43,8 +45,13 @@ export default async function GearWeLike() {
 
         {/* Full-bleed on mobile so the shelf visibly runs off the edge and
             reads as scrollable without a hint arrow. */}
+        {/* items-start, not the default stretch: only some listings have a
+            photo, and stretching every card to match the tallest left ~300px
+            of dead space inside the ones without. Cards now take their natural
+            height, which on a horizontal shelf reads fine — each is read on
+            its own, not compared down a column. */}
         <ul
-          className="flex gap-4 mt-6 overflow-x-auto snap-x snap-mandatory pb-4 -mx-4 px-4 sm:mx-0 sm:px-0"
+          className="flex items-start gap-4 mt-6 overflow-x-auto snap-x snap-mandatory pb-4 -mx-4 px-4 sm:mx-0 sm:px-0"
           style={{ scrollbarWidth: 'thin' }}
         >
           {gear.map((item) => (
@@ -58,6 +65,15 @@ export default async function GearWeLike() {
                 rel="sponsored nofollow noopener noreferrer"
                 className="group flex flex-col gap-3 w-full bg-ink-900/60 border border-courtline hover:border-ember-500/60 rounded-2xl p-5 transition-colors"
               >
+                <span className="text-zinc-400 text-xs font-semibold tracking-wider uppercase">
+                  {item.kind}
+                </span>
+                <span className="text-white font-bold text-lg leading-tight">
+                  {item.name}
+                </span>
+                <span className="text-chalk-dim text-sm leading-relaxed">
+                  {item.blurb}
+                </span>
                 {/* Product shots come on white, so the tile is white on
                     purpose — an off-white would show a seam. Fixed aspect and
                     object-contain so an uncropped portrait photo cannot make
@@ -89,15 +105,6 @@ export default async function GearWeLike() {
                     ))}
                   </span>
                 )}
-                <span className="text-zinc-400 text-xs font-semibold tracking-wider uppercase">
-                  {item.kind}
-                </span>
-                <span className="text-white font-bold text-lg leading-tight">
-                  {item.name}
-                </span>
-                <span className="text-chalk-dim text-sm leading-relaxed flex-1">
-                  {item.blurb}
-                </span>
                 <span className="inline-flex items-center gap-1.5 text-ember-400 text-sm font-bold mt-1">
                   View on Amazon
                   <span aria-hidden="true" className="transition-transform group-hover:translate-x-0.5">
@@ -114,6 +121,7 @@ export default async function GearWeLike() {
           ))}
         </ul>
       </div>
-    </section>
+      </section>
+    </>
   )
 }

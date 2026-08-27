@@ -8,6 +8,7 @@ import { useCart } from '@/lib/cart'
 import type { Variant, Size } from '@/lib/cart'
 import QuantityStepper from '@/components/QuantityStepper'
 import TokenPacks from './TokenPacks'
+import SectionBreak from '@/components/SectionBreak'
 
 const SIZES: { value: Size; inches: string; label: string }[] = [
   { value: '5', inches: '27.5"', label: 'Youth' },
@@ -69,7 +70,7 @@ export default function ShopProduct({
     <div className="flex-1">
       {/* Shop header — names every product up front with jump links, so
           nothing further down the page gets missed */}
-      <section className="px-4 pt-10 sm:pt-14">
+      <section className="px-4 pt-10 pb-12 sm:pt-14 sm:pb-14">
         <div className="max-w-6xl mx-auto">
           <p className="eyebrow text-ember-400 mb-3 select-none">The LearnHoops shop</p>
           <h1 className="font-display font-black uppercase text-[clamp(2rem,5vw,3.5rem)] text-chalk leading-[0.95]">
@@ -88,12 +89,6 @@ export default function ShopProduct({
             >
               Shot Analysis
             </a>
-            <a
-              href="#portable-net"
-              className="shrink-0 bg-ink-900 border border-courtline hover:border-ember-500/60 text-chalk text-sm font-bold px-5 py-2.5 rounded-full transition-colors"
-            >
-              Portable Net <span className="text-ember-400">· coming soon</span>
-            </a>
             {hasGear && (
               <a
                 href="#gear-we-like"
@@ -108,9 +103,9 @@ export default function ShopProduct({
 
       {/* Analysis tokens — the shop's top seller leads the page. Dark like
           the rest of the store; the ball hero follows immediately below. */}
-      <section id="analysis-tokens" className="px-4 pt-8 pb-12 scroll-mt-20">
+      <SectionBreak label="Analysis tokens" />
+      <section id="analysis-tokens" className="px-4 pt-6 pb-20 sm:pb-28 scroll-mt-20">
         <div className="max-w-6xl mx-auto">
-          <p className="eyebrow text-ember-400 mb-2 select-none">Analysis tokens</p>
           <h2 className="font-display font-black uppercase text-[clamp(1.6rem,3.5vw,2.4rem)] text-chalk leading-[0.95]">
             Get your shot <span className="text-gradient-ember">analyzed</span>
           </h2>
@@ -123,7 +118,8 @@ export default function ShopProduct({
       </section>
 
       {/* Product hero: sticky gallery left, buy box card right */}
-      <section id="training-ball" className="hero-glow grain relative px-4 pt-10 pb-14 sm:pt-14 sm:pb-20 scroll-mt-20">
+      <SectionBreak label="The training ball" />
+      <section id="training-ball" className="hero-glow grain relative px-4 pt-6 pb-20 sm:pb-28 scroll-mt-20">
         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
           {/* Media gallery — product photo plus the two demo clips in one
               even-sized carousel; sticky so it stays in view while the buy
@@ -354,47 +350,6 @@ export default function ShopProduct({
         </section>
       )}
 
-      {/* Portable net — full product section, coming soon */}
-      <section id="portable-net" className="bg-ink-900 border-y border-courtline px-4 py-16 sm:py-20 scroll-mt-20">
-        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
-          {/* Visual placeholder until launch photos arrive */}
-          <div className="grain relative overflow-hidden bg-ink-950 border border-courtline rounded-3xl aspect-[4/3] flex flex-col items-center justify-center gap-4 select-none">
-            <span className="inline-flex items-center gap-2 bg-ember-500/10 border border-ember-500/30 rounded-full px-4 py-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-ember-500 animate-pulse" aria-hidden />
-              <span className="text-ember-400 eyebrow">Coming soon</span>
-            </span>
-            <p className="wordmark-outline font-display font-black uppercase leading-none text-[clamp(2.6rem,7vw,4.5rem)]">
-              The Net
-            </p>
-            <p className="text-chalk-dim text-xs">Photos land with the launch</p>
-          </div>
-
-          <div className="space-y-5">
-            <p className="eyebrow text-ember-400 select-none">Next up in the shop</p>
-            <h2 className="font-display font-black uppercase text-[clamp(1.9rem,4vw,3rem)] text-chalk leading-[0.95]">
-              Throw-On <span className="text-gradient-ember">Portable Net</span>
-            </h2>
-            <p className="text-chalk-dim leading-relaxed">
-              Bring the home-court feel to any outdoor hoop. A mesh net that throws
-              straight onto the rim and stays put — rain or shine.
-            </p>
-            <ul className="space-y-2.5">
-              {[
-                'Throws onto any rim in seconds',
-                'No tools, no ladder',
-                'All-weather, rainproof mesh',
-                'Fits standard outdoor rims',
-              ].map((item) => (
-                <li key={item} className="flex items-center gap-3 text-chalk text-sm sm:text-base">
-                  <span className="text-ember-500 font-black select-none" aria-hidden>✓</span>
-                  {item}
-                </li>
-              ))}
-            </ul>
-            <p className="text-chalk-dim text-sm">Launching soon — keep an eye on this page.</p>
-          </div>
-        </div>
-      </section>
     </div>
   )
 }

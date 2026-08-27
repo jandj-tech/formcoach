@@ -271,31 +271,31 @@ export default async function HomePage() {
               </div>
             </Link>
 
-            {/* Portable net — coming soon */}
+            {/* Gear we like — fills the slot the retired portable-net card left
+                in this two-up grid, and points at the shelf that replaced it.
+                Links internally to /shop, never straight out to Amazon, so no
+                affiliate disclosure belongs on this page. */}
             <Link
-              href="/shop#portable-net"
+              href="/shop#gear-we-like"
               className="card-lift group bg-ink-900 border border-courtline rounded-2xl overflow-hidden flex flex-col"
             >
-              <div className="grain relative aspect-[4/3] flex flex-col items-center justify-center gap-3 select-none">
-                <span className="inline-flex items-center gap-2 bg-ember-500/10 border border-ember-500/30 rounded-full px-4 py-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-ember-500 animate-pulse" aria-hidden />
-                  <span className="text-ember-400 eyebrow">Coming soon</span>
-                </span>
-                <p className="wordmark-outline font-display font-black uppercase leading-none text-[clamp(2.2rem,6vw,3.5rem)]">
-                  The Net
+              <div className="relative aspect-[4/3] bg-ink-950 flex items-center justify-center px-6">
+                <p className="wordmark-outline font-display font-black uppercase leading-[0.85] text-center text-[clamp(1.8rem,5vw,2.8rem)] select-none">
+                  The rest of<br />the kit bag
                 </p>
               </div>
               <div className="p-6 flex items-start justify-between gap-4 flex-1">
                 <div>
                   <h3 className="font-display font-bold uppercase text-lg text-chalk leading-tight">
-                    Throw-On Portable Net
+                    Gear We Like
                   </h3>
                   <p className="text-chalk-dim text-sm mt-1.5 leading-relaxed">
-                    All-weather mesh that throws onto any rim in seconds — no tools, no ladder.
+                    Training aids, a ball return and a pump we actually use — the things we
+                    don&apos;t make.
                   </p>
                 </div>
                 <span className="text-ember-400 group-hover:text-ember-500 text-sm font-bold shrink-0 transition-colors">
-                  Preview →
+                  See the shelf →
                 </span>
               </div>
             </Link>

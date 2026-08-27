@@ -20,7 +20,7 @@ const bestTeamDiscount = TEAM_VOLUME_TIERS.reduce(
 export const metadata: Metadata = {
   title: 'Basketball Team & Organization Shot Analysis | LearnHoops',
   description:
-    'AI basketball shot analysis for teams and organizations — coach dashboards, rosters, player rankings, improvement tracking, and team pricing from $1.49 per analysis.',
+    'AI basketball shot analysis for teams and organizations — coach dashboards, rosters, player rankings, improvement tracking, and team pricing of $2.49 per analysis, dropping to $1.49 each at 5+.',
   alternates: { canonical: '/team' },
 }
 

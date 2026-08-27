@@ -5,7 +5,9 @@ import { resolveBaseUrl } from './base-url'
 // Renders the branded template and sends via Resend's batch API in chunks of
 // 100 so even a large list finishes within a serverless timeout.
 
-const FROM = process.env.EMAIL_FROM || 'LearnHoops <noreply@learnhoops.com>'
+// Admin broadcasts are bulk mail, so they ride the marketing sender and its
+// separate reputation. Replies go to a mailbox a human reads.
+import { MARKETING_FROM, SUPPORT_ADDRESS } from './email-senders'
 
 const BASE_URL = resolveBaseUrl()
 
@@ -121,9 +123,9 @@ export async function sendBroadcast(content: BroadcastContent, recipients: Broad
   for (let i = 0; i < recipients.length; i += 100) {
     const chunk = recipients.slice(i, i + 100)
     const payloads = chunk.map(r => ({
-      from: FROM,
+      from: MARKETING_FROM,
       to: r.email,
-      replyTo: 'noreply@learnhoops.com',
+      replyTo: SUPPORT_ADDRESS,
       subject: personalize(content.subject, r.name),
       headers: {
         'List-Unsubscribe': `<${BASE_URL}/unsubscribe?email=${encodeURIComponent(r.email)}>`,

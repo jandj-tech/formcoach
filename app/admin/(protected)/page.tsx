@@ -4,7 +4,12 @@ export default async function AdminDashboard() {
   const [counts] = await db`
     SELECT
       (SELECT COUNT(*) FROM submissions WHERE status = 'complete') as total_analyses,
-      (SELECT COUNT(*) FROM email_list WHERE unsubscribed_at IS NULL) as active_emails,
+      -- Mailable, not merely subscribed: a hard-bounced or complained
+      -- address is excluded here exactly as the send crons exclude it.
+      (SELECT COUNT(*) FROM email_list
+        WHERE unsubscribed_at IS NULL
+          AND bounced_at IS NULL
+          AND complained_at IS NULL) as active_emails,
       (SELECT COUNT(*) FROM criterion_scores WHERE admin_score IS NOT NULL) as learn_corrections,
       -- Separate from learn_corrections on purpose: that one must keep meaning
       -- "owner corrections that steer the grader".

@@ -5,7 +5,7 @@ import SendEmailPanel from './SendEmailPanel'
 
 export default async function EmailsPage() {
   const emails = (await db`
-    SELECT id, email, created_at, unsubscribed_at, marketing_emails_sent
+    SELECT id, email, created_at, unsubscribed_at, bounced_at, complained_at, marketing_emails_sent
     FROM email_list
     ORDER BY created_at DESC
     LIMIT 500
@@ -14,11 +14,17 @@ export default async function EmailsPage() {
     email: string
     created_at: string
     unsubscribed_at: string | null
+    bounced_at: string | null
+    complained_at: string | null
     marketing_emails_sent: number
   }>
 
-  const active = emails.filter((e) => !e.unsubscribed_at)
-  const unsub = emails.filter((e) => e.unsubscribed_at)
+  // "Active" means mailable. An address that hard-bounced or reported us is
+  // neither active nor unsubscribed -- it is suppressed, and counting it as
+  // active would overstate the list every send.
+  const active = emails.filter((e) => !e.unsubscribed_at && !e.bounced_at && !e.complained_at)
+  const unsub = emails.filter((e) => e.unsubscribed_at && !e.bounced_at && !e.complained_at)
+  const suppressed = emails.filter((e) => e.bounced_at || e.complained_at)
 
   return (
     <div className="space-y-6">
@@ -27,6 +33,7 @@ export default async function EmailsPage() {
         <div className="flex gap-4 text-sm text-white">
           <span><span className="text-orange-500 font-bold">{active.length}</span> active</span>
           <span><span className="text-white font-bold">{unsub.length}</span> unsubscribed</span>
+          <span><span className="text-red-400 font-bold">{suppressed.length}</span> suppressed</span>
         </div>
       </div>
 
@@ -71,7 +78,11 @@ export default async function EmailsPage() {
                     {new Date(e.created_at).toLocaleDateString()}
                   </td>
                   <td className="px-5 py-3">
-                    {e.unsubscribed_at ? (
+                    {e.complained_at ? (
+                      <span className="text-xs bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full">Spam report</span>
+                    ) : e.bounced_at ? (
+                      <span className="text-xs bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full">Bounced</span>
+                    ) : e.unsubscribed_at ? (
                       <span className="text-xs bg-zinc-800 text-white px-2 py-0.5 rounded-full">Unsubscribed</span>
                     ) : (
                       <span className="text-xs bg-green-500/10 text-orange-500 px-2 py-0.5 rounded-full">Active</span>

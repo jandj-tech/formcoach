@@ -19,10 +19,21 @@ export type Audience = 'all' | 'players' | 'coaches' | 'orgs' | 'single'
 
 // Resolve an audience to subscribed recipients with a best-effort name for
 // the {{name}} token (player first name/nickname, coach nickname, org name).
-// Everything intersects email_list WHERE unsubscribed_at IS NULL, so an
-// unsubscribe is always honored no matter which audience is picked.
+// Everything intersects the `sendable` predicate below, so an unsubscribe, a
+// hard bounce and a spam complaint are all honored no matter which audience is
+// picked.
 async function resolveRecipients(audience: Audience, singleEmail?: string): Promise<BroadcastRecipient[]> {
   type Row = { email: string; name: string | null }
+
+  // Who may receive bulk mail. Every audience below intersects this, so an
+  // unsubscribe, a hard bounce and a spam complaint are all honored no matter
+  // which audience the admin picks -- previously each branch carried its own
+  // copy of "unsubscribed_at IS NULL" and none of them knew about bounces.
+  const sendable = db`
+    el.unsubscribed_at IS NULL
+    AND el.bounced_at IS NULL
+    AND el.complained_at IS NULL
+  `
 
   // Best-effort display name for any address, in priority order:
   // player first name → player nickname → coach nickname → org name.
@@ -40,7 +51,7 @@ async function resolveRecipients(audience: Audience, singleEmail?: string): Prom
     if (!email) return []
     return (await db`
       SELECT el.email, ${nameSql} AS name FROM email_list el
-      WHERE el.email = ${email} AND el.unsubscribed_at IS NULL
+      WHERE el.email = ${email} AND ${sendable}
     `) as unknown as Row[]
   }
 
@@ -48,14 +59,14 @@ async function resolveRecipients(audience: Audience, singleEmail?: string): Prom
     return (await db`
       SELECT DISTINCT el.email, ${nameSql} AS name FROM email_list el
       JOIN users u ON LOWER(u.email) = el.email
-      WHERE el.unsubscribed_at IS NULL
+      WHERE ${sendable}
     `) as unknown as Row[]
   }
 
   if (audience === 'coaches') {
     return (await db`
       SELECT DISTINCT el.email, ${nameSql} AS name FROM email_list el
-      WHERE el.unsubscribed_at IS NULL
+      WHERE ${sendable}
         AND (
           EXISTS (SELECT 1 FROM teams t WHERE LOWER(t.admin_email) = el.email)
           OR EXISTS (SELECT 1 FROM team_coaches tc WHERE LOWER(tc.email) = el.email)
@@ -67,13 +78,13 @@ async function resolveRecipients(audience: Audience, singleEmail?: string): Prom
     return (await db`
       SELECT DISTINCT el.email, ${nameSql} AS name FROM email_list el
       JOIN organizations o ON LOWER(o.admin_email) = el.email
-      WHERE el.unsubscribed_at IS NULL
+      WHERE ${sendable}
     `) as unknown as Row[]
   }
 
   return (await db`
     SELECT el.email, ${nameSql} AS name FROM email_list el
-    WHERE el.unsubscribed_at IS NULL
+    WHERE ${sendable}
   `) as unknown as Row[]
 }
 

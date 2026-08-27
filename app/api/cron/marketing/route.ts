@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { activeDripRecipients } from '@/lib/email-list'
 import { requireEnv, safeEqual } from '@/lib/env'
 import { sendNextMarketingEmail } from '@/lib/email'
 
@@ -14,12 +15,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const eligible = await db`
-    SELECT email, marketing_emails_sent
-    FROM email_list
-    WHERE unsubscribed_at IS NULL
-    AND marketing_emails_sent < 5
-  `
+  // 5 is the length of the drip sequence in lib/email.ts. The shared filter
+  // also drops hard bounces and anyone who reported us as spam.
+  const DRIP_LENGTH = 5
+  const eligible = await activeDripRecipients(DRIP_LENGTH)
 
   let sent = 0
   let failed = 0

@@ -5,11 +5,11 @@ function getResend() {
   return new Resend(process.env.RESEND_API_KEY!)
 }
 
-// Override via Vercel env var EMAIL_FROM. Default is the verified-domain
-// noreply address. The sending domain (learnhoops.com) must be verified in
-// the Resend dashboard before this address will deliver — until then, fall
-// back to `onboarding@resend.dev` by setting EMAIL_FROM to it.
-const FROM = process.env.EMAIL_FROM || 'LearnHoops <noreply@learnhoops.com>'
+// Sender addresses live in one place — see lib/email-senders.ts for why
+// transactional and marketing must not share a From address. The sending
+// domain must be verified in the Resend dashboard before an address will
+// deliver; until then, set EMAIL_FROM to `onboarding@resend.dev`.
+import { FROM, MARKETING_FROM, SUPPORT_ADDRESS } from './email-senders'
 
 export const BASE_URL = resolveBaseUrl()
 
@@ -24,7 +24,7 @@ export async function sendResultsEmail(to: string, token: string) {
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,
-    replyTo: 'noreply@learnhoops.com',
+    replyTo: SUPPORT_ADDRESS,
     subject: 'Your shot analysis is ready',
     headers: {
       'List-Unsubscribe': `<${unsubscribe}>`,
@@ -109,127 +109,216 @@ export async function sendResultsEmail(to: string, token: string) {
   console.log('[email] sent results email:', data?.id, 'to:', to, 'from:', FROM)
 }
 
+// The 5-email drip, in order. Each entry carries BOTH a plain-text and an HTML
+// body on purpose: a message whose text part does not match its HTML — or is a
+// stub telling the reader to switch clients — is itself a spam signal, and this
+// array was the only place in the file that shipped one. getText mirrors
+// getHtml, so if you edit one, edit both.
+//
+// Subject lines here are deliberately flat. "Last chance", "It's here", emoji,
+// and manufactured scarcity are the phrase clusters bulk filters score hardest,
+// and this list is people who uploaded one shot video — not a warm audience
+// that has already bought something.
 const MARKETING_EMAILS = [
   {
-    subject: 'How did your shot analysis go? Here\'s how to level up',
+    subject: 'How did your shot analysis go?',
+    getText: (to: string) => [
+      `You have seen your scores. Here is what to do with them.`,
+      ``,
+      `Knowing which part of your shot breaks down is the first half. The second`,
+      `half is repetition with something that corrects you while you shoot.`,
+      ``,
+      `That is what we are building, and we will show you as soon as it is ready.`,
+      ``,
+      `Analyze another shot: ${BASE_URL}/analyze`,
+      ``,
+      `LearnHoops.com`,
+      `Unsubscribe: ${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}`,
+    ].join('\n'),
     getHtml: (to: string) => `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
         <div style="background:#000000;padding:24px 32px;">
           <h1 style="color:#F97316;margin:0;font-size:24px;">LearnHoops.com</h1>
         </div>
         <div style="padding:32px;">
-          <h2 style="color:#000000;">You've seen your scores. Now it's time to fix them.</h2>
+          <h2 style="color:#000000;">You've seen your scores. Here's what to do with them.</h2>
           <p style="color:#000000;line-height:1.6;">
-            Knowing your weaknesses is half the battle. The other half is having the right gear to train with.
-            We're building something that will help serious players like you improve faster — and we'd love for you to be first to know.
+            Knowing which part of your shot breaks down is the first half. The second half is
+            repetition with something that corrects you while you shoot.
           </p>
-          <p style="color:#000000;line-height:1.6;">Stay tuned. Something exciting is coming.</p>
+          <p style="color:#000000;line-height:1.6;">
+            That's what we're building, and we'll show you as soon as it's ready.
+          </p>
+          <p style="line-height:1.6;">
+            <a href="${BASE_URL}/analyze" style="color:#F97316;">Analyze another shot</a>
+          </p>
           <hr style="border:none;border-top:1px solid #E2E8F0;margin:24px 0;"/>
           <p style="color:#000000;font-size:11px;text-align:center;">
-            LearnHoops.com · <a href="${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}" style="color:#000000;">Unsubscribe</a>
+            LearnHoops.com &middot; <a href="${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}" style="color:#000000;">Unsubscribe</a>
           </p>
         </div>
       </div>
     `,
   },
   {
-    subject: 'The training tool serious players are using right now',
+    subject: 'Train smarter, not just harder',
+    getText: (to: string) => [
+      `Train smarter, not just harder.`,
+      ``,
+      `The best shooters alive do not just take thousands of reps. They take reps`,
+      `with feedback — something telling them what changed between one and the next.`,
+      ``,
+      `Closing that gap for everyday players is the whole idea. More soon.`,
+      ``,
+      `Analyze your shot: ${BASE_URL}/analyze`,
+      ``,
+      `LearnHoops.com`,
+      `Unsubscribe: ${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}`,
+    ].join('\n'),
     getHtml: (to: string) => `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
         <div style="background:#000000;padding:24px 32px;">
           <h1 style="color:#F97316;margin:0;font-size:24px;">LearnHoops.com</h1>
         </div>
         <div style="padding:32px;">
-          <h2 style="color:#000000;">Train smarter. Not just harder.</h2>
+          <h2 style="color:#000000;">Train smarter, not just harder.</h2>
           <p style="color:#000000;line-height:1.6;">
-            The best players in the world don't just shoot thousands of reps. They train with purpose — with feedback, with the right equipment, and with intention.
+            The best shooters alive don't just take thousands of reps. They take reps with
+            feedback &mdash; something telling them what changed between one and the next.
           </p>
           <p style="color:#000000;line-height:1.6;">
-            We're working on something that gives everyday players access to that same level of training. You'll hear more soon.
+            Closing that gap for everyday players is the whole idea. More soon.
+          </p>
+          <p style="line-height:1.6;">
+            <a href="${BASE_URL}/analyze" style="color:#F97316;">Analyze your shot</a>
           </p>
           <hr style="border:none;border-top:1px solid #E2E8F0;margin:24px 0;"/>
           <p style="color:#000000;font-size:11px;text-align:center;">
-            LearnHoops.com · <a href="${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}" style="color:#000000;">Unsubscribe</a>
+            LearnHoops.com &middot; <a href="${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}" style="color:#000000;">Unsubscribe</a>
           </p>
         </div>
       </div>
     `,
   },
   {
-    subject: 'What elite coaches look for in a perfect shot',
+    subject: 'What coaches notice first in a jump shot',
+    getText: (to: string) => [
+      `The three things a coach sees immediately.`,
+      ``,
+      `When a coach watches someone shoot, three things register before anything`,
+      `else: elbow alignment, release point, and follow-through. They are the`,
+      `foundation of a repeatable shot, and the hardest to feel on your own.`,
+      ``,
+      `They are also the three your LearnHoops analysis scores in the most detail.`,
+      ``,
+      `Analyze your shot: ${BASE_URL}/analyze`,
+      ``,
+      `LearnHoops.com`,
+      `Unsubscribe: ${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}`,
+    ].join('\n'),
     getHtml: (to: string) => `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
         <div style="background:#000000;padding:24px 32px;">
           <h1 style="color:#F97316;margin:0;font-size:24px;">LearnHoops.com</h1>
         </div>
         <div style="padding:32px;">
-          <h2 style="color:#000000;">The 3 things coaches notice immediately</h2>
+          <h2 style="color:#000000;">The three things a coach sees immediately.</h2>
           <p style="color:#000000;line-height:1.6;">
-            When a coach watches a player shoot, three things stand out before anything else: elbow alignment, release point, and follow-through.
-            These are the foundation of a consistent shot — and the hardest to correct without the right tools.
+            When a coach watches someone shoot, three things register before anything else: elbow
+            alignment, release point, and follow-through. They're the foundation of a repeatable
+            shot, and the hardest to feel on your own.
           </p>
           <p style="color:#000000;line-height:1.6;">
-            Our upcoming product was designed with exactly these fundamentals in mind. You'll be hearing more about it very soon.
+            They're also the three your LearnHoops analysis scores in the most detail.
+          </p>
+          <p style="line-height:1.6;">
+            <a href="${BASE_URL}/analyze" style="color:#F97316;">Analyze your shot</a>
           </p>
           <hr style="border:none;border-top:1px solid #E2E8F0;margin:24px 0;"/>
           <p style="color:#000000;font-size:11px;text-align:center;">
-            LearnHoops.com · <a href="${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}" style="color:#000000;">Unsubscribe</a>
+            LearnHoops.com &middot; <a href="${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}" style="color:#000000;">Unsubscribe</a>
           </p>
         </div>
       </div>
     `,
   },
   {
-    subject: '🏀 It\'s here — the LearnHoops Training Ball',
+    subject: 'The LearnHoops Training Ball is available',
+    getText: (to: string) => [
+      `The ball we have been building is available.`,
+      ``,
+      `The LearnHoops Training Ball has grip lines marking where your fingers`,
+      `belong, so every rep grooves the same hand placement and release. It comes`,
+      `in right- and left-handed versions, and every ball includes free AI shot`,
+      `analyses.`,
+      ``,
+      `See the ball: ${BASE_URL}/shop`,
+      ``,
+      `LearnHoops.com`,
+      `Unsubscribe: ${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}`,
+    ].join('\n'),
     getHtml: (to: string) => `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
         <div style="background:#000000;padding:24px 32px;">
           <h1 style="color:#F97316;margin:0;font-size:24px;">LearnHoops.com</h1>
         </div>
         <div style="padding:32px;">
-          <h2 style="color:#000000;">The product we've been building is live.</h2>
+          <h2 style="color:#000000;">The ball we've been building is available.</h2>
           <p style="color:#000000;line-height:1.6;">
-            The LearnHoops Training Ball is built to fix your shooting form — the grip lines mark exactly where your fingers belong, so every rep grooves proper hand placement and release. Every ball includes free AI shot analyses.
-          </p>
-          <p style="color:#000000;line-height:1.6;">
-            As a LearnHoops.com user, you get exclusive early access pricing. This offer is limited to our first 100 customers.
+            The LearnHoops Training Ball has grip lines marking where your fingers belong, so every
+            rep grooves the same hand placement and release. It comes in right- and left-handed
+            versions, and every ball includes free AI shot analyses.
           </p>
           <div style="text-align:center;margin:32px 0;">
-            <a href="${BASE_URL}" style="background:#F97316;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:16px;">
-              Get Early Access
+            <a href="${BASE_URL}/shop" style="background:#F97316;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:16px;">
+              See the ball
             </a>
           </div>
           <hr style="border:none;border-top:1px solid #E2E8F0;margin:24px 0;"/>
           <p style="color:#000000;font-size:11px;text-align:center;">
-            LearnHoops.com · <a href="${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}" style="color:#000000;">Unsubscribe</a>
+            LearnHoops.com &middot; <a href="${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}" style="color:#000000;">Unsubscribe</a>
           </p>
         </div>
       </div>
     `,
   },
   {
-    subject: 'Last chance — early access pricing ends soon',
+    subject: 'A last note about the training ball',
+    getText: (to: string) => [
+      `One last note, then we will leave it.`,
+      ``,
+      `This is the final email in this series. If the LearnHoops Training Ball is`,
+      `something you want, it is on the site — and if it is not, no hard feelings.`,
+      ``,
+      `Your shot analysis link keeps working either way.`,
+      ``,
+      `See the ball: ${BASE_URL}/shop`,
+      ``,
+      `LearnHoops.com`,
+      `Unsubscribe: ${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}`,
+    ].join('\n'),
     getHtml: (to: string) => `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
         <div style="background:#000000;padding:24px 32px;">
           <h1 style="color:#F97316;margin:0;font-size:24px;">LearnHoops.com</h1>
         </div>
         <div style="padding:32px;">
-          <h2 style="color:#000000;">This is your last chance at early access pricing.</h2>
+          <h2 style="color:#000000;">One last note, then we'll leave it.</h2>
           <p style="color:#000000;line-height:1.6;">
-            Our early access offer for the LearnHoops Training Ball closes soon. After that, the price goes up and availability drops.
+            This is the final email in this series. If the LearnHoops Training Ball is something you
+            want, it's on the site &mdash; and if it isn't, no hard feelings.
           </p>
           <p style="color:#000000;line-height:1.6;">
-            You've already taken the first step by analyzing your shot. Don't let this be where you stop.
+            Your shot analysis link keeps working either way.
           </p>
           <div style="text-align:center;margin:32px 0;">
-            <a href="${BASE_URL}" style="background:#DC2626;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:16px;">
-              Claim Your Spot
+            <a href="${BASE_URL}/shop" style="background:#F97316;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:16px;">
+              See the ball
             </a>
           </div>
           <hr style="border:none;border-top:1px solid #E2E8F0;margin:24px 0;"/>
           <p style="color:#000000;font-size:11px;text-align:center;">
-            LearnHoops.com · <a href="${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}" style="color:#000000;">Unsubscribe</a>
+            LearnHoops.com &middot; <a href="${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}" style="color:#000000;">Unsubscribe</a>
           </p>
         </div>
       </div>
@@ -340,7 +429,7 @@ export async function sendPasswordResetEmail(to: string, token: string) {
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,
-    replyTo: 'noreply@learnhoops.com',
+    replyTo: SUPPORT_ADDRESS,
     subject: 'Reset your LearnHoops password',
     text: [
       `Someone asked to reset the password for your LearnHoops account.`,
@@ -393,9 +482,9 @@ export async function sendPasswordResetEmail(to: string, token: string) {
 export async function sendPromoEmail(to: string) {
   const unsubscribe = `${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}`
   const { data, error } = await getResend().emails.send({
-    from: FROM,
+    from: MARKETING_FROM,
     to,
-    replyTo: 'noreply@learnhoops.com',
+    replyTo: SUPPORT_ADDRESS,
     subject: 'Sharpen your shot with LearnHoops',
     headers: {
       'List-Unsubscribe': `<${unsubscribe}>`,
@@ -483,7 +572,7 @@ export async function sendClaimCreditsEmail(
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,
-    replyTo: 'noreply@learnhoops.com',
+    replyTo: SUPPORT_ADDRESS,
     subject: `Your LearnHoops ball ships soon — claim your ${tokensToGrant} free shot ${tokensToGrant === 1 ? 'analysis' : 'analyses'}`,
     text: [
       `Hey ${name},`,
@@ -569,7 +658,7 @@ export async function sendShippingEmail(
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,
-    replyTo: 'noreply@learnhoops.com',
+    replyTo: SUPPORT_ADDRESS,
     subject: 'Your LearnHoops order has shipped!',
     text: [
       `Hey ${name},`,
@@ -642,7 +731,7 @@ export async function sendOrgApprovalEmail(
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,
-    replyTo: 'noreply@learnhoops.com',
+    replyTo: SUPPORT_ADDRESS,
     subject: 'Your LearnHoops organization application has been approved',
     text: [
       `Hi,`,
@@ -697,21 +786,21 @@ export async function sendNextMarketingEmail(
   const template = MARKETING_EMAILS[emailsSentSoFar]
   const unsubscribe = `${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}`
 
-  // This is the one send in this file that is unambiguously marketing, and it
-  // was the only one with no List-Unsubscribe header and no plain-text part —
-  // the two things Gmail and Yahoo check first on bulk mail. The templates
-  // carry an unsubscribe link in their HTML, but a link in the body is not the
-  // header, and providers read the header.
+  // The drip is unambiguously marketing, so it leaves as MARKETING_FROM: a
+  // complaint here must not touch the reputation that carries password resets.
+  // List-Unsubscribe is the header, not the link in the body — providers read
+  // the header — and the text part is the template's own, not a stub telling
+  // the reader to switch clients.
   await getResend().emails.send({
-    from: FROM,
+    from: MARKETING_FROM,
     to,
-    replyTo: 'noreply@learnhoops.com',
+    replyTo: SUPPORT_ADDRESS,
     subject: template.subject,
     headers: {
       'List-Unsubscribe': `<${unsubscribe}>`,
       'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
     },
-    text: `${template.subject}\n\nOpen this email in a client that supports HTML to read it, or visit ${BASE_URL}\n\nUnsubscribe: ${unsubscribe}`,
+    text: template.getText(to),
     html: template.getHtml(to),
   })
   return true
@@ -729,7 +818,7 @@ export async function sendClassPurchaseConfirmationEmail(
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,
-    replyTo: 'noreply@learnhoops.com',
+    replyTo: SUPPORT_ADDRESS,
     subject: '10-Week Shooting Class — your program is confirmed',
     text: [
       `Hi ${orgName},`,
@@ -824,7 +913,7 @@ export async function sendTeamCreatedEmail(
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,
-    replyTo: 'noreply@learnhoops.com',
+    replyTo: SUPPORT_ADDRESS,
     subject: `Team created: ${teamName}`,
     text: [
       `Hi ${orgName},`,
@@ -878,7 +967,7 @@ export async function sendPasswordChangedEmail(to: string) {
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,
-    replyTo: 'noreply@learnhoops.com',
+    replyTo: SUPPORT_ADDRESS,
     subject: 'Your LearnHoops password was changed',
     text: [
       `Your LearnHoops password was just changed.`,
@@ -925,7 +1014,7 @@ export async function sendTokenPurchaseConfirmationEmail(
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,
-    replyTo: 'noreply@learnhoops.com',
+    replyTo: SUPPORT_ADDRESS,
     subject: `${quantity} analysis token${quantity !== 1 ? 's' : ''} added to your account`,
     text: [
       `Hi ${orgName},`,
@@ -965,7 +1054,7 @@ export async function sendAccountDeletedEmail(to: string) {
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,
-    replyTo: 'noreply@learnhoops.com',
+    replyTo: SUPPORT_ADDRESS,
     subject: 'Your LearnHoops account has been deleted',
     text: [
       `Your LearnHoops account has been permanently deleted.`,
@@ -1006,7 +1095,7 @@ export async function sendLeftTeamEmail(to: string, teamName: string) {
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,
-    replyTo: 'noreply@learnhoops.com',
+    replyTo: SUPPORT_ADDRESS,
     subject: `You've left ${teamName}`,
     text: [
       `You have left the team "${teamName}" on LearnHoops.`,
@@ -1069,7 +1158,7 @@ export async function sendSupportRequestEmail(req: {
 
   const { data, error } = await getResend().emails.send({
     // Distinct sender name so the inbox can recognize and filter these.
-    from: 'LearnHoops Support Form <noreply@learnhoops.com>',
+    from: `LearnHoops Support Form <${SUPPORT_ADDRESS}>`,
     to: 'learnhoops8@gmail.com',
     replyTo: req.email,
     subject: `Support request from ${req.name} — ${req.topic}`,
@@ -1178,7 +1267,7 @@ export async function sendAbandonedCheckoutEmail(
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,
-    replyTo: 'noreply@learnhoops.com',
+    replyTo: SUPPORT_ADDRESS,
     subject: 'Your LearnHoops training ball is still waiting 🏀',
     headers: {
       'List-Unsubscribe': `<${unsubscribe}>`,
@@ -1275,7 +1364,7 @@ export async function sendFilmingTipsEmail(to: string) {
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to,
-    replyTo: 'noreply@learnhoops.com',
+    replyTo: SUPPORT_ADDRESS,
     // Plain and descriptive on purpose. A benefit-promise subject ("get a
     // better score…") is a Promotions-tab signal; naming what the email
     // contains reads as the follow-up to an action they just took.

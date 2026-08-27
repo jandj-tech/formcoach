@@ -20,20 +20,26 @@
  */
 
 /**
- * Where replies land, and where the app sends its own internal alerts.
+ * The public reply address, shown to every recipient. It is on the domain on
+ * purpose: a personal gmail.com address in Reply-To tells every customer, coach
+ * and parent what the owner's private inbox is, and it cannot be changed later
+ * without breaking every reply thread already in flight.
  *
- * This MUST be a mailbox that actually accepts mail. It previously pointed at
- * `support@learnhoops.com`, which does not exist -- Resend has that address on
- * its suppression list from an earlier hard bounce, so every content report the
- * app "sent to support" was silently discarded, and any customer who replied to
- * one of our emails got a bounce. That is the precise failure this constant was
- * introduced to eliminate.
- *
- * Point SUPPORT_EMAIL at a mailbox on learnhoops.com once one exists; a From
- * and Reply-To on the same domain reads better than a gmail.com reply address.
- * Until then, a working inbox beats a tidy-looking dead one.
+ * IMPORTANT: this address must FORWARD somewhere. It does not host a mailbox of
+ * its own today, so until inbound forwarding is configured (ImprovMX or
+ * Cloudflare Email Routing, both free, or a Workspace mailbox) a reply to it
+ * will bounce. A bounced reply is worse than an exposed address, so set the
+ * forwarding up before shipping this to a real send.
  */
-export const REPLY_TO = process.env.SUPPORT_EMAIL || 'learnhoops8@gmail.com'
+export const REPLY_TO = process.env.SUPPORT_EMAIL || 'support@learnhoops.com'
+
+/**
+ * Where the app mails ITSELF: content reports, chat reports, support-form
+ * submissions. Never appears in a customer-facing header, so a gmail.com
+ * address here exposes nothing — and unlike the domain, it demonstrably
+ * receives mail today, which is what an alert has to do.
+ */
+export const INTERNAL_INBOX = process.env.INTERNAL_EMAIL || 'learnhoops8@gmail.com'
 
 /**
  * Transactional sender: results, password resets, invites, orders, receipts.

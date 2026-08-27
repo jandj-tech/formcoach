@@ -9,7 +9,7 @@ function getResend() {
 // transactional and marketing must not share a From address. The sending
 // domain must be verified in the Resend dashboard before an address will
 // deliver; until then, set EMAIL_FROM to `onboarding@resend.dev`.
-import { FROM, MARKETING_FROM, REPLY_TO } from './email-senders'
+import { FROM, INTERNAL_INBOX, MARKETING_FROM, REPLY_TO } from './email-senders'
 
 export const BASE_URL = resolveBaseUrl()
 
@@ -26,10 +26,6 @@ export async function sendResultsEmail(to: string, token: string) {
     to,
     replyTo: REPLY_TO,
     subject: 'Your shot analysis is ready',
-    headers: {
-      'List-Unsubscribe': `<${unsubscribe}>`,
-      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-    },
     // Plain-text alternative is a strong "this is transactional" signal to
     // Gmail and other clients — emails with no text body skew toward Promotions.
     text: [
@@ -1159,7 +1155,7 @@ export async function sendSupportRequestEmail(req: {
   const { data, error } = await getResend().emails.send({
     // Distinct sender name so the inbox can recognize and filter these.
     from: `LearnHoops Support Form <${REPLY_TO}>`,
-    to: REPLY_TO,
+    to: INTERNAL_INBOX,
     replyTo: req.email,
     subject: `Support request from ${req.name} — ${req.topic}`,
     text: [
@@ -1369,10 +1365,6 @@ export async function sendFilmingTipsEmail(to: string) {
     // better score…") is a Promotions-tab signal; naming what the email
     // contains reads as the follow-up to an action they just took.
     subject: 'How to film your next shot for an accurate analysis',
-    headers: {
-      'List-Unsubscribe': `<${unsubscribe}>`,
-      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-    },
     text: [
       `Thanks for your first upload. One thing makes a bigger difference to your score than anything else: where you put the camera.`,
       ``,

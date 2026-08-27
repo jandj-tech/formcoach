@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
-import { FROM, REPLY_TO } from '@/lib/email-senders'
+import { FROM, INTERNAL_INBOX } from '@/lib/email-senders'
 
 // Content-report endpoint (App Store guideline 1.2): anyone can flag a
 // result page, name, or other user content. Reports go straight to support
@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     const resend = new Resend(process.env.RESEND_API_KEY!)
     await resend.emails.send({
       from: FROM,
-      to: REPLY_TO,
+      to: INTERNAL_INBOX,
       subject: '⚠️ Content report',
       text: [
         'A user reported content on LearnHoops.',

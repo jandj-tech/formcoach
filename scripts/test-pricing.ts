@@ -30,7 +30,7 @@ function check(name: string, ok: boolean, detail = '') {
 }
 
 const REGULAR = REGULAR_ANALYSIS_PRICE_CENTS // 349
-const TEAM = TEAM_TOKEN_PRICE_CENTS // 149
+const TEAM = TEAM_TOKEN_PRICE_CENTS // 249 (small-order org rate; $1.49 at 5+)
 
 /**
  * The regular ladder, stated independently of the module.
@@ -48,12 +48,9 @@ function expectedRegularPercent(q: number): number {
   return 0
 }
 
-/** The team ladder — unchanged from the single ladder that preceded the split. */
+/** The org / initiated-team ladder: full $2.49 base under 5, the $1.49 rate at 5+. */
 function expectedTeamPercent(q: number): number {
-  if (q >= 100) return 25
-  if (q >= 50) return 15
-  if (q >= 25) return 10
-  if (q >= 10) return 5
+  if (q >= 5) return 40.16
   return 0
 }
 
@@ -120,7 +117,10 @@ for (const { name, base, expected } of LADDERS) {
   // shallow enough step down from the $1.79 five-pack that buying ten never
   // costs less than nine, so 4 is the only regular inversion. Pinned so a tier
   // edit that adds a cliff somewhere unexpected fails here rather than ships.
-  const expectedInversions = name === 'team' ? [24, 49, 99] : [4]
+  // Both ladders invert only at 4: the regular 5-pack ($8.95 < 4×$2.33=$9.32)
+  // and the org 5-token step ($1.49×5=$7.45 < 4×$2.49=$9.96) each make five
+  // cost less than four. No deeper tiers, so no deeper inversions.
+  const expectedInversions = [4]
   check(
     `${name}: cheaper-than-the-step-below points are exactly {${expectedInversions.join(', ')}}`,
     JSON.stringify(inversions) === JSON.stringify(expectedInversions),
@@ -132,15 +132,21 @@ for (const { name, base, expected } of LADDERS) {
   check(`${name}: no half-cent rounding ties`, ties.length === 0, ties.map((t) => t.minQty).join(','))
 }
 
-// --- team must always undercut regular -------------------------------------
-// The tightest stretch is 3..9, where a regular buyer has a discount and a
-// team buyer does not: 149 against 233 and 179. This is what would break first
-// if the regular ladder were ever deepened much further.
-let crossed: number | null = null
+// --- team undercuts regular, except the intended small-order org friction ---
+// A 1–4 org order sits at $2.49, deliberately just above the regular 3-pack
+// ($2.33), so orgs are pushed to buy 5+ for the $1.49 rate. Different buyers in
+// different flows never see both prices; this is pinned so the crossover cannot
+// spread beyond 3–4 unnoticed. Everywhere else team is cheaper (from 5 on it is
+// $1.49 vs the regular floor of $1.65).
+const crossed: number[] = []
 for (let q = 1; q <= MAX_TOKENS_PER_ORDER; q++) {
-  if (discountedUnitCents(TEAM, q) >= discountedUnitCents(REGULAR, q)) { crossed = q; break }
+  if (discountedUnitCents(TEAM, q) >= discountedUnitCents(REGULAR, q)) crossed.push(q)
 }
-check('team rate undercuts regular at every quantity', crossed === null, crossed ? `crosses at q=${crossed}` : '')
+check(
+  'team undercuts regular except the intended 3–4 org friction',
+  JSON.stringify(crossed) === JSON.stringify([3, 4]),
+  `crosses at {${crossed.join(', ')}}`,
+)
 
 // --- spot values, hardcoded ------------------------------------------------
 const SPOTS: Array<[number, number, number]> = [
@@ -151,8 +157,9 @@ const SPOTS: Array<[number, number, number]> = [
   // From 10 the price floors at $1.65 and stays there however large the order.
   [REGULAR, 10, 165], [REGULAR, 14, 165], [REGULAR, 15, 165], [REGULAR, 50, 165],
   [REGULAR, 100, 165], [REGULAR, 1000, 165],
-  [TEAM, 1, 149], [TEAM, 3, 149], [TEAM, 5, 149], [TEAM, 9, 149], [TEAM, 10, 142],
-  [TEAM, 25, 134], [TEAM, 50, 127], [TEAM, 100, 112],
+  // Org / initiated: $2.49 under 5, $1.49 from 5 on (the floor, never lower).
+  [TEAM, 1, 249], [TEAM, 2, 249], [TEAM, 4, 249], [TEAM, 5, 149], [TEAM, 9, 149],
+  [TEAM, 10, 149], [TEAM, 50, 149], [TEAM, 100, 149], [TEAM, 1000, 149],
 ]
 for (const [base, q, want] of SPOTS) {
   const got = discountedUnitCents(base, q)
@@ -161,9 +168,9 @@ for (const [base, q, want] of SPOTS) {
 
 // --- ladder dispatch -------------------------------------------------------
 check('tiersFor(349) -> regular', tiersFor(349) === REGULAR_VOLUME_TIERS)
-check('tiersFor(150) -> regular', tiersFor(150) === REGULAR_VOLUME_TIERS)
+check('tiersFor(250) -> regular', tiersFor(250) === REGULAR_VOLUME_TIERS)
 check('tiersFor(1_000_000) -> regular', tiersFor(1_000_000) === REGULAR_VOLUME_TIERS)
-check('tiersFor(149) -> team', tiersFor(149) === TEAM_VOLUME_TIERS)
+check('tiersFor(249) -> team', tiersFor(249) === TEAM_VOLUME_TIERS)
 check('tiersFor(148) -> team (cheaper rate fails safe)', tiersFor(148) === TEAM_VOLUME_TIERS)
 check('tiersFor(0) -> team', tiersFor(0) === TEAM_VOLUME_TIERS)
 check('tiersFor(-1) -> team', tiersFor(-1) === TEAM_VOLUME_TIERS)

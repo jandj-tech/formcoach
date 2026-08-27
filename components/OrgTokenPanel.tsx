@@ -230,7 +230,7 @@ export default function OrgTokenPanel({
             {/* Pricing notice when no team has reached 8 players */}
             {!anyInitiated && teams.length > 0 && (
               <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-4 space-y-3">
-                <p className="text-sm font-black text-orange-900">Tokens drop to $1.49 once a team reaches 8 players</p>
+                <p className="text-sm font-black text-orange-900">Tokens drop to $2.49 once a team reaches 8 players — $1.49 each when you buy 5+</p>
                 <p className="text-xs text-orange-700">Currently $3.49 each — get more players to unlock the lower price.</p>
                 <div className="space-y-2 pt-1">
                   {teams.map(t => {
@@ -246,7 +246,7 @@ export default function OrgTokenPanel({
                           <div className="bg-orange-500 h-1.5 rounded-full transition-all" style={{ width: `${pct}%` }} />
                         </div>
                         {left > 0 && (
-                          <p className="text-xs text-orange-600">{left} more player{left !== 1 ? 's' : ''} to unlock $1.49</p>
+                          <p className="text-xs text-orange-600">{left} more player{left !== 1 ? 's' : ''} to unlock team pricing</p>
                         )}
                       </div>
                     )
@@ -292,7 +292,7 @@ export default function OrgTokenPanel({
             </div>
 
             {anyInitiated && (
-              <p className="text-xs text-green-600 font-semibold px-1">$1.49 team rate unlocked</p>
+              <p className="text-xs text-green-600 font-semibold px-1">Team rate unlocked — $2.49 each, $1.49 when you buy 5+</p>
             )}
 
             <VolumeTierList baseUnitCents={buyBaseCents} className="px-1" />

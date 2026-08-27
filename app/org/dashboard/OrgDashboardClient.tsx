@@ -1182,8 +1182,8 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                             A team becomes active (&ldquo;initiated&rdquo;) at
                             8 players, or automatically when it&rsquo;s part of
                             a class package. Once any of your teams is active,
-                            tokens drop from $3.49 to $1.49 across your whole
-                            organization.
+                            tokens drop from $3.49 to $2.49 — and $1.49 each
+                            when you buy 5+ across your whole organization.
                           </InfoTip>
                         </p>
                         <span className="text-xs font-black text-orange-500">{team.members.length}/8 players</span>
@@ -1193,7 +1193,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                           style={{ width: `${Math.min(100, (team.members.length / 8) * 100)}%` }} />
                       </div>
                       <p className="text-xs text-gray-500">
-                        {Math.max(0, 8 - team.members.length)} more player{Math.max(0, 8 - team.members.length) !== 1 ? 's' : ''} needed — at 8, every player gets 1 free token{inApp ? '' : ' and tokens unlock at $1.49 each'}.
+                        {Math.max(0, 8 - team.members.length)} more player{Math.max(0, 8 - team.members.length) !== 1 ? 's' : ''} needed — at 8, every player gets 1 free token{inApp ? '' : ' and tokens unlock at $2.49 each — $1.49 each when you buy 5+'}.
                       </p>
                       <p className="text-xs text-gray-400">Share the player signup link below to invite players to this team.</p>
                     </div>
@@ -1590,7 +1590,8 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
           $40 per player ($36.99 each for 30+). Every player gets a training
           ball, 2 AI shot analyses (start and end of the class), and a
           personalized completion certificate. Buying a package also creates a
-          class team and unlocks the $1.49 token rate for your organization.
+          class team and unlocks the discounted org token rate ($2.49 each, or
+          $1.49 each when you buy 5+) for your organization.
         </InfoTip>
       </div>
       {classProgramSection}

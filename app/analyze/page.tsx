@@ -32,11 +32,11 @@ export default async function AnalyzePage() {
     let initiated = false
     try {
       if (teamSession) {
-        // A team coach only gets $1.49 if their own team is initiated.
+        // A team coach only gets the team rate ($2.49, or $1.49 at 5+) if their own team is initiated.
         const state = await getTeamTokenState(teamSession.teamId)
         initiated = !!state?.initiated
       } else if (orgSession) {
-        // An org owner gets $1.49 once any of their teams is initiated.
+        // An org owner gets the team rate once any of their teams is initiated.
         initiated = await orgHasInitiatedTeam(orgSession.orgId)
       }
     } catch {

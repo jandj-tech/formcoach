@@ -10,8 +10,20 @@ export const INITIATION_MIN_PLAYERS = 8
 /** Regular per-analysis price (cents) — players, and coaches/orgs before their team is initiated. */
 export const REGULAR_ANALYSIS_PRICE_CENTS = 349
 
-/** Discounted per-token price (cents) once a team is initiated. */
-export const TEAM_TOKEN_PRICE_CENTS = 149
+/**
+ * Org / initiated-team per-token price for a SMALL order (1–4 tokens), in cents.
+ * The full org rate ($1.49) is unlocked by buying TEAM_FULL_RATE_MIN_QTY+ in one
+ * order — see TEAM_VOLUME_TIERS. Small orders sit at $2.49 because the
+ * payment-processor fee eats most of the margin on a single-token purchase, so
+ * orgs are nudged to buy in fives.
+ */
+export const TEAM_TOKEN_PRICE_CENTS = 249
+
+/** The full org / initiated-team rate (cents), reached at 5+ tokens in one order — and the floor. */
+export const TEAM_FULL_RATE_CENTS = 149
+
+/** Tokens an org / initiated team must buy in one order to reach TEAM_FULL_RATE_CENTS. */
+export const TEAM_FULL_RATE_MIN_QTY = 5
 
 /**
  * Per-order quantity ceilings, shared by the buy UI and the routes that
@@ -55,23 +67,16 @@ export const REGULAR_VOLUME_TIERS: ReadonlyArray<VolumeTier> = [
 ]
 
 /**
- * The ladder for buyers already on the discounted team rate — deliberately
- * shallower, and starting later, than the regular one.
+ * The org / initiated-team ladder — one step, and it IS the org deal.
  *
- * TEAM_TOKEN_PRICE_CENTS is itself the volume discount: 57% off list, given
- * for filling a roster rather than for the size of one order. Stacking the
- * regular ladder on top of it would compound two discounts and take an
- * analysis to well under half what a single one earns, so a team's bulk
- * pricing starts where the reward for a genuinely large order begins.
- *
- * These four tiers are the single ladder everyone shared before the split, so
- * no existing team's price moved when the regular ladder was deepened.
+ * A small order (1–4) is charged the $2.49 base; at 5+ the price drops to the
+ * $1.49 full org rate and floors there — no order, however large, goes lower.
+ * The single step exists so orgs are rewarded for buying in fives rather than
+ * one at a time (where the card fee erases the margin), not for the raw size of
+ * a bulk order. 40.16% off 249¢ rounds to exactly 149¢.
  */
 export const TEAM_VOLUME_TIERS: ReadonlyArray<VolumeTier> = [
-  { minQty: 100, percentOff: 25 },
-  { minQty: 50, percentOff: 15 },
-  { minQty: 25, percentOff: 10 },
-  { minQty: 10, percentOff: 5 },
+  { minQty: TEAM_FULL_RATE_MIN_QTY, percentOff: 40.16 },
 ]
 
 /**

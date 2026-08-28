@@ -72,7 +72,7 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
 process.env.RESEND_API_KEY ||= 're_testkeytestkeytestkeytestkey00'
 process.env.NEXT_PUBLIC_BASE_URL = 'https://www.learnhoops.com'
 
-const E = await import('../lib/email.ts')
+const E = await import('../lib/email')
 
 /* -------------------------------------------------------------- the fixtures */
 

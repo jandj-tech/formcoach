@@ -6,6 +6,8 @@ import { isCleanDisplayText, BLOCKED_TEXT_ERROR } from '@/lib/moderation'
 import { addToEmailList } from '@/lib/email-list'
 import { randomInt } from 'crypto'
 import { BCRYPT_COST } from '@/lib/password'
+import { rateLimitByIp } from '@/lib/rate-limit'
+import { verifyTurnstile } from '@/lib/turnstile'
 
 function generateAccessCode(): string {
   // randomInt, not Math.random: an access code is a bearer credential (it lets
@@ -21,7 +23,23 @@ function generateAccessCode(): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const { name, email, password, token } = await req.json()
+    // Already gated by a one-time approval token, so this only blunts someone
+    // brute-forcing tokens against the endpoint.
+    const limit = await rateLimitByIp(req, 'org-register', 10, 3600)
+    if (!limit.ok) {
+      return NextResponse.json(
+        { error: 'Too many attempts — try again later' },
+        { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } }
+      )
+    }
+
+    const { name, email, password, token, turnstileToken } = await req.json()
+
+    const captcha = await verifyTurnstile(req, turnstileToken)
+    if (!captcha.ok) {
+      return NextResponse.json({ error: captcha.error }, { status: 400 })
+    }
+
     if (name && !isCleanDisplayText(name)) {
       return NextResponse.json({ error: BLOCKED_TEXT_ERROR }, { status: 400 })
     }

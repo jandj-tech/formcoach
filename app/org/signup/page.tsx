@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
 import PasswordInput from '@/components/PasswordInput'
+import Turnstile, { TURNSTILE_ENABLED } from '@/components/Turnstile'
+import Honeypot from '@/components/Honeypot'
 
 function OrgSignupInner() {
   const router = useRouter()
@@ -25,21 +27,34 @@ function OrgSignupInner() {
 
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [error, setError] = useState('')
+  const [website, setWebsite] = useState('')
+  const [captchaToken, setCaptchaToken] = useState('')
 
   async function handleApply(e: React.FormEvent) {
     e.preventDefault()
+    if (TURNSTILE_ENABLED && !captchaToken) {
+      setError('Please wait for the human check to finish.')
+      return
+    }
     setStatus('loading')
     setError('')
     try {
       const res = await fetch('/api/org/apply', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orgName, email, playerCount: playerCount ? parseInt(playerCount) : null }),
+        body: JSON.stringify({
+          orgName,
+          email,
+          playerCount: playerCount ? parseInt(playerCount) : null,
+          website,
+          turnstileToken: captchaToken,
+        }),
       })
       const data = await res.json()
       if (!res.ok) {
         setError(data.error || 'Something went wrong')
         setStatus('error')
+        setCaptchaToken('')
         return
       }
       setApplied(true)
@@ -53,18 +68,29 @@ function OrgSignupInner() {
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault()
     if (password !== confirm) { setError('Passwords do not match'); return }
+    if (TURNSTILE_ENABLED && !captchaToken) {
+      setError('Please wait for the human check to finish.')
+      return
+    }
     setStatus('loading')
     setError('')
     try {
       const res = await fetch('/api/org/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: regOrgName, email: regEmail, password, token }),
+        body: JSON.stringify({
+          name: regOrgName,
+          email: regEmail,
+          password,
+          token,
+          turnstileToken: captchaToken,
+        }),
       })
       const data = await res.json()
       if (!res.ok) {
         setError(data.error || 'Registration failed')
         setStatus('error')
+        setCaptchaToken('')
         return
       }
       router.push('/org/dashboard')
@@ -117,6 +143,7 @@ function OrgSignupInner() {
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Confirm password</label>
                 <PasswordInput value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Repeat password" />
               </div>
+              <Turnstile onToken={setCaptchaToken} theme="light" />
               {error && <p className="text-red-500 text-sm">{error}</p>}
               <button
                 type="submit"
@@ -197,6 +224,8 @@ function OrgSignupInner() {
                 className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500"
               />
             </div>
+            <Honeypot value={website} onChange={setWebsite} />
+            <Turnstile onToken={setCaptchaToken} theme="light" />
             {error && <p className="text-red-500 text-sm">{error}</p>}
             <button
               type="submit"

@@ -865,13 +865,26 @@ export async function analyzeShot(
     return noShotResult(ctx.activeCriteria.map((c) => c.id), graderVersion)
   }
 
-  // Sequential on purpose: pass 1 writes the prompt+image prefix into the
-  // Anthropic cache, passes 2..N read it back at a fraction of the input cost.
-  const results: AnalysisResult[] = []
-  for (let i = 0; i < passes; i++) {
-    // A non-shot verdict is decisive only by majority — collect and continue.
-    results.push(await analyzeShotOnce(frameBase64Array, frameMimeTypes, ctx, { ...opts, model }))
-  }
+  // Pass 1 runs alone because it writes the prompt+image prefix into the
+  // Anthropic cache. The remaining passes then run concurrently and every one
+  // of them reads that prefix back, so the ensemble costs what it always did
+  // but finishes in the time of two passes rather than N — on a 3-pass grade
+  // that takes roughly three minutes down to two.
+  //
+  // Firing all N at once would finish in one pass's time and cost appreciably
+  // more: they would race the cache write, miss it, and each pay full price on
+  // ~66k input tokens. Speed is worth buying here; that much of it is not.
+  //
+  // A non-shot verdict is decisive only by majority, so every pass is collected
+  // rather than short-circuiting. Pass 1 stays first in the list, which keeps
+  // the merge below deterministic.
+  const firstPass = await analyzeShotOnce(frameBase64Array, frameMimeTypes, ctx, { ...opts, model })
+  const laterPasses = await Promise.all(
+    Array.from({ length: passes - 1 }, () =>
+      analyzeShotOnce(frameBase64Array, frameMimeTypes, ctx, { ...opts, model }),
+    ),
+  )
+  const results: AnalysisResult[] = [firstPass, ...laterPasses]
 
   const activeCriteria = ctx.activeCriteria
 

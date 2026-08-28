@@ -30,7 +30,15 @@ let _s3: S3Client | null = null
 
 // Built lazily so the SDK is only constructed when the s3 driver is actually
 // used, and so a Vercel deploy that never sets these env vars doesn't throw.
-async function s3Client(): Promise<S3Client> {
+//
+// One client for the whole process. An S3Client owns an https.Agent whose
+// keep-alive sockets each hold a file descriptor open for ~2 minutes; building
+// a fresh client per request (as the /api/media proxy used to) never reuses or
+// destroys those agents, so under real traffic the open FDs pile up faster than
+// they're reclaimed and the host runs out — the "opening files and never
+// closing them" crash. Sharing this singleton bounds the sockets to one pool.
+// See aws/aws-sdk-js-v3 #3279 and #4345.
+export async function s3Client(): Promise<S3Client> {
   if (_s3) return _s3
   const { S3Client } = await import('@aws-sdk/client-s3')
   _s3 = new S3Client({

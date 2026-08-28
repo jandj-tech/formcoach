@@ -157,11 +157,14 @@ export async function POST(req: NextRequest) {
 
   const result = await sendBroadcast(content, recipients)
 
-  // Log sends so the history is auditable (best-effort).
+  // Log sends so the history is auditable (best-effort). ONE bulk insert, not a
+  // per-recipient loop: for a few thousand recipients the old N+1 loop could
+  // blow past maxDuration=60 *after* the emails had already gone out, so the
+  // function was killed, the admin saw a failure, and re-sent — duplicating the
+  // whole broadcast. A single round-trip removes that timeout-after-send risk.
   try {
-    for (const r of recipients) {
-      await db`INSERT INTO email_logs (email, email_type) VALUES (${r.email}, 'broadcast')`
-    }
+    const logRows = recipients.map((r) => ({ email: r.email, email_type: 'broadcast' }))
+    await db`INSERT INTO email_logs ${db(logRows, 'email', 'email_type')}`
   } catch (err) {
     console.error('[broadcast] failed to log sends:', err)
   }

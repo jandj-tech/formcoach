@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { s3Bucket, storageDriver } from '@/lib/storage'
+import { s3Bucket, s3Client, storageDriver } from '@/lib/storage'
 
 // Public read-proxy for the private R2 bucket (STORAGE_DRIVER=s3).
 //
@@ -30,15 +30,11 @@ export async function GET(
   const Key = (segments ?? []).map((s) => decodeURIComponent(s)).join('/')
   if (!Key) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const { S3Client, GetObjectCommand } = await import('@aws-sdk/client-s3')
-  const s3 = new S3Client({
-    region: 'auto',
-    endpoint: process.env.S3_ENDPOINT!,
-    credentials: {
-      accessKeyId: process.env.S3_ACCESS_KEY_ID!,
-      secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
-    },
-  })
+  // Reuse the process-wide client (see lib/storage.ts). Building a new S3Client
+  // per request here leaked keep-alive sockets/file descriptors and is what
+  // exhausted the host under normal results-page traffic (~20-28 frames each).
+  const { GetObjectCommand } = await import('@aws-sdk/client-s3')
+  const s3 = await s3Client()
 
   const range = req.headers.get('range') || undefined
 

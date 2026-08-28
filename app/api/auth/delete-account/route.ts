@@ -4,6 +4,7 @@ import { getSession } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { clearAllSessions } from '@/lib/sessions'
 import { sendAccountDeletedEmail } from '@/lib/email'
+import { appleRevoke, appleAppClientId, appleWebClientId } from '@/lib/oauth'
 
 export async function DELETE() {
   const session = await getSession()
@@ -32,6 +33,12 @@ export async function DELETE() {
       }
     }
   }
+
+  // Apple requires the Sign in with Apple grant to be revoked when the account
+  // it belongs to is deleted — otherwise we keep showing up under the person's
+  // "Apps Using Apple ID" for an account that no longer exists. Must happen
+  // before the user row goes, since the token is stored against it.
+  await revokeAppleGrants(userId)
 
   // Delete in FK order: scores → analyses → submissions → memberships → user
   await db`
@@ -76,4 +83,32 @@ export async function DELETE() {
   const res = NextResponse.json({ success: true })
   clearAllSessions(res)
   return res
+}
+
+/**
+ * Best effort by design: a deletion the person asked for must not fail because
+ * Apple is unreachable. The tokens are tried against both clients because the
+ * grant belongs to whichever one issued it — the app's bundle id for a native
+ * sign-in, the Services ID for one done on the website.
+ */
+async function revokeAppleGrants(userId: string) {
+  try {
+    const identities = (await db`
+      SELECT refresh_token FROM user_oauth_identities
+      WHERE user_id = ${userId} AND provider = 'apple' AND refresh_token IS NOT NULL
+    `) as unknown as Array<{ refresh_token: string }>
+
+    for (const { refresh_token } of identities) {
+      for (const clientId of [appleAppClientId(), appleWebClientId()]) {
+        try {
+          await appleRevoke(refresh_token, clientId)
+        } catch (err) {
+          console.warn('Apple token revoke failed:', err instanceof Error ? err.message : err)
+        }
+      }
+    }
+  } catch (err) {
+    // Table absent, or Apple not configured — neither should block a deletion.
+    console.warn('Apple revoke lookup skipped:', err instanceof Error ? err.message : err)
+  }
 }

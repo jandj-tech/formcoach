@@ -8,6 +8,9 @@ import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
 import Image from 'next/image'
 import PasswordInput from '@/components/PasswordInput'
+import Turnstile, { TURNSTILE_ENABLED } from '@/components/Turnstile'
+import Honeypot from '@/components/Honeypot'
+import OAuthButtons from '@/components/OAuthButtons'
 
 function SignupForm() {
   const router = useRouter()
@@ -19,6 +22,8 @@ function SignupForm() {
   const [teamCode, setTeamCode] = useState(searchParams.get('teamCode') || '')
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [error, setError] = useState('')
+  const [website, setWebsite] = useState('')
+  const [captchaToken, setCaptchaToken] = useState('')
 
   const teamInviteToken = searchParams.get('teamInvite') || ''
   const claimToken = searchParams.get('claimToken') || ''
@@ -30,14 +35,19 @@ function SignupForm() {
       setError('Passwords do not match')
       return
     }
+    if (TURNSTILE_ENABLED && !captchaToken) {
+      setError('Please wait for the human check to finish.')
+      return
+    }
     setStatus('loading')
     setError('')
 
     try {
-      const body: Record<string, string> = { email, password }
+      const body: Record<string, string> = { email, password, website }
       if (nickname.trim()) body.nickname = nickname.trim()
       if (teamInviteToken) body.teamInviteToken = teamInviteToken
       if (claimToken) body.claimToken = claimToken
+      if (captchaToken) body.turnstileToken = captchaToken
 
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
@@ -49,6 +59,7 @@ function SignupForm() {
       if (!res.ok) {
         setError(data.error || 'Signup failed')
         setStatus('error')
+        setCaptchaToken('')
         return
       }
 
@@ -91,6 +102,12 @@ function SignupForm() {
               </p>
             )}
           </div>
+
+          <OAuthButtons
+            claimToken={claimToken || undefined}
+            teamInvite={teamInviteToken || undefined}
+            teamCode={teamCode || undefined}
+          />
 
           <form onSubmit={handleSubmit} className="space-y-3 bg-ink-900 border border-courtline rounded-2xl p-5">
             <input
@@ -151,6 +168,8 @@ function SignupForm() {
                 Have a team? Enter your coach&apos;s team code to join after signing up.
               </p>
             </div>
+            <Honeypot value={website} onChange={setWebsite} />
+            <Turnstile onToken={setCaptchaToken} theme="dark" />
             {error && <p className="text-red-400 text-sm">{error}</p>}
             <button
               type="submit"

@@ -9,10 +9,15 @@ const TTL = 60 * 60 * 24 * 30 // 30 days
 export interface SessionPayload {
   userId: string
   email: string
+  // Discriminates player tokens from team/org tokens. Absent on tokens minted
+  // before this field existed (and on every web cookie, which is why the
+  // cookie paths below stay lenient); required to trust a token over Bearer,
+  // where there is no cookie name to tell the three session types apart.
+  kind?: 'player'
 }
 
 export async function signSession(payload: SessionPayload): Promise<string> {
-  return new SignJWT(payload as unknown as Record<string, unknown>)
+  return new SignJWT({ ...payload, kind: 'player' } as unknown as Record<string, unknown>)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime(`${TTL}s`)
@@ -39,9 +44,15 @@ export async function getSessionFromRequest(req: NextRequest): Promise<SessionPa
   const cookieToken = req.cookies.get(COOKIE)?.value
   if (cookieToken) return verifySession(cookieToken)
 
-  // Mobile app sends JWT as Bearer token instead of cookie
+  // Mobile app sends JWT as Bearer token instead of cookie. Reject team/org
+  // tokens here so one can't be replayed on player routes (legacy player
+  // tokens have no `kind` and stay valid).
   const auth = req.headers.get('Authorization')
-  if (auth?.startsWith('Bearer ')) return verifySession(auth.slice(7))
+  if (auth?.startsWith('Bearer ')) {
+    const payload = await verifySession(auth.slice(7))
+    if (payload && (payload.kind === undefined || payload.kind === 'player')) return payload
+    return null
+  }
 
   return null
 }

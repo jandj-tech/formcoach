@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
 import PasswordInput from '@/components/PasswordInput'
+import Turnstile, { TURNSTILE_ENABLED } from '@/components/Turnstile'
+import Honeypot from '@/components/Honeypot'
 
 export default function TeamSignupPage() {
   const router = useRouter()
@@ -18,11 +20,17 @@ export default function TeamSignupPage() {
   const [ageGroup, setAgeGroup] = useState('')
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [error, setError] = useState('')
+  const [website, setWebsite] = useState('')
+  const [captchaToken, setCaptchaToken] = useState('')
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (password !== confirm) {
       setError('Passwords do not match')
+      return
+    }
+    if (TURNSTILE_ENABLED && !captchaToken) {
+      setError('Please wait for the human check to finish.')
       return
     }
     setStatus('loading')
@@ -32,13 +40,22 @@ export default function TeamSignupPage() {
       const res = await fetch('/api/team/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: teamName, email, password, orgCode, ageGroup }),
+        body: JSON.stringify({
+          name: teamName,
+          email,
+          password,
+          orgCode,
+          ageGroup,
+          website,
+          turnstileToken: captchaToken,
+        }),
       })
       const data = await res.json()
 
       if (!res.ok) {
         setError(data.error || 'Registration failed')
         setStatus('error')
+        setCaptchaToken('')
         return
       }
 
@@ -118,6 +135,8 @@ export default function TeamSignupPage() {
               onChange={e => setAgeGroup(e.target.value)}
               className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
             />
+            <Honeypot value={website} onChange={setWebsite} />
+            <Turnstile onToken={setCaptchaToken} theme="light" />
             {error && <p className="text-red-500 text-sm">{error}</p>}
             <button
               type="submit"

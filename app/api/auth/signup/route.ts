@@ -7,6 +7,8 @@ import { addToEmailList } from '@/lib/email-list'
 import { sendMetaEvent, makeRegistrationEvent } from '@/lib/meta-server'
 import { BCRYPT_COST } from '@/lib/password'
 import { rateLimitByIp } from '@/lib/rate-limit'
+import { verifyTurnstile } from '@/lib/turnstile'
+import { checkEmailAbuse } from '@/lib/email-abuse'
 
 export async function POST(req: NextRequest) {
   try {
@@ -18,7 +20,21 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const { email, password, nickname, teamInviteToken, claimToken } = await req.json()
+    const { email, password, nickname, teamInviteToken, claimToken, website, turnstileToken } =
+      await req.json()
+
+    // Honeypot: a field hidden from real visitors. Bots fill every input they
+    // find. Answer with a plain success so the operator cannot tell their
+    // submission was dropped and start probing for the reason.
+    if (typeof website === 'string' && website.trim() !== '') {
+      return NextResponse.json({ success: true })
+    }
+
+    const captcha = await verifyTurnstile(req, turnstileToken)
+    if (!captcha.ok) {
+      return NextResponse.json({ error: captcha.error }, { status: 400 })
+    }
+
     if (!email || !password || password.length < 6) {
       return NextResponse.json({ error: 'Email and password (6+ chars) required' }, { status: 400 })
     }
@@ -28,6 +44,14 @@ export async function POST(req: NextRequest) {
     const existing = await db`SELECT id FROM users WHERE email = ${emailLower}`
     if (existing.length > 0) {
       return NextResponse.json({ error: 'Account already exists. Please log in.' }, { status: 409 })
+    }
+
+    // Signing up enrols the address in the marketing list, so an unverified
+    // signup is a way to mail a stranger. Alias variants of one Gmail inbox
+    // are the same account and must not each claim their own.
+    const abuse = await checkEmailAbuse(emailLower, 'users')
+    if (!abuse.ok) {
+      return NextResponse.json({ error: abuse.error }, { status: 409 })
     }
 
     // Signup is open to anyone. If this email already has subscription state

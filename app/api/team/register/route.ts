@@ -6,6 +6,9 @@ import { isCleanDisplayText, BLOCKED_TEXT_ERROR } from '@/lib/moderation'
 import { addToEmailList } from '@/lib/email-list'
 import { randomInt } from 'crypto'
 import { BCRYPT_COST } from '@/lib/password'
+import { rateLimitByIp } from '@/lib/rate-limit'
+import { verifyTurnstile } from '@/lib/turnstile'
+import { checkEmailAbuse } from '@/lib/email-abuse'
 
 function generateAccessCode(): string {
   // randomInt, not Math.random: an access code is a bearer credential (it lets
@@ -21,7 +24,29 @@ function generateAccessCode(): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const { name, email, password, orgCode, ageGroup } = await req.json()
+    // A team is a billing entity with an access code that lets anonymous
+    // players spend its credits, so registration is worth more to an abuser
+    // than a plain account.
+    const limit = await rateLimitByIp(req, 'team-register', 5, 3600)
+    if (!limit.ok) {
+      return NextResponse.json(
+        { error: 'Too many attempts — try again later' },
+        { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } }
+      )
+    }
+
+    const { name, email, password, orgCode, ageGroup, website, turnstileToken } = await req.json()
+
+    // Honeypot: hidden from real visitors, irresistible to bots.
+    if (typeof website === 'string' && website.trim() !== '') {
+      return NextResponse.json({ success: true })
+    }
+
+    const captcha = await verifyTurnstile(req, turnstileToken)
+    if (!captcha.ok) {
+      return NextResponse.json({ error: captcha.error }, { status: 400 })
+    }
+
     if (name && !isCleanDisplayText(name)) {
       return NextResponse.json({ error: BLOCKED_TEXT_ERROR }, { status: 400 })
     }
@@ -49,6 +74,11 @@ export async function POST(req: NextRequest) {
     const existing = await db`SELECT id FROM teams WHERE admin_email = ${emailLower}`
     if (existing.length > 0) {
       return NextResponse.json({ error: 'A team already exists for this email. Please log in.' }, { status: 409 })
+    }
+
+    const abuse = await checkEmailAbuse(emailLower, 'teams')
+    if (!abuse.ok) {
+      return NextResponse.json({ error: abuse.error }, { status: 409 })
     }
 
     const hash = await bcrypt.hash(password, BCRYPT_COST)

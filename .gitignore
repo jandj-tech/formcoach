@@ -41,3 +41,6 @@ yarn-error.log*
 next-env.d.ts
 .env*.local
 .claude/
+
+# Purge backups contain password hashes and email addresses — never commit.
+bot-purge-backup-*.json

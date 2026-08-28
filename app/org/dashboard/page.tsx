@@ -7,6 +7,7 @@ import InlineEdit from '@/components/InlineEdit'
 import InfoTip from '@/components/InfoTip'
 import OrgDashboardClient from './OrgDashboardClient'
 import LogoutButton from './LogoutButton'
+import ManageBillingButton from '@/components/ManageBillingButton'
 import type { ClassPackage } from './OrgDashboardClient'
 import type { LeaderboardRow } from '@/components/LeaderboardTable'
 import Link from 'next/link'
@@ -244,6 +245,7 @@ export default async function OrgDashboardPage() {
             >
               🏢 Organization Hub
             </Link>
+            <ManageBillingButton />
             <LogoutButton />
           </div>
         </div>

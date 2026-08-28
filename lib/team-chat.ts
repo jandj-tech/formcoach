@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server'
+import { teamIsEntitled } from '@/lib/team-features'
 import { db } from '@/lib/db'
 import { getSessionFromRequest } from '@/lib/auth'
 import { getTeamSessionFromRequest } from '@/lib/team-auth'
@@ -102,6 +103,15 @@ export interface ChatActor {
   userId: string | null
   email: string
   identity: ChatIdentity
+  /**
+   * Whether this team may use chat / schedule / leaderboards at all.
+   *
+   * Carried here rather than checked at each route because every chat and
+   * schedule route already funnels through this one resolver — see the note
+   * at the top of lib/team-schedule.ts — so this is the one place the answer
+   * cannot be forgotten. Callers turn a false into a 402.
+   */
+  entitled: boolean
 }
 
 // Resolves chat identity from ANY of the site's session types:
@@ -111,11 +121,14 @@ export async function resolveChatActorFromRequest(
   req: NextRequest,
   teamId: string,
 ): Promise<ChatActor | null> {
+  // Resolved once for whichever session type turns out to be in play.
+  const entitled = await teamIsEntitled(teamId)
+
   // 1. Player (or coach using a player account) — the app's path.
   const user = await getSessionFromRequest(req)
   if (user) {
     const identity = await resolveChatIdentity(teamId, user.userId, user.email)
-    return identity ? { userId: user.userId, email: user.email, identity } : null
+    return identity ? { userId: user.userId, email: user.email, identity, entitled } : null
   }
 
   const [team] = (await db`
@@ -148,14 +161,14 @@ export async function resolveChatActorFromRequest(
       } catch {}
     }
     if (isThisTeamsCoach) {
-      return { userId: null, email: teamSession.adminEmail, identity: coachIdentity(team.coach_nickname || 'Coach') }
+      return { userId: null, email: teamSession.adminEmail, identity: coachIdentity(team.coach_nickname || 'Coach'), entitled }
     }
   }
 
   // 3. Organization session (web org dashboard) — coach powers over org teams.
   const orgSession = await getOrgSessionFromRequest(req)
   if (orgSession && team.organization_id && team.organization_id === orgSession.orgId) {
-    return { userId: null, email: orgSession.adminEmail, identity: coachIdentity('Organization') }
+    return { userId: null, email: orgSession.adminEmail, identity: coachIdentity('Organization'), entitled }
   }
 
   return null

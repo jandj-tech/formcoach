@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { resolveChatActorFromRequest, canPostInChat, NO_ACCESS_MESSAGE } from '@/lib/team-chat'
+import { FEATURE_UPGRADE_MESSAGE } from '@/lib/team-features'
 import { isCleanDisplayText } from '@/lib/moderation'
 
 // GET /api/team/chat?teamId=...&after=<messageId> — messages plus the
@@ -12,6 +13,9 @@ export async function GET(req: NextRequest) {
 
   const actor = await resolveChatActorFromRequest(req, teamId)
   if (!actor) return NextResponse.json({ error: 'Login required' }, { status: 401 })
+  if (!actor.entitled) {
+    return NextResponse.json({ error: FEATURE_UPGRADE_MESSAGE, upgradeRequired: true }, { status: 402 })
+  }
   const identity = actor.identity
 
   try {
@@ -113,6 +117,9 @@ export async function POST(req: NextRequest) {
 
   const actor = await resolveChatActorFromRequest(req, teamId)
   if (!actor) return NextResponse.json({ error: 'Login required' }, { status: 401 })
+  if (!actor.entitled) {
+    return NextResponse.json({ error: FEATURE_UPGRADE_MESSAGE, upgradeRequired: true }, { status: 402 })
+  }
   const identity = actor.identity
 
   if (!canPostInChat(identity)) {

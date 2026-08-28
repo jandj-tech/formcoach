@@ -1172,6 +1172,9 @@ export default function TeamSchedulePanel({
   const t = themeClasses(dark)
 
   const [data, setData] = useState<ScheduleData | 'error' | null>(null)
+  // 402 from the API: this team's plan doesn't include scheduling. Kept apart
+  // from 'error' so the empty state can offer the upgrade instead of a shrug.
+  const [locked, setLocked] = useState(false)
   const [past, setPast] = useState<ScheduleData | 'error' | null>(null)
   // Calendar position (weeks from the current one) and the tapped event.
   // null = auto (first event of the visible week); 'closed' = user collapsed.
@@ -1185,6 +1188,13 @@ export default function TeamSchedulePanel({
   const loadUpcoming = useCallback(async () => {
     try {
       const res = await fetch(`/api/team/schedule?teamId=${encodeURIComponent(teamId)}&window=upcoming`)
+      // 402: this team's plan doesn't include scheduling. Tracked apart from
+      // 'error' so the panel can say something true rather than "unavailable".
+      if (res.status === 402) {
+        setLocked(true)
+        setData('error')
+        return
+      }
       if (!res.ok) {
         setData('error')
         return
@@ -1422,6 +1432,22 @@ export default function TeamSchedulePanel({
   // ---------------------------------------------------------------------- //
 
   if (data === null) return <p className={`text-sm py-4 text-center ${t.dim}`}>Loading schedule…</p>
+  if (locked)
+    return (
+      <div className={`rounded-xl p-5 text-center space-y-2 ${t.panel}`}>
+        <p className={`text-sm font-bold ${t.text}`}>Scheduling is part of the organization plan</p>
+        <p className={`text-xs ${t.dim}`}>
+          Start an organization to turn on scheduling, chat and leaderboards for every team you run.
+        </p>
+        <a
+          href="/org/signup"
+          className="inline-block mt-1 bg-orange-500 hover:bg-orange-400 text-ink-950 font-bold text-sm px-5 py-2.5 rounded-xl transition-colors"
+        >
+          Get started today
+        </a>
+      </div>
+    )
+
   if (data === 'error')
     return <p className={`text-sm py-4 text-center ${t.dim}`}>The schedule isn&apos;t available right now.</p>
 

@@ -17,7 +17,8 @@ function OrgSignupInner() {
   const [orgName, setOrgName] = useState('')
   const [email, setEmail] = useState('')
   const [playerCount, setPlayerCount] = useState('')
-  const [applied, setApplied] = useState(false)
+  const [startPassword, setStartPassword] = useState('')
+  const [startConfirm, setStartConfirm] = useState('')
 
   // Registration form state (token flow)
   const [regOrgName, setRegOrgName] = useState('')
@@ -30,8 +31,15 @@ function OrgSignupInner() {
   const [website, setWebsite] = useState('')
   const [captchaToken, setCaptchaToken] = useState('')
 
-  async function handleApply(e: React.FormEvent) {
+  // Holds the details and the password, then hands off to the pricing page.
+  // No organization exists until a payment clears — see
+  // lib/create-org-from-checkout.ts.
+  async function handleStart(e: React.FormEvent) {
     e.preventDefault()
+    if (startPassword !== startConfirm) {
+      setError('Passwords do not match')
+      return
+    }
     if (TURNSTILE_ENABLED && !captchaToken) {
       setError('Please wait for the human check to finish.')
       return
@@ -39,12 +47,13 @@ function OrgSignupInner() {
     setStatus('loading')
     setError('')
     try {
-      const res = await fetch('/api/org/apply', {
+      const res = await fetch('/api/org/signup/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           orgName,
           email,
+          password: startPassword,
           playerCount: playerCount ? parseInt(playerCount) : null,
           website,
           turnstileToken: captchaToken,
@@ -57,8 +66,7 @@ function OrgSignupInner() {
         setCaptchaToken('')
         return
       }
-      setApplied(true)
-      setStatus('idle')
+      router.push('/org/pricing')
     } catch {
       setError('Something went wrong. Please try again.')
       setStatus('error')
@@ -160,26 +168,7 @@ function OrgSignupInner() {
     )
   }
 
-  // Application submitted confirmation
-  if (applied) {
-    return (
-      <main className="min-h-screen bg-white flex flex-col">
-        <TopNav />
-        <div className="flex-1 flex items-center justify-center px-6 py-12">
-          <div className="w-full max-w-sm text-center space-y-4">
-            <div className="text-5xl">✅</div>
-            <h1 className="text-2xl font-black text-black">Application submitted</h1>
-            <p className="text-gray-500 text-sm">
-              We&apos;ll review your application and send a setup link to <strong>{email}</strong> if approved.
-            </p>
-          </div>
-        </div>
-        <SiteFooter />
-      </main>
-    )
-  }
-
-  // Default — application form
+  // Default — the signup form
   return (
     <main className="min-h-screen bg-white flex flex-col">
       <TopNav />
@@ -187,10 +176,10 @@ function OrgSignupInner() {
         <div className="w-full max-w-sm space-y-6">
           <div className="text-center space-y-2">
             <div className="text-4xl">🏀</div>
-            <h1 className="text-2xl font-black text-black">Apply for an organization account</h1>
-            <p className="text-gray-500 text-sm">Tell us about your organization and we&apos;ll be in touch.</p>
+            <h1 className="text-2xl font-black text-black">Start your organization</h1>
+            <p className="text-gray-500 text-sm">Tell us about your club and pick a plan — you&apos;ll be set up in a couple of minutes.</p>
           </div>
-          <form onSubmit={handleApply} className="space-y-4">
+          <form onSubmit={handleStart} className="space-y-4">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">Organization name</label>
               <input
@@ -224,6 +213,14 @@ function OrgSignupInner() {
                 className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500"
               />
             </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Password</label>
+              <PasswordInput value={startPassword} onChange={e => setStartPassword(e.target.value)} placeholder="6+ characters" />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Confirm password</label>
+              <PasswordInput value={startConfirm} onChange={e => setStartConfirm(e.target.value)} placeholder="Repeat password" />
+            </div>
             <Honeypot value={website} onChange={setWebsite} />
             <Turnstile onToken={setCaptchaToken} theme="light" />
             {error && <p className="text-red-500 text-sm">{error}</p>}
@@ -232,8 +229,9 @@ function OrgSignupInner() {
               disabled={status === 'loading'}
               className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-black py-3 rounded-xl transition-colors"
             >
-              {status === 'loading' ? 'Submitting…' : 'Submit application'}
+              {status === 'loading' ? 'Just a moment…' : 'Get started today'}
             </button>
+            <p className="text-xs text-gray-400 text-center">Next: choose a plan. Your account is created once payment goes through.</p>
           </form>
         </div>
       </div>

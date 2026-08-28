@@ -76,8 +76,8 @@ export async function POST(req: NextRequest) {
     }
 
     const [org] = await db`
-      INSERT INTO organizations (name, admin_email, password_hash, access_code)
-      VALUES (${name.trim()}, ${emailLower}, ${hash}, ${accessCode})
+      INSERT INTO organizations (name, admin_email, password_hash, access_code, subscription_status)
+      VALUES (${name.trim()}, ${emailLower}, ${hash}, ${accessCode}, 'comp')
       RETURNING id, admin_email
     ` as unknown as [{ id: string; admin_email: string }]
 

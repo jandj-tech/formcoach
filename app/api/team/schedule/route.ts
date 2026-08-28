@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { resolveChatActorFromRequest } from '@/lib/team-chat'
+import { FEATURE_UPGRADE_MESSAGE } from '@/lib/team-features'
 import { isCleanDisplayText } from '@/lib/moderation'
 import {
   EVENT_TYPES,
@@ -45,6 +46,9 @@ export async function GET(req: NextRequest) {
 
   const actor = await resolveChatActorFromRequest(req, teamId)
   if (!actor) return NextResponse.json({ error: 'Login required' }, { status: 401 })
+  if (!actor.entitled) {
+    return NextResponse.json({ error: FEATURE_UPGRADE_MESSAGE, upgradeRequired: true }, { status: 402 })
+  }
 
   try {
     // A just-started/just-finished event lingers 3h in "upcoming" so the
@@ -101,6 +105,9 @@ export async function POST(req: NextRequest) {
 
   const actor = await resolveChatActorFromRequest(req, teamId)
   if (!actor) return NextResponse.json({ error: 'Login required' }, { status: 401 })
+  if (!actor.entitled) {
+    return NextResponse.json({ error: FEATURE_UPGRADE_MESSAGE, upgradeRequired: true }, { status: 402 })
+  }
   if (!actor.identity.isCoach) return NextResponse.json({ error: 'Coach only' }, { status: 403 })
 
   const type = (payload.type ?? '').toString()
@@ -179,6 +186,9 @@ export async function PATCH(req: NextRequest) {
 
   const actor = await resolveChatActorFromRequest(req, teamId)
   if (!actor) return NextResponse.json({ error: 'Login required' }, { status: 401 })
+  if (!actor.entitled) {
+    return NextResponse.json({ error: FEATURE_UPGRADE_MESSAGE, upgradeRequired: true }, { status: 402 })
+  }
   if (!actor.identity.isCoach) return NextResponse.json({ error: 'Coach only' }, { status: 403 })
 
   const event = await getEventById(eventId)
@@ -270,6 +280,9 @@ export async function DELETE(req: NextRequest) {
 
   const actor = await resolveChatActorFromRequest(req, teamId)
   if (!actor) return NextResponse.json({ error: 'Login required' }, { status: 401 })
+  if (!actor.entitled) {
+    return NextResponse.json({ error: FEATURE_UPGRADE_MESSAGE, upgradeRequired: true }, { status: 402 })
+  }
   if (!actor.identity.isCoach) return NextResponse.json({ error: 'Coach only' }, { status: 403 })
 
   const event = await getEventById(eventId)

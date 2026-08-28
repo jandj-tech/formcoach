@@ -139,7 +139,7 @@ export default async function TeamLandingPage() {
               href="/org/signup"
               className="inline-block bg-ember-500 hover:bg-ember-400 active:scale-[0.98] text-ink-950 font-bold px-8 py-4 rounded-full transition-all shadow-[0_0_40px_-8px_rgba(255,92,26,0.55)]"
             >
-              Register Organization
+              Get started today
             </Link>
           </div>
         </div>
@@ -194,7 +194,7 @@ export default async function TeamLandingPage() {
             href="/org/signup"
             className="bg-ember-500 hover:bg-ember-400 active:scale-[0.98] text-ink-950 font-bold px-8 py-4 rounded-full transition-all shadow-[0_0_40px_-8px_rgba(255,92,26,0.55)]"
           >
-            Register Organization
+            Get started today
           </Link>
           {!session && !teamSession && !orgSession && (
             <Link

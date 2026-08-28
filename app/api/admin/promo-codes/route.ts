@@ -51,9 +51,13 @@ export async function POST(req: NextRequest) {
   const stripe = getStripe()
 
   const couponName = discountPercent === 100 ? 'LearnHoops Free Access' : `LearnHoops ${discountPercent}% Off`
+  // 'once', NOT 'forever'. On the organization subscription a 'forever'
+  // coupon discounts every invoice for the life of the plan — a 100%-off code
+  // would be a permanently free organization. 'once' behaves identically on
+  // the one-off purchases these codes were built for.
   const coupon = await stripe.coupons.create({
     percent_off: discountPercent,
-    duration: 'forever',
+    duration: 'once',
     name: couponName,
   })
 

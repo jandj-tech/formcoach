@@ -8,6 +8,8 @@ import { grantBallCreditsOnce } from '@/lib/grant-ball-credits'
 import { claimStripeSession, releaseStripeSessionClaim } from '@/lib/stripe-idempotency'
 import { recordPurchase } from '@/lib/record-purchase'
 import { resolveBaseUrl } from '@/lib/base-url'
+import { createOrgFromCheckout } from '@/lib/create-org-from-checkout'
+import { syncSubscriptionToOrg } from '@/lib/org-subscription'
 
 export async function POST(req: NextRequest) {
   try {
@@ -70,6 +72,20 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
     // (100%-off comp coupons) still grants.
     if (session.payment_status === 'unpaid') {
       console.log('[stripe webhook] payment not settled yet, skipping grant', { sessionId: session.id })
+      return NextResponse.json({ received: true })
+    }
+
+    // --- Organization subscription: this is where an org is born ---
+    // The org row does not exist until the first payment clears. Creation is
+    // idempotent and shared with /api/org/subscribe/complete, so whichever of
+    // the two arrives first wins and the other no-ops.
+    if (metaType === 'org_subscription') {
+      const org = await createOrgFromCheckout(session)
+      console.log('[stripe webhook] org_subscription', {
+        sessionId: session.id,
+        orgId: org?.orgId ?? null,
+        created: org?.created ?? false,
+      })
       return NextResponse.json({ received: true })
     }
 
@@ -358,9 +374,9 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
         // token_pool is kept in sync for legacy displays.
         await db`
           INSERT INTO teams
-            (name, admin_email, password_hash, access_code, organization_id, class_package_id, initiated_at, token_pool, credits)
+            (name, admin_email, password_hash, access_code, organization_id, class_package_id, initiated_at, token_pool, credits, entitlement_grandfathered)
           VALUES
-            (${teamName}, ${org.admin_email}, ${null}, ${teamAccessCode}, ${orgId}, ${packageId}, NOW(), ${playerCount * 2}, ${playerCount * 2})
+            (${teamName}, ${org.admin_email}, ${null}, ${teamAccessCode}, ${orgId}, ${packageId}, NOW(), ${playerCount * 2}, ${playerCount * 2}, TRUE)
         `
       } catch (err) {
         console.error('Failed to auto-create class team:', err)
@@ -631,6 +647,23 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
       // Best-effort — never ask Stripe to retry a marketing email.
       console.error('[stripe webhook] abandoned-checkout email failed:', err)
     }
+    return NextResponse.json({ received: true })
+  }
+
+  // --- Subscription lifecycle ---
+  // 'updated' covers status transitions (active <-> past_due <-> canceled),
+  // plan changes, cancel_at_period_end, AND the period rolling forward on
+  // renewal — which is why there is no separate invoice.paid handler.
+  //
+  // These must be registered on the Stripe endpoint or they simply never
+  // arrive; the checkout events being wired up says nothing about these.
+  if (
+    event.type === 'customer.subscription.updated' ||
+    event.type === 'customer.subscription.deleted'
+  ) {
+    const sub = event.data.object as Stripe.Subscription
+    await syncSubscriptionToOrg(sub)
+    console.log('[stripe webhook]', event.type, { subscriptionId: sub.id, status: sub.status })
     return NextResponse.json({ received: true })
   }
 

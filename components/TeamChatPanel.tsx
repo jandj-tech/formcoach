@@ -34,6 +34,9 @@ function timeLabel(iso: string): string {
 // controls laid out plainly so coach work is one click.
 export default function TeamChatPanel({ teamId, tall = false }: { teamId: string; tall?: boolean }) {
   const [state, setState] = useState<ChatState | null | 'error'>(null)
+  // 402 from the API: this team's plan doesn't include chat. Kept separate
+  // from 'error' so the message can say something true and useful.
+  const [locked, setLocked] = useState(false)
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const lastIdRef = useRef(0)
@@ -56,6 +59,7 @@ export default function TeamChatPanel({ teamId, tall = false }: { teamId: string
   const loadFull = useCallback(async () => {
     try {
       const res = await fetch(`/api/team/chat?teamId=${encodeURIComponent(teamId)}`)
+      if (res.status === 402) { setLocked(true); setState('error'); return }
       if (!res.ok) { setState('error'); return }
       merge(await res.json(), false)
     } catch { setState('error') }
@@ -126,6 +130,16 @@ export default function TeamChatPanel({ teamId, tall = false }: { teamId: string
   if (state === null) {
     return <p className="text-sm text-gray-400 py-6 text-center">Loading chat…</p>
   }
+  if (locked) {
+    return (
+      <div className="bg-orange-50 border border-orange-200 rounded-xl p-5 text-center space-y-2">
+        <p className="text-sm font-bold text-black">Team chat is part of the organization plan</p>
+        <p className="text-xs text-gray-500">Start an organization to turn on chat, scheduling and leaderboards for every team you run.</p>
+        <a href="/org/signup" className="inline-block mt-1 bg-orange-500 hover:bg-orange-400 text-ink-950 font-bold text-sm px-5 py-2.5 rounded-xl transition-colors">Get started today</a>
+      </div>
+    )
+  }
+
   if (state === 'error') {
     return <p className="text-sm text-gray-400 py-6 text-center">Chat isn&apos;t available right now.</p>
   }

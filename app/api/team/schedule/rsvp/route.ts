@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { resolveChatActorFromRequest } from '@/lib/team-chat'
+import { FEATURE_UPGRADE_MESSAGE } from '@/lib/team-features'
 import { isCleanDisplayText } from '@/lib/moderation'
 import {
   getEventById,
@@ -31,6 +32,9 @@ export async function POST(req: NextRequest) {
 
   const actor = await resolveChatActorFromRequest(req, teamId)
   if (!actor) return NextResponse.json({ error: 'Login required' }, { status: 401 })
+  if (!actor.entitled) {
+    return NextResponse.json({ error: FEATURE_UPGRADE_MESSAGE, upgradeRequired: true }, { status: 402 })
+  }
   if (actor.userId === null) {
     return NextResponse.json({ error: "Coach and organization accounts don't RSVP" }, { status: 403 })
   }

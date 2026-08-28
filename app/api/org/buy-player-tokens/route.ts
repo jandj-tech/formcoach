@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { getStripe } from '@/lib/stripe'
 import { db } from '@/lib/db'
-import { orgHasInitiatedTeam, TEAM_TOKEN_PRICE_CENTS, REGULAR_ANALYSIS_PRICE_CENTS, discountedUnitCents } from '@/lib/team-tokens'
+import { TEAM_TOKEN_PRICE_CENTS, discountedUnitCents } from '@/lib/team-tokens'
 import { rejectInAppPurchase } from '@/lib/in-app'
 import { currencyForRequest } from '@/lib/region'
 import { resolveBaseUrl } from '@/lib/base-url'
@@ -35,9 +35,8 @@ export async function POST(req: NextRequest) {
     if (!team) {
       return NextResponse.json({ error: 'Team not found' }, { status: 404 })
     }
-    // Org owners unlock $1.49 org-wide once ANY of their teams is initiated.
-    const orgInitiated = await orgHasInitiatedTeam(session.orgId)
-    const baseAmount = orgInitiated ? TEAM_TOKEN_PRICE_CENTS : REGULAR_ANALYSIS_PRICE_CENTS
+    // Every organization gets the team rate — no roster minimum.
+    const baseAmount = TEAM_TOKEN_PRICE_CENTS
     const qty = typeof quantity === 'number' ? Math.floor(quantity) : 1
     if (qty < 1 || qty > 1000) {
       return NextResponse.json({ error: 'Invalid quantity' }, { status: 400 })
@@ -51,7 +50,7 @@ export async function POST(req: NextRequest) {
     const totalTokens = ids.length * qty
     // The tier is set by the whole order — tokens per player x number of players.
     const unitAmount = discountedUnitCents(baseAmount, totalTokens)
-    console.log('[buy-player-tokens] org pricing', { orgId: session.orgId, teamId, orgInitiated, baseAmount, unitAmount, totalTokens })
+    console.log('[buy-player-tokens] org pricing', { orgId: session.orgId, teamId, baseAmount, unitAmount, totalTokens })
 
     const checkout = await getStripe().checkout.sessions.create({
       mode: 'payment',

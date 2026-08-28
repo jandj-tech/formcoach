@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getTeamSessionFromRequest } from '@/lib/team-auth'
 import { getStripe } from '@/lib/stripe'
-import { getTeamTokenState, TEAM_TOKEN_PRICE_CENTS, REGULAR_ANALYSIS_PRICE_CENTS, discountedUnitCents } from '@/lib/team-tokens'
+import { TEAM_TOKEN_PRICE_CENTS, discountedUnitCents } from '@/lib/team-tokens'
 import { rejectInAppPurchase } from '@/lib/in-app'
 import { currencyForRequest } from '@/lib/region'
 import { resolveBaseUrl } from '@/lib/base-url'
@@ -24,9 +24,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid quantity' }, { status: 400 })
     }
 
-    // Coach credits: $1.49 once the team is initiated, $3.49 before.
-    const state = await getTeamTokenState(session.teamId)
-    const baseAmount = state?.initiated ? TEAM_TOKEN_PRICE_CENTS : REGULAR_ANALYSIS_PRICE_CENTS
+    // Coach credits at the team rate — no roster minimum.
+    const baseAmount = TEAM_TOKEN_PRICE_CENTS
     // Volume discount comes off whichever base rate applies to this buyer.
     const unitAmount = discountedUnitCents(baseAmount, qty)
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getTeamSessionFromRequest } from '@/lib/team-auth'
 import { getStripe } from '@/lib/stripe'
-import { getTeamTokenState, TEAM_TOKEN_PRICE_CENTS, REGULAR_ANALYSIS_PRICE_CENTS, discountedUnitCents } from '@/lib/team-tokens'
+import { TEAM_TOKEN_PRICE_CENTS, discountedUnitCents } from '@/lib/team-tokens'
 import { rejectInAppPurchase } from '@/lib/in-app'
 import { currencyForRequest } from '@/lib/region'
 import { resolveBaseUrl } from '@/lib/base-url'
@@ -33,9 +33,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Select at least one player' }, { status: 400 })
     }
 
-    // $1.49 per token once the team has 8+ players, $3.49 before.
-    const state = await getTeamTokenState(session.teamId)
-    const baseAmount = state?.initiated ? TEAM_TOKEN_PRICE_CENTS : REGULAR_ANALYSIS_PRICE_CENTS
+    // Every team gets the team rate — no roster minimum.
+    const baseAmount = TEAM_TOKEN_PRICE_CENTS
 
     const totalTokens = ids.length * qty
     // The tier is set by the whole order — tokens per player x number of players.

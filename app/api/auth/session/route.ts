@@ -3,7 +3,6 @@ import { getSessionFromRequest } from '@/lib/auth'
 import { getTeamSessionFromRequest } from '@/lib/team-auth'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { db } from '@/lib/db'
-import { userHasInitiatedTeam } from '@/lib/team-tokens'
 
 export async function GET(req: NextRequest) {
   // 1. Player session — also returns token/subscription info used elsewhere.
@@ -81,9 +80,11 @@ export async function GET(req: NextRequest) {
         // team_memberships table may not exist yet
       }
 
-      // If any of their teams has reached the initiated player count, the
-      // per-analysis price is $1.49 instead of $3.49.
-      const onInitiatedTeam = onTeam && (await userHasInitiatedTeam(user.id))
+      // Being on any team is the whole test now — there is no roster
+      // minimum. Kept under the name `onInitiatedTeam` on purpose: it is a
+      // wire field that already-shipped iOS builds and lib/useAnalysisPrice.ts
+      // read. Change what it means, never what it is called.
+      const onInitiatedTeam = onTeam
 
       // The free signup analysis has been discontinued — no account gets a
       // free upload, so this is always false.

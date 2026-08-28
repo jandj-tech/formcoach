@@ -33,7 +33,6 @@ interface Team {
   name: string
   accessCode: string
   credits: number
-  initiated: boolean
   tokenPool: number
 }
 
@@ -295,8 +294,8 @@ export default function TeamDashboardClient({
     })),
   ]
 
-  const creditBaseCents = analysisUnitCents(team.initiated)
-  const creditRate = (analysisUnitCents(team.initiated) / 100).toFixed(2)
+  const creditBaseCents = analysisUnitCents(true)
+  const creditRate = (analysisUnitCents(true) / 100).toFixed(2)
   const rosterCount = members.length + pendingMembers.length
 
   /* ── Players tab ──────────────────────────────────────────────── */
@@ -649,9 +648,7 @@ export default function TeamDashboardClient({
           <div className="space-y-4 pt-2">
             <p className="text-sm text-gray-600">
               ${creditRate} per credit
-              {team.initiated
-                ? <span className="ml-1.5 text-xs text-green-600 font-semibold">discounted rate active — $1.49 each when you buy 5+</span>
-                : <span className="ml-1.5 text-xs text-gray-500">drops to $2.49 — $1.49 each at 5+ — once your team reaches 8 players</span>}
+              <span className="ml-1.5 text-xs text-green-600 font-semibold">team rate — $1.49 each when you buy 5+</span>
             </p>
             <div className="space-y-2">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Quantity</p>
@@ -738,29 +735,6 @@ export default function TeamDashboardClient({
         summary={`${team.tokenPool} in pool`}
       >
         <div className="space-y-4 pt-2">
-          {!team.initiated && (
-            <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-bold text-black">Team not yet active</p>
-                <span className="text-xs font-black text-orange-500">{members.length}/8 players</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-orange-500 h-2 rounded-full transition-all"
-                  style={{ width: `${Math.min(100, (members.length / 8) * 100)}%` }}
-                />
-              </div>
-              <p className="text-xs text-gray-500 leading-relaxed">
-                {8 - members.length > 0
-                  ? `${8 - members.length} more player${8 - members.length !== 1 ? 's' : ''} needed to activate this team.`
-                  : 'Almost there!'
-                }
-                {' '}Once you reach 8 players, every player on the team automatically gets <strong>1 free analysis token</strong>{inApp ? '' : ', and the team unlocks discounted tokens at $2.49 each — $1.49 each when you buy 5 or more'}.
-              </p>
-              <p className="text-xs text-gray-400">Share your team signup link (in the Players tab) to invite players.</p>
-            </div>
-          )}
-
           <TokenBalances
             players={members.map(m => ({
               id: m.id,
@@ -899,19 +873,14 @@ export default function TeamDashboardClient({
           <div>
             <div className="flex items-center gap-1.5">
               <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wide">Credit price</h2>
-              <InfoTip label="What does initiation mean?" align="right">
-                Credits start at $3.49. Once your team is initiated — 8 players
-                have joined, or a class package was purchased for it — the
-                price drops to $2.49 per credit, and $1.49 each when you buy
-                5 or more.
+              <InfoTip label="How is the credit price set?" align="right">
+                Every team gets the team rate from day one — no player minimum.
+                Credits are $2.49 each, dropping to $1.49 each when you buy 5
+                or more in one order.
               </InfoTip>
             </div>
             <p className="text-2xl font-black text-black mt-1">${creditRate}</p>
-            {team.initiated ? (
-              <p className="text-[11px] text-green-600 font-semibold leading-tight">discounted rate active</p>
-            ) : (
-              <p className="text-[11px] text-gray-500 leading-tight">{members.length}/8 players to unlock team pricing</p>
-            )}
+            <p className="text-[11px] text-green-600 font-semibold leading-tight">team rate active</p>
           </div>
         </div>
       </section>

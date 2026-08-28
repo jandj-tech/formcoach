@@ -25,7 +25,7 @@ const FAQS: Array<{ id?: string; q: string; a: string[] }> = [
   {
     q: 'How much does a shot analysis cost?',
     a: [
-      'Each analysis is $3.49 — or $2.49 for players on an initiated team, dropping to $1.49 each when you buy 5 or more at once. Every LearnHoops Training Basketball from the shop includes 5 free analyses, and bulk orders get volume discounts automatically.',
+      'Each analysis is $3.49 — or $2.49 for players on any team, dropping to $1.49 each when you buy 5 or more at once. Every LearnHoops Training Basketball from the shop includes 5 free analyses, and bulk orders get volume discounts automatically.',
     ],
   },
   {

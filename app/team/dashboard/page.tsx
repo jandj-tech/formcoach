@@ -47,7 +47,6 @@ export default async function TeamDashboardPage() {
   let pendingMembers: Array<{ id: string; first_name: string; last_name_initial: string | null; invite_token: string | null }> = []
   let coaches: Array<{ id: string; email: string; pending: boolean; nickname: string | null }> = []
   let headCoachNickname: string | null = null
-  let teamInitiated = false
   let teamTokenPool = 0
 
   try {
@@ -181,10 +180,6 @@ export default async function TeamDashboardPage() {
   } catch (err) {
     console.error('[team/dashboard] team meta query failed:', err)
   }
-  // A team is initiated if a class was bought for it OR the player count
-  // reached the threshold. Either path unlocks $1.49 for this team's coach.
-  teamInitiated = hasClassPackage || members.length >= 8
-
   // The coach's own shot uploads, shown as a list in "My Uploads".
   let myUploads: Array<{ id: string; token: string; created_at: string; overall_score: string | number | null }> = []
   try {
@@ -221,7 +216,7 @@ export default async function TeamDashboardPage() {
     <main className="min-h-screen bg-white flex flex-col">
       <TopNav />
       <TeamDashboardClient
-        team={{ id: team.id, name: team.name, accessCode: team.access_code, credits: team.credits, initiated: teamInitiated, tokenPool: teamTokenPool }}
+        team={{ id: team.id, name: team.name, accessCode: team.access_code, credits: team.credits, tokenPool: teamTokenPool }}
         leaderboard={leaderboard}
         improved={improved}
         members={members}

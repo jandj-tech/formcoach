@@ -1,13 +1,10 @@
 import { db } from '@/lib/db'
-import { INITIATION_MIN_PLAYERS } from '@/lib/team-pricing'
 
 export * from '@/lib/team-pricing'
 
 export interface TeamTokenState {
   teamId: string
   name: string
-  /** True once the team has bought its initiation package. */
-  initiated: boolean
   /** Number of joined player accounts (team_memberships). */
   playerCount: number
   /** Unassigned tokens sitting in the team pool. */
@@ -15,24 +12,26 @@ export interface TeamTokenState {
 }
 
 /**
- * Initiation / token-pool status for a team. Returns null if the team does not exist.
- * Degrades gracefully if the migrate-team-tokens migration has not been run yet.
+ * Roster size and token-pool status for a team. Returns null if the team does
+ * not exist. Degrades gracefully if the migrate-team-tokens migration has not
+ * been run yet.
+ *
+ * There is deliberately no `initiated` flag any more: every team gets the team
+ * token rate from its first day, so the field would be a permanently-true
+ * boolean — exactly the kind of thing that rots into a stale gate.
  */
 export async function getTeamTokenState(teamId: string): Promise<TeamTokenState | null> {
   let name = ''
   let tokenPool = 0
-  let hasClassPackage = false
 
   try {
     const [team] = (await db`
-      SELECT name, COALESCE(token_pool, 0)::int AS token_pool,
-             (class_package_id IS NOT NULL) AS has_class_package
+      SELECT name, COALESCE(token_pool, 0)::int AS token_pool
       FROM teams WHERE id = ${teamId}
-    `) as unknown as [{ name: string; token_pool: number; has_class_package: boolean } | undefined]
+    `) as unknown as [{ name: string; token_pool: number } | undefined]
     if (!team) return null
     name = team.name
     tokenPool = team.token_pool
-    hasClassPackage = team.has_class_package
   } catch {
     const [team] = (await db`
       SELECT name FROM teams WHERE id = ${teamId}
@@ -45,77 +44,28 @@ export async function getTeamTokenState(teamId: string): Promise<TeamTokenState 
     SELECT COUNT(*)::int AS count FROM team_memberships WHERE team_id = ${teamId}
   `) as unknown as [{ count: number }]
 
-  // A team is "live" (initiated) once it either reaches the minimum player
-  // count or a class package was bought for it. Either path unlocks $1.49.
-  const initiated = hasClassPackage || row.count >= INITIATION_MIN_PLAYERS
-
-  return { teamId, name, initiated, playerCount: row.count, tokenPool }
+  return { teamId, name, playerCount: row.count, tokenPool }
 }
 
 /**
- * True if the user belongs to at least one team that is initiated — either
- * by having reached INITIATION_MIN_PLAYERS players, or by having had a class
- * package purchased for it (teams.class_package_id IS NOT NULL).
+ * True if the user belongs to at least one team.
+ *
+ * Being on a team is the whole test now — there is no roster minimum and no
+ * class-package special case, because every team gets the team token rate from
+ * day one. Only individuals with no team at all pay the regular rate.
+ *
+ * (There is no `orgHasInitiatedTeam` counterpart any more: an organization
+ * always gets the team rate, so every org buy route uses TEAM_TOKEN_PRICE_CENTS
+ * directly rather than asking a question whose answer is always yes.)
  */
-export async function userHasInitiatedTeam(userId: string): Promise<boolean> {
+export async function userIsOnTeam(userId: string): Promise<boolean> {
   try {
     const rows = (await db`
-      SELECT 1 FROM team_memberships tm
-      JOIN teams t ON t.id = tm.team_id
-      WHERE tm.user_id = ${userId}
-      AND (
-        t.class_package_id IS NOT NULL
-        OR (SELECT COUNT(*) FROM team_memberships WHERE team_id = tm.team_id) >= ${INITIATION_MIN_PLAYERS}
-      )
-      LIMIT 1
+      SELECT 1 FROM team_memberships WHERE user_id = ${userId} LIMIT 1
     `) as unknown as unknown[]
     return rows.length > 0
   } catch {
-    // Pre-migration fallback — no class_package_id column.
-    try {
-      const rows = (await db`
-        SELECT 1 FROM team_memberships tm
-        WHERE tm.user_id = ${userId}
-        AND (SELECT COUNT(*) FROM team_memberships WHERE team_id = tm.team_id) >= ${INITIATION_MIN_PLAYERS}
-        LIMIT 1
-      `) as unknown as unknown[]
-      return rows.length > 0
-    } catch {
-      return false
-    }
-  }
-}
-
-/**
- * True if the organization has at least one team that is initiated — either
- * by reaching INITIATION_MIN_PLAYERS players or by having a class package
- * bought for it. Org leaders get $1.49 across every buy flow once this is true.
- */
-export async function orgHasInitiatedTeam(orgId: string): Promise<boolean> {
-  try {
-    const rows = (await db`
-      SELECT 1 FROM teams t
-      LEFT JOIN team_memberships tm ON tm.team_id = t.id
-      WHERE t.organization_id = ${orgId}
-      GROUP BY t.id
-      HAVING bool_or(t.class_package_id IS NOT NULL) OR COUNT(tm.user_id) >= ${INITIATION_MIN_PLAYERS}
-      LIMIT 1
-    `) as unknown as unknown[]
-    return rows.length > 0
-  } catch {
-    // Pre-migration fallback — no class_package_id column.
-    try {
-      const rows = (await db`
-        SELECT 1 FROM teams t
-        JOIN team_memberships tm ON tm.team_id = t.id
-        WHERE t.organization_id = ${orgId}
-        GROUP BY t.id HAVING COUNT(tm.user_id) >= ${INITIATION_MIN_PLAYERS}
-        LIMIT 1
-      `) as unknown as unknown[]
-      return rows.length > 0
-    } catch {
-      return false
-    }
+    return false
   }
 }
 
@@ -136,9 +86,12 @@ async function ensureGrantLedger(): Promise<void> {
 }
 
 /**
- * Grant 1 free analysis token to every member of an org team that has just
- * reached INITIATION_MIN_PLAYERS players. Each user gets this AT MOST ONCE per
- * team, ever.
+ * Grant 1 free analysis token to every member of an org team. Each user gets
+ * this AT MOST ONCE per team, ever.
+ *
+ * There is no roster threshold: the grant used to fire only when a team crossed
+ * 8 players, but that cliff is gone along with the rest of the initiation rule,
+ * so every member of an org team gets their token as soon as they are on it.
  *
  * The eligibility flag used to live on the team_memberships row, which
  * team/leave DELETEs — so a member could leave and rejoin to mint a fresh token
@@ -154,11 +107,6 @@ export async function grantFreeOrgTokensIfEligible(teamId: string): Promise<void
       SELECT organization_id FROM teams WHERE id = ${teamId}
     `) as unknown as [{ organization_id: string | null } | undefined]
     if (!team?.organization_id) return
-
-    const [countRow] = (await db`
-      SELECT COUNT(*)::int AS count FROM team_memberships WHERE team_id = ${teamId}
-    `) as unknown as [{ count: number }]
-    if (countRow.count < INITIATION_MIN_PLAYERS) return
 
     await ensureGrantLedger()
 

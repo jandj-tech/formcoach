@@ -37,7 +37,6 @@ interface TeamData {
   members: Member[]
   coaches: Coach[]
   coachNickname: string | null
-  initiated: boolean
   tokenPool: number
   leaderboard: LeaderboardRow[]
 }
@@ -154,11 +153,6 @@ export default async function OrgDashboardPage() {
         } catch {
           // coach_nickname / token_pool columns may not exist yet
         }
-        // A team is initiated if it has a class package OR has reached the
-        // player threshold. Both unlock the $1.49 rate everywhere this team
-        // is involved.
-        const initiated = !!t.class_package_id || members.length >= 8
-
         // Leaderboard: account players (by user_id) + coach-added players (by team_player_id).
         let leaderboard: LeaderboardRow[] = []
         try {
@@ -204,7 +198,6 @@ export default async function OrgDashboardPage() {
           members,
           coaches,
           coachNickname,
-          initiated,
           tokenPool,
           leaderboard,
         }

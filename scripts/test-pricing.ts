@@ -48,7 +48,7 @@ function expectedRegularPercent(q: number): number {
   return 0
 }
 
-/** The org / initiated-team ladder: full $2.49 base under 5, the $1.49 rate at 5+. */
+/** The team / org ladder: full $2.49 base under 5, the $1.49 rate at 5+. */
 function expectedTeamPercent(q: number): number {
   if (q >= 5) return 40.16
   return 0
@@ -157,7 +157,8 @@ const SPOTS: Array<[number, number, number]> = [
   // From 10 the price floors at $1.65 and stays there however large the order.
   [REGULAR, 10, 165], [REGULAR, 14, 165], [REGULAR, 15, 165], [REGULAR, 50, 165],
   [REGULAR, 100, 165], [REGULAR, 1000, 165],
-  // Org / initiated: $2.49 under 5, $1.49 from 5 on (the floor, never lower).
+  // Team / org: $2.49 under 5, $1.49 from 5 on (the floor, never lower). Every
+  // team and org gets this from day one — there is no roster minimum.
   [TEAM, 1, 249], [TEAM, 2, 249], [TEAM, 4, 249], [TEAM, 5, 149], [TEAM, 9, 149],
   [TEAM, 10, 149], [TEAM, 50, 149], [TEAM, 100, 149], [TEAM, 1000, 149],
 ]

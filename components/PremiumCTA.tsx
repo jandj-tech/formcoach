@@ -9,7 +9,7 @@ import QuantityStepper from '@/components/QuantityStepper'
 import VolumeNudge from '@/components/VolumeNudge'
 import Link from 'next/link'
 
-export default function PremiumCTA({ dark = false, initiated = false }: { dark?: boolean; initiated?: boolean }) {
+export default function PremiumCTA({ dark = false, onTeam = false }: { dark?: boolean; onTeam?: boolean }) {
   const inApp = useIsInApp()
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
@@ -17,7 +17,7 @@ export default function PremiumCTA({ dark = false, initiated = false }: { dark?:
   const [currency, setCurrency] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [qty, setQty] = useState(1)
-  const { baseUnitCents } = useAnalysisPrice(initiated)
+  const { baseUnitCents } = useAnalysisPrice(onTeam)
   const { percentOff, unitCents, totalCents, savingsCents } = orderPricing(baseUnitCents, qty)
   const price = (baseUnitCents / 100).toFixed(2)
 

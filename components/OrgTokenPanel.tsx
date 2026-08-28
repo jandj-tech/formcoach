@@ -4,9 +4,11 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useIsInApp } from '@/lib/useIsInApp'
 import VolumeSavings, { VolumeTierList } from '@/components/VolumeSavings'
-import {  analysisUnitCents,
+import {
+  analysisUnitCents,
   orderPricing,
   usd,
+  MAX_TOKENS_PER_ORDER,
 } from '@/lib/team-pricing'
 
 export interface OrgPlayerOpt {
@@ -26,7 +28,6 @@ export interface OrgTeamOpt {
   name: string
   coachName: string
   ageGroup: string | null
-  initiated: boolean
   memberCount: number
   credits: number
 }
@@ -72,9 +73,8 @@ export default function OrgTokenPanel({
   const [allocTeamId, setAllocTeamId] = useState(teams[0]?.id ?? '')
   const [allocQty, setAllocQty] = useState(10)
 
-  const anyInitiated = teams.some(t => t.initiated)
-  const pricePerToken = analysisUnitCents(anyInitiated) / 100
-  const buyBaseCents = analysisUnitCents(anyInitiated)
+  // Every organization gets the team rate — no roster minimum, nothing to unlock.
+  const buyBaseCents = analysisUnitCents(true)
   const buyTotal = usd(orderPricing(buyBaseCents, buyQty).totalCents)
 
   const teamPlayers = players.filter(p => p.teamId === assignTeamId)
@@ -227,34 +227,6 @@ export default function OrgTokenPanel({
           <div className="space-y-3">
             <p className="text-sm font-bold text-black">Buy tokens</p>
 
-            {/* Pricing notice when no team has reached 8 players */}
-            {!anyInitiated && teams.length > 0 && (
-              <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-4 space-y-3">
-                <p className="text-sm font-black text-orange-900">Tokens drop to $2.49 once a team reaches 8 players — $1.49 each when you buy 5+</p>
-                <p className="text-xs text-orange-700">Currently $3.49 each — get more players to unlock the lower price.</p>
-                <div className="space-y-2 pt-1">
-                  {teams.map(t => {
-                    const pct = Math.min(100, (t.memberCount / 8) * 100)
-                    const left = Math.max(0, 8 - t.memberCount)
-                    return (
-                      <div key={t.id} className="space-y-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="text-xs font-semibold text-orange-800">{t.name}</p>
-                          <p className="text-xs text-orange-700 shrink-0">{t.memberCount}/8</p>
-                        </div>
-                        <div className="w-full bg-orange-200 rounded-full h-1.5">
-                          <div className="bg-orange-500 h-1.5 rounded-full transition-all" style={{ width: `${pct}%` }} />
-                        </div>
-                        {left > 0 && (
-                          <p className="text-xs text-orange-600">{left} more player{left !== 1 ? 's' : ''} to unlock team pricing</p>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-
             {/* Quantity selector — quick picks, then a clearly-labelled custom box */}
             <div className="space-y-2">
               <div className="flex gap-2">
@@ -276,13 +248,13 @@ export default function OrgTokenPanel({
               <input
                 type="number"
                 min={1}
-                max={10000}
+                max={MAX_TOKENS_PER_ORDER}
                 value={customQty}
                 onChange={e => {
                   const v = e.target.value
                   setCustomQty(v)
                   const n = parseInt(v)
-                  if (!Number.isNaN(n)) setBuyQty(Math.min(10000, Math.max(1, n)))
+                  if (!Number.isNaN(n)) setBuyQty(Math.min(MAX_TOKENS_PER_ORDER, Math.max(1, n)))
                 }}
                 onFocus={e => e.target.select()}
                 placeholder="Or enter a custom amount…"
@@ -291,9 +263,7 @@ export default function OrgTokenPanel({
               />
             </div>
 
-            {anyInitiated && (
-              <p className="text-xs text-green-600 font-semibold px-1">Team rate unlocked — $2.49 each, $1.49 when you buy 5+</p>
-            )}
+            <p className="text-xs text-green-600 font-semibold px-1">Team rate — $2.49 each, $1.49 when you buy 5+</p>
 
             <VolumeTierList baseUnitCents={buyBaseCents} className="px-1" />
 

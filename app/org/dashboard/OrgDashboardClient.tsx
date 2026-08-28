@@ -47,7 +47,6 @@ interface TeamData {
   members: Member[]
   coaches: Coach[]
   coachNickname: string | null
-  initiated: boolean
   tokenPool: number
   leaderboard: LeaderboardRow[]
 }
@@ -1172,33 +1171,6 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                     />
                   </div>
 
-                  {/* Activation status */}
-                  {!team.initiated && (
-                    <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-2">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm font-bold text-black flex items-center gap-1.5">
-                          Team not yet active
-                          <InfoTip label="What does active mean?" align="left">
-                            A team becomes active (&ldquo;initiated&rdquo;) at
-                            8 players, or automatically when it&rsquo;s part of
-                            a class package. Once any of your teams is active,
-                            tokens drop from $3.49 to $2.49 — and $1.49 each
-                            when you buy 5+ across your whole organization.
-                          </InfoTip>
-                        </p>
-                        <span className="text-xs font-black text-orange-500">{team.members.length}/8 players</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div className="bg-orange-500 h-2 rounded-full transition-all"
-                          style={{ width: `${Math.min(100, (team.members.length / 8) * 100)}%` }} />
-                      </div>
-                      <p className="text-xs text-gray-500">
-                        {Math.max(0, 8 - team.members.length)} more player{Math.max(0, 8 - team.members.length) !== 1 ? 's' : ''} needed — at 8, every player gets 1 free token{inApp ? '' : ' and tokens unlock at $2.49 each — $1.49 each when you buy 5+'}.
-                      </p>
-                      <p className="text-xs text-gray-400">Share the player signup link below to invite players to this team.</p>
-                    </div>
-                  )}
-
                   {/* Roster — coach, players, and the player signup link */}
                   <div className="space-y-3">
                     <Section
@@ -1497,9 +1469,6 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                     </button>
                     {isBuyOpen && (
                       <div className="px-4 py-4 space-y-3">
-                        {!team.initiated && !teams.some(t => t.initiated) && (
-                          <p className="text-xs text-orange-600 font-semibold">Team not yet active — tokens are $3.49 each until any of your teams reaches 8 players.</p>
-                        )}
                         <div className="space-y-1">
                           <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Send to</label>
                           <select
@@ -1614,7 +1583,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
         balance={orgTokenBalance}
         players={orgPlayers}
         coaches={orgCoaches}
-        teams={teams.map(t => ({ id: t.id, name: t.name, coachName: t.coachNickname || t.adminEmail, ageGroup: t.ageGroup, initiated: t.initiated, memberCount: t.members.length, credits: t.credits }))}
+        teams={teams.map(t => ({ id: t.id, name: t.name, coachName: t.coachNickname || t.adminEmail, ageGroup: t.ageGroup, memberCount: t.members.length, credits: t.credits }))}
         totalPlayerTokens={totalPlayerTokens}
         totalTeamCredits={totalTeamCredits}
       />

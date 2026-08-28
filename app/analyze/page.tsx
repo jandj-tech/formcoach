@@ -7,7 +7,7 @@ import PremiumCTA from '@/components/PremiumCTA'
 import { getSession } from '@/lib/auth'
 import { getTeamSession } from '@/lib/team-auth'
 import { getOrgSession } from '@/lib/org-auth'
-import { getTeamTokenState, userHasInitiatedTeam, orgHasInitiatedTeam } from '@/lib/team-tokens'
+import { userIsOnTeam } from '@/lib/team-tokens'
 import { db } from '@/lib/db'
 
 export const metadata: Metadata = {
@@ -25,23 +25,10 @@ export default async function AnalyzePage() {
   const orgSession = playerSession || teamSession ? null : await getOrgSession()
 
   const coachEmail = teamSession?.adminEmail ?? orgSession?.adminEmail ?? null
-  let coachSelf: { credits: number; initiated: boolean } | null = null
-  const playerInitiated = playerSession ? await userHasInitiatedTeam(playerSession.userId) : false
+  let coachSelf: { credits: number } | null = null
+  const playerOnTeam = playerSession ? await userIsOnTeam(playerSession.userId) : false
 
   if (coachEmail) {
-    let initiated = false
-    try {
-      if (teamSession) {
-        // A team coach only gets the team rate ($2.49, or $1.49 at 5+) if their own team is initiated.
-        const state = await getTeamTokenState(teamSession.teamId)
-        initiated = !!state?.initiated
-      } else if (orgSession) {
-        // An org owner gets the team rate once any of their teams is initiated.
-        initiated = await orgHasInitiatedTeam(orgSession.orgId)
-      }
-    } catch {
-      // team-membership query failed pre-migration — treat as not initiated
-    }
     let credits = 0
     try {
       if (orgSession) {
@@ -60,7 +47,7 @@ export default async function AnalyzePage() {
     } catch {
       // coach_credits / token_balance column missing pre-migration
     }
-    coachSelf = { credits, initiated }
+    coachSelf = { credits }
   }
 
   return (
@@ -87,14 +74,14 @@ export default async function AnalyzePage() {
         {/* The upload flow keeps its light panel so every state stays readable. */}
         <div className="w-full max-w-xl bg-white rounded-3xl p-3 sm:p-5 shadow-[0_0_60px_-20px_rgba(255,92,26,0.35)]">
           {coachSelf ? (
-            <CoachSelfUploader credits={coachSelf.credits} initiated={coachSelf.initiated} />
+            <CoachSelfUploader credits={coachSelf.credits} />
           ) : (
             <VideoUploader />
           )}
         </div>
         {!coachSelf && (
           <div className="w-full max-w-xl mt-4 px-2">
-            <PremiumCTA dark initiated={playerInitiated} />
+            <PremiumCTA dark onTeam={playerOnTeam} />
           </div>
         )}
         <p className="text-chalk-dim text-xs mt-5 text-center max-w-sm px-4">

@@ -7,14 +7,14 @@ import { orderPricing, usd, MAX_TOKENS_PER_ORDER } from '@/lib/team-pricing'
 import QuantityStepper from '@/components/QuantityStepper'
 import VolumeNudge from '@/components/VolumeNudge'
 
-export default function BuyTokenButton({ isInApp = false, initiated = false }: { isInApp?: boolean; initiated?: boolean }) {
+export default function BuyTokenButton({ isInApp = false, onTeam = false }: { isInApp?: boolean; onTeam?: boolean }) {
   const inAppUA = useIsInApp()
   // Display only — the server picks the currency from the request itself.
   const [currency, setCurrency] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [qty, setQty] = useState(1)
-  const { baseUnitCents } = useAnalysisPrice(initiated)
+  const { baseUnitCents } = useAnalysisPrice(onTeam)
   const { percentOff, totalCents } = orderPricing(baseUnitCents, qty)
 
   useEffect(() => {

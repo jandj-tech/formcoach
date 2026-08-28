@@ -1,28 +1,24 @@
 // Pure pricing constants for the team token model — no DB imports, so this
 // file is safe to import from client components.
 
-/**
- * A team unlocks the discounted token price once it reaches this many joined
- * players (or has a class package bought for it).
- */
-export const INITIATION_MIN_PLAYERS = 8
-
-/** Regular per-analysis price (cents) — players, and coaches/orgs before their team is initiated. */
+/** Regular per-analysis price (cents) — individuals who are not on a team. */
 export const REGULAR_ANALYSIS_PRICE_CENTS = 349
 
 /**
- * Org / initiated-team per-token price for a SMALL order (1–4 tokens), in cents.
- * The full org rate ($1.49) is unlocked by buying TEAM_FULL_RATE_MIN_QTY+ in one
- * order — see TEAM_VOLUME_TIERS. Small orders sit at $2.49 because the
- * payment-processor fee eats most of the margin on a single-token purchase, so
- * orgs are nudged to buy in fives.
+ * Team / org per-token price for a SMALL order (1–4 tokens), in cents.
+ *
+ * Every team and every organization gets this rate from day one — there is no
+ * member minimum. The full rate ($1.49) is unlocked by buying
+ * TEAM_FULL_RATE_MIN_QTY+ in one order — see TEAM_VOLUME_TIERS. Small orders sit
+ * at $2.49 because the payment-processor fee eats most of the margin on a
+ * single-token purchase, so buyers are nudged to buy in fives.
  */
 export const TEAM_TOKEN_PRICE_CENTS = 249
 
-/** The full org / initiated-team rate (cents), reached at 5+ tokens in one order — and the floor. */
+/** The full team / org rate (cents), reached at 5+ tokens in one order — and the floor. */
 export const TEAM_FULL_RATE_CENTS = 149
 
-/** Tokens an org / initiated team must buy in one order to reach TEAM_FULL_RATE_CENTS. */
+/** Tokens a team / org must buy in one order to reach TEAM_FULL_RATE_CENTS. */
 export const TEAM_FULL_RATE_MIN_QTY = 5
 
 /**
@@ -39,9 +35,12 @@ export const MAX_COACH_CREDITS_PER_ORDER = 500
  * Every surface that shows or charges an analysis price goes through here —
  * players, coaches and orgs alike. Reading the two constants directly is what
  * let the same player see $1.79 on one page and $1.49 on another.
+ *
+ * `onTeam` means exactly what it says: on a team, or an organization. There is
+ * no roster minimum behind it.
  */
-export function analysisUnitCents(initiated: boolean): number {
-  return initiated ? TEAM_TOKEN_PRICE_CENTS : REGULAR_ANALYSIS_PRICE_CENTS
+export function analysisUnitCents(onTeam: boolean): number {
+  return onTeam ? TEAM_TOKEN_PRICE_CENTS : REGULAR_ANALYSIS_PRICE_CENTS
 }
 
 export type VolumeTier = { minQty: number; percentOff: number }
@@ -59,15 +58,15 @@ export type VolumeTier = { minQty: number; percentOff: number }
 export const REGULAR_VOLUME_TIERS: ReadonlyArray<VolumeTier> = [
   // The advertised curve: 3 for $6.99 ($2.33/ea), 5–9 at the 5-pack rate
   // ($1.79/ea), and from 10 the price floors at $1.65/ea. Individual (non-team)
-  // buyers never go below this floor — the deep bulk discount is reserved for
-  // initiated teams, whose rate ($1.49 and lower) stays the cheapest anywhere.
+  // buyers never go below this floor — the deeper discount is reserved for
+  // teams and orgs, whose rate ($1.49) stays the cheapest anywhere.
   { minQty: 10, percentOff: 52.7 },
   { minQty: 5, percentOff: 48.7 },
   { minQty: 3, percentOff: 33.2 },
 ]
 
 /**
- * The org / initiated-team ladder — one step, and it IS the org deal.
+ * The team / org ladder — one step, and it IS the team deal.
  *
  * A small order (1–4) is charged the $2.49 base; at 5+ the price drops to the
  * $1.49 full org rate and floors there — no order, however large, goes lower.
@@ -83,7 +82,7 @@ export const TEAM_VOLUME_TIERS: ReadonlyArray<VolumeTier> = [
  * Which ladder a base rate earns.
  *
  * The base price already says which kind of buyer this is — every charging
- * route resolves `initiated` into TEAM_TOKEN_PRICE_CENTS or
+ * route resolves `onTeam` into TEAM_TOKEN_PRICE_CENTS or
  * REGULAR_ANALYSIS_PRICE_CENTS before pricing anything — so reading the ladder
  * back off the base is what keeps the rate and the discount from ever
  * disagreeing. No caller passes a separate flag, so no caller can pass the

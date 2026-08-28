@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { db } from '@/lib/db'
-import { orgHasInitiatedTeam, TEAM_TOKEN_PRICE_CENTS, REGULAR_ANALYSIS_PRICE_CENTS, discountedUnitCents } from '@/lib/team-tokens'
+import { TEAM_TOKEN_PRICE_CENTS, discountedUnitCents } from '@/lib/team-tokens'
 import { rejectInAppPurchase } from '@/lib/in-app'
 import { currencyForRequest } from '@/lib/region'
 import { resolveBaseUrl } from '@/lib/base-url'
@@ -27,14 +27,12 @@ export async function POST(req: NextRequest) {
     ` as unknown as [{ id: string; name: string } | undefined]
     if (!team) return NextResponse.json({ error: 'Team not found' }, { status: 404 })
 
-    // Org owners unlock the $1.49 rate org-wide once ANY of their teams
-    // is initiated — applies to every buy flow, including coach credits
-    // for a team that hasn't reached 8 players on its own yet.
-    const orgInitiated = await orgHasInitiatedTeam(session.orgId)
-    const baseAmount = orgInitiated ? TEAM_TOKEN_PRICE_CENTS : REGULAR_ANALYSIS_PRICE_CENTS
+    // Every organization gets the team rate on every buy flow, coach credits
+    // included — no roster minimum anywhere.
+    const baseAmount = TEAM_TOKEN_PRICE_CENTS
     // Volume discount comes off whichever base rate applies to this buyer.
     const unitAmount = discountedUnitCents(baseAmount, quantity)
-    console.log('[buy-team-credits] org pricing', { orgId: session.orgId, teamId: team.id, orgInitiated, baseAmount, unitAmount, quantity })
+    console.log('[buy-team-credits] org pricing', { orgId: session.orgId, teamId: team.id, baseAmount, unitAmount, quantity })
 
     const stripeSession = await getStripe().checkout.sessions.create({
       mode: 'payment',

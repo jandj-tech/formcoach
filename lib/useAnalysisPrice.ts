@@ -8,13 +8,15 @@ import { analysisUnitCents } from './team-pricing'
  *
  * Every player-facing buy surface reads from this hook so one person never
  * sees two different prices on two different pages. Server pages that already
- * know the answer pass it as `initialInitiated` so the correct price is on
+ * know the answer pass it as `initialOnTeam` so the correct price is on
  * screen at first paint; the session fetch then confirms it for pages that
- * render without it (the shop, for one, used to fall back to $1.79 for a
- * player whose team had already unlocked $1.49).
+ * render without it.
+ *
+ * The session field is still called `onInitiatedTeam` because shipped iOS
+ * builds read that name; it now means simply "on a team".
  */
-export function useAnalysisPrice(initialInitiated = false) {
-  const [initiated, setInitiated] = useState(initialInitiated)
+export function useAnalysisPrice(initialOnTeam = false) {
+  const [onTeam, setOnTeam] = useState(initialOnTeam)
 
   useEffect(() => {
     let alive = true
@@ -22,7 +24,7 @@ export function useAnalysisPrice(initialInitiated = false) {
       .then((r) => r.json())
       .then((d) => {
         if (alive && typeof d?.user?.onInitiatedTeam === 'boolean') {
-          setInitiated(d.user.onInitiatedTeam)
+          setOnTeam(d.user.onInitiatedTeam)
         }
       })
       .catch(() => {
@@ -33,5 +35,5 @@ export function useAnalysisPrice(initialInitiated = false) {
     }
   }, [])
 
-  return { initiated, baseUnitCents: analysisUnitCents(initiated) }
+  return { onTeam, baseUnitCents: analysisUnitCents(onTeam) }
 }

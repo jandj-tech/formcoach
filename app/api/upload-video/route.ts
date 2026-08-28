@@ -74,6 +74,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
       await authorizeUpload(request, pathname, teamCode)
 
+      // Reject oversize uploads BEFORE reading the body. request.arrayBuffer()
+      // materializes the entire ≤200MB payload in RAM, so a few concurrent big
+      // (or deliberately oversize) uploads could OOM the process; the old
+      // buffer.length check ran too late to prevent that. Content-Length can be
+      // absent or spoofed, so the post-buffer check below stays as backstop.
+      const declaredLength = Number(request.headers.get('content-length') || '0')
+      if (declaredLength > MAX_BYTES) throw new Error('Video is too large')
+
       const buffer = Buffer.from(await request.arrayBuffer())
       if (buffer.length === 0) throw new Error('Empty upload')
       if (buffer.length > MAX_BYTES) throw new Error('Video is too large')

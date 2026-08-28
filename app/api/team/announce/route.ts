@@ -3,6 +3,11 @@ import { Resend } from 'resend'
 import { db } from '@/lib/db'
 import { getTeamSessionFromRequest } from '@/lib/team-auth'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
+import { rateLimit } from '@/lib/rate-limit'
+
+// Send at most this many emails concurrently, so a large roster can't fire
+// hundreds of Resend calls in one burst (→ provider rate-limit / 429).
+const SEND_CHUNK = 20
 
 // Coach announcement blast: emails every registered player on the team.
 // For urgent word — "practice is canceled" — typed by the coach verbatim.
@@ -30,6 +35,17 @@ export async function POST(req: NextRequest) {
       (orgSession && team.organization_id === orgSession.orgId)
     if (!authorized) return NextResponse.json({ error: 'Not your team' }, { status: 403 })
 
+    // A blast reaches the whole roster, so cap how often one team can fire it —
+    // a compromised or careless coach account can't repeatedly spam every
+    // player (Resend cost + inbox abuse). Fails open on limiter error.
+    const limit = await rateLimit(`team-announce:${teamId}`, 6, 3600)
+    if (!limit.ok) {
+      return NextResponse.json(
+        { error: 'You have sent several announcements recently — please wait a bit before sending another.' },
+        { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } },
+      )
+    }
+
     const players = (await db`
       SELECT DISTINCT u.email
       FROM team_memberships tm JOIN users u ON u.id = tm.user_id
@@ -43,21 +59,15 @@ export async function POST(req: NextRequest) {
     const subject = (p.subject ?? '').toString().trim().slice(0, 150) || `📣 Message from ${coachName} — ${team.name}`
     const resend = new Resend(process.env.RESEND_API_KEY!)
 
-    const results = await Promise.allSettled(players.map(({ email }) =>
-      resend.emails.send({
-        from: 'LearnHoops <noreply@learnhoops.com>',
-        to: email,
-        replyTo: team.admin_email,
-        subject,
-        text: [
-          `Message from ${coachName} (${team.name}):`,
-          '',
-          message,
-          '',
-          '—',
-          'Sent through LearnHoops team announcements. Reply to reach your coach.',
-        ].join('\n'),
-        html: `
+    const text = [
+      `Message from ${coachName} (${team.name}):`,
+      '',
+      message,
+      '',
+      '—',
+      'Sent through LearnHoops team announcements. Reply to reach your coach.',
+    ].join('\n')
+    const html = `
           <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
             <div style="background:#000000;padding:20px 28px;">
               <h1 style="color:#F97316;margin:0;font-size:20px;">LearnHoops — ${team.name}</h1>
@@ -68,11 +78,26 @@ export async function POST(req: NextRequest) {
               <hr style="border:none;border-top:1px solid #E2E8F0;margin:24px 0;"/>
               <p style="color:#999;font-size:11px;">Sent through LearnHoops team announcements. Reply to reach your coach.</p>
             </div>
-          </div>`,
-      })
-    ))
+          </div>`
 
-    const sent = results.filter(r => r.status === 'fulfilled').length
+    // Send in bounded-concurrency chunks rather than firing the whole roster at
+    // once, so a big team doesn't trip Resend's rate limit in a single burst.
+    let sent = 0
+    for (let i = 0; i < players.length; i += SEND_CHUNK) {
+      const batch = players.slice(i, i + SEND_CHUNK)
+      const results = await Promise.allSettled(batch.map(({ email }) =>
+        resend.emails.send({
+          from: 'LearnHoops <noreply@learnhoops.com>',
+          to: email,
+          replyTo: team.admin_email,
+          subject,
+          text,
+          html,
+        })
+      ))
+      sent += results.filter(r => r.status === 'fulfilled').length
+    }
+
     return NextResponse.json({ success: true, sent, total: players.length })
   } catch (err) {
     console.error('[team/announce] failed:', err)

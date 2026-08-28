@@ -64,6 +64,10 @@ export default function TeamChatPanel({ teamId, tall = false }: { teamId: string
   useEffect(() => {
     loadFull()
     const timer = setInterval(async () => {
+      // Skip the poll while the tab is backgrounded — a hidden panel polling
+      // every 5s is pure load on the DB (no CDN) for a screen nobody is looking
+      // at. It resumes automatically when the tab is shown again.
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
       try {
         const res = await fetch(`/api/team/chat?teamId=${encodeURIComponent(teamId)}&after=${lastIdRef.current}`)
         if (res.ok) merge(await res.json(), true)

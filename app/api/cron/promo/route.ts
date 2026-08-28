@@ -15,8 +15,22 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  // Only address anyone who has NOT already received a promo in the current
+  // cycle. This is the idempotency the loop was missing: a re-hit, an
+  // overlapping run, or a run that timed out partway (sequential sends,
+  // maxDuration=300) would otherwise re-blast everyone already emailed. The
+  // 20-day window is safely inside the monthly cadence — it blocks same-cycle
+  // duplicates while never suppressing next month's send. The email_logs row is
+  // written immediately after each send so a resumed run skips it.
   const recipients = (await db`
-    SELECT email FROM email_list WHERE unsubscribed_at IS NULL
+    SELECT el.email FROM email_list el
+    WHERE el.unsubscribed_at IS NULL
+      AND NOT EXISTS (
+        SELECT 1 FROM email_logs lg
+        WHERE lg.email = el.email
+          AND lg.email_type = 'promo'
+          AND lg.sent_at > NOW() - INTERVAL '20 days'
+      )
   `) as unknown as Array<{ email: string }>
 
   let sent = 0

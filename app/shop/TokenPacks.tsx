@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { trackInitiateCheckout } from '@/lib/meta-pixel'
 import { useIsInApp } from '@/lib/useIsInApp'
-import { orderPricing, usd, REGULAR_ANALYSIS_PRICE_CENTS, MAX_TOKENS_PER_ORDER } from '@/lib/team-pricing'
+import { orderPricing, percentLabel, usd, REGULAR_ANALYSIS_PRICE_CENTS, MAX_TOKENS_PER_ORDER } from '@/lib/team-pricing'
 import QuantityStepper from '@/components/QuantityStepper'
 import VolumeNudge from '@/components/VolumeNudge'
 
@@ -203,7 +203,7 @@ export default function TokenPacks({ dark = false }: { dark?: boolean }) {
               <p className={`text-xs mt-0.5 ${s.sub}`}>
                 {usd(custom.unitCents)} per analysis
                 {custom.savingsCents > 0 ? (
-                  <span className={`font-bold ${s.save}`}> · save {usd(custom.savingsCents)} ({Math.round(custom.percentOff)}%)</span>
+                  <span className={`font-bold ${s.save}`}> · save {usd(custom.savingsCents)} ({percentLabel(custom.percentOff)}%)</span>
                 ) : (
                   <span> — down to {usd(floorUnit)} each at 10+</span>
                 )}

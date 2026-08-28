@@ -9,7 +9,7 @@ import { getOrgSession } from '@/lib/org-auth'
 import { db } from '@/lib/db'
 import TeamHubClient, { type HubTeam } from './TeamHubClient'
 import { GraduationCapIcon, TrendingUpIcon, TrophyIcon } from 'lucide-react'
-import { TEAM_TOKEN_PRICE_CENTS, TEAM_VOLUME_TIERS, usd } from '@/lib/team-pricing'
+import { TEAM_TOKEN_PRICE_CENTS, TEAM_VOLUME_TIERS, percentLabel, usd } from '@/lib/team-pricing'
 
 // The deepest tier a team can reach, read off the ladder rather than typed.
 const bestTeamDiscount = TEAM_VOLUME_TIERS.reduce(
@@ -164,7 +164,7 @@ export default async function TeamLandingPage() {
                     the ladder. */}
                 <div className="pt-3 mt-1 border-t border-courtline">
                   <div className="font-display font-black uppercase text-ember-500 text-xl leading-none">
-                    Up to {bestTeamDiscount}% off
+                    Up to {percentLabel(bestTeamDiscount)}% off
                   </div>
                   <div className="text-chalk-dim text-sm mt-1">when you buy credits in bulk.</div>
                 </div>

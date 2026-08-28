@@ -144,3 +144,15 @@ export function orderPricing(baseUnitCents: number, quantity: number) {
 export function usd(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`
 }
+
+/**
+ * A tier percentage as it should be shown: a whole number.
+ *
+ * The tiers themselves carry decimals on purpose — 52.7% off 349¢ is what
+ * lands on the advertised $1.65, and rounding the tier would move the price
+ * itself. So only the label rounds: "save 53%" sits beside the exact cent
+ * figure it came from.
+ */
+export function percentLabel(percentOff: number): number {
+  return Math.round(percentOff)
+}

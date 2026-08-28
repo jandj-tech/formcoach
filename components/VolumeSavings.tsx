@@ -1,6 +1,6 @@
 'use client'
 
-import { tiersFor, orderPricing, usd, TEAM_TOKEN_PRICE_CENTS } from '@/lib/team-pricing'
+import { tiersFor, orderPricing, percentLabel, usd, TEAM_TOKEN_PRICE_CENTS } from '@/lib/team-pricing'
 import VolumeNudge from '@/components/VolumeNudge'
 
 /**
@@ -44,7 +44,7 @@ export default function VolumeSavings({
 
       {percentOff > 0 && (
         <p className="text-sm font-bold text-green-700">
-          {percentOff}% bulk discount applied — you save {usd(savingsCents)}
+          {percentLabel(percentOff)}% bulk discount applied — you save {usd(savingsCents)}
         </p>
       )}
 
@@ -84,7 +84,7 @@ export function VolumeTierList({
           key={t.minQty}
           className="text-[11px] font-semibold text-orange-700 bg-orange-50 border border-orange-200 rounded-full px-2 py-0.5"
         >
-          {t.minQty}+ save {t.percentOff}%
+          {t.minQty}+ save {percentLabel(t.percentOff)}%
         </span>
       ))}
     </div>

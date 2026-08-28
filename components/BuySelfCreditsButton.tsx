@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useIsInApp } from '@/lib/useIsInApp'
-import { analysisUnitCents, orderPricing, usd, MAX_COACH_CREDITS_PER_ORDER } from '@/lib/team-pricing'
+import { analysisUnitCents, orderPricing, percentLabel, usd, MAX_COACH_CREDITS_PER_ORDER } from '@/lib/team-pricing'
 import QuantityStepper from '@/components/QuantityStepper'
 
 // Buys analysis credits for a coach / org owner's own uploads. Coaches and
@@ -49,7 +49,7 @@ export default function BuySelfCreditsButton() {
         </button>
       </span>
       {percentOff > 0 && (
-        <span className="text-green-600 text-xs font-semibold">{percentOff}% volume discount applied</span>
+        <span className="text-green-600 text-xs font-semibold">{percentLabel(percentOff)}% volume discount applied</span>
       )}
     </span>
   )

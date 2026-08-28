@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useIsInApp } from '@/lib/useIsInApp'
 import { useAnalysisPrice } from '@/lib/useAnalysisPrice'
-import { orderPricing, usd, MAX_TOKENS_PER_ORDER } from '@/lib/team-pricing'
+import { orderPricing, percentLabel, usd, MAX_TOKENS_PER_ORDER } from '@/lib/team-pricing'
 import QuantityStepper from '@/components/QuantityStepper'
 import VolumeNudge from '@/components/VolumeNudge'
 
@@ -61,7 +61,7 @@ export default function BuyTokenButton({ isInApp = false, onTeam = false }: { is
         </button>
       </span>
       {percentOff > 0 && (
-        <span className="text-green-600 text-xs font-semibold">{percentOff}% volume discount applied</span>
+        <span className="text-green-600 text-xs font-semibold">{percentLabel(percentOff)}% volume discount applied</span>
       )}
       <VolumeNudge
         baseUnitCents={baseUnitCents}

@@ -6,11 +6,23 @@ import { getSessionFromRequest } from '@/lib/auth'
 import { getTeamSessionFromRequest } from '@/lib/team-auth'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { maybeSendFilmingTips } from '@/lib/filming-tips'
+import { rateLimit, rateLimitByIp } from '@/lib/rate-limit'
 import crypto from 'crypto'
 
 export const maxDuration = 300
 
+// Cost/OOM guards on the frame array. The client sends ~25-28 small JPEGs; the
+// old route accepted any number of any size and fed them all into 4 Claude
+// vision calls (unbounded spend) while base64-holding them in memory
+// (unbounded RAM). These ceilings are far above any legitimate upload.
+const MAX_ANALYZE_FRAMES = 40
+const MAX_ANALYZE_FRAME_BYTES = 5 * 1024 * 1024
+
 export async function POST(req: NextRequest) {
+  // Set once a credit is atomically reserved below; called to undo that charge
+  // if the analysis yields no shot or throws, so nothing is billed for a
+  // non-result.
+  let refundCharge: (() => Promise<void>) | null = null
   try {
     const formData = await req.formData()
     const files = formData.getAll('frames') as File[]
@@ -19,6 +31,17 @@ export async function POST(req: NextRequest) {
 
     if (!files || files.length === 0) {
       return NextResponse.json({ error: 'No frames provided' }, { status: 400 })
+    }
+    if (files.length > MAX_ANALYZE_FRAMES) {
+      return NextResponse.json({ error: `Too many frames (max ${MAX_ANALYZE_FRAMES})` }, { status: 400 })
+    }
+    for (const f of files) {
+      if (!(f instanceof File)) {
+        return NextResponse.json({ error: 'Invalid frame' }, { status: 400 })
+      }
+      if (f.size > MAX_ANALYZE_FRAME_BYTES) {
+        return NextResponse.json({ error: 'Frame too large' }, { status: 400 })
+      }
     }
 
     const session = await getSessionFromRequest(req)
@@ -68,26 +91,54 @@ export async function POST(req: NextRequest) {
 
     const userId = session?.userId ?? null
 
-    // Check + reserve token before doing any expensive work. Every analysis
-    // now requires a token or an active subscription — the free signup
-    // analysis has been discontinued, so an account with neither is turned
-    // away here before any work happens. `isFreePreview` is retained (always
-    // false) so historical free-preview submissions still read correctly.
+    // Rate limit before any expensive work. This is the only route that runs
+    // the full multi-pass Claude pipeline and it previously had NO limit at
+    // all, so one credential in a loop could run up the API bill fast. Keyed
+    // per caller (whichever identity applies) and per IP, mirroring the
+    // detect-shot routes. Fails open on limiter error (see lib/rate-limit.ts).
+    const callerKey =
+      userId ? `player:${userId}`
+      : isTeamUpload ? `code:${(teamCode ?? '').toUpperCase()}`
+      : orgSelfId ? `org:${orgSelfId}`
+      : coachEmail ? `coach:${coachEmail}`
+      : 'anon'
+    const perCaller = await rateLimit(`analyze:${callerKey}`, 30, 600)
+    if (!perCaller.ok) {
+      return NextResponse.json(
+        { error: 'Too many analyses — please wait a moment and try again.' },
+        { status: 429, headers: { 'Retry-After': String(perCaller.retryAfterSeconds) } },
+      )
+    }
+    const perIp = await rateLimitByIp(req, 'analyze', 60, 600)
+    if (!perIp.ok) {
+      return NextResponse.json(
+        { error: 'Too many analyses — please wait a moment and try again.' },
+        { status: 429, headers: { 'Retry-After': String(perIp.retryAfterSeconds) } },
+      )
+    }
+
+    // Every analysis requires a token or an active subscription — the free
+    // signup analysis has been discontinued, so an account with neither is
+    // turned away here before any work happens. `isFreePreview` is retained
+    // (always false) so historical free-preview submissions still read
+    // correctly. NOTE: the balance is only RESERVED (atomically) just before
+    // the Claude call below — this early check is a fast fail for good UX.
     const isFreePreview = false
+    let userIsSubscribed = false
     if (!isTeamUpload && userId) {
       const [user] = await db`
         SELECT analysis_tokens, subscription_type, subscription_expires_at, free_analysis_used
         FROM users WHERE id = ${userId}
       ` as unknown as [{ analysis_tokens: number; subscription_type: string | null; subscription_expires_at: string | null; free_analysis_used: boolean | null } | undefined]
 
-      const isSubscribed =
+      userIsSubscribed =
         !!user?.subscription_type &&
         !!user?.subscription_expires_at &&
         new Date(user.subscription_expires_at) > new Date()
 
       const tokens = user?.analysis_tokens ?? 0
 
-      if (!isSubscribed && tokens <= 0) {
+      if (!userIsSubscribed && tokens <= 0) {
         return NextResponse.json({ error: 'No analysis tokens' }, { status: 402 })
       }
     }
@@ -244,13 +295,78 @@ export async function POST(req: NextRequest) {
       console.warn('[analyze] fingerprint lookup skipped:', err instanceof Error ? err.message : err)
     }
 
+    // --- Atomic credit reservation -----------------------------------------
+    // Deduct the credit HERE, before the Claude call, with `WHERE ... > 0
+    // RETURNING`. The old code checked the balance up top but only deducted
+    // AFTER grading, so N concurrent uploads on a single credit all passed the
+    // check and all ran the full ~$0.50 pipeline. Reserving atomically means
+    // only one wins; the rest get 402. `refundCharge` undoes it on a no-shot
+    // verdict or any failure, so nothing is billed for a non-result.
+    if (isTeamUpload && teamId) {
+      const coachRows = teamCoachEmail
+        ? ((await db`
+            UPDATE coach_credits SET credits = credits - 1
+            WHERE LOWER(email) = ${teamCoachEmail} AND credits > 0 RETURNING email
+          `) as unknown as unknown[])
+        : []
+      if (coachRows.length > 0) {
+        refundCharge = async () => {
+          await db`UPDATE coach_credits SET credits = credits + 1 WHERE LOWER(email) = ${teamCoachEmail}`
+        }
+      } else {
+        const teamRows = (await db`
+          UPDATE teams SET credits = credits - 1 WHERE id = ${teamId} AND credits > 0 RETURNING id
+        `) as unknown as unknown[]
+        if (teamRows.length === 0) {
+          await db`DELETE FROM submissions WHERE id = ${submission.id}`
+          return NextResponse.json({ error: 'Insufficient credits' }, { status: 402 })
+        }
+        refundCharge = async () => {
+          await db`UPDATE teams SET credits = credits + 1 WHERE id = ${teamId}`
+        }
+      }
+    } else if (isCoachSelf && orgSelfId) {
+      const rows = (await db`
+        UPDATE organizations SET token_balance = token_balance - 1 WHERE id = ${orgSelfId} AND token_balance > 0 RETURNING id
+      `) as unknown as unknown[]
+      if (rows.length === 0) {
+        await db`DELETE FROM submissions WHERE id = ${submission.id}`
+        return NextResponse.json({ error: 'No analysis tokens' }, { status: 402 })
+      }
+      refundCharge = async () => {
+        await db`UPDATE organizations SET token_balance = token_balance + 1 WHERE id = ${orgSelfId}`
+      }
+    } else if (isCoachSelf && coachEmail) {
+      const rows = (await db`
+        UPDATE coach_credits SET credits = credits - 1 WHERE email = ${coachEmail} AND credits > 0 RETURNING email
+      `) as unknown as unknown[]
+      if (rows.length === 0) {
+        await db`DELETE FROM submissions WHERE id = ${submission.id}`
+        return NextResponse.json({ error: 'No analysis credits' }, { status: 402 })
+      }
+      refundCharge = async () => {
+        await db`UPDATE coach_credits SET credits = credits + 1 WHERE email = ${coachEmail}`
+      }
+    } else if (!isTeamUpload && userId && !isFreePreview && !userIsSubscribed) {
+      const rows = (await db`
+        UPDATE users SET analysis_tokens = analysis_tokens - 1 WHERE id = ${userId} AND analysis_tokens > 0 RETURNING id
+      `) as unknown as unknown[]
+      if (rows.length === 0) {
+        await db`DELETE FROM submissions WHERE id = ${submission.id}`
+        return NextResponse.json({ error: 'No analysis tokens' }, { status: 402 })
+      }
+      refundCharge = async () => {
+        await db`UPDATE users SET analysis_tokens = analysis_tokens + 1 WHERE id = ${userId}`
+      }
+    }
+
     // Run Claude Vision analysis (fresh grade unless fingerprint matched)
     if (!result) result = await analyzeShot(frameBase64Array, frameMimeTypes)
 
-    // No analyzable shot in the video — discard the submission and don't charge
-    // the user. Tokens/credits are only deducted further below, so returning
-    // here guarantees nothing was spent.
+    // No analyzable shot in the video — refund the reserved credit and discard
+    // the submission so nothing is charged for a non-result.
     if (result.shot_detected === false) {
+      if (refundCharge) await refundCharge()
       await db`DELETE FROM submissions WHERE id = ${submission.id}`
       return NextResponse.json(
         {
@@ -383,43 +499,12 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Deduct token after successful analysis. The free preview consumes the
-    // one-time freebie instead of a token — and only here, after success, so
-    // a failed or no-shot upload never burns it.
-    if (!isTeamUpload && userId) {
-      if (isFreePreview) {
-        await db`UPDATE users SET free_analysis_used = true WHERE id = ${userId}`
-      } else {
-        await db`
-          UPDATE users SET analysis_tokens = analysis_tokens - 1
-          WHERE id = ${userId} AND analysis_tokens > 0
-        `
-      }
-    }
-
-    if (isTeamUpload && teamId) {
-      // Spend the coach's personal credits first; fall back to the legacy
-      // team budget only if the coach has none left.
-      let spentFromCoach = false
-      if (teamCoachEmail) {
-        const rows = await db`
-          UPDATE coach_credits SET credits = credits - 1
-          WHERE LOWER(email) = ${teamCoachEmail} AND credits > 0
-          RETURNING email
-        ` as unknown as Array<{ email: string }>
-        spentFromCoach = rows.length > 0
-      }
-      if (!spentFromCoach) {
-        await db`UPDATE teams SET credits = credits - 1 WHERE id = ${teamId} AND credits > 0`
-      }
-    }
-
-    if (isCoachSelf) {
-      if (orgSelfId) {
-        await db`UPDATE organizations SET token_balance = token_balance - 1 WHERE id = ${orgSelfId} AND token_balance > 0`
-      } else if (coachEmail) {
-        await db`UPDATE coach_credits SET credits = credits - 1 WHERE email = ${coachEmail} AND credits > 0`
-      }
+    // The credit was already reserved atomically before the Claude call (see
+    // "Atomic credit reservation" above) and stands now that the analysis
+    // succeeded — nothing to deduct here. A free preview (isFreePreview, always
+    // false today) would consume the one-time freebie instead.
+    if (!isTeamUpload && userId && isFreePreview) {
+      await db`UPDATE users SET free_analysis_used = true WHERE id = ${userId}`
     }
 
     // First analysis for whoever uploaded it → send the filming guide. Goes to
@@ -435,6 +520,13 @@ export async function POST(req: NextRequest) {
       token: submissionToken,
     })
   } catch (err) {
+    // Refund the reserved credit if we charged before failing, so a crash mid-
+    // analysis never costs the user a credit.
+    if (refundCharge) {
+      try { await refundCharge() } catch (refundErr) {
+        console.error('[analyze] refund after failure failed:', refundErr instanceof Error ? refundErr.message : refundErr)
+      }
+    }
     console.error('Analysis error:', err instanceof Error ? err.message : err)
     return NextResponse.json({ error: 'Analysis failed', detail: err instanceof Error ? err.message : String(err) }, { status: 500 })
   }

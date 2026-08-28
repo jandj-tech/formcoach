@@ -16,10 +16,22 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Shared filter: skips unsubscribes, hard bounces and spam complaints.
-  // This used to be a local "WHERE unsubscribed_at IS NULL", which meant
-  // every dead address on the list got mailed again every single month.
-  const recipients = await activeMarketingRecipients()
+  // Suppression list: skips unsubscribes, hard bounces and spam complaints, so
+  // a dead address is never mailed again.
+  const active = await activeMarketingRecipients()
+
+  // Idempotency the loop was missing: drop anyone already sent a promo this
+  // cycle, so a re-hit, an overlapping run, or a run that timed out partway
+  // (paced sends, maxDuration=300) can't re-blast people already emailed. The
+  // 20-day window sits safely inside the monthly cadence — it blocks same-cycle
+  // duplicates without ever suppressing next month's send. Each email_logs row
+  // is written immediately after its send, so a resumed run skips it.
+  const alreadySent = (await db`
+    SELECT DISTINCT email FROM email_logs
+    WHERE email_type = 'promo' AND sent_at > NOW() - INTERVAL '20 days'
+  `) as unknown as Array<{ email: string }>
+  const sentSet = new Set(alreadySent.map((r) => r.email.toLowerCase()))
+  const recipients = active.filter((r) => !sentSet.has(r.email.toLowerCase()))
 
   let sent = 0
   let failed = 0

@@ -119,10 +119,34 @@ export async function orgHasInitiatedTeam(orgId: string): Promise<boolean> {
   }
 }
 
+// Ensure the persistent grant ledger exists (self-healing, like the rate-limit
+// and support tables) so this works even before the migration is applied.
+let grantLedgerEnsured = false
+async function ensureGrantLedger(): Promise<void> {
+  if (grantLedgerEnsured) return
+  await db`
+    CREATE TABLE IF NOT EXISTS team_free_token_grants (
+      user_id UUID NOT NULL,
+      team_id UUID NOT NULL,
+      granted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (user_id, team_id)
+    )
+  `
+  grantLedgerEnsured = true
+}
+
 /**
  * Grant 1 free analysis token to every member of an org team that has just
- * reached INITIATION_MIN_PLAYERS players. Skips members who already got theirs.
- * No-ops silently if the team is not in an org or not yet large enough.
+ * reached INITIATION_MIN_PLAYERS players. Each user gets this AT MOST ONCE per
+ * team, ever.
+ *
+ * The eligibility flag used to live on the team_memberships row, which
+ * team/leave DELETEs — so a member could leave and rejoin to mint a fresh token
+ * every cycle. The flag now lives in team_free_token_grants, a ledger keyed by
+ * (user_id, team_id) that survives membership deletion. The grant is claimed
+ * atomically with INSERT ... ON CONFLICT DO NOTHING RETURNING: only a row that
+ * was actually inserted (first time for that user+team) gets the token, so
+ * concurrent calls and leave/rejoin loops can't double-grant.
  */
 export async function grantFreeOrgTokensIfEligible(teamId: string): Promise<void> {
   try {
@@ -136,14 +160,24 @@ export async function grantFreeOrgTokensIfEligible(teamId: string): Promise<void
     `) as unknown as [{ count: number }]
     if (countRow.count < INITIATION_MIN_PLAYERS) return
 
-    const ungranted = (await db`
-      SELECT user_id FROM team_memberships
-      WHERE team_id = ${teamId} AND (free_token_granted IS NULL OR free_token_granted = FALSE)
+    await ensureGrantLedger()
+
+    const members = (await db`
+      SELECT user_id FROM team_memberships WHERE team_id = ${teamId}
     `) as unknown as { user_id: string }[]
 
-    for (const m of ungranted) {
-      await db`UPDATE users SET analysis_tokens = COALESCE(analysis_tokens, 0) + 1 WHERE id = ${m.user_id}`
-      await db`UPDATE team_memberships SET free_token_granted = TRUE WHERE team_id = ${teamId} AND user_id = ${m.user_id}`
+    for (const m of members) {
+      const claimed = (await db`
+        INSERT INTO team_free_token_grants (user_id, team_id)
+        VALUES (${m.user_id}, ${teamId})
+        ON CONFLICT (user_id, team_id) DO NOTHING
+        RETURNING user_id
+      `) as unknown as unknown[]
+      // Only credit when THIS call won the claim — an already-granted user (incl.
+      // one who left and rejoined) inserts nothing and gets no second token.
+      if (claimed.length > 0) {
+        await db`UPDATE users SET analysis_tokens = COALESCE(analysis_tokens, 0) + 1 WHERE id = ${m.user_id}`
+      }
     }
   } catch (err) {
     console.error('[grantFreeOrgTokensIfEligible] error:', err)

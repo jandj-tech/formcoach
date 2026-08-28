@@ -1,5 +1,24 @@
 # Path A — run learnhoops.com on the cPanel box (Passenger/Node)
 
+> **STATUS (2026-08-28): HISTORICAL — this path was taken and then abandoned.**
+> The box ran learnhoops.com for roughly a week (last box-era upload
+> 2026-08-28T00:36Z) and production is now **back on Vercel**. Nothing here is
+> a current deploy instruction: deploys happen on `git push` to `main`, and
+> `scripts/box-update.sh` is dead tooling.
+>
+> Kept, not deleted, because it is the only record of why the box behaved the
+> way it did (glibc 2.17 vs prebuilt native binaries, wasm-swc, the sharp
+> `@img` copy, the image-cache wipe). If the box is ever revived, start here —
+> and re-verify every claim, since the box itself has drifted.
+>
+> Still load-bearing in the app source, so do not "clean it up":
+> - `next.config.ts` gates `output: 'standalone'` behind `!process.env.VERCEL`.
+>   On Vercel that gate must stay — standalone output breaks Vercel's
+>   file-tracing step (`ENOENT .next/next-server.js.nft.json`).
+> - `outputFileTracingIncludes` for `lib/geo/country.mmdb` is needed on Vercel
+>   too, since the raw `fs.readFileSync` in `lib/region.ts` is untraceable.
+
+
 The app is a Next.js 16 Node app. It can only run on this account once the
 **Application Manager (Passenger) with Node.js** is enabled — verified missing
 on 2026-08-11 (the account API returned *"You do not have the feature

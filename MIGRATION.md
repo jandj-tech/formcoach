@@ -1,5 +1,26 @@
 # Moving learnhoops.com off Vercel — $0/month
 
+> **STATUS (2026-08-28): SUPERSEDED — learnhoops.com is back on Vercel.**
+> The move off Vercel was carried out (cPanel/Passenger box, see
+> CPANEL-DEPLOY.md) and then **reverted** on 2026-08-28. `curl -I
+> learnhoops.com` answers `Server: Vercel`; the Vercel project is
+> `learn-hoops-projects/learnhoops`.
+>
+> **What this document still describes accurately** — the two external
+> services set up during the migration are KEPT and are what production uses
+> today:
+> - **Neon** is still the database (`DATABASE_URL` on Vercel).
+> - **Cloudflare R2** is still object storage (`STORAGE_DRIVER=s3` plus the
+>   `S3_*` vars on Vercel), served through the private-bucket proxy at
+>   `/api/media/[...key]`. Verified 2026-08-28: box-era R2 objects return
+>   `200` with correct content types from Vercel.
+>
+> So the env-var tables below are still the reference for production. Only the
+> "move off Vercel / cancel Vercel / pick Render or Netlify" framing is dead.
+> Vercel Blob still holds the pre-migration media (66 of 69 analyses); stored
+> URLs are absolute, so both backends coexist without a data migration.
+
+
 Goal: stop paying Vercel, without paying anything new and without rewriting the
 app. The app runs unchanged on a free host; the database and video storage move
 to free external services. Your existing cPanel is not a host for this app (it

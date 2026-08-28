@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getTeamSessionFromRequest } from '@/lib/team-auth'
+import { teamIsEntitled, SUBSCRIPTION_ENDED_MESSAGE } from '@/lib/team-features'
 import { db } from '@/lib/db'
 import { randomBytes } from 'crypto'
 import { isCleanDisplayText, BLOCKED_TEXT_ERROR } from '@/lib/moderation'
@@ -11,6 +12,13 @@ export async function POST(req: NextRequest) {
   try {
     const session = await getTeamSessionFromRequest(req)
     if (!session) return NextResponse.json({ error: 'Login required' }, { status: 401 })
+
+    if (!(await teamIsEntitled(session.teamId))) {
+      return NextResponse.json(
+        { error: SUBSCRIPTION_ENDED_MESSAGE, subscriptionEnded: true },
+        { status: 402 },
+      )
+    }
 
     const { firstName, lastInitial } = await req.json()
     if (!isCleanDisplayText(`${firstName ?? ''} ${lastInitial ?? ''}`)) {

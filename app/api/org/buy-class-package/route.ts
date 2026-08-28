@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe'
 import { db } from '@/lib/db'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
+import { orgIsEntitledById, SUBSCRIPTION_ENDED_MESSAGE } from '@/lib/team-features'
 import { rejectInAppPurchase } from '@/lib/in-app'
 import { currencyForRequest } from '@/lib/region'
 import { resolveBaseUrl } from '@/lib/base-url'
@@ -20,6 +21,16 @@ export async function POST(req: NextRequest) {
   if (inAppBlock) return inAppBlock
   const session = await getOrgSessionFromRequest(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  // A lapsed organization keeps what it has but cannot grow. Deleting,
+  // renaming and moving tokens around all still work — see
+  // lib/team-features.ts.
+  if (!(await orgIsEntitledById(session.orgId))) {
+    return NextResponse.json(
+      { error: SUBSCRIPTION_ENDED_MESSAGE, subscriptionEnded: true },
+      { status: 402 },
+    )
+  }
 
   const body = await req.json()
   const size5 = Math.max(0, Math.floor(Number(body.size5) || 0))

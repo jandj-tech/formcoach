@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getTeamSessionFromRequest } from '@/lib/team-auth'
 import { getStripe } from '@/lib/stripe'
-import { TEAM_TOKEN_PRICE_CENTS, discountedUnitCents } from '@/lib/team-tokens'
+import { TEAM_TOKEN_PRICE_CENTS, REGULAR_ANALYSIS_PRICE_CENTS, discountedUnitCents } from '@/lib/team-tokens'
+import { teamIsEntitled } from '@/lib/team-features'
 import { rejectInAppPurchase } from '@/lib/in-app'
 import { currencyForRequest } from '@/lib/region'
 import { resolveBaseUrl } from '@/lib/base-url'
@@ -33,8 +34,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Select at least one player' }, { status: 400 })
     }
 
-    // Every team gets the team rate — no roster minimum.
-    const baseAmount = TEAM_TOKEN_PRICE_CENTS
+    // A team in a lapsed organization pays the regular rate on new tokens.
+    const baseAmount = (await teamIsEntitled(session.teamId))
+      ? TEAM_TOKEN_PRICE_CENTS
+      : REGULAR_ANALYSIS_PRICE_CENTS
 
     const totalTokens = ids.length * qty
     // The tier is set by the whole order — tokens per player x number of players.

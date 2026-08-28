@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSessionFromRequest } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { grantFreeOrgTokensIfEligible } from '@/lib/team-tokens'
+import { teamIsEntitled } from '@/lib/team-features'
 import { isCleanDisplayText, BLOCKED_TEXT_ERROR } from '@/lib/moderation'
 
 export async function POST(req: NextRequest) {
@@ -59,6 +60,20 @@ export async function POST(req: NextRequest) {
 
     if (!team) {
       return NextResponse.json({ error: 'Team not found' }, { status: 404 })
+    }
+
+    // A team whose organization has lapsed keeps its existing roster but
+    // cannot take on new players. Someone already on the team is unaffected —
+    // the membership insert below is an upsert, so a returning member is not a
+    // new player.
+    if (!(await teamIsEntitled(team.id))) {
+      return NextResponse.json(
+        {
+          error: 'This team is not accepting new players right now. Ask your coach to reactivate the organization plan.',
+          subscriptionEnded: true,
+        },
+        { status: 402 },
+      )
     }
 
     // Class-package team: enforce the roster cap and record the enrollment.

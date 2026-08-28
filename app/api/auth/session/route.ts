@@ -3,6 +3,7 @@ import { getSessionFromRequest } from '@/lib/auth'
 import { getTeamSessionFromRequest } from '@/lib/team-auth'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { db } from '@/lib/db'
+import { userIsOnEntitledTeam } from '@/lib/team-features'
 
 export async function GET(req: NextRequest) {
   // 1. Player session — also returns token/subscription info used elsewhere.
@@ -80,11 +81,12 @@ export async function GET(req: NextRequest) {
         // team_memberships table may not exist yet
       }
 
-      // Being on any team is the whole test now — there is no roster
-      // minimum. Kept under the name `onInitiatedTeam` on purpose: it is a
-      // wire field that already-shipped iOS builds and lib/useAnalysisPrice.ts
-      // read. Change what it means, never what it is called.
-      const onInitiatedTeam = onTeam
+      // Being on an ENTITLED team is the test: no roster minimum, but a team
+      // whose organization has lapsed no longer earns the team rate. Kept under
+      // the name `onInitiatedTeam` on purpose — it is a wire field that
+      // already-shipped iOS builds and lib/useAnalysisPrice.ts read. Change
+      // what it means, never what it is called.
+      const onInitiatedTeam = onTeam && (await userIsOnEntitledTeam(user.id))
 
       // The free signup analysis has been discontinued — no account gets a
       // free upload, so this is always false.

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { db } from '@/lib/db'
 import { getTeamSessionFromRequest } from '@/lib/team-auth'
+import { teamIsEntitled, SUBSCRIPTION_ENDED_MESSAGE } from '@/lib/team-features'
 import { sendCoachSignupEmail } from '@/lib/email'
 import { addToEmailList } from '@/lib/email-list'
 
@@ -10,6 +11,13 @@ import { addToEmailList } from '@/lib/email-list'
 export async function POST(req: NextRequest) {
   const session = await getTeamSessionFromRequest(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  if (!(await teamIsEntitled(session.teamId))) {
+    return NextResponse.json(
+      { error: SUBSCRIPTION_ENDED_MESSAGE, subscriptionEnded: true },
+      { status: 402 },
+    )
+  }
 
   const body = (await req.json().catch(() => ({}))) as { email?: string; sendEmail?: boolean }
   const email = body.email?.toLowerCase().trim()

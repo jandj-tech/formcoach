@@ -89,6 +89,42 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ received: true })
     }
 
+    // --- Organization reactivation: an existing org restarting its plan ---
+    // No org is created here; the row already exists and its owner is already
+    // logged in. This just points it at the new subscription and flips it back
+    // to active, which re-opens every gate in lib/team-features.ts at once.
+    if (metaType === 'org_reactivate') {
+      const orgId = session.metadata?.orgId
+      if (orgId) {
+        const customerId = typeof session.customer === 'string' ? session.customer : session.customer?.id ?? null
+        const subscriptionId =
+          typeof session.subscription === 'string' ? session.subscription : session.subscription?.id ?? null
+        try {
+          await db`
+            UPDATE organizations
+            SET stripe_customer_id = COALESCE(${customerId}, stripe_customer_id),
+                stripe_subscription_id = ${subscriptionId},
+                subscription_status = 'active',
+                subscription_plan = ${session.metadata?.plan ?? null},
+                subscription_cancel_at_period_end = FALSE
+            WHERE id = ${orgId}
+          `
+          await recordPurchase(session, {
+            kind: 'org_subscription',
+            description: `LearnHoops Organization — reactivated (${session.metadata?.plan ?? 'monthly'})`,
+            quantity: 1,
+            buyerKind: 'org',
+            buyerRef: orgId,
+          })
+          console.log('[stripe webhook] org reactivated', { orgId, subscriptionId })
+        } catch (err) {
+          console.error('[stripe webhook] org reactivation failed:', err)
+          return NextResponse.json({ received: true, handled: false })
+        }
+      }
+      return NextResponse.json({ received: true })
+    }
+
     // --- Coach self-upload credits ---
     if (metaType === 'coach_self_credits') {
       const coachEmail = session.metadata?.coachEmail?.toLowerCase()

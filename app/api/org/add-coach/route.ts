@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { db } from '@/lib/db'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
+import { orgIsEntitledById, SUBSCRIPTION_ENDED_MESSAGE } from '@/lib/team-features'
 import { sendCoachSignupEmail } from '@/lib/email'
 import { addToEmailList } from '@/lib/email-list'
 
@@ -11,6 +12,16 @@ import { addToEmailList } from '@/lib/email-list'
 export async function POST(req: NextRequest) {
   const session = await getOrgSessionFromRequest(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  // A lapsed organization keeps what it has but cannot grow. Deleting,
+  // renaming and moving tokens around all still work — see
+  // lib/team-features.ts.
+  if (!(await orgIsEntitledById(session.orgId))) {
+    return NextResponse.json(
+      { error: SUBSCRIPTION_ENDED_MESSAGE, subscriptionEnded: true },
+      { status: 402 },
+    )
+  }
 
   const body = (await req.json().catch(() => ({}))) as {
     teamId?: string

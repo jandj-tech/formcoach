@@ -48,6 +48,64 @@ export function orgIsEntitled(status: string | null | undefined): boolean {
 export const FEATURE_UPGRADE_MESSAGE =
   'Team chat, scheduling and leaderboards are part of the organization plan.'
 
+/**
+ * Shown when a lapsed organization tries to grow — add a team, a coach, a
+ * player, a class. What they already have keeps working; they just cannot
+ * add to it until the plan is back.
+ */
+export const SUBSCRIPTION_ENDED_MESSAGE =
+  'Your organization plan has ended. Reactivate it to add teams, coaches and players again.'
+
+/**
+ * Is this organization paid up (or grandfathered / comped)?
+ *
+ * Fails OPEN on a thrown error, for the same reason resolveTeamEntitlement
+ * does: a schema hiccup must not lock a paying customer out of their own
+ * organization.
+ */
+export async function orgIsEntitledById(orgId: string): Promise<boolean> {
+  try {
+    const [row] = (await db`
+      SELECT subscription_status FROM organizations WHERE id = ${orgId}
+    `) as unknown as [{ subscription_status: string | null } | undefined]
+    if (!row) return true
+    return orgIsEntitled(row.subscription_status)
+  } catch (err) {
+    console.error('[orgIsEntitledById] lookup failed, failing open:', err)
+    return true
+  }
+}
+
+/**
+ * Does this player belong to at least one ENTITLED team?
+ *
+ * Drives the per-analysis price a player sees. The team rate is a benefit of
+ * being on a team whose organization is paid up (or which predates paid
+ * plans); a player whose only team belongs to a lapsed organization pays the
+ * regular rate, same as someone with no team at all.
+ *
+ * Fails OPEN — an error here would silently overcharge a real customer.
+ */
+export async function userIsOnEntitledTeam(userId: string): Promise<boolean> {
+  try {
+    const rows = (await db`
+      SELECT 1 FROM team_memberships tm
+      JOIN teams t ON t.id = tm.team_id
+      LEFT JOIN organizations o ON o.id = t.organization_id
+      WHERE tm.user_id = ${userId}
+        AND (
+          t.entitlement_grandfathered = TRUE
+          OR o.subscription_status = ANY(${ENTITLED_STATUSES as unknown as string[]})
+        )
+      LIMIT 1
+    `) as unknown as unknown[]
+    return rows.length > 0
+  } catch (err) {
+    console.error('[userIsOnEntitledTeam] lookup failed, failing open:', err)
+    return true
+  }
+}
+
 export interface TeamEntitlement {
   entitled: boolean
   /** True when this team is entitled because it predates paid plans. */

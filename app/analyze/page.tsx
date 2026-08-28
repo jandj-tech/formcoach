@@ -7,7 +7,7 @@ import PremiumCTA from '@/components/PremiumCTA'
 import { getSession } from '@/lib/auth'
 import { getTeamSession } from '@/lib/team-auth'
 import { getOrgSession } from '@/lib/org-auth'
-import { userIsOnTeam } from '@/lib/team-tokens'
+import { userIsOnEntitledTeam } from '@/lib/team-features'
 import { db } from '@/lib/db'
 
 export const metadata: Metadata = {
@@ -26,7 +26,7 @@ export default async function AnalyzePage() {
 
   const coachEmail = teamSession?.adminEmail ?? orgSession?.adminEmail ?? null
   let coachSelf: { credits: number } | null = null
-  const playerOnTeam = playerSession ? await userIsOnTeam(playerSession.userId) : false
+  const playerOnTeam = playerSession ? await userIsOnEntitledTeam(playerSession.userId) : false
 
   if (coachEmail) {
     let credits = 0

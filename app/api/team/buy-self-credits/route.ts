@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getTeamSessionFromRequest } from '@/lib/team-auth'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { getStripe } from '@/lib/stripe'
-import { TEAM_TOKEN_PRICE_CENTS, discountedUnitCents } from '@/lib/team-tokens'
+import { TEAM_TOKEN_PRICE_CENTS, REGULAR_ANALYSIS_PRICE_CENTS, discountedUnitCents } from '@/lib/team-tokens'
+import { orgIsEntitledById, teamIsEntitled } from '@/lib/team-features'
 import { rejectInAppPurchase } from '@/lib/in-app'
 import { currencyForRequest } from '@/lib/region'
 import { resolveBaseUrl } from '@/lib/base-url'
@@ -28,13 +29,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid quantity' }, { status: 400 })
     }
 
-    // Coaches and org owners alike get the team rate — no roster minimum,
-    // so the two session kinds no longer price differently.
+    // Coaches and org owners alike get the team rate, unless their plan has
+    // lapsed — then new credits cost the regular rate.
     const coachEmail = teamSession?.adminEmail ?? orgSession!.adminEmail
-    const baseAmount = TEAM_TOKEN_PRICE_CENTS
+    const entitled = teamSession
+      ? await teamIsEntitled(teamSession.teamId)
+      : await orgIsEntitledById(orgSession!.orgId)
+    const baseAmount = entitled ? TEAM_TOKEN_PRICE_CENTS : REGULAR_ANALYSIS_PRICE_CENTS
     // Volume discount comes off whichever base rate applies to this buyer.
     const unitAmount = discountedUnitCents(baseAmount, qty)
-    console.log('[buy-self-credits] pricing', { teamId: teamSession?.teamId, orgId: orgSession?.orgId, baseAmount, unitAmount, qty })
+    console.log('[buy-self-credits] pricing', { teamId: teamSession?.teamId, orgId: orgSession?.orgId, entitled, baseAmount, unitAmount, qty })
 
     const checkout = await getStripe().checkout.sessions.create({
       mode: 'payment',

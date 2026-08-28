@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth'
 import { isInAppRequest } from '@/lib/in-app'
 import { db } from '@/lib/db'
-import { userIsOnTeam } from '@/lib/team-tokens'
+import { userIsOnEntitledTeam } from '@/lib/team-features'
 import { analysisUnitCents } from '@/lib/team-pricing'
 import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
@@ -171,7 +171,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     new Date(user.subscription_expires_at) > new Date()
 
   const tokens = user.analysis_tokens ?? 0
-  const onTeam = await userIsOnTeam(user.id)
+  const onTeam = await userIsOnEntitledTeam(user.id)
 
   function scoreColor(score: number) {
     if (score >= 8) return 'text-green-600'

@@ -3,6 +3,7 @@ import {
   appleProfileFromCode,
   googleProfileFromCode,
   isOAuthProvider,
+  OAUTH_STATE_COOKIE,
   safeNext,
   verifyState,
   type OAuthProfile,
@@ -16,7 +17,6 @@ import {
 } from '@/lib/oauth-account'
 import { clearOtherSessions } from '@/lib/sessions'
 import { sendMetaEvent, makeRegistrationEvent } from '@/lib/meta-server'
-import { OAUTH_STATE_COOKIE } from '../start/route'
 
 export const dynamic = 'force-dynamic'
 

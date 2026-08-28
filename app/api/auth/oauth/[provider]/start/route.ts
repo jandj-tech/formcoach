@@ -4,15 +4,13 @@ import {
   appleAuthUrl,
   googleAuthUrl,
   isOAuthProvider,
+  OAUTH_STATE_COOKIE,
   safeNext,
   signState,
   type OAuthMode,
 } from '@/lib/oauth'
 
 export const dynamic = 'force-dynamic'
-
-/** Short-lived companion to the signed `state`, checked on the way back. */
-export const OAUTH_STATE_COOKIE = 'fc_oauth_state'
 
 /**
  * Kicks off a provider sign-in.

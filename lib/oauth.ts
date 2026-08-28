@@ -18,6 +18,14 @@ import { resolveBaseUrl } from '@/lib/base-url'
 
 export type OAuthProvider = 'google' | 'apple'
 
+/**
+ * Short-lived companion to the signed `state`, set by the start route and
+ * checked by the callback. Lives here, not in a route module: Next forbids
+ * a route.ts from exporting anything but its handlers, and the webpack build
+ * fails type-checking on the extra export (Turbopack lets it slide).
+ */
+export const OAUTH_STATE_COOKIE = 'fc_oauth_state'
+
 export function isOAuthProvider(v: string): v is OAuthProvider {
   return v === 'google' || v === 'apple'
 }

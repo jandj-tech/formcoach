@@ -29,8 +29,8 @@ export default async function OrdersPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-2xl font-black text-white">Orders</h1>
-        <div className="flex gap-4 text-sm text-zinc-400">
+        <h1 className="text-2xl font-black text-black dark:text-white">Orders</h1>
+        <div className="flex gap-4 text-sm text-gray-600 dark:text-zinc-400">
           <span><span className="text-orange-500 font-bold">{orders.length}</span> total</span>
           <span><span className="text-yellow-400 font-bold">{pending}</span> pending ship</span>
           <span><span className="text-green-400 font-bold">{shipped}</span> shipped</span>

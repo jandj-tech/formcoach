@@ -34,12 +34,12 @@ function SignupLinkBox({ link }: { link: string }) {
 
   return (
     <div className="flex items-center gap-2 mt-1.5 w-full">
-      <code className="flex-1 min-w-0 truncate bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-[11px] text-zinc-300 font-mono">
+      <code className="flex-1 min-w-0 truncate bg-gray-50 dark:bg-zinc-950 border border-gray-300 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 text-[11px] text-gray-700 dark:text-zinc-300 font-mono">
         {link}
       </code>
       <button
         onClick={copy}
-        className="shrink-0 bg-zinc-700 hover:bg-zinc-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
+        className="shrink-0 bg-gray-200 dark:bg-zinc-700 hover:bg-zinc-600 text-black dark:text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
       >
         {copied ? 'Copied' : 'Copy'}
       </button>
@@ -95,7 +95,7 @@ export default function OrgApplicationsClient({ initialApplications }: { initial
 
   return (
     <div>
-      <h2 className="text-lg font-black text-white mb-3">
+      <h2 className="text-lg font-black text-black dark:text-white mb-3">
         Applications
         {pending.length > 0 && (
           <span className="ml-2 bg-orange-500 text-ink-950 text-xs font-bold px-2 py-0.5 rounded-full">{pending.length} pending</span>
@@ -103,25 +103,25 @@ export default function OrgApplicationsClient({ initialApplications }: { initial
       </h2>
 
       {applications.length === 0 ? (
-        <p className="text-zinc-400 text-sm">No applications yet.</p>
+        <p className="text-gray-600 dark:text-zinc-400 text-sm">No applications yet.</p>
       ) : (
         <div className="space-y-4">
           {/* Pending */}
           {pending.length > 0 && (
-            <div className="bg-zinc-900 rounded-xl border border-orange-500/30 overflow-hidden">
-              <div className="px-5 py-2.5 border-b border-zinc-800 bg-orange-500/10">
+            <div className="bg-white dark:bg-zinc-900 rounded-xl border border-orange-500/30 overflow-hidden">
+              <div className="px-5 py-2.5 border-b border-gray-200 dark:border-zinc-800 bg-orange-500/10">
                 <span className="text-orange-400 text-xs font-bold uppercase tracking-wide">Pending review</span>
               </div>
               <div className="divide-y divide-zinc-800/50">
                 {pending.map(a => (
                   <div key={a.id} className="flex items-center justify-between gap-4 px-5 py-4 flex-wrap">
                     <div className="space-y-0.5 min-w-0">
-                      <p className="text-white font-bold">{a.org_name}</p>
-                      <p className="text-zinc-400 text-sm">{a.email}</p>
+                      <p className="text-black dark:text-white font-bold">{a.org_name}</p>
+                      <p className="text-gray-600 dark:text-zinc-400 text-sm">{a.email}</p>
                       {a.player_count != null && (
-                        <p className="text-zinc-500 text-xs">{a.player_count} players</p>
+                        <p className="text-gray-500 dark:text-zinc-500 text-xs">{a.player_count} players</p>
                       )}
-                      <p className="text-zinc-600 text-xs">{new Date(a.created_at).toLocaleDateString()}</p>
+                      <p className="text-gray-500 dark:text-zinc-600 text-xs">{new Date(a.created_at).toLocaleDateString()}</p>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
                       {error[a.id] && <p className="text-red-400 text-xs">{error[a.id]}</p>}
@@ -141,17 +141,17 @@ export default function OrgApplicationsClient({ initialApplications }: { initial
 
           {/* Past applications */}
           {others.length > 0 && (
-            <div className="bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden">
-              <div className="px-5 py-2.5 border-b border-zinc-800">
-                <span className="text-zinc-400 text-xs font-bold uppercase tracking-wide">Past applications</span>
+            <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-zinc-800 overflow-hidden">
+              <div className="px-5 py-2.5 border-b border-gray-200 dark:border-zinc-800">
+                <span className="text-gray-600 dark:text-zinc-400 text-xs font-bold uppercase tracking-wide">Past applications</span>
               </div>
               <div className="divide-y divide-zinc-800/50">
                 {others.map(a => (
                   <div key={a.id} className="px-5 py-3 space-y-1.5">
                     <div className="flex items-center justify-between gap-4 flex-wrap">
                       <div className="space-y-0.5 min-w-0">
-                        <p className="text-white font-semibold text-sm">{a.org_name}</p>
-                        <p className="text-zinc-500 text-xs">{a.email}{a.player_count != null ? ` · ${a.player_count} players` : ''}</p>
+                        <p className="text-black dark:text-white font-semibold text-sm">{a.org_name}</p>
+                        <p className="text-gray-500 dark:text-zinc-500 text-xs">{a.email}{a.player_count != null ? ` · ${a.player_count} players` : ''}</p>
                       </div>
                       <div className="flex items-center gap-3 shrink-0">
                         {error[a.id] && <p className="text-red-400 text-xs">{error[a.id]}</p>}
@@ -159,7 +159,7 @@ export default function OrgApplicationsClient({ initialApplications }: { initial
                           <button
                             onClick={() => handleApprove(a.id)}
                             disabled={sending === a.id}
-                            className="bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition-colors"
+                            className="bg-gray-200 dark:bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 text-black dark:text-white font-bold px-3 py-1.5 rounded-lg text-xs transition-colors"
                           >
                             {sending === a.id ? 'Sending…' : 'Resend email'}
                           </button>
@@ -167,7 +167,7 @@ export default function OrgApplicationsClient({ initialApplications }: { initial
                         <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
                           a.status === 'approved' ? 'bg-green-900/40 text-green-400' :
                           a.status === 'registered' ? 'bg-blue-900/40 text-blue-400' :
-                          'bg-zinc-700 text-zinc-400'
+                          'bg-gray-200 dark:bg-zinc-700 text-gray-600 dark:text-zinc-400'
                         }`}>
                           {a.status}
                         </span>

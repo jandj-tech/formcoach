@@ -17,6 +17,7 @@ const ADMIN_TABS = [
   { href: '/admin/emails', label: 'Emails' },
   { href: '/admin/orders', label: 'Orders' },
   { href: '/admin/access', label: 'Access' },
+  { href: '/admin/settings', label: 'Settings' },
 ]
 
 export default function AdminNav() {
@@ -28,7 +29,7 @@ export default function AdminNav() {
   }
 
   return (
-    <nav className="bg-zinc-950 border-b border-zinc-800 px-4 sm:px-6 py-3 flex items-center justify-between">
+    <nav className="bg-gray-50 dark:bg-zinc-950 border-b border-gray-200 dark:border-zinc-800 px-4 sm:px-6 py-3 flex items-center justify-between">
       <div className="flex items-center gap-6">
         <div className="flex items-center gap-3">
           <Image
@@ -62,7 +63,7 @@ export default function AdminNav() {
                 className={`transition-colors ${
                   active
                     ? 'text-orange-500'
-                    : 'text-white hover:text-white'
+                    : 'text-black dark:text-white hover:text-black dark:hover:text-white'
                 }`}
               >
                 {tab.label}
@@ -72,12 +73,12 @@ export default function AdminNav() {
         </div>
       </div>
       <div className="hidden md:flex items-center gap-4">
-        <Link href="/" className="text-white hover:text-white text-sm transition-colors">
+        <Link href="/" className="text-black dark:text-white hover:text-black dark:hover:text-white text-sm transition-colors">
           ← Back to site
         </Link>
         <button
           onClick={signOut}
-          className="text-zinc-400 hover:text-orange-500 text-sm transition-colors"
+          className="text-gray-600 dark:text-zinc-400 hover:text-orange-500 text-sm transition-colors"
         >
           Exit admin
         </button>
@@ -88,10 +89,10 @@ export default function AdminNav() {
         useNextLink={false}
         footer={
           <div className="flex flex-col gap-3">
-            <Link href="/" className="text-white hover:text-white">
+            <Link href="/" className="text-black dark:text-white hover:text-black dark:hover:text-white">
               ← Back to site
             </Link>
-            <button onClick={signOut} className="text-left text-zinc-400 hover:text-orange-500">
+            <button onClick={signOut} className="text-left text-gray-600 dark:text-zinc-400 hover:text-orange-500">
               Exit admin
             </button>
           </div>

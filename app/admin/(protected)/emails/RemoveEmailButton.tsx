@@ -28,7 +28,7 @@ export default function RemoveEmailButton({ email }: { email: string }) {
     <button
       onClick={remove}
       disabled={loading}
-      className="text-xs font-semibold text-zinc-500 hover:text-red-400 disabled:opacity-50 transition-colors"
+      className="text-xs font-semibold text-gray-500 dark:text-zinc-500 hover:text-red-400 disabled:opacity-50 transition-colors"
     >
       {loading ? '…' : 'Remove'}
     </button>

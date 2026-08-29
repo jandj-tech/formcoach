@@ -54,11 +54,11 @@ const KINDS: Record<string, { label: string; className: string }> = {
   team_credits: { label: 'Team credits', className: 'bg-emerald-500/10 text-emerald-300' },
   player_tokens: { label: 'Player tokens', className: 'bg-emerald-500/10 text-emerald-300' },
   org_tokens: { label: 'Org tokens', className: 'bg-indigo-500/10 text-indigo-300' },
-  subscription: { label: 'Subscription', className: 'bg-zinc-500/10 text-zinc-300' },
+  subscription: { label: 'Subscription', className: 'bg-zinc-500/10 text-gray-700 dark:text-zinc-300' },
 }
 
 function kindOf(o: Order) {
-  return KINDS[o.kind] ?? { label: o.kind, className: 'bg-zinc-500/10 text-zinc-300' }
+  return KINDS[o.kind] ?? { label: o.kind, className: 'bg-zinc-500/10 text-gray-700 dark:text-zinc-300' }
 }
 
 export default function OrdersClient({ orders }: { orders: Order[] }) {
@@ -148,19 +148,19 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
       {/* Shipping link modal */}
       {showTrackingModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-          <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 w-full max-w-md space-y-4 mx-4">
-            <h2 className="text-white font-black text-lg">Mark as Shipped</h2>
-            <p className="text-zinc-400 text-sm">
+          <div className="bg-white dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 rounded-2xl p-6 w-full max-w-md space-y-4 mx-4">
+            <h2 className="text-black dark:text-white font-black text-lg">Mark as Shipped</h2>
+            <p className="text-gray-600 dark:text-zinc-400 text-sm">
               Paste a tracking link below and we&apos;ll email it to each customer. Leave blank to skip the email.
             </p>
             <div className="space-y-1">
-              <label className="text-zinc-300 text-xs font-semibold uppercase tracking-wide">Tracking link (optional)</label>
+              <label className="text-gray-700 dark:text-zinc-300 text-xs font-semibold uppercase tracking-wide">Tracking link (optional)</label>
               <input
                 type="url"
                 value={trackingLink}
                 onChange={e => setTrackingLink(e.target.value)}
                 placeholder="https://tools.usps.com/go/TrackConfirmAction?tLabels=..."
-                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm placeholder:text-zinc-600 focus:outline-none focus:border-orange-500"
+                className="w-full bg-gray-100 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg px-3 py-2 text-black dark:text-white text-sm placeholder:text-gray-500 dark:placeholder:text-zinc-600 focus:outline-none focus:border-orange-500"
                 autoFocus
               />
             </div>
@@ -174,7 +174,7 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
               </button>
               <button
                 onClick={() => setShowTrackingModal(false)}
-                className="px-4 py-2 text-zinc-400 hover:text-white text-sm transition-colors"
+                className="px-4 py-2 text-gray-600 dark:text-zinc-400 hover:text-black dark:hover:text-white text-sm transition-colors"
               >
                 Cancel
               </button>
@@ -199,23 +199,23 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
           <button
             onClick={deleteSelected}
             disabled={shipping || deleting}
-            className="bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-bold px-4 py-1.5 rounded-lg text-sm transition-colors"
+            className="bg-red-600 hover:bg-red-500 disabled:opacity-50 text-black dark:text-white font-bold px-4 py-1.5 rounded-lg text-sm transition-colors"
           >
             {deleting ? 'Deleting...' : 'Delete'}
           </button>
           <button
             onClick={() => setSelected(new Set())}
-            className="text-zinc-400 hover:text-white text-sm transition-colors ml-auto"
+            className="text-gray-600 dark:text-zinc-400 hover:text-black dark:hover:text-white text-sm transition-colors ml-auto"
           >
             Clear
           </button>
         </div>
       )}
 
-      <div className="bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden">
+      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-zinc-800 overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-zinc-800 text-zinc-400 text-xs">
+            <tr className="border-b border-gray-200 dark:border-zinc-800 text-gray-600 dark:text-zinc-400 text-xs">
               <th className="px-4 py-3 w-8">
                 <input
                   type="checkbox"
@@ -236,7 +236,7 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
           <tbody className="divide-y divide-zinc-800/50">
             {orders.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-6 text-zinc-500">No orders yet.</td>
+                <td colSpan={8} className="px-4 py-6 text-gray-500 dark:text-zinc-500">No orders yet.</td>
               </tr>
             ) : (
               orders.map((o) => {
@@ -256,10 +256,10 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
                         className="accent-orange-500 w-4 h-4 mt-0.5"
                       />
                     </td>
-                    <td className="px-4 py-3 text-white">
+                    <td className="px-4 py-3 text-black dark:text-white">
                       <div className="font-medium">{o.customer_name || '—'}</div>
-                      <div className="text-zinc-400 text-xs">{o.email}</div>
-                      {o.phone && <div className="text-zinc-400 text-xs">{o.phone}</div>}
+                      <div className="text-gray-600 dark:text-zinc-400 text-xs">{o.email}</div>
+                      {o.phone && <div className="text-gray-600 dark:text-zinc-400 text-xs">{o.phone}</div>}
                     </td>
                     <td className="px-4 py-3">
                       <div className="space-y-0.5">
@@ -272,14 +272,14 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
                               {o.variant === 'left' ? 'Left-handed' : 'Right-handed'}
                             </span>
                             {o.size && (
-                              <div className="text-zinc-300 text-sm font-semibold">
+                              <div className="text-gray-700 dark:text-zinc-300 text-sm font-semibold">
                                 {o.quantity > 1 ? `${o.quantity}× ` : ''}
-                                Size {o.size} <span className="text-zinc-500 font-normal">({sizeInches[String(o.size)] ?? '—'})</span>
+                                Size {o.size} <span className="text-gray-500 dark:text-zinc-500 font-normal">({sizeInches[String(o.size)] ?? '—'})</span>
                               </div>
                             )}
                           </>
                         ) : (
-                          <div className="text-zinc-300 text-sm">
+                          <div className="text-gray-700 dark:text-zinc-300 text-sm">
                             {o.description || (o.quantity > 0 ? `${o.quantity}×` : '—')}
                           </div>
                         )}
@@ -288,18 +288,18 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
                     <td className="px-4 py-3">
                       <div className="text-orange-400 font-bold">{fmt(Number(o.amount_total), o.currency)}</div>
                       {Number(o.amount_total) === 0 && (
-                        <div className="text-zinc-500 text-xs mt-0.5">comped / test</div>
+                        <div className="text-gray-500 dark:text-zinc-500 text-xs mt-0.5">comped / test</div>
                       )}
                       {o.shipping_cost_cents != null && (
-                        <div className="text-zinc-400 text-xs mt-0.5">
+                        <div className="text-gray-600 dark:text-zinc-400 text-xs mt-0.5">
                           incl. {fmt(Number(o.shipping_cost_cents))} ship
                           {o.shipping_carrier && (
-                            <span className="text-zinc-500"> · {o.shipping_carrier === 'canada_post' ? 'Canada Post' : o.shipping_carrier.toUpperCase()}</span>
+                            <span className="text-gray-500 dark:text-zinc-500"> · {o.shipping_carrier === 'canada_post' ? 'Canada Post' : o.shipping_carrier.toUpperCase()}</span>
                           )}
                         </div>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-zinc-300 text-xs leading-relaxed">
+                    <td className="px-4 py-3 text-gray-700 dark:text-zinc-300 text-xs leading-relaxed">
                       {hasBall ? (
                         <>
                           {o.shipping_name && <div>{o.shipping_name}</div>}
@@ -321,7 +321,7 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
                           )}
                         </>
                       ) : (
-                        <span className="text-zinc-500 italic">No shipping required</span>
+                        <span className="text-gray-500 dark:text-zinc-500 italic">No shipping required</span>
                       )}
                     </td>
                     <td className="px-4 py-3">
@@ -334,12 +334,12 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
                           Pending
                         </span>
                       ) : (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-700 text-zinc-400 font-semibold">
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-gray-200 dark:bg-zinc-700 text-gray-600 dark:text-zinc-400 font-semibold">
                           No shipping
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-zinc-400 text-xs">
+                    <td className="px-4 py-3 text-gray-600 dark:text-zinc-400 text-xs">
                       {new Date(o.created_at).toLocaleString()}
                     </td>
                     <td className="px-4 py-3">
@@ -348,7 +348,7 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
                           href={`/admin/label/${o.id}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-xs text-zinc-400 hover:text-orange-400 underline whitespace-nowrap transition-colors"
+                          className="text-xs text-gray-600 dark:text-zinc-400 hover:text-orange-400 underline whitespace-nowrap transition-colors"
                         >
                           Label
                         </Link>
@@ -365,7 +365,7 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
       {/* Labels section */}
       {ballOrders.length > 0 && (
         <div className="space-y-3">
-          <h2 className="text-lg font-black text-white">Labels</h2>
+          <h2 className="text-lg font-black text-black dark:text-white">Labels</h2>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {ballOrders.map(o => {
               const cityLine = [o.shipping_city, o.shipping_state, o.shipping_postal_code].filter(Boolean).join(', ')
@@ -373,19 +373,19 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
               return (
                 <div
                   key={o.id}
-                  className={`bg-zinc-900 border rounded-xl p-4 space-y-3 ${isPending ? 'border-zinc-700' : 'border-zinc-800 opacity-60'}`}
+                  className={`bg-white dark:bg-zinc-900 border rounded-xl p-4 space-y-3 ${isPending ? 'border-gray-300 dark:border-zinc-700' : 'border-gray-200 dark:border-zinc-800 opacity-60'}`}
                 >
                   {/* Address block */}
                   <div className="space-y-0.5">
-                    <div className="text-white font-bold text-sm">{o.shipping_name || o.customer_name || '—'}</div>
-                    {o.shipping_line1 && <div className="text-zinc-300 text-xs">{o.shipping_line1}</div>}
-                    {o.shipping_line2 && <div className="text-zinc-400 text-xs">{o.shipping_line2}</div>}
-                    {cityLine && <div className="text-zinc-300 text-xs">{cityLine}</div>}
-                    {o.shipping_country && <div className="text-zinc-400 text-xs">{o.shipping_country}</div>}
+                    <div className="text-black dark:text-white font-bold text-sm">{o.shipping_name || o.customer_name || '—'}</div>
+                    {o.shipping_line1 && <div className="text-gray-700 dark:text-zinc-300 text-xs">{o.shipping_line1}</div>}
+                    {o.shipping_line2 && <div className="text-gray-600 dark:text-zinc-400 text-xs">{o.shipping_line2}</div>}
+                    {cityLine && <div className="text-gray-700 dark:text-zinc-300 text-xs">{cityLine}</div>}
+                    {o.shipping_country && <div className="text-gray-600 dark:text-zinc-400 text-xs">{o.shipping_country}</div>}
                   </div>
 
                   {/* Order details */}
-                  <div className="flex flex-wrap gap-3 text-xs text-zinc-400">
+                  <div className="flex flex-wrap gap-3 text-xs text-gray-600 dark:text-zinc-400">
                     <span className="text-orange-400 font-semibold">
                       {o.quantity > 1 ? `${o.quantity}× ` : ''}
                       {o.variant === 'left' ? 'Left-handed' : 'Right-handed'}
@@ -406,7 +406,7 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
                     href={`/admin/label/${o.id}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-block bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
+                    className="inline-block bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 text-black dark:text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
                   >
                     Print Label →
                   </Link>

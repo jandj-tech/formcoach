@@ -148,14 +148,14 @@ export default function AccessPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-black text-white">Free Access</h1>
+      <h1 className="text-2xl font-black text-black dark:text-white">Free Access</h1>
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-zinc-800">
+      <div className="flex gap-2 border-b border-gray-200 dark:border-zinc-800">
         <button
           onClick={() => setTab('accounts')}
           className={`pb-3 px-1 text-sm font-bold transition-colors border-b-2 -mb-px ${
-            tab === 'accounts' ? 'border-orange-500 text-orange-500' : 'border-transparent text-zinc-400 hover:text-white'
+            tab === 'accounts' ? 'border-orange-500 text-orange-500' : 'border-transparent text-gray-600 dark:text-zinc-400 hover:text-black dark:hover:text-white'
           }`}
         >
           Free Accounts
@@ -163,7 +163,7 @@ export default function AccessPage() {
         <button
           onClick={() => setTab('codes')}
           className={`pb-3 px-1 text-sm font-bold transition-colors border-b-2 -mb-px ${
-            tab === 'codes' ? 'border-orange-500 text-orange-500' : 'border-transparent text-zinc-400 hover:text-white'
+            tab === 'codes' ? 'border-orange-500 text-orange-500' : 'border-transparent text-gray-600 dark:text-zinc-400 hover:text-black dark:hover:text-white'
           }`}
         >
           Promo Codes
@@ -173,9 +173,9 @@ export default function AccessPage() {
       {tab === 'accounts' && (
         <div className="space-y-6">
           {/* Create form */}
-          <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-6 space-y-4">
-            <h2 className="text-white font-bold">Create Free Account</h2>
-            <p className="text-zinc-400 text-sm">
+          <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-zinc-800 p-6 space-y-4">
+            <h2 className="text-black dark:text-white font-bold">Create Free Account</h2>
+            <p className="text-gray-600 dark:text-zinc-400 text-sm">
               Enter an email to grant unlimited access for 10 years. A welcome email will be sent automatically.
             </p>
             <form onSubmit={handleCreateAccount} className="flex gap-3">
@@ -186,7 +186,7 @@ export default function AccessPage() {
                 placeholder="friend@example.com"
                 value={accountEmail}
                 onChange={(e) => setAccountEmail(e.target.value)}
-                className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-white placeholder-zinc-500 focus:outline-none focus:border-orange-500 text-sm"
+                className="flex-1 bg-gray-100 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg px-4 py-2.5 text-black dark:text-white placeholder-zinc-500 focus:outline-none focus:border-orange-500 text-sm"
               />
               <button
                 type="submit"
@@ -201,19 +201,19 @@ export default function AccessPage() {
           </div>
 
           {/* Accounts list */}
-          <div className="bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden">
-            <div className="px-5 py-3 border-b border-zinc-800">
-              <span className="text-white text-sm font-bold">Active Free Accounts ({accounts.length})</span>
+          <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-zinc-800 overflow-hidden">
+            <div className="px-5 py-3 border-b border-gray-200 dark:border-zinc-800">
+              <span className="text-black dark:text-white text-sm font-bold">Active Free Accounts ({accounts.length})</span>
             </div>
             {accounts.length === 0 ? (
-              <p className="text-zinc-400 text-sm p-6">No free accounts yet.</p>
+              <p className="text-gray-600 dark:text-zinc-400 text-sm p-6">No free accounts yet.</p>
             ) : (
               <div className="divide-y divide-zinc-800/50">
                 {accounts.map((a) => (
                   <div key={a.email} className="flex items-center justify-between px-5 py-3">
                     <div>
-                      <p className="text-white text-sm font-medium">{a.email}</p>
-                      <p className="text-zinc-500 text-xs">
+                      <p className="text-black dark:text-white text-sm font-medium">{a.email}</p>
+                      <p className="text-gray-500 dark:text-zinc-500 text-xs">
                         Since {new Date(a.created_at).toLocaleDateString()} · Expires {new Date(a.subscription_expires_at).getFullYear()}
                       </p>
                     </div>
@@ -234,9 +234,9 @@ export default function AccessPage() {
       {tab === 'codes' && (
         <div className="space-y-6">
           {/* Create form */}
-          <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-6 space-y-4">
-            <h2 className="text-white font-bold">Generate Promo Code</h2>
-            <p className="text-zinc-400 text-sm">
+          <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-zinc-800 p-6 space-y-4">
+            <h2 className="text-black dark:text-white font-bold">Generate Promo Code</h2>
+            <p className="text-gray-600 dark:text-zinc-400 text-sm">
               Creates a Stripe promo code. Leave code blank to auto-generate.
             </p>
             <form onSubmit={handleCreateCode} className="space-y-3">
@@ -247,9 +247,9 @@ export default function AccessPage() {
                   placeholder="e.g. SAVE20 (optional)"
                   value={codeInput}
                   onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
-                  className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-white placeholder-zinc-500 focus:outline-none focus:border-orange-500 text-sm font-mono uppercase"
+                  className="flex-1 bg-gray-100 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg px-4 py-2.5 text-black dark:text-white placeholder-zinc-500 focus:outline-none focus:border-orange-500 text-sm font-mono uppercase"
                 />
-                <div className="flex items-center gap-1.5 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2.5 w-32">
+                <div className="flex items-center gap-1.5 bg-gray-100 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg px-3 py-2.5 w-32">
                   <input
                     type="number"
                     aria-label="100"
@@ -258,9 +258,9 @@ export default function AccessPage() {
                     onChange={(e) => setPercentOff(e.target.value)}
                     min={1}
                     max={100}
-                    className="w-full bg-transparent text-white text-sm focus:outline-none text-right"
+                    className="w-full bg-transparent text-black dark:text-white text-sm focus:outline-none text-right"
                   />
-                  <span className="text-zinc-400 text-sm shrink-0">% off</span>
+                  <span className="text-gray-600 dark:text-zinc-400 text-sm shrink-0">% off</span>
                 </div>
                 <input
                   type="number"
@@ -269,7 +269,7 @@ export default function AccessPage() {
                   value={maxRedemptions}
                   onChange={(e) => setMaxRedemptions(e.target.value)}
                   min={1}
-                  className="w-32 bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-white placeholder-zinc-500 focus:outline-none focus:border-orange-500 text-sm"
+                  className="w-32 bg-gray-100 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg px-4 py-2.5 text-black dark:text-white placeholder-zinc-500 focus:outline-none focus:border-orange-500 text-sm"
                 />
               </div>
               <button
@@ -296,29 +296,29 @@ export default function AccessPage() {
           </div>
 
           {/* Codes list */}
-          <div className="bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden">
-            <div className="px-5 py-3 border-b border-zinc-800">
-              <span className="text-white text-sm font-bold">Promo Codes ({codes.filter(c => c.active).length} active)</span>
+          <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-zinc-800 overflow-hidden">
+            <div className="px-5 py-3 border-b border-gray-200 dark:border-zinc-800">
+              <span className="text-black dark:text-white text-sm font-bold">Promo Codes ({codes.filter(c => c.active).length} active)</span>
             </div>
             {codes.length === 0 ? (
-              <p className="text-zinc-400 text-sm p-6">No promo codes yet.</p>
+              <p className="text-gray-600 dark:text-zinc-400 text-sm p-6">No promo codes yet.</p>
             ) : (
               <div className="divide-y divide-zinc-800/50">
                 {codes.map((c) => (
                   <div key={c.id} className="flex items-center justify-between px-5 py-3">
                     <div className="flex items-center gap-4">
-                      <span className={`font-mono font-bold text-sm ${c.active ? 'text-white' : 'text-zinc-600 line-through'}`}>
+                      <span className={`font-mono font-bold text-sm ${c.active ? 'text-black dark:text-white' : 'text-gray-500 dark:text-zinc-600 line-through'}`}>
                         {c.code}
                       </span>
                       {c.active && (
                         <button
                           onClick={() => copyToClipboard(c.code)}
-                          className="text-xs text-zinc-400 hover:text-white border border-zinc-700 rounded px-2 py-0.5"
+                          className="text-xs text-gray-600 dark:text-zinc-400 hover:text-black dark:hover:text-white border border-gray-300 dark:border-zinc-700 rounded px-2 py-0.5"
                         >
                           {copied === c.code ? 'Copied!' : 'Copy'}
                         </button>
                       )}
-                      <span className="text-zinc-500 text-xs">
+                      <span className="text-gray-500 dark:text-zinc-500 text-xs">
                         {c.times_redeemed} used
                         {c.max_redemptions ? ` / ${c.max_redemptions} max` : ''}
                       </span>

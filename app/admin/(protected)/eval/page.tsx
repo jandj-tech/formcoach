@@ -353,14 +353,14 @@ export default function EvalPage() {
   const graderChanged =
     !!lastGrader?.prompt_sha && !!baseline?.grader?.prompt_sha && lastGrader.prompt_sha !== baseline.grader.prompt_sha
 
-  if (loading) return <p className="text-zinc-400">Loading…</p>
+  if (loading) return <p className="text-gray-600 dark:text-zinc-400">Loading…</p>
   if (loadError) return <p className="text-red-400">{loadError}</p>
 
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold">Grading Test Bench</h1>
-        <p className="text-zinc-400 mt-1 max-w-2xl">
+        <p className="text-gray-600 dark:text-zinc-400 mt-1 max-w-2xl">
           Your reference shots with known correct grades. Before any grading change goes live — a rubric edit, or a
           batch of Learn Mode corrections — run a check here and see exactly what moved. Approve the result to make it
           the new baseline, or revert your change.
@@ -368,12 +368,12 @@ export default function EvalPage() {
       </div>
 
       {/* ---- Run panel ---- */}
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5 space-y-4">
+      <div className="rounded-xl border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 space-y-4">
         <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={() => runEval(true)}
             disabled={!!running || activeCount === 0}
-            className="px-4 py-2 rounded-lg bg-zinc-700 hover:bg-zinc-600 disabled:opacity-40 font-medium"
+            className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-zinc-700 hover:bg-zinc-600 disabled:opacity-40 font-medium"
           >
             Quick check
           </button>
@@ -384,13 +384,13 @@ export default function EvalPage() {
           >
             Full eval
           </button>
-          <span className="text-sm text-zinc-500">
+          <span className="text-sm text-gray-500 dark:text-zinc-500">
             {activeCount} reference shot{activeCount === 1 ? '' : 's'} · quick ≈ 15¢/shot, one grading each · full ≈
             55¢/shot, {FULL_RUNS} gradings each to measure consistency
           </span>
         </div>
         {baseline && (
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-gray-500 dark:text-zinc-500">
             Current baseline approved {new Date(baseline.accepted_at).toLocaleString()}
             {baseline.grader?.rubric_tags?.length ? ` · ${baseline.grader.rubric_tags.join(', ')}` : ''}
           </p>
@@ -402,13 +402,13 @@ export default function EvalPage() {
         )}
         {running && (
           <div>
-            <div className="flex justify-between text-sm text-zinc-400 mb-1">
+            <div className="flex justify-between text-sm text-gray-600 dark:text-zinc-400 mb-1">
               <span>
                 Grading “{running.current}”… ({running.done}/{running.total} gradings done)
               </span>
               <span>each grading can take 1–3 minutes — keep this tab open</span>
             </div>
-            <div className="h-2 rounded bg-zinc-800 overflow-hidden">
+            <div className="h-2 rounded bg-gray-100 dark:bg-zinc-800 overflow-hidden">
               <div
                 className="h-full bg-orange-500 transition-all"
                 style={{ width: `${Math.max(4, (running.done / running.total) * 100)}%` }}
@@ -429,7 +429,7 @@ export default function EvalPage() {
 
       {/* ---- Results ---- */}
       {resultEntries.length > 0 && (
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5 space-y-4">
+        <div className="rounded-xl border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-lg font-semibold">
               Results — {totalAccuracyFails === 0 && totalDrift === 0 ? (
@@ -451,14 +451,14 @@ export default function EvalPage() {
           </div>
           <div className="space-y-3">
             {resultEntries.map(([slug, r]) => (
-              <div key={slug} className="rounded-lg border border-zinc-800 bg-zinc-950 p-4">
+              <div key={slug} className="rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-950 p-4">
                 <div className="flex flex-wrap items-center gap-3">
                   <span className="font-medium">{slug}</span>
                   {r.error ? (
                     <span className="text-red-400 text-sm">✗ {r.error}</span>
                   ) : (
                     <>
-                      <span className="text-sm text-zinc-400">
+                      <span className="text-sm text-gray-600 dark:text-zinc-400">
                         overall {r.summary!.shot_detected ? r.summary!.overall : 'no shot detected'}
                       </span>
                       {r.summary!.overall_spread !== null && (
@@ -483,7 +483,7 @@ export default function EvalPage() {
                       </span>
                       <span
                         className={`text-xs px-2 py-0.5 rounded-full ${
-                          countDrift(r.drift!) === 0 ? 'bg-zinc-800 text-zinc-400' : 'bg-amber-900/60 text-amber-300'
+                          countDrift(r.drift!) === 0 ? 'bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-zinc-400' : 'bg-amber-900/60 text-amber-300'
                         }`}
                       >
                         {baseline ? (countDrift(r.drift!) === 0 ? 'no drift' : `${countDrift(r.drift!)} drift`) : 'no baseline yet'}
@@ -499,12 +499,12 @@ export default function EvalPage() {
                       </li>
                     ))}
                     {r.drift!.map((line, i) => (
-                      <li key={`d${i}`} className={line.includes('◀ DRIFT') ? 'text-amber-300' : 'text-zinc-400'}>
+                      <li key={`d${i}`} className={line.includes('◀ DRIFT') ? 'text-amber-300' : 'text-gray-600 dark:text-zinc-400'}>
                         Δ {line}
                       </li>
                     ))}
                     {r.summary!.consistency_issues.map((line, i) => (
-                      <li key={`c${i}`} className="text-zinc-500">
+                      <li key={`c${i}`} className="text-gray-500 dark:text-zinc-500">
                         ⚠ {line}
                       </li>
                     ))}
@@ -517,39 +517,39 @@ export default function EvalPage() {
       )}
 
       {/* ---- Reference shots ---- */}
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5 space-y-3">
+      <div className="rounded-xl border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 space-y-3">
         <h2 className="text-lg font-semibold">Reference shots</h2>
         {fixtures.length === 0 && (
-          <p className="text-zinc-500 text-sm">
+          <p className="text-gray-500 dark:text-zinc-500 text-sm">
             None yet. Add 8–10 from the list below — ideally shots you corrected in Learn Mode, covering the range: an
             excellent shot, a poor one, an elbow-out, a chest-pass, a kid, a blurry clip, and one video with no shot.
           </p>
         )}
         {fixtures.map((f) => (
-          <div key={f.id} className="rounded-lg border border-zinc-800 bg-zinc-950 p-4">
+          <div key={f.id} className="rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-950 p-4">
             <div className="flex flex-wrap items-center gap-3">
               {f.frame_urls?.[0] && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={f.frame_urls[0]} alt="" className="w-14 h-14 object-cover rounded-md border border-zinc-800" />
+                <img src={f.frame_urls[0]} alt="" className="w-14 h-14 object-cover rounded-md border border-gray-200 dark:border-zinc-800" />
               )}
               <div className="flex-1 min-w-40">
                 <div className="font-medium flex items-center gap-2">
                   {f.slug}
                   {savedId === f.id && <span className="text-xs font-normal text-green-400">Saved ✓</span>}
                 </div>
-                <div className="text-sm text-zinc-500">{f.description || 'No description yet'}</div>
+                <div className="text-sm text-gray-500 dark:text-zinc-500">{f.description || 'No description yet'}</div>
                 {(() => {
                   const summary = summarizeExpected(f.expected)
                   return summary ? (
                     <div className="text-sm text-orange-400/90 mt-0.5">{summary}</div>
                   ) : (
-                    <div className="text-sm text-zinc-600 mt-0.5">
+                    <div className="text-sm text-gray-500 dark:text-zinc-600 mt-0.5">
                       No expectations set — this shot is not checked against anything yet
                     </div>
                   )
                 })()}
               </div>
-              <label className="text-sm text-zinc-400 flex items-center gap-2">
+              <label className="text-sm text-gray-600 dark:text-zinc-400 flex items-center gap-2">
                 <input type="checkbox" checked={f.active} onChange={() => toggleActive(f)} /> include in runs
               </label>
               <button
@@ -562,28 +562,28 @@ export default function EvalPage() {
                     setDraft(buildDraft(f, criteriaNames))
                   }
                 }}
-                className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-sm"
+                className="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 text-sm"
               >
                 {expanded === f.id ? 'Close' : 'Edit expectations'}
               </button>
-              <button onClick={() => removeFixture(f)} className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-red-900 text-sm">
+              <button onClick={() => removeFixture(f)} className="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-zinc-800 hover:bg-red-900 text-sm">
                 Delete
               </button>
             </div>
 
             {expanded === f.id && draft && (
-              <div className="mt-4 space-y-4 border-t border-zinc-800 pt-4">
+              <div className="mt-4 space-y-4 border-t border-gray-200 dark:border-zinc-800 pt-4">
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="text-sm text-zinc-400">
+                  <label className="text-sm text-gray-600 dark:text-zinc-400">
                     Description (what makes this shot a useful reference)
                     <input
                       value={draft.description}
                       onChange={(e) => setDraft({ ...draft, description: e.target.value })}
-                      className="mt-1 w-full rounded-lg bg-zinc-900 border border-zinc-700 px-3 py-2 text-white"
+                      className="mt-1 w-full rounded-lg bg-white dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 px-3 py-2 text-black dark:text-white"
                       placeholder="e.g. Adult, side angle, badly flared elbow"
                     />
                   </label>
-                  <label className="text-sm text-zinc-400 flex items-end gap-2 pb-2">
+                  <label className="text-sm text-gray-600 dark:text-zinc-400 flex items-end gap-2 pb-2">
                     <input
                       type="checkbox"
                       checked={draft.noShot}
@@ -595,7 +595,7 @@ export default function EvalPage() {
 
                 {!draft.noShot && (
                   <>
-                    <div className="flex flex-wrap items-center gap-3 text-sm text-zinc-400">
+                    <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600 dark:text-zinc-400">
                       <span>Overall score must land between</span>
                       <input
                         type="number"
@@ -604,7 +604,7 @@ export default function EvalPage() {
                         step={0.5}
                         value={draft.overallLo}
                         onChange={(e) => setDraft({ ...draft, overallLo: e.target.value })}
-                        className="w-20 rounded-lg bg-zinc-900 border border-zinc-700 px-2 py-1 text-white"
+                        className="w-20 rounded-lg bg-white dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 px-2 py-1 text-black dark:text-white"
                       />
                       <span>and</span>
                       <input
@@ -614,14 +614,14 @@ export default function EvalPage() {
                         step={0.5}
                         value={draft.overallHi}
                         onChange={(e) => setDraft({ ...draft, overallHi: e.target.value })}
-                        className="w-20 rounded-lg bg-zinc-900 border border-zinc-700 px-2 py-1 text-white"
+                        className="w-20 rounded-lg bg-white dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 px-2 py-1 text-black dark:text-white"
                       />
                       <span className="mx-2">·</span>
                       <span>Player type</span>
                       <select
                         value={draft.playerType}
                         onChange={(e) => setDraft({ ...draft, playerType: e.target.value })}
-                        className="rounded-lg bg-zinc-900 border border-zinc-700 px-2 py-1 text-white"
+                        className="rounded-lg bg-white dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 px-2 py-1 text-black dark:text-white"
                       >
                         <option value="">don&apos;t check</option>
                         {PLAYER_TYPES.map((t) => (
@@ -634,14 +634,14 @@ export default function EvalPage() {
 
                     <div className="grid gap-2 sm:grid-cols-2">
                       {Object.entries(FLAG_LABELS).map(([fn, label]) => (
-                        <label key={fn} className="text-sm text-zinc-400 flex items-center justify-between gap-2 rounded-lg bg-zinc-900 border border-zinc-800 px-3 py-2">
+                        <label key={fn} className="text-sm text-gray-600 dark:text-zinc-400 flex items-center justify-between gap-2 rounded-lg bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 px-3 py-2">
                           {label}
                           <select
                             value={draft.flags[fn]}
                             onChange={(e) =>
                               setDraft({ ...draft, flags: { ...draft.flags, [fn]: e.target.value as 'skip' | 'yes' | 'no' } })
                             }
-                            className="rounded-lg bg-zinc-950 border border-zinc-700 px-2 py-1 text-white"
+                            className="rounded-lg bg-gray-50 dark:bg-zinc-950 border border-gray-300 dark:border-zinc-700 px-2 py-1 text-black dark:text-white"
                           >
                             <option value="skip">don&apos;t check</option>
                             <option value="yes">must be flagged</option>
@@ -654,7 +654,7 @@ export default function EvalPage() {
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
-                          <tr className="text-zinc-500 text-left">
+                          <tr className="text-gray-500 dark:text-zinc-500 text-left">
                             <th className="py-1 pr-3 font-medium">Criterion</th>
                             <th className="py-1 pr-3 font-medium">Check</th>
                             <th className="py-1 pr-3 font-medium">Min</th>
@@ -666,8 +666,8 @@ export default function EvalPage() {
                             const c = draft.criteria[name]
                             if (!c) return null
                             return (
-                              <tr key={name} className="border-t border-zinc-800">
-                                <td className="py-1.5 pr-3 text-zinc-300">{name}</td>
+                              <tr key={name} className="border-t border-gray-200 dark:border-zinc-800">
+                                <td className="py-1.5 pr-3 text-gray-700 dark:text-zinc-300">{name}</td>
                                 <td className="py-1.5 pr-3">
                                   <select
                                     value={c.mode}
@@ -680,7 +680,7 @@ export default function EvalPage() {
                                         },
                                       })
                                     }
-                                    className="rounded-lg bg-zinc-900 border border-zinc-700 px-2 py-1 text-white"
+                                    className="rounded-lg bg-white dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 px-2 py-1 text-black dark:text-white"
                                   >
                                     <option value="skip">don&apos;t check</option>
                                     <option value="range">score range</option>
@@ -701,7 +701,7 @@ export default function EvalPage() {
                                           criteria: { ...draft.criteria, [name]: { ...c, lo: e.target.value } },
                                         })
                                       }
-                                      className="w-20 rounded-lg bg-zinc-900 border border-zinc-700 px-2 py-1 text-white"
+                                      className="w-20 rounded-lg bg-white dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 px-2 py-1 text-black dark:text-white"
                                     />
                                   )}
                                 </td>
@@ -719,7 +719,7 @@ export default function EvalPage() {
                                           criteria: { ...draft.criteria, [name]: { ...c, hi: e.target.value } },
                                         })
                                       }
-                                      className="w-20 rounded-lg bg-zinc-900 border border-zinc-700 px-2 py-1 text-white"
+                                      className="w-20 rounded-lg bg-white dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 px-2 py-1 text-black dark:text-white"
                                     />
                                   )}
                                 </td>
@@ -747,7 +747,7 @@ export default function EvalPage() {
                       setDraft(null)
                       setSaveError(null)
                     }}
-                    className="px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700"
+                    className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700"
                   >
                     Cancel
                   </button>
@@ -759,9 +759,9 @@ export default function EvalPage() {
       </div>
 
       {/* ---- Add reference shots ---- */}
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5 space-y-4">
+      <div className="rounded-xl border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 space-y-4">
         <h2 className="text-lg font-semibold">Add a reference shot</h2>
-        <p className="text-sm text-zinc-500">
+        <p className="text-sm text-gray-500 dark:text-zinc-500">
           Pick from recent analyses — ones marked <span className="text-orange-400">reviewed</span> already carry your
           Learn Mode corrections, so their expected ranges start out accurate. After adding, open “Edit expectations”
           to tighten the ranges.
@@ -771,22 +771,22 @@ export default function EvalPage() {
           {recent
             .filter((r) => !fixtures.some((f) => f.analysis_id === r.id))
             .map((r) => (
-              <div key={r.id} className="flex items-center gap-3 rounded-lg border border-zinc-800 bg-zinc-950 p-3">
+              <div key={r.id} className="flex items-center gap-3 rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-950 p-3">
                 {r.thumb && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={r.thumb} alt="" className="w-12 h-12 object-cover rounded-md border border-zinc-800" />
+                  <img src={r.thumb} alt="" className="w-12 h-12 object-cover rounded-md border border-gray-200 dark:border-zinc-800" />
                 )}
                 <div className="flex-1 text-sm">
-                  <div className="text-zinc-300">
+                  <div className="text-gray-700 dark:text-zinc-300">
                     Analysis #{r.id} · scored {Number(r.overall_score)}
                     {r.corrected && <span className="ml-2 text-orange-400">reviewed</span>}
                   </div>
-                  <div className="text-zinc-600">{new Date(r.created_at).toLocaleDateString()}</div>
+                  <div className="text-gray-500 dark:text-zinc-600">{new Date(r.created_at).toLocaleDateString()}</div>
                 </div>
                 <button
                   onClick={() => addFixture(r.id)}
                   disabled={addingId === r.id}
-                  className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 text-sm"
+                  className="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 disabled:opacity-40 text-sm"
                 >
                   {addingId === r.id ? 'Adding…' : 'Add'}
                 </button>
@@ -794,12 +794,12 @@ export default function EvalPage() {
             ))}
         </div>
         <div className="space-y-1.5">
-          <div className="flex items-center gap-3 text-sm text-zinc-400">
+          <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-zinc-400">
             <span className="shrink-0">Not in the list?</span>
             <input
               value={manualId}
               onChange={(e) => setManualId(e.target.value)}
-              className="flex-1 min-w-0 rounded-lg bg-zinc-950 border border-zinc-700 px-3 py-1.5 text-white"
+              className="flex-1 min-w-0 rounded-lg bg-gray-50 dark:bg-zinc-950 border border-gray-300 dark:border-zinc-700 px-3 py-1.5 text-black dark:text-white"
               placeholder="Paste a results link (learnhoops.com/results/…) or an analysis ID"
             />
             <button
@@ -809,12 +809,12 @@ export default function EvalPage() {
                 addFixtureByInput(input)
                 setManualId('')
               }}
-              className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700"
+              className="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700"
             >
               Add
             </button>
           </div>
-          <p className="text-xs text-zinc-600">
+          <p className="text-xs text-gray-500 dark:text-zinc-600">
             Any report URL works — copy it from the address bar of a results page, a Learn Mode entry, or a share link.
           </p>
         </div>

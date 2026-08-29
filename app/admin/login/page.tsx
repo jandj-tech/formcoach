@@ -33,13 +33,13 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <main className="min-h-screen bg-black flex flex-col items-center justify-center px-6">
+    <main className="min-h-screen bg-white dark:bg-black flex flex-col items-center justify-center px-6">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
           <Link href="/" aria-label="LearnHoops.com home" className="inline-block mb-6">
             <Image src="/learnhoops-logo.png" alt="LearnHoops.com" width={578} height={113} style={{ height: '64px', width: 'auto' }} className="mx-auto" />
           </Link>
-          <h1 className="text-2xl font-bold text-white">Admin Access</h1>
+          <h1 className="text-2xl font-bold text-black dark:text-white">Admin Access</h1>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -48,7 +48,7 @@ export default function AdminLoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="w-full bg-zinc-900 border border-zinc-700 rounded-xl pl-4 pr-11 py-3 text-white placeholder-white focus:outline-none focus:border-orange-500 transition-colors"
+            className="w-full bg-white dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 rounded-xl pl-4 pr-11 py-3 text-black dark:text-white placeholder-white focus:outline-none focus:border-orange-500 transition-colors"
           />
           {error && <p className="text-red-500 text-sm">{error}</p>}
           <button

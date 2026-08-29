@@ -52,7 +52,7 @@ export default function CriteriaPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-black text-white">Scoring Criteria</h1>
+        <h1 className="text-2xl font-black text-black dark:text-white">Scoring Criteria</h1>
         <button
           onClick={() => setEditing({ id: 0, name: '', description: '', weight: 1.0, order_index: 99, active: true })}
           className="bg-orange-500 hover:bg-red-600 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors"
@@ -67,23 +67,23 @@ export default function CriteriaPage() {
         {criteria.map((c) => (
           <div
             key={c.id}
-            className={`bg-zinc-900 rounded-xl border p-4 flex items-start justify-between gap-4 ${c.active ? 'border-zinc-800' : 'border-zinc-800 opacity-50'}`}
+            className={`bg-white dark:bg-zinc-900 rounded-xl border p-4 flex items-start justify-between gap-4 ${c.active ? 'border-gray-200 dark:border-zinc-800' : 'border-gray-200 dark:border-zinc-800 opacity-50'}`}
           >
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-white text-xs font-mono">{c.order_index}.</span>
-                <span className="text-white font-semibold text-sm">{c.name}</span>
-                <span className="text-white text-xs">weight: {c.weight}</span>
-                {!c.active && <span className="text-xs bg-zinc-800 text-white px-2 py-0.5 rounded-full">inactive</span>}
+                <span className="text-black dark:text-white text-xs font-mono">{c.order_index}.</span>
+                <span className="text-black dark:text-white font-semibold text-sm">{c.name}</span>
+                <span className="text-black dark:text-white text-xs">weight: {c.weight}</span>
+                {!c.active && <span className="text-xs bg-gray-100 dark:bg-zinc-800 text-black dark:text-white px-2 py-0.5 rounded-full">inactive</span>}
               </div>
               {c.description && (
-                <p className="text-white text-xs mt-1 leading-relaxed">{c.description}</p>
+                <p className="text-black dark:text-white text-xs mt-1 leading-relaxed">{c.description}</p>
               )}
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <button
                 onClick={() => toggleActive(c)}
-                className="text-xs text-white hover:text-white px-2 py-1 rounded border border-zinc-700 hover:border-zinc-500 transition-colors"
+                className="text-xs text-black dark:text-white hover:text-black dark:hover:text-white px-2 py-1 rounded border border-gray-300 dark:border-zinc-700 hover:border-zinc-500 transition-colors"
               >
                 {c.active ? 'Disable' : 'Enable'}
               </button>
@@ -101,30 +101,30 @@ export default function CriteriaPage() {
       {/* Edit modal */}
       {editing && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
-          <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-6 w-full max-w-md space-y-4">
-            <h2 className="text-white font-bold text-lg">{editing.id ? 'Edit Criterion' : 'New Criterion'}</h2>
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 p-6 w-full max-w-md space-y-4">
+            <h2 className="text-black dark:text-white font-bold text-lg">{editing.id ? 'Edit Criterion' : 'New Criterion'}</h2>
 
             <div className="space-y-3">
               <div>
-                <label className="text-white text-xs mb-1 block">Name</label>
+                <label className="text-black dark:text-white text-xs mb-1 block">Name</label>
                 <input
                   value={editing.name}
                   onChange={(e) => setEditing({ ...editing, name: e.target.value })}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-500"
+                  className="w-full bg-gray-100 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg px-3 py-2 text-black dark:text-white text-sm focus:outline-none focus:border-orange-500"
                 />
               </div>
               <div>
-                <label className="text-white text-xs mb-1 block">Description (shown to AI)</label>
+                <label className="text-black dark:text-white text-xs mb-1 block">Description (shown to AI)</label>
                 <textarea
                   value={editing.description}
                   onChange={(e) => setEditing({ ...editing, description: e.target.value })}
                   rows={3}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-500 resize-none"
+                  className="w-full bg-gray-100 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg px-3 py-2 text-black dark:text-white text-sm focus:outline-none focus:border-orange-500 resize-none"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-white text-xs mb-1 block">Weight (0.1–2.0)</label>
+                  <label className="text-black dark:text-white text-xs mb-1 block">Weight (0.1–2.0)</label>
                   <input
                     type="number"
                     min="0.1"
@@ -132,16 +132,16 @@ export default function CriteriaPage() {
                     step="0.1"
                     value={editing.weight}
                     onChange={(e) => setEditing({ ...editing, weight: parseFloat(e.target.value) })}
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-500"
+                    className="w-full bg-gray-100 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg px-3 py-2 text-black dark:text-white text-sm focus:outline-none focus:border-orange-500"
                   />
                 </div>
                 <div>
-                  <label className="text-white text-xs mb-1 block">Order</label>
+                  <label className="text-black dark:text-white text-xs mb-1 block">Order</label>
                   <input
                     type="number"
                     value={editing.order_index}
                     onChange={(e) => setEditing({ ...editing, order_index: parseInt(e.target.value) })}
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-500"
+                    className="w-full bg-gray-100 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg px-3 py-2 text-black dark:text-white text-sm focus:outline-none focus:border-orange-500"
                   />
                 </div>
               </div>
@@ -150,7 +150,7 @@ export default function CriteriaPage() {
             <div className="flex gap-3">
               <button
                 onClick={() => setEditing(null)}
-                className="flex-1 border border-zinc-700 text-white font-medium py-2 rounded-xl text-sm hover:bg-zinc-800 transition-colors"
+                className="flex-1 border border-gray-300 dark:border-zinc-700 text-black dark:text-white font-medium py-2 rounded-xl text-sm hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
               >
                 Cancel
               </button>

@@ -60,8 +60,8 @@ export default async function OrganizationsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-black text-white">Organizations</h1>
-        <span className="text-sm text-white">
+        <h1 className="text-2xl font-black text-black dark:text-white">Organizations</h1>
+        <span className="text-sm text-black dark:text-white">
           <span className="text-orange-500 font-bold">{orgs.length}</span> total
           {pending.length > 0 && (
             <span className="ml-3 bg-orange-500 text-ink-950 text-xs font-bold px-2 py-0.5 rounded-full">
@@ -76,11 +76,11 @@ export default async function OrganizationsPage() {
 
       {/* Registered orgs */}
       <div>
-        <h2 className="text-lg font-black text-white mb-3">Registered Organizations</h2>
-        <div className="bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden">
+        <h2 className="text-lg font-black text-black dark:text-white mb-3">Registered Organizations</h2>
+        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-zinc-800 overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-zinc-800 text-white text-xs">
+              <tr className="border-b border-gray-200 dark:border-zinc-800 text-black dark:text-white text-xs">
                 <th className="text-left px-5 py-3">Organization</th>
                 <th className="text-left px-5 py-3">Admin email</th>
                 <th className="text-left px-5 py-3">Org code</th>
@@ -92,16 +92,16 @@ export default async function OrganizationsPage() {
             <tbody className="divide-y divide-zinc-800/50">
               {orgs.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-5 py-6 text-white">No organizations yet.</td>
+                  <td colSpan={6} className="px-5 py-6 text-black dark:text-white">No organizations yet.</td>
                 </tr>
               ) : (
                 orgs.map((o) => (
                   <tr key={o.id} className="hover:bg-zinc-800/30 transition-colors">
-                    <td className="px-5 py-3 text-white font-semibold">{o.name}</td>
-                    <td className="px-5 py-3 text-white">{o.admin_email}</td>
-                    <td className="px-5 py-3 font-mono text-white">{o.access_code}</td>
-                    <td className="px-5 py-3 text-white">{o.team_count}</td>
-                    <td className="px-5 py-3 text-white text-xs">
+                    <td className="px-5 py-3 text-black dark:text-white font-semibold">{o.name}</td>
+                    <td className="px-5 py-3 text-black dark:text-white">{o.admin_email}</td>
+                    <td className="px-5 py-3 font-mono text-black dark:text-white">{o.access_code}</td>
+                    <td className="px-5 py-3 text-black dark:text-white">{o.team_count}</td>
+                    <td className="px-5 py-3 text-black dark:text-white text-xs">
                       {new Date(o.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-5 py-3">
@@ -113,7 +113,7 @@ export default async function OrganizationsPage() {
             </tbody>
           </table>
         </div>
-        <p className="text-xs text-zinc-500 mt-2">
+        <p className="text-xs text-gray-500 dark:text-zinc-500 mt-2">
           Passwords are encrypted and can&apos;t be displayed. Use &quot;Reset password&quot; to set a new one.
         </p>
       </div>

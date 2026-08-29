@@ -21,7 +21,7 @@ import NameForm from './NameForm'
 import JoinTeamPopup from './JoinTeamPopup'
 import TeamChatPanel from '@/components/TeamChatPanel'
 import TeamSchedulePanel from '@/components/TeamSchedulePanel'
-import AppearanceToggle from '@/components/account/AppearanceToggle'
+import AppearanceSection from '@/components/account/AppearanceSection'
 
 type UserRow = {
   id: string
@@ -256,13 +256,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   const settingsTab = (
     <div className="space-y-4">
-      <Section
-        title="Appearance"
-        tipLabel="What does appearance change?"
-        tip="Switches your account pages between light and dark. Dark is easier on the eyes in a dark room. The choice is remembered on this device."
-      >
-        <AppearanceToggle />
-      </Section>
+      <AppearanceSection />
 
       <Section
         title="Display name"

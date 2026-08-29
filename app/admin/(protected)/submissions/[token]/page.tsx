@@ -46,13 +46,13 @@ export default async function AdminSubmissionPage({
     : new Map<number, { suggestedScore: number | null; note: string | null }>()
 
   return (
-    <div className="space-y-8 text-white">
+    <div className="space-y-8 text-black dark:text-white">
       <div className="flex items-center justify-between">
         <div>
           <Link href="/admin/submissions" className="text-orange-400 hover:text-orange-300 text-xs">
             ← All submissions
           </Link>
-          <h1 className="text-2xl font-black text-white mt-1">Submission</h1>
+          <h1 className="text-2xl font-black text-black dark:text-white mt-1">Submission</h1>
         </div>
         <span
           className={`text-xs px-3 py-1 rounded-full ${
@@ -67,23 +67,23 @@ export default async function AdminSubmissionPage({
         </span>
       </div>
 
-      <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-5 grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-zinc-800 p-5 grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
         <div>
-          <div className="text-zinc-400 text-xs uppercase tracking-wider mb-1">Email</div>
-          <div className="text-white break-all">{submission.email || <span className="text-zinc-500">(not provided)</span>}</div>
+          <div className="text-gray-600 dark:text-zinc-400 text-xs uppercase tracking-wider mb-1">Email</div>
+          <div className="text-black dark:text-white break-all">{submission.email || <span className="text-gray-500 dark:text-zinc-500">(not provided)</span>}</div>
         </div>
         <div>
-          <div className="text-zinc-400 text-xs uppercase tracking-wider mb-1">Submitted</div>
-          <div className="text-white">{new Date(submission.created_at).toLocaleString()}</div>
+          <div className="text-gray-600 dark:text-zinc-400 text-xs uppercase tracking-wider mb-1">Submitted</div>
+          <div className="text-black dark:text-white">{new Date(submission.created_at).toLocaleString()}</div>
         </div>
         <div>
-          <div className="text-zinc-400 text-xs uppercase tracking-wider mb-1">Token</div>
-          <div className="text-zinc-500 text-xs font-mono break-all">{submission.token}</div>
+          <div className="text-gray-600 dark:text-zinc-400 text-xs uppercase tracking-wider mb-1">Token</div>
+          <div className="text-gray-500 dark:text-zinc-500 text-xs font-mono break-all">{submission.token}</div>
         </div>
       </div>
 
       {!analysis ? (
-        <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-8 text-center text-zinc-400">
+        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-zinc-800 p-8 text-center text-gray-600 dark:text-zinc-400">
           No analysis exists for this submission yet.
         </div>
       ) : (
@@ -94,19 +94,19 @@ export default async function AdminSubmissionPage({
 
           {analysis.video_url && (
             <div className="space-y-3">
-              <h2 className="text-white font-bold text-lg">Uploaded Video</h2>
+              <h2 className="text-black dark:text-white font-bold text-lg">Uploaded Video</h2>
               <video
                 src={analysis.video_url as string}
                 controls
                 playsInline
-                className="w-full rounded-xl bg-black border border-zinc-800"
+                className="w-full rounded-xl bg-white dark:bg-black border border-gray-200 dark:border-zinc-800"
               />
             </div>
           )}
 
           <div className="space-y-3">
-            <h2 className="text-white font-bold text-lg">Criteria Breakdown</h2>
-            <p className="text-zinc-400 text-sm">
+            <h2 className="text-black dark:text-white font-bold text-lg">Criteria Breakdown</h2>
+            <p className="text-gray-600 dark:text-zinc-400 text-sm">
               Notes you add here appear on the player&apos;s report beneath each score, and land in
               the Learn Mode queue. They never change the AI&apos;s score or the grading model.
             </p>
@@ -132,14 +132,14 @@ export default async function AdminSubmissionPage({
 
           {analysis.frame_urls && (analysis.frame_urls as string[]).length > 0 && (
             <div className="space-y-3">
-              <h2 className="text-white font-bold text-lg">Analyzed Frames</h2>
+              <h2 className="text-black dark:text-white font-bold text-lg">Analyzed Frames</h2>
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                 {(analysis.frame_urls as string[]).map((url, i) => (
                   <a key={i} href={url} target="_blank" rel="noopener noreferrer">
                     <img
                       src={url}
                       alt={`Frame ${i + 1}`}
-                      className="rounded-lg w-full aspect-video object-cover border border-zinc-800 hover:border-orange-500 transition-colors"
+                      className="rounded-lg w-full aspect-video object-cover border border-gray-200 dark:border-zinc-800 hover:border-orange-500 transition-colors"
                     />
                   </a>
                 ))}

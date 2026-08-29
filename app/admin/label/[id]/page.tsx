@@ -87,7 +87,7 @@ export default async function LabelPage({ params }: { params: Promise<{ id: stri
       <div className="no-print flex items-center gap-4 px-6 py-4 bg-gray-100 border-b border-gray-300">
         <button
           type="button"
-          className="bg-black text-white font-bold px-5 py-2 rounded-lg text-sm hover:bg-gray-800"
+          className="bg-white dark:bg-black text-black dark:text-white font-bold px-5 py-2 rounded-lg text-sm hover:bg-gray-800"
         >
           Print Label
         </button>

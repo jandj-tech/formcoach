@@ -78,13 +78,13 @@ export default function SubmissionsTable({ submissions }: { submissions: Submiss
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <h1 className="text-2xl font-black text-white">All Submissions</h1>
+        <h1 className="text-2xl font-black text-black dark:text-white">All Submissions</h1>
         <div className="flex items-center gap-2">
           {!selectMode ? (
             <button
               onClick={() => setSelectMode(true)}
               disabled={submissions.length === 0}
-              className="bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors"
+              className="bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed text-black dark:text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors"
             >
               Clear
             </button>
@@ -93,21 +93,21 @@ export default function SubmissionsTable({ submissions }: { submissions: Submiss
               <button
                 onClick={clearSelected}
                 disabled={busy || selected.size === 0}
-                className="bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors"
+                className="bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-black dark:text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors"
               >
                 Clear Selected ({selected.size})
               </button>
               <button
                 onClick={clearAll}
                 disabled={busy}
-                className="bg-red-700 hover:bg-red-800 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors"
+                className="bg-red-700 hover:bg-red-800 disabled:opacity-40 disabled:cursor-not-allowed text-black dark:text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors"
               >
                 Clear All
               </button>
               <button
                 onClick={exitSelectMode}
                 disabled={busy}
-                className="bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors"
+                className="bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 disabled:opacity-40 text-black dark:text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors"
               >
                 Cancel
               </button>
@@ -116,10 +116,10 @@ export default function SubmissionsTable({ submissions }: { submissions: Submiss
         </div>
       </div>
 
-      <div className="bg-zinc-900 rounded-xl border border-zinc-800 overflow-x-auto">
+      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-zinc-800 overflow-x-auto">
         <table className="w-full min-w-[640px] text-sm">
           <thead>
-            <tr className="border-b border-zinc-800 text-white text-xs">
+            <tr className="border-b border-gray-200 dark:border-zinc-800 text-black dark:text-white text-xs">
               {selectMode && (
                 <th className="w-10 px-4 py-3">
                   <input
@@ -141,7 +141,7 @@ export default function SubmissionsTable({ submissions }: { submissions: Submiss
           <tbody className="divide-y divide-zinc-800/50">
             {submissions.length === 0 ? (
               <tr>
-                <td colSpan={selectMode ? 6 : 5} className="px-5 py-6 text-white">
+                <td colSpan={selectMode ? 6 : 5} className="px-5 py-6 text-black dark:text-white">
                   No submissions yet.
                 </td>
               </tr>
@@ -164,8 +164,8 @@ export default function SubmissionsTable({ submissions }: { submissions: Submiss
                         />
                       </td>
                     )}
-                    <td className="px-5 py-3 text-white">
-                      {s.email || <span className="text-white">—</span>}
+                    <td className="px-5 py-3 text-black dark:text-white">
+                      {s.email || <span className="text-black dark:text-white">—</span>}
                     </td>
                     <td className="px-5 py-3">
                       <span
@@ -183,7 +183,7 @@ export default function SubmissionsTable({ submissions }: { submissions: Submiss
                     <td className="px-5 py-3 text-orange-400 font-bold">
                       {s.overall_score ? `${s.overall_score}/10` : '—'}
                     </td>
-                    <td className="px-5 py-3 text-white text-xs">
+                    <td className="px-5 py-3 text-black dark:text-white text-xs">
                       {new Date(s.created_at).toLocaleString()}
                     </td>
                     <td className="px-5 py-3">
@@ -197,7 +197,7 @@ export default function SubmissionsTable({ submissions }: { submissions: Submiss
                           View
                         </a>
                       ) : (
-                        <span className="text-white text-xs">—</span>
+                        <span className="text-black dark:text-white text-xs">—</span>
                       )}
                     </td>
                   </tr>

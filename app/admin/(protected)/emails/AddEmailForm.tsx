@@ -43,7 +43,7 @@ export default function AddEmailForm() {
         placeholder="Add an email address"
         value={email}
         onChange={e => setEmail(e.target.value)}
-        className="flex-1 min-w-[12rem] bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-2 text-white text-sm placeholder-zinc-500 focus:outline-none focus:border-orange-500 transition-colors"
+        className="flex-1 min-w-[12rem] bg-white dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 rounded-lg px-4 py-2 text-black dark:text-white text-sm placeholder-zinc-500 focus:outline-none focus:border-orange-500 transition-colors"
       />
       <button
         type="submit"

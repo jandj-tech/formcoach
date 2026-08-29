@@ -82,7 +82,7 @@ export default function TeamCoaches({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-4">
-        <h2 className="text-xl font-black text-black">Coaches</h2>
+        <h2 className="text-xl font-black text-black dark:text-chalk">Coaches</h2>
         <button
           onClick={() => { setAddOpen(o => !o); reset() }}
           className="bg-orange-500 hover:bg-orange-400 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors"
@@ -95,8 +95,8 @@ export default function TeamCoaches({
       <CoachNicknameForm current={myNickname} />
 
       {addOpen && (
-        <div className="border border-gray-200 rounded-2xl p-5 space-y-3">
-          <p className="text-sm text-gray-500">
+        <div className="border border-gray-200 dark:border-courtline rounded-2xl p-5 space-y-3">
+          <p className="text-sm text-gray-500 dark:text-chalk-dim">
             Add a coach by email. Either email them the signup link, or just get the link to send yourself.
           </p>
           <input
@@ -105,7 +105,7 @@ export default function TeamCoaches({
             placeholder="Coach email"
             value={email}
             onChange={e => setEmail(e.target.value)}
-            className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2.5 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
+            className="w-full bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl px-4 py-2.5 text-black dark:text-chalk placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
           />
           <div className="flex gap-2">
             <button
@@ -120,7 +120,7 @@ export default function TeamCoaches({
               type="button"
               onClick={() => addCoach('link')}
               disabled={loading}
-              className="flex-1 bg-white border border-orange-500 text-orange-600 hover:bg-orange-50 disabled:opacity-50 font-bold px-4 py-2.5 rounded-xl text-sm transition-colors"
+              className="flex-1 bg-white dark:bg-ink-900 border border-orange-500 text-orange-600 dark:text-ember-400 hover:bg-orange-50 dark:hover:bg-ember-500/10 disabled:opacity-50 font-bold px-4 py-2.5 rounded-xl text-sm transition-colors"
             >
               {loading ? 'Working…' : 'Just get the link'}
             </button>
@@ -128,15 +128,15 @@ export default function TeamCoaches({
           {error && <p className="text-red-500 text-sm">{error}</p>}
 
           {inviteUrl && (
-            <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-2">
-              <p className="text-sm font-semibold text-green-700">
+            <div className="bg-green-50 dark:bg-green-950/40 border border-green-200 rounded-xl p-4 space-y-2">
+              <p className="text-sm font-semibold text-green-700 dark:text-green-400">
                 {emailedTo ? `Coach added — invite emailed to ${emailedTo}.` : 'Coach added!'}
               </p>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-500 dark:text-chalk-dim">
                 {emailedTo ? 'You can also send them this link yourself:' : 'Send them this signup link:'}
               </p>
               <div className="flex items-center gap-2">
-                <span className="flex-1 text-xs font-mono text-gray-600 truncate">{inviteUrl}</span>
+                <span className="flex-1 text-xs font-mono text-gray-600 dark:text-chalk-dim truncate">{inviteUrl}</span>
                 <button
                   onClick={copyInvite}
                   className="shrink-0 text-sm font-semibold text-orange-500 hover:text-orange-400 transition-colors"
@@ -149,27 +149,27 @@ export default function TeamCoaches({
         </div>
       )}
 
-      <div className="border border-gray-200 rounded-2xl divide-y divide-gray-100">
+      <div className="border border-gray-200 dark:border-courtline rounded-2xl divide-y divide-gray-100">
         <div className="flex items-center justify-between gap-3 px-4 py-3">
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-black truncate">
+            <p className="text-sm font-semibold text-black dark:text-chalk truncate">
               {foundingCoachNickname || foundingCoachEmail}
             </p>
             {foundingCoachNickname && (
-              <p className="text-xs text-gray-400 truncate">{foundingCoachEmail}</p>
+              <p className="text-xs text-gray-400 dark:text-chalk-dim truncate">{foundingCoachEmail}</p>
             )}
           </div>
-          <span className="shrink-0 text-xs bg-orange-100 text-orange-700 font-bold px-2 py-0.5 rounded-full">Head coach</span>
+          <span className="shrink-0 text-xs bg-orange-100 dark:bg-ember-500/15 text-orange-700 dark:text-ember-400 font-bold px-2 py-0.5 rounded-full">Head coach</span>
         </div>
         {coaches.map(c => (
           <div key={c.id} className="flex items-center justify-between gap-3 px-4 py-3">
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-black truncate">{c.nickname || c.email}</p>
-              {c.nickname && <p className="text-xs text-gray-400 truncate">{c.email}</p>}
+              <p className="text-sm font-semibold text-black dark:text-chalk truncate">{c.nickname || c.email}</p>
+              {c.nickname && <p className="text-xs text-gray-400 dark:text-chalk-dim truncate">{c.email}</p>}
             </div>
             <span
               className={`shrink-0 text-xs font-bold px-2 py-0.5 rounded-full ${
-                c.pending ? 'bg-gray-100 text-gray-500' : 'bg-green-100 text-green-700'
+                c.pending ? 'bg-gray-100 dark:bg-ink-800 text-gray-500 dark:text-chalk-dim' : 'bg-green-100 text-green-700 dark:text-green-400'
               }`}
             >
               {c.pending ? 'Invite pending' : 'Coach'}

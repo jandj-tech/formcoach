@@ -101,14 +101,14 @@ export default function OrgAddCoach({ teamId }: { teamId: string }) {
   }
 
   return (
-    <div className="border border-gray-200 rounded-xl p-3 space-y-2">
+    <div className="border border-gray-200 dark:border-courtline rounded-xl p-3 space-y-2">
       <input
         type="email"
         aria-label="Coach email"
         placeholder="Coach email"
         value={email}
         onChange={e => setEmail(e.target.value)}
-        className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-black text-sm placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
+        className="w-full bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-lg px-3 py-2 text-black dark:text-chalk text-sm placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
       />
       <div className="flex gap-2">
         <button
@@ -123,23 +123,23 @@ export default function OrgAddCoach({ teamId }: { teamId: string }) {
           type="button"
           onClick={() => addCoach('link')}
           disabled={loading}
-          className="flex-1 bg-white border border-orange-500 text-orange-600 hover:bg-orange-50 disabled:opacity-50 font-bold px-3 py-2 rounded-lg text-xs transition-colors"
+          className="flex-1 bg-white dark:bg-ink-900 border border-orange-500 text-orange-600 dark:text-ember-400 hover:bg-orange-50 dark:hover:bg-ember-500/10 disabled:opacity-50 font-bold px-3 py-2 rounded-lg text-xs transition-colors"
         >
           {loading ? 'Working…' : 'Just get the link'}
         </button>
         <button
           type="button"
           onClick={() => { setOpen(false); reset() }}
-          className="shrink-0 text-gray-400 hover:text-gray-600 text-xs font-semibold px-2"
+          className="shrink-0 text-gray-400 dark:text-chalk-dim hover:text-gray-600 dark:hover:text-chalk-dim text-xs font-semibold px-2"
         >
           Cancel
         </button>
       </div>
 
       <div className="flex items-center gap-2">
-        <div className="flex-1 h-px bg-gray-200" />
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">or</span>
-        <div className="flex-1 h-px bg-gray-200" />
+        <div className="flex-1 h-px bg-gray-200 dark:bg-ink-700" />
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-chalk-dim">or</span>
+        <div className="flex-1 h-px bg-gray-200 dark:bg-ink-700" />
       </div>
       <input
         type="text"
@@ -147,25 +147,25 @@ export default function OrgAddCoach({ teamId }: { teamId: string }) {
         placeholder="Your name"
         value={selfName}
         onChange={e => setSelfName(e.target.value)}
-        className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-black text-sm placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
+        className="w-full bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-lg px-3 py-2 text-black dark:text-chalk text-sm placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
       />
       <button
         type="button"
         onClick={addSelf}
         disabled={loading}
-        className="w-full bg-gray-100 hover:bg-gray-200 disabled:opacity-50 text-black font-bold px-3 py-2 rounded-lg text-xs transition-colors"
+        className="w-full bg-gray-100 dark:bg-ink-800 hover:bg-gray-200 dark:hover:bg-ink-700 disabled:opacity-50 text-black dark:text-chalk font-bold px-3 py-2 rounded-lg text-xs transition-colors"
       >
         {loading ? 'Working…' : 'Add myself as a coach'}
       </button>
 
       {error && <p className="text-red-500 text-xs">{error}</p>}
       {inviteUrl && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-3 space-y-1">
-          <p className="text-xs font-semibold text-green-700">
+        <div className="bg-green-50 dark:bg-green-950/40 border border-green-200 rounded-lg p-3 space-y-1">
+          <p className="text-xs font-semibold text-green-700 dark:text-green-400">
             {emailedTo ? `Coach added — invite emailed to ${emailedTo}.` : 'Coach added!'}
           </p>
           <div className="flex items-center gap-2">
-            <span className="flex-1 text-xs font-mono text-gray-600 truncate">{inviteUrl}</span>
+            <span className="flex-1 text-xs font-mono text-gray-600 dark:text-chalk-dim truncate">{inviteUrl}</span>
             <button
               onClick={copyInvite}
               className="shrink-0 text-xs font-semibold text-orange-500 hover:text-orange-400 transition-colors"

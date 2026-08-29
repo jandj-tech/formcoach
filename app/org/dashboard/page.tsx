@@ -252,7 +252,7 @@ export default async function OrgDashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-white flex flex-col">
+    <main className="min-h-screen bg-white dark:bg-ink-900 flex flex-col">
       <TopNav />
       <div className="max-w-3xl mx-auto w-full px-6 py-10 space-y-8">
         <div className="flex items-start justify-between gap-4">
@@ -262,14 +262,14 @@ export default async function OrgDashboardPage() {
               endpoint="/api/org/rename"
               bodyKey="name"
               placeholder="Organization name"
-              textClassName="text-2xl font-black text-black"
+              textClassName="text-2xl font-black text-black dark:text-chalk"
             />
-            <p className="text-gray-500 text-sm mt-1">Organization Dashboard</p>
+            <p className="text-gray-500 dark:text-chalk-dim text-sm mt-1">Organization Dashboard</p>
           </div>
           <div className="flex items-center gap-2">
             <Link
               href="/team"
-              className="border border-orange-300 text-orange-600 hover:bg-orange-50 font-bold text-sm px-4 py-2 rounded-xl transition-colors"
+              className="border border-orange-300 text-orange-600 dark:text-ember-400 hover:bg-orange-50 dark:hover:bg-ember-500/10 font-bold text-sm px-4 py-2 rounded-xl transition-colors"
             >
               🏢 Organization Hub
             </Link>
@@ -278,8 +278,8 @@ export default async function OrgDashboardPage() {
           </div>
         </div>
 
-        <div className="bg-orange-50 border border-orange-200 rounded-2xl p-6">
-          <p className="text-sm text-gray-500 flex items-center gap-2">
+        <div className="bg-orange-50 dark:bg-ember-500/10 border border-orange-200 rounded-2xl p-6">
+          <p className="text-sm text-gray-500 dark:text-chalk-dim flex items-center gap-2">
             Organization code
             <InfoTip label="What is the organization code for?" align="left">
               Share this code with your coaches. When a coach registers a team
@@ -287,8 +287,8 @@ export default async function OrgDashboardPage() {
               assign tokens and see its leaderboard here.
             </InfoTip>
           </p>
-          <p className="text-2xl font-black text-black font-mono tracking-wider">{org.access_code}</p>
-          <p className="text-xs text-gray-400 mt-1">
+          <p className="text-2xl font-black text-black dark:text-chalk font-mono tracking-wider">{org.access_code}</p>
+          <p className="text-xs text-gray-400 dark:text-chalk-dim mt-1">
             Coaches enter this code when registering a team to link it to your organization.
           </p>
         </div>

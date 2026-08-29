@@ -58,20 +58,20 @@ export default function BuyPlayerTokensButton({ players, teamCode }: Props) {
 
   if (players.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-400 border-2 border-dashed border-gray-200 rounded-2xl px-4">
-        <p className="font-semibold text-gray-500">No players have joined your team yet.</p>
+      <div className="text-center py-8 text-gray-400 dark:text-chalk-dim border-2 border-dashed border-gray-200 dark:border-courtline rounded-2xl px-4">
+        <p className="font-semibold text-gray-500 dark:text-chalk-dim">No players have joined your team yet.</p>
         <p className="text-sm mt-1">
           Share your team code:{' '}
-          <span className="font-mono font-semibold text-gray-600">{teamCode}</span>
+          <span className="font-mono font-semibold text-gray-600 dark:text-chalk-dim">{teamCode}</span>
         </p>
       </div>
     )
   }
 
   return (
-    <div className="border border-gray-200 rounded-2xl p-5 space-y-4">
+    <div className="border border-gray-200 dark:border-courtline rounded-2xl p-5 space-y-4">
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-sm text-gray-600">Tokens per player</span>
+        <span className="text-sm text-gray-600 dark:text-chalk-dim">Tokens per player</span>
         {[1, 5, 10].map(q => (
           <button
             key={q}
@@ -79,7 +79,7 @@ export default function BuyPlayerTokensButton({ players, teamCode }: Props) {
             className={`px-3 py-1 rounded-lg text-sm font-bold transition-colors ${
               quantity === q
                 ? 'bg-orange-500 text-ink-950'
-                : 'bg-white border border-gray-300 text-black hover:border-orange-400'
+                : 'bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline text-black dark:text-chalk hover:border-orange-400'
             }`}
           >
             {q}
@@ -96,7 +96,7 @@ export default function BuyPlayerTokensButton({ players, teamCode }: Props) {
           }}
           onBlur={() => { if (quantity < 1) setQuantity(1) }}
           aria-label="Custom token amount"
-          className="w-20 border border-gray-300 rounded-lg px-2 py-1 text-center text-black text-sm focus:outline-none focus:border-orange-500"
+          className="w-20 border border-gray-300 dark:border-courtline rounded-lg px-2 py-1 text-center text-black dark:text-chalk text-sm focus:outline-none focus:border-orange-500"
         />
       </div>
 
@@ -109,8 +109,8 @@ export default function BuyPlayerTokensButton({ players, teamCode }: Props) {
               onChange={() => toggle(p.id)}
               className="w-4 h-4 accent-orange-500"
             />
-            <span className="flex-1 text-sm text-black">{p.email}</span>
-            <span className="text-xs text-gray-400">
+            <span className="flex-1 text-sm text-black dark:text-chalk">{p.email}</span>
+            <span className="text-xs text-gray-400 dark:text-chalk-dim">
               {p.tokens} token{p.tokens !== 1 ? 's' : ''}
             </span>
           </label>

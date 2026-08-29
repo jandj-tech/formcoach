@@ -193,21 +193,21 @@ export default function SendEmailPanel() {
     }
   }
 
-  const inputCls = 'w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm placeholder:text-zinc-600 focus:outline-none focus:border-orange-500'
-  const labelCls = 'text-zinc-300 text-xs font-semibold uppercase tracking-wide'
+  const inputCls = 'w-full bg-gray-100 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg px-3 py-2 text-black dark:text-white text-sm placeholder:text-gray-500 dark:placeholder:text-zinc-600 focus:outline-none focus:border-orange-500'
+  const labelCls = 'text-gray-700 dark:text-zinc-300 text-xs font-semibold uppercase tracking-wide'
 
   return (
     <div className="space-y-3">
       {/* Preview modal */}
       {preview && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="bg-zinc-900 border border-zinc-700 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-            <div className="px-6 py-4 border-b border-zinc-800 space-y-1">
-              <h2 className="text-white font-black text-lg">Preview</h2>
-              <p className="text-zinc-400 text-sm">
-                Subject: <span className="text-white font-semibold">{preview.subject}</span>
+          <div className="bg-white dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-zinc-800 space-y-1">
+              <h2 className="text-black dark:text-white font-black text-lg">Preview</h2>
+              <p className="text-gray-600 dark:text-zinc-400 text-sm">
+                Subject: <span className="text-black dark:text-white font-semibold">{preview.subject}</span>
               </p>
-              <p className="text-zinc-400 text-sm">
+              <p className="text-gray-600 dark:text-zinc-400 text-sm">
                 Will be sent to <span className="text-orange-400 font-bold">{preview.recipientCount}</span> subscribed recipient{preview.recipientCount !== 1 ? 's' : ''} ({AUDIENCES.find(a => a.id === audience)?.label}).
                 Each copy is personalized individually and gets its own unsubscribe link
                 {preview.sampleName ? <> — this preview shows it as &ldquo;{preview.sampleName}&rdquo; would receive it</> : null}.
@@ -221,7 +221,7 @@ export default function SendEmailPanel() {
                 className="w-full h-[60vh] border-0"
               />
             </div>
-            <div className="px-6 py-4 border-t border-zinc-800 flex items-center gap-3 flex-wrap">
+            <div className="px-6 py-4 border-t border-gray-200 dark:border-zinc-800 flex items-center gap-3 flex-wrap">
               <button
                 onClick={handleSend}
                 disabled={busy !== null || preview.recipientCount === 0}
@@ -232,7 +232,7 @@ export default function SendEmailPanel() {
               <button
                 onClick={() => setPreview(null)}
                 disabled={busy !== null}
-                className="px-4 py-2 text-zinc-400 hover:text-white text-sm transition-colors"
+                className="px-4 py-2 text-gray-600 dark:text-zinc-400 hover:text-black dark:hover:text-white text-sm transition-colors"
               >
                 Back to editing
               </button>
@@ -253,10 +253,10 @@ export default function SendEmailPanel() {
           {notice && <span className="text-green-400 text-sm">{notice}</span>}
         </div>
       ) : (
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-4">
+        <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-white font-black text-lg">Send an email</h2>
-            <button onClick={() => setOpen(false)} className="text-zinc-400 hover:text-white text-sm transition-colors">
+            <h2 className="text-black dark:text-white font-black text-lg">Send an email</h2>
+            <button onClick={() => setOpen(false)} className="text-gray-600 dark:text-zinc-400 hover:text-black dark:hover:text-white text-sm transition-colors">
               Close
             </button>
           </div>
@@ -273,14 +273,14 @@ export default function SendEmailPanel() {
                   className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
                     sender === sn.id
                       ? 'bg-orange-500 text-ink-950'
-                      : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                      : 'bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-300 hover:bg-gray-200 dark:hover:bg-zinc-700'
                   }`}
                 >
                   {sn.label}
                 </button>
               ))}
             </div>
-            <p className="text-zinc-500 text-xs">
+            <p className="text-gray-500 dark:text-zinc-500 text-xs">
               {SENDERS.find(sn => sn.id === sender)?.hint}.
             </p>
           </div>
@@ -297,14 +297,14 @@ export default function SendEmailPanel() {
                   className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
                     audience === a.id
                       ? 'bg-orange-500 text-ink-950'
-                      : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                      : 'bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-300 hover:bg-gray-200 dark:hover:bg-zinc-700'
                   }`}
                 >
                   {a.label}
                 </button>
               ))}
             </div>
-            <p className="text-zinc-500 text-xs">
+            <p className="text-gray-500 dark:text-zinc-500 text-xs">
               {AUDIENCES.find(a => a.id === audience)?.hint}. Unsubscribed addresses are always skipped.
             </p>
             {audience === 'single' && (
@@ -329,14 +329,14 @@ export default function SendEmailPanel() {
                   className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
                     presetId === p.id
                       ? 'bg-orange-500 text-ink-950'
-                      : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                      : 'bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-300 hover:bg-gray-200 dark:hover:bg-zinc-700'
                   }`}
                 >
                   {p.label}
                 </button>
               ))}
             </div>
-            <p className="text-zinc-500 text-xs">
+            <p className="text-gray-500 dark:text-zinc-500 text-xs">
               Picking a type fills in the email below — edit anything you like. Write{' '}
               <code className="text-orange-400">{'{{name}}'}</code> anywhere and each person gets their
               own first name (or &ldquo;there&rdquo; if we don&rsquo;t know it).
@@ -388,18 +388,18 @@ export default function SendEmailPanel() {
                 value={testEmail}
                 onChange={e => setTestEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm placeholder:text-zinc-600 focus:outline-none focus:border-orange-500 w-52"
+                className="bg-gray-100 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg px-3 py-2 text-black dark:text-white text-sm placeholder:text-gray-500 dark:placeholder:text-zinc-600 focus:outline-none focus:border-orange-500 w-52"
               />
               <button
                 onClick={handleTest}
                 disabled={busy !== null}
-                className="border border-zinc-600 hover:border-orange-500 text-zinc-300 hover:text-orange-400 font-semibold px-4 py-2 rounded-lg text-sm transition-colors"
+                className="border border-gray-400 dark:border-zinc-600 hover:border-orange-500 text-gray-700 dark:text-zinc-300 hover:text-orange-400 font-semibold px-4 py-2 rounded-lg text-sm transition-colors"
               >
                 {busy === 'test' ? 'Sending…' : 'Send test'}
               </button>
             </div>
           </div>
-          <p className="text-zinc-500 text-xs">
+          <p className="text-gray-500 dark:text-zinc-500 text-xs">
             Sending is only possible from the preview screen, so you always see the email first. Use
             &ldquo;Send test&rdquo; to email a real copy to yourself before the full send.
           </p>

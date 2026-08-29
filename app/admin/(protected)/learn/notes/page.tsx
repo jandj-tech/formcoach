@@ -79,12 +79,12 @@ export default function CoachNotesQueuePage() {
   }
 
   return (
-    <div className="space-y-6 text-white">
+    <div className="space-y-6 text-black dark:text-white">
       <div>
         <h1 className="text-2xl font-black">Coach&apos;s Notes — review queue</h1>
-        <p className="text-sm text-zinc-400 mt-1 max-w-3xl">
+        <p className="text-sm text-gray-600 dark:text-zinc-400 mt-1 max-w-3xl">
           Notes coaches (and you) have added to players&apos; reports. They are already visible to
-          the player and have <strong className="text-zinc-300">no effect on grading</strong>.
+          the player and have <strong className="text-gray-700 dark:text-zinc-300">no effect on grading</strong>.
           Accepting one writes your own correction into Learn Mode, which is what actually teaches
           the AI — so accept only when you agree, and use your own words.
         </p>
@@ -94,9 +94,9 @@ export default function CoachNotesQueuePage() {
       </div>
 
       {error && <p className="text-sm text-red-400">{error}</p>}
-      {loading && <p className="text-sm text-zinc-400">Loading…</p>}
+      {loading && <p className="text-sm text-gray-600 dark:text-zinc-400">Loading…</p>}
       {!loading && notes.length === 0 && (
-        <p className="text-sm text-zinc-400">Nothing pending — every coach note has been reviewed.</p>
+        <p className="text-sm text-gray-600 dark:text-zinc-400">Nothing pending — every coach note has been reviewed.</p>
       )}
 
       <div className="space-y-4">
@@ -105,16 +105,16 @@ export default function CoachNotesQueuePage() {
           const suggested = n.suggested_score === null ? null : Number(n.suggested_score)
           const draft = drafts[n.id] ?? { score: '', notes: '' }
           return (
-            <div key={n.id} className="rounded-xl border border-zinc-800 bg-zinc-900 p-5 space-y-3">
+            <div key={n.id} className="rounded-xl border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 space-y-3">
               <div className="flex flex-wrap items-center gap-3">
                 <span className="font-semibold">{n.criterion_name}</span>
-                <span className="text-xs text-zinc-400">
+                <span className="text-xs text-gray-600 dark:text-zinc-400">
                   AI {ai === null ? 'not graded' : ai.toFixed(1)}
                   {suggested !== null && (
                     <> · <span className="text-indigo-400 font-bold">Coach {suggested.toFixed(1)}</span></>
                   )}
                 </span>
-                <span className="text-xs text-zinc-500 select-text">
+                <span className="text-xs text-gray-500 dark:text-zinc-500 select-text">
                   {n.author_type === 'admin' ? 'you' : n.author_email}
                   {n.team_name ? ` · ${n.team_name}` : ''}
                 </span>
@@ -136,7 +136,7 @@ export default function CoachNotesQueuePage() {
                 </div>
               )}
 
-              <details className="text-xs text-zinc-400">
+              <details className="text-xs text-gray-600 dark:text-zinc-400">
                 <summary className="cursor-pointer select-none">What the AI said</summary>
                 <p className="mt-1 leading-relaxed">{n.ai_reasoning}</p>
               </details>
@@ -146,16 +146,16 @@ export default function CoachNotesQueuePage() {
                   {n.frame_urls.slice(0, 12).map((url, i) => (
                     <a key={i} href={url} target="_blank" rel="noopener noreferrer">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={url} alt="" className="rounded w-full aspect-video object-cover border border-zinc-800" />
+                      <img src={url} alt="" className="rounded w-full aspect-video object-cover border border-gray-200 dark:border-zinc-800" />
                     </a>
                   ))}
                 </div>
               )}
 
-              <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 space-y-2">
-                <p className="text-xs text-zinc-400">
+              <div className="rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-950 p-3 space-y-2">
+                <p className="text-xs text-gray-600 dark:text-zinc-400">
                   Your correction — this is what trains the AI.{' '}
-                  <span className="text-zinc-500">
+                  <span className="text-gray-500 dark:text-zinc-500">
                     {n.existing_corrections > 0
                       ? `${n.existing_corrections} correction${n.existing_corrections === 1 ? '' : 's'} already on this criterion${n.existing_drift ? `, averaging ${Number(n.existing_drift) > 0 ? '+' : ''}${Number(n.existing_drift).toFixed(1)}` : ''}.`
                       : 'No corrections on this criterion yet — this would be the first.'}
@@ -168,7 +168,7 @@ export default function CoachNotesQueuePage() {
                     placeholder="Your score"
                     value={draft.score}
                     onChange={(e) => setDrafts((d) => ({ ...d, [n.id]: { ...draft, score: e.target.value } }))}
-                    className="w-28 rounded-lg bg-zinc-900 border border-zinc-700 px-3 py-1.5 text-sm"
+                    className="w-28 rounded-lg bg-white dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 px-3 py-1.5 text-sm"
                   />
                   <input
                     type="text"
@@ -176,7 +176,7 @@ export default function CoachNotesQueuePage() {
                     placeholder="Your notes, in your own words"
                     value={draft.notes}
                     onChange={(e) => setDrafts((d) => ({ ...d, [n.id]: { ...draft, notes: e.target.value } }))}
-                    className="flex-1 min-w-48 rounded-lg bg-zinc-900 border border-zinc-700 px-3 py-1.5 text-sm"
+                    className="flex-1 min-w-48 rounded-lg bg-white dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 px-3 py-1.5 text-sm"
                   />
                 </div>
                 <div className="flex gap-2">
@@ -190,7 +190,7 @@ export default function CoachNotesQueuePage() {
                   <button
                     onClick={() => review(n.id, 'reject')}
                     disabled={busy === n.id}
-                    className="rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 px-3 py-1.5 text-sm"
+                    className="rounded-lg bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 disabled:opacity-40 px-3 py-1.5 text-sm"
                   >
                     Dismiss
                   </button>

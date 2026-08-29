@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTheme } from 'next-themes'
 
 export interface LeaderboardRow {
   id: string
@@ -138,12 +139,21 @@ export default function LeaderboardTable({
   entries: LeaderboardRow[]
   context?: 'team' | 'org' | 'player'
   showTeam?: boolean
-  theme?: Theme
+  /**
+   * 'auto' follows the user's chosen theme. It exists because this table
+   * themes itself from a lookup table rather than CSS, so the account pages'
+   * `dark:` classes cannot reach it. Broadcast Court pages pass 'dark'.
+   */
+  theme?: Theme | 'auto'
 }) {
   const [sortMode, setSortMode] = useState<SortMode>('score-desc')
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
-  const t = THEMES[theme]
+  // resolvedTheme collapses "system" to the light/dark actually on screen. It
+  // is undefined until mount, so 'auto' falls back to light for the server
+  // render and the first client pass, which keeps the two matching.
+  const { resolvedTheme } = useTheme()
+  const t = THEMES[theme === 'auto' ? (resolvedTheme === 'dark' ? 'dark' : 'light') : theme]
 
   // Older callers may not send avg_score yet — drop the column (and its sort
   // option) instead of rendering a dash for everyone.

@@ -214,7 +214,7 @@ export default async function TeamDashboardPage() {
       : (coaches.find(c => c.email === session.adminEmail)?.nickname ?? null)
 
   return (
-    <main className="min-h-screen bg-white flex flex-col">
+    <main className="min-h-screen bg-white dark:bg-ink-900 flex flex-col">
       <TopNav />
       <TeamDashboardClient
         team={{ id: team.id, name: team.name, accessCode: team.access_code, credits: team.credits, tokenPool: teamTokenPool, tier: await teamTier(team.id) }}

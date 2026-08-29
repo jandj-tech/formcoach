@@ -28,8 +28,8 @@ export default function CoachNicknameForm({ current }: { current: string | null 
   }
 
   return (
-    <form onSubmit={handleSave} className="border border-gray-200 rounded-2xl p-4 space-y-2">
-      <p className="text-sm text-gray-600">
+    <form onSubmit={handleSave} className="border border-gray-200 dark:border-courtline rounded-2xl p-4 space-y-2">
+      <p className="text-sm text-gray-600 dark:text-chalk-dim">
         Your coach name — shown to your organization and team so people know who you are.
       </p>
       <div className="flex gap-2">
@@ -40,7 +40,7 @@ export default function CoachNicknameForm({ current }: { current: string | null 
           placeholder="e.g. Coach Mike"
           value={nickname}
           onChange={e => setNickname(e.target.value)}
-          className="flex-1 bg-white border border-gray-300 rounded-xl px-4 py-2.5 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
+          className="flex-1 bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl px-4 py-2.5 text-black dark:text-chalk placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
         />
         <button
           type="submit"
@@ -50,7 +50,7 @@ export default function CoachNicknameForm({ current }: { current: string | null 
           {status === 'saving' ? 'Saving…' : 'Save'}
         </button>
       </div>
-      {status === 'saved' && <p className="text-green-600 text-sm font-semibold">Saved!</p>}
+      {status === 'saved' && <p className="text-green-600 dark:text-green-400 text-sm font-semibold">Saved!</p>}
       {status === 'error' && <p className="text-red-500 text-sm">Could not save. Please try again.</p>}
     </form>
   )

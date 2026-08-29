@@ -139,7 +139,7 @@ export default function LearnModePage() {
         >
           {/* Always-visible top bar */}
           <div className="flex items-center justify-between px-6 py-4 shrink-0" onClick={(e) => e.stopPropagation()}>
-            <span className="text-zinc-400 text-sm">
+            <span className="text-gray-600 dark:text-zinc-400 text-sm">
               Frame {lightbox.index + 1} of {lightbox.urls.length}
             </span>
             <button
@@ -155,7 +155,7 @@ export default function LearnModePage() {
             <img
               src={lightbox.urls[lightbox.index]}
               alt={`Frame ${lightbox.index + 1}`}
-              className="max-w-4xl w-full max-h-full object-contain rounded-xl border border-zinc-700"
+              className="max-w-4xl w-full max-h-full object-contain rounded-xl border border-gray-300 dark:border-zinc-700"
             />
           </div>
 
@@ -164,14 +164,14 @@ export default function LearnModePage() {
             <button
               disabled={lightbox.index === 0}
               onClick={() => setLightbox((l) => l && { ...l, index: l.index - 1 })}
-              className="bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 text-white px-6 py-2.5 rounded-lg text-sm font-bold"
+              className="bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 disabled:opacity-30 text-black dark:text-white px-6 py-2.5 rounded-lg text-sm font-bold"
             >
               ← Prev
             </button>
             <button
               disabled={lightbox.index === lightbox.urls.length - 1}
               onClick={() => setLightbox((l) => l && { ...l, index: l.index + 1 })}
-              className="bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 text-white px-6 py-2.5 rounded-lg text-sm font-bold"
+              className="bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 disabled:opacity-30 text-black dark:text-white px-6 py-2.5 rounded-lg text-sm font-bold"
             >
               Next →
             </button>
@@ -179,18 +179,18 @@ export default function LearnModePage() {
         </div>
       )}
       <div>
-        <h1 className="text-2xl font-black text-white">Learn Mode</h1>
-        <p className="text-white text-sm mt-1">
+        <h1 className="text-2xl font-black text-black dark:text-white">Learn Mode</h1>
+        <p className="text-black dark:text-white text-sm mt-1">
           View the frames the AI analyzed, then correct its scores. Every correction improves future analyses.
         </p>
       </div>
 
       <div className="space-y-3">
         {submissions.length === 0 && (
-          <p className="text-white text-sm">No analyses yet.</p>
+          <p className="text-black dark:text-white text-sm">No analyses yet.</p>
         )}
         {submissions.map((s) => (
-          <div key={s.id} className="bg-zinc-900 rounded-xl border border-zinc-800">
+          <div key={s.id} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-zinc-800">
             {/* A div, not a button: text inside a button can't be dragged over
                 to select it, which made the email here impossible to copy. */}
             <div
@@ -208,7 +208,7 @@ export default function LearnModePage() {
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <p
-                    className="text-white text-sm font-medium select-text cursor-text break-all"
+                    className="text-black dark:text-white text-sm font-medium select-text cursor-text break-all"
                     onClick={(e) => e.stopPropagation()}
                   >
                     {accountLabel(s)}
@@ -216,7 +216,7 @@ export default function LearnModePage() {
                   {accountEmail(s) && <CopyButton value={accountEmail(s)!} label="Copy email" />}
                 </div>
                 <p
-                  className="text-white text-xs select-text cursor-text"
+                  className="text-black dark:text-white text-xs select-text cursor-text"
                   onClick={(e) => e.stopPropagation()}
                 >
                   {new Date(s.created_at).toLocaleString()}
@@ -226,12 +226,12 @@ export default function LearnModePage() {
                 <span className="text-orange-400 font-bold text-sm">
                   {s.overall_score ? `${s.overall_score}/10` : '—'}
                 </span>
-                <span className="text-white text-lg">{expanded === s.id ? '▲' : '▼'}</span>
+                <span className="text-black dark:text-white text-lg">{expanded === s.id ? '▲' : '▼'}</span>
               </div>
             </div>
 
             {expanded === s.id && (
-              <div className="border-t border-zinc-800">
+              <div className="border-t border-gray-200 dark:border-zinc-800">
 
                 {/* Frames + the original video side by side, mirroring the
                     "Your shot" section at the bottom of a results page — the
@@ -240,7 +240,7 @@ export default function LearnModePage() {
                 {((s.frame_urls && s.frame_urls.length > 0) || s.video_url) && (
                   <div className="px-5 py-4 space-y-2">
                     <div className="flex flex-wrap items-center gap-3">
-                      <p className="text-white text-xs font-semibold uppercase tracking-wider">
+                      <p className="text-black dark:text-white text-xs font-semibold uppercase tracking-wider">
                         {s.frame_urls?.length
                           ? `Frames Analyzed (${s.frame_urls.length})`
                           : 'Uploaded video'}
@@ -274,13 +274,13 @@ export default function LearnModePage() {
                               <img
                                 src={url}
                                 alt={`Frame ${i + 1}`}
-                                className="rounded-lg w-full aspect-video object-cover border border-zinc-700 group-hover:border-orange-400 transition-colors"
+                                className="rounded-lg w-full aspect-video object-cover border border-gray-300 dark:border-zinc-700 group-hover:border-orange-400 transition-colors"
                               />
-                              <span className="absolute bottom-1 left-1 text-white text-xs bg-black/60 rounded px-1">
+                              <span className="absolute bottom-1 left-1 text-black dark:text-white text-xs bg-black/60 rounded px-1">
                                 {i + 1}
                               </span>
                               <div className="absolute inset-0 bg-white/0 group-hover:bg-white/10 rounded-lg transition-colors flex items-center justify-center">
-                                <span className="opacity-0 group-hover:opacity-100 text-white text-lg">🔍</span>
+                                <span className="opacity-0 group-hover:opacity-100 text-black dark:text-white text-lg">🔍</span>
                               </div>
                             </div>
                           ))}
@@ -293,12 +293,12 @@ export default function LearnModePage() {
                           controls
                           playsInline
                           preload="metadata"
-                          className="w-full rounded-xl bg-black border border-zinc-700"
+                          className="w-full rounded-xl bg-white dark:bg-black border border-gray-300 dark:border-zinc-700"
                         />
                       )}
                     </div>
                     {!s.video_url && (
-                      <p className="text-zinc-500 text-xs">
+                      <p className="text-gray-500 dark:text-zinc-500 text-xs">
                         No video stored for this shot — originals over 100MB are analyzed from
                         frames only.
                       </p>
@@ -313,11 +313,11 @@ export default function LearnModePage() {
                       <div key={score.id} className="px-5 py-4 space-y-3">
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1">
-                            <p className="text-white text-sm font-semibold">{score.criterion_name}</p>
-                            <p className="text-white text-xs mt-1 leading-relaxed">{score.ai_reasoning}</p>
+                            <p className="text-black dark:text-white text-sm font-semibold">{score.criterion_name}</p>
+                            <p className="text-black dark:text-white text-xs mt-1 leading-relaxed">{score.ai_reasoning}</p>
                           </div>
                           <div className="text-right shrink-0">
-                            <p className="text-white text-xs">AI Score</p>
+                            <p className="text-black dark:text-white text-xs">AI Score</p>
                             <p className="text-orange-400 font-bold">{score.ai_score}/10</p>
                             {score.admin_score !== null && (
                               <p className="text-orange-500 text-xs mt-1">✓ Corrected: {score.admin_score}/10</p>
@@ -340,7 +340,7 @@ export default function LearnModePage() {
                                 [score.id]: { ...prev[score.id], score: e.target.value },
                               }))
                             }
-                            className="w-36 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-orange-500"
+                            className="w-36 bg-gray-100 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg px-3 py-1.5 text-black dark:text-white text-sm focus:outline-none focus:border-orange-500"
                           />
                           <input
                             type="text"
@@ -353,7 +353,7 @@ export default function LearnModePage() {
                                 [score.id]: { ...prev[score.id], notes: e.target.value },
                               }))
                             }
-                            className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-orange-500"
+                            className="flex-1 bg-gray-100 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg px-3 py-1.5 text-black dark:text-white text-sm focus:outline-none focus:border-orange-500"
                           />
                           <button
                             disabled={saving === score.id || (!corrections[score.id]?.score && !corrections[score.id]?.notes)}
@@ -368,7 +368,7 @@ export default function LearnModePage() {
                   </div>
                 ) : (
                   <div className="px-5 py-4">
-                    <p className="text-white text-sm">Loading scores...</p>
+                    <p className="text-black dark:text-white text-sm">Loading scores...</p>
                   </div>
                 )}
               </div>

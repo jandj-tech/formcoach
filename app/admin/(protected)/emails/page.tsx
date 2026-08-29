@@ -29,10 +29,10 @@ export default async function EmailsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-black text-white">Email List</h1>
-        <div className="flex gap-4 text-sm text-white">
+        <h1 className="text-2xl font-black text-black dark:text-white">Email List</h1>
+        <div className="flex gap-4 text-sm text-black dark:text-white">
           <span><span className="text-orange-500 font-bold">{active.length}</span> active</span>
-          <span><span className="text-white font-bold">{unsub.length}</span> unsubscribed</span>
+          <span><span className="text-black dark:text-white font-bold">{unsub.length}</span> unsubscribed</span>
           <span><span className="text-red-400 font-bold">{suppressed.length}</span> suppressed</span>
         </div>
       </div>
@@ -41,10 +41,10 @@ export default async function EmailsPage() {
 
       <AddEmailForm />
 
-      <div className="bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden">
+      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-zinc-800 overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-zinc-800 text-white text-xs">
+            <tr className="border-b border-gray-200 dark:border-zinc-800 text-black dark:text-white text-xs">
               <th className="text-left px-5 py-3">Email</th>
               <th className="text-left px-5 py-3">Marketing Emails Sent</th>
               <th className="text-left px-5 py-3">Joined</th>
@@ -55,26 +55,26 @@ export default async function EmailsPage() {
           <tbody className="divide-y divide-zinc-800/50">
             {emails.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-5 py-6 text-white">No subscribers yet.</td>
+                <td colSpan={5} className="px-5 py-6 text-black dark:text-white">No subscribers yet.</td>
               </tr>
             ) : (
               emails.map((e) => (
                 <tr key={String(e.id)} className="hover:bg-zinc-800/30 transition-colors">
-                  <td className="px-5 py-3 text-white">{e.email}</td>
+                  <td className="px-5 py-3 text-black dark:text-white">{e.email}</td>
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-2">
                       <div className="flex gap-0.5">
                         {[1, 2, 3, 4, 5].map((n) => (
                           <div
                             key={n}
-                            className={`w-3 h-3 rounded-sm ${n <= e.marketing_emails_sent ? 'bg-orange-500' : 'bg-zinc-800'}`}
+                            className={`w-3 h-3 rounded-sm ${n <= e.marketing_emails_sent ? 'bg-orange-500' : 'bg-gray-100 dark:bg-zinc-800'}`}
                           />
                         ))}
                       </div>
-                      <span className="text-white text-xs">{e.marketing_emails_sent}/5</span>
+                      <span className="text-black dark:text-white text-xs">{e.marketing_emails_sent}/5</span>
                     </div>
                   </td>
-                  <td className="px-5 py-3 text-white text-xs">
+                  <td className="px-5 py-3 text-black dark:text-white text-xs">
                     {new Date(e.created_at).toLocaleDateString()}
                   </td>
                   <td className="px-5 py-3">
@@ -83,7 +83,7 @@ export default async function EmailsPage() {
                     ) : e.bounced_at ? (
                       <span className="text-xs bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full">Bounced</span>
                     ) : e.unsubscribed_at ? (
-                      <span className="text-xs bg-zinc-800 text-white px-2 py-0.5 rounded-full">Unsubscribed</span>
+                      <span className="text-xs bg-gray-100 dark:bg-zinc-800 text-black dark:text-white px-2 py-0.5 rounded-full">Unsubscribed</span>
                     ) : (
                       <span className="text-xs bg-green-500/10 text-orange-500 px-2 py-0.5 rounded-full">Active</span>
                     )}
@@ -98,7 +98,7 @@ export default async function EmailsPage() {
         </table>
       </div>
 
-      <p className="text-xs text-zinc-500">
+      <p className="text-xs text-gray-500 dark:text-zinc-500">
         Promotional emails go out automatically every two weeks to active addresses.
       </p>
     </div>

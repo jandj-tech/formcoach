@@ -1,8 +1,10 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTheme } from 'next-themes'
 import Link from 'next/link'
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
+import AddToCalendar from '@/components/AddToCalendar'
 
 // ---------------------------------------------------------------------------
 // Team schedule — one component, three faces:
@@ -1179,6 +1181,13 @@ function WeekCalendar({
  */
 const MAX_CHIPS_PER_DAY = 3
 
+/**
+ * How often a visible tab re-checks for other people's changes. A minute is
+ * slow for chat and fast for a schedule — an RSVP tapped courtside shows up on
+ * the laptop before anyone thinks to reload, and that is the whole bar.
+ */
+const SCHEDULE_REFRESH_MS = 60_000
+
 function MonthCalendar({
   monthStart,
   events,
@@ -1338,7 +1347,13 @@ export default function TeamSchedulePanel({
   upgradeCta = { href: '/org/signup', label: 'Get started today' },
 }: {
   teamId: string
-  theme?: 'light' | 'dark'
+  /**
+   * This panel themes itself from a prop rather than CSS, so the account
+   * pages' `dark:` classes cannot reach it — 'auto' is how it follows the
+   * user's theme instead of sitting stubbornly light inside a dark account.
+   * The always-dark marketing pages keep passing 'dark' explicitly.
+   */
+  theme?: 'light' | 'dark' | 'auto'
   compact?: boolean
   /** Which calendar the panel opens on. The org dashboard opens the month. */
   initialView?: CalendarView
@@ -1355,7 +1370,11 @@ export default function TeamSchedulePanel({
    */
   upgradeCta?: { href: string; label: string }
 }) {
-  const dark = theme === 'dark'
+  // resolvedTheme collapses "system" to the concrete light/dark actually being
+  // shown. It is undefined until mount, so 'auto' renders light on the server
+  // and on the first client pass — matching, which is what keeps hydration calm.
+  const { resolvedTheme } = useTheme()
+  const dark = theme === 'auto' ? resolvedTheme === 'dark' : theme === 'dark'
   const t = themeClasses(dark)
 
   const [data, setData] = useState<ScheduleData | 'error' | null>(null)
@@ -1373,6 +1392,10 @@ export default function TeamSchedulePanel({
   const [editingId, setEditingId] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  // The coach's empty-state form opens itself once, not on every background
+  // refetch; and background refetches are throttled against each other.
+  const didAutoOpenRef = useRef(false)
+  const lastSyncRef = useRef(0)
 
   const loadUpcoming = useCallback(async () => {
     try {
@@ -1391,7 +1414,12 @@ export default function TeamSchedulePanel({
       const json = (await res.json()) as ScheduleData
       setData(json)
       // Coach + empty schedule → open the create form (spec's empty state).
-      if (!compact && json.isCoach && json.events.length === 0) setShowCreate(true)
+      // Once only: this now runs on a timer too, and a form that reopens
+      // itself every minute after a coach closed it is a bug, not a nudge.
+      if (!compact && json.isCoach && json.events.length === 0 && !didAutoOpenRef.current) {
+        didAutoOpenRef.current = true
+        setShowCreate(true)
+      }
     } catch {
       setData('error')
     }
@@ -1423,6 +1451,48 @@ export default function TeamSchedulePanel({
     const timer = setTimeout(() => setToast(null), 3500)
     return () => clearTimeout(timer)
   }, [toast])
+
+  /**
+   * Keep the page in step with everyone else's phone.
+   *
+   * RSVPs are written by whichever client the player happens to be holding —
+   * the iOS app and this page post to the same /api/team/schedule/rsvp — but
+   * this panel used to fetch once and then sit there, so a parent with the
+   * website open never saw the "going" their kid tapped at practice. The data
+   * was right; the screen was old.
+   *
+   * Not chat-rate polling. It refetches when the tab comes back to the
+   * foreground — the case that actually matters, someone switching back from
+   * their phone — and once a minute while the tab is visible and idle. A
+   * hidden tab does nothing at all, so a laptop left open overnight costs the
+   * database nothing.
+   */
+  useEffect(() => {
+    if (locked) return
+
+    const sync = () => {
+      // An open form is in-progress work; replacing the event list underneath
+      // it would be worse than being a minute stale.
+      if (showCreate || editingId) return
+      const now = Date.now()
+      // focus and visibilitychange both fire on a tab switch — one refetch.
+      if (now - lastSyncRef.current < 5_000) return
+      lastSyncRef.current = now
+      loadUpcoming()
+    }
+    const syncIfVisible = () => {
+      if (document.visibilityState === 'visible') sync()
+    }
+
+    const id = window.setInterval(syncIfVisible, SCHEDULE_REFRESH_MS)
+    document.addEventListener('visibilitychange', syncIfVisible)
+    window.addEventListener('focus', syncIfVisible)
+    return () => {
+      window.clearInterval(id)
+      document.removeEventListener('visibilitychange', syncIfVisible)
+      window.removeEventListener('focus', syncIfVisible)
+    }
+  }, [locked, showCreate, editingId, loadUpcoming])
 
   function refresh() {
     loadUpcoming()
@@ -1848,6 +1918,10 @@ export default function TeamSchedulePanel({
       {pool.length === 0 && <p className={`text-sm py-2 text-center ${t.dim}`}>{emptyMessage}</p>}
       {/* The tapped event's full card — RSVP, attendance, coach actions */}
       {shownEvent && renderCard(shownEvent, pastIds.has(shownEvent.id))}
+
+      {/* Subscribe in a real calendar app. Collapsed, and the feed token is
+          only minted if someone opens it. */}
+      <AddToCalendar teamId={teamId} dark={dark} />
 
       {compact && (
         <div>

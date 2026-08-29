@@ -7,6 +7,7 @@ import {
   type BroadcastContent,
   type BroadcastRecipient,
 } from '@/lib/broadcast-email'
+import { resolveSender } from '@/lib/email-senders'
 
 // Sending a big list takes a while even with batching — allow up to 60s.
 export const maxDuration = 60
@@ -98,6 +99,7 @@ type Body = {
   body?: string
   ctaText?: string
   ctaUrl?: string
+  sender?: string
 }
 
 function validateContent(b: Body): BroadcastContent | { error: string } {
@@ -142,7 +144,12 @@ export async function POST(req: NextRequest) {
     const testEmail = body.testEmail?.toLowerCase().trim()
     if (!testEmail) return NextResponse.json({ error: 'Test email address required' }, { status: 400 })
     // Sample name so the tester sees the {{name}} personalization in action.
-    const result = await sendBroadcast(content, [{ email: testEmail, name: 'Jordan' }])
+    // The test mirrors the real send, headers included, so what lands in the
+    // tester's inbox is what recipients will get.
+    const result = await sendBroadcast(content, [{ email: testEmail, name: 'Jordan' }], {
+      from: resolveSender(body.sender).from,
+      bulk: body.audience !== 'single',
+    })
     if (result.failed > 0) {
       return NextResponse.json({ error: `Test send failed: ${result.errors[0] ?? 'unknown error'}` }, { status: 500 })
     }
@@ -155,7 +162,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No subscribed recipients match that audience' }, { status: 400 })
   }
 
-  const result = await sendBroadcast(content, recipients)
+  // Bulk headers follow the audience, not the sender: anything going to more
+  // than one person is bulk mail and needs a working unsubscribe.
+  const result = await sendBroadcast(content, recipients, {
+    from: resolveSender(body.sender).from,
+    bulk: body.audience !== 'single',
+  })
 
   // Log sends so the history is auditable (best-effort). ONE bulk insert, not a
   // per-recipient loop: for a few thousand recipients the old N+1 loop could

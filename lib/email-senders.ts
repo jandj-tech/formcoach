@@ -66,3 +66,23 @@ export const MARKETING_FROM = process.env.MARKETING_EMAIL_FROM || NOTIFICATION_F
  * which is the one thing an alert has to do.
  */
 export const INTERNAL_INBOX = process.env.INTERNAL_EMAIL || 'learnhoops8@gmail.com'
+
+/**
+ * The senders the admin broadcast composer offers.
+ *
+ * Resolved on the server only. The browser sends an id, never an address, so
+ * a client bundle cannot see or mis-resolve the configured addresses -- the
+ * env overrides above are server-side and would read as undefined there.
+ */
+export type SenderId = 'marketing' | 'support' | 'notification'
+
+export const SENDER_OPTIONS: ReadonlyArray<{ id: SenderId; from: string }> = [
+  { id: 'marketing', from: MARKETING_FROM },
+  { id: 'support', from: SUPPORT_FROM },
+  { id: 'notification', from: NOTIFICATION_FROM },
+]
+
+/** Falls back to marketing: an unknown id must never send as noreply@. */
+export function resolveSender(id: string | undefined): { id: SenderId; from: string } {
+  return SENDER_OPTIONS.find((o) => o.id === id) ?? SENDER_OPTIONS[0]
+}

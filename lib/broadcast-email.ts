@@ -113,7 +113,28 @@ export interface BroadcastResult {
   errors: string[]
 }
 
-export async function sendBroadcast(content: BroadcastContent, recipients: BroadcastRecipient[]): Promise<BroadcastResult> {
+export interface BroadcastOptions {
+  /** Defaults to the marketing sender. */
+  from?: string
+  /**
+   * Whether List-Unsubscribe headers are attached.
+   *
+   * Driven by how many people receive this, NOT by which From was picked. A
+   * message going to the whole list IS bulk mail whichever address it leaves
+   * from, and bulk mail without a working unsubscribe is what turns an
+   * annoyed reader into a spam complaint. Only a genuine one-to-one send
+   * should pass false.
+   */
+  bulk?: boolean
+}
+
+export async function sendBroadcast(
+  content: BroadcastContent,
+  recipients: BroadcastRecipient[],
+  options: BroadcastOptions = {}
+): Promise<BroadcastResult> {
+  const from = options.from || MARKETING_FROM
+  const bulk = options.bulk !== false
   const resend = new Resend(process.env.RESEND_API_KEY!)
   const result: BroadcastResult = { sent: 0, failed: 0, errors: [] }
 
@@ -123,14 +144,18 @@ export async function sendBroadcast(content: BroadcastContent, recipients: Broad
   for (let i = 0; i < recipients.length; i += 100) {
     const chunk = recipients.slice(i, i + 100)
     const payloads = chunk.map(r => ({
-      from: MARKETING_FROM,
+      from,
       to: r.email,
       replyTo: SUPPORT_ADDRESS,
       subject: personalize(content.subject, r.name),
-      headers: {
-        'List-Unsubscribe': `<${BASE_URL}/unsubscribe?email=${encodeURIComponent(r.email)}>`,
-        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-      },
+      ...(bulk
+        ? {
+            headers: {
+              'List-Unsubscribe': `<${BASE_URL}/unsubscribe?email=${encodeURIComponent(r.email)}>`,
+              'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+            },
+          }
+        : {}),
       text: renderBroadcastText(content, r),
       html: renderBroadcastHtml(content, r),
     }))

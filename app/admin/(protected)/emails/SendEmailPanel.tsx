@@ -4,6 +4,16 @@ import { useState } from 'react'
 
 type Audience = 'all' | 'players' | 'coaches' | 'orgs' | 'single'
 
+type SenderId = 'marketing' | 'support' | 'notification'
+
+// Which address the email leaves from. Ids only — the server resolves each to a
+// real address, so the configured addresses never reach the browser bundle.
+const SENDERS: Array<{ id: SenderId; label: string; hint: string }> = [
+  { id: 'marketing', label: 'Updates', hint: 'promotions and announcements. Its own sending reputation, so complaints here cannot hurt password resets' },
+  { id: 'support', label: 'Support', hint: 'replies come back to your inbox. Best for anything a coach or parent might answer' },
+  { id: 'notification', label: 'No-reply', hint: 'shares reputation with password resets and receipts — use sparingly' },
+]
+
 const AUDIENCES: Array<{ id: Audience; label: string; hint: string }> = [
   { id: 'all', label: 'Everyone', hint: 'every subscribed address on the list' },
   { id: 'players', label: 'Players', hint: 'subscribed player accounts' },
@@ -93,6 +103,7 @@ Upload your latest shot and see how your score has moved.`,
 export default function SendEmailPanel() {
   const [open, setOpen] = useState(false)
   const [audience, setAudience] = useState<Audience>('all')
+  const [sender, setSender] = useState<SenderId>('marketing')
   const [singleEmail, setSingleEmail] = useState('')
   const [subject, setSubject] = useState('')
   const [headline, setHeadline] = useState('')
@@ -121,6 +132,7 @@ export default function SendEmailPanel() {
   function payload() {
     return {
       audience,
+      sender,
       singleEmail: singleEmail.trim() || undefined,
       subject, headline, body,
       ctaText: ctaText.trim() || undefined,
@@ -247,6 +259,30 @@ export default function SendEmailPanel() {
             <button onClick={() => setOpen(false)} className="text-zinc-400 hover:text-white text-sm transition-colors">
               Close
             </button>
+          </div>
+
+          {/* Sender */}
+          <div className="space-y-2">
+            <span className={labelCls}>From</span>
+            <div className="flex gap-2 flex-wrap">
+              {SENDERS.map(sn => (
+                <button
+                  key={sn.id}
+                  onClick={() => setSender(sn.id)}
+                  title={sn.hint}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+                    sender === sn.id
+                      ? 'bg-orange-500 text-ink-950'
+                      : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                  }`}
+                >
+                  {sn.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-zinc-500 text-xs">
+              {SENDERS.find(sn => sn.id === sender)?.hint}.
+            </p>
           </div>
 
           {/* Audience */}

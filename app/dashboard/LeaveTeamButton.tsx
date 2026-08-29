@@ -29,7 +29,7 @@ export default function LeaveTeamButton({ teamId, teamName }: { teamId: string; 
       type="button"
       onClick={handleLeave}
       disabled={leaving}
-      className="shrink-0 text-xs font-semibold text-gray-400 hover:text-red-500 disabled:opacity-50 transition-colors"
+      className="shrink-0 text-xs font-semibold text-gray-400 dark:text-chalk-dim hover:text-red-500 disabled:opacity-50 transition-colors"
     >
       {leaving ? 'Leaving…' : 'Leave team'}
     </button>

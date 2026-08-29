@@ -77,9 +77,9 @@ export default function JoinTeamPopup({
   if (hasName) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-        <div className="bg-white rounded-2xl p-6 w-full max-w-sm space-y-3 text-center">
+        <div className="bg-white dark:bg-ink-900 rounded-2xl p-6 w-full max-w-sm space-y-3 text-center">
           <div className="text-4xl">🏀</div>
-          <h2 className="text-xl font-black text-black">
+          <h2 className="text-xl font-black text-black dark:text-chalk">
             {status === 'error' ? 'Could not join' : 'Joining your team…'}
           </h2>
           {error && <p className="text-red-500 text-sm">{error}</p>}
@@ -99,11 +99,11 @@ export default function JoinTeamPopup({
   // First-time player without a saved name — collect it once, then join.
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-      <div className="bg-white rounded-2xl p-6 w-full max-w-sm space-y-4">
+      <div className="bg-white dark:bg-ink-900 rounded-2xl p-6 w-full max-w-sm space-y-4">
         <div className="text-center space-y-1">
           <div className="text-4xl">🏀</div>
-          <h2 className="text-xl font-black text-black">Join your team</h2>
-          <p className="text-sm text-gray-500">
+          <h2 className="text-xl font-black text-black dark:text-chalk">Join your team</h2>
+          <p className="text-sm text-gray-500 dark:text-chalk-dim">
             Set your name once — it’ll be used on every team you join from now on.
           </p>
         </div>
@@ -119,7 +119,7 @@ export default function JoinTeamPopup({
               const v = e.target.value
               setFirstName(v ? v.charAt(0).toUpperCase() + v.slice(1) : '')
             }}
-            className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
+            className="w-full bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl px-4 py-3 text-black dark:text-chalk placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
           />
           <input
             type="text"
@@ -129,14 +129,14 @@ export default function JoinTeamPopup({
             placeholder="Last name initial"
             value={lastInitial}
             onChange={(e) => setLastInitial(e.target.value.toUpperCase())}
-            className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
+            className="w-full bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl px-4 py-3 text-black dark:text-chalk placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
           />
           {error && <p className="text-red-500 text-sm">{error}</p>}
           <div className="flex gap-2">
             <button
               type="button"
               onClick={dismiss}
-              className="flex-1 text-gray-500 hover:text-gray-700 font-semibold py-3 rounded-xl transition-colors"
+              className="flex-1 text-gray-500 dark:text-chalk-dim hover:text-gray-700 dark:hover:text-chalk-dim font-semibold py-3 rounded-xl transition-colors"
             >
               Skip for now
             </button>

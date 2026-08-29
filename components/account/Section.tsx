@@ -24,23 +24,23 @@ export default function Section({
   children: ReactNode
 }) {
   return (
-    <details className="group bg-white border border-gray-200 rounded-2xl" open={defaultOpen}>
+    <details className="group bg-white dark:bg-ink-900 border border-gray-200 dark:border-courtline rounded-2xl" open={defaultOpen}>
       <summary className="flex items-center justify-between gap-3 px-5 py-3.5 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
         <span className="flex items-center gap-2 min-w-0">
-          <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">{title}</span>
+          <span className="text-xs font-bold text-gray-500 dark:text-chalk-dim uppercase tracking-wide">{title}</span>
           {tip && <InfoTip label={tipLabel ?? `About ${title}`} align="left">{tip}</InfoTip>}
         </span>
-        <span className="flex items-center gap-2 text-sm text-gray-600 min-w-0">
+        <span className="flex items-center gap-2 text-sm text-gray-600 dark:text-chalk-dim min-w-0">
           {summary && <span className="truncate max-w-[12rem]">{summary}</span>}
           <svg
-            className="w-4 h-4 text-gray-400 transition-transform group-open:rotate-180 shrink-0"
+            className="w-4 h-4 text-gray-400 dark:text-chalk-dim transition-transform group-open:rotate-180 shrink-0"
             viewBox="0 0 20 20" fill="currentColor" aria-hidden
           >
             <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
           </svg>
         </span>
       </summary>
-      <div className="px-5 pb-5 pt-1 border-t border-gray-100">{children}</div>
+      <div className="px-5 pb-5 pt-1 border-t border-gray-100 dark:border-courtline">{children}</div>
     </details>
   )
 }

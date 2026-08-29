@@ -8,6 +8,10 @@ export type AccountTab = {
   content: ReactNode
   // Optional count bubble shown next to the label (e.g. number of teams).
   count?: number
+  // Hash fragments this tab also answers to. The active tab is written into
+  // the URL, so renaming an id would silently break every link and bookmark
+  // already pointing at the old one — list the old id here instead.
+  aliases?: string[]
 }
 
 // White-theme tab bar shared by the player, coach, and org dashboards.
@@ -24,8 +28,8 @@ export default function AccountTabs({ tabs, defaultTab }: { tabs: AccountTab[]; 
   useEffect(() => {
     function syncFromHash() {
       const fromHash = window.location.hash.replace(/^#/, '')
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time sync from the URL, an external system; runs once on mount
-      if (fromHash && tabs.some(t => t.id === fromHash)) setActive(fromHash)
+      const match = tabs.find(t => t.id === fromHash || t.aliases?.includes(fromHash))
+      if (fromHash && match) setActive(match.id)
     }
     syncFromHash()
     window.addEventListener('hashchange', syncFromHash)
@@ -59,7 +63,7 @@ export default function AccountTabs({ tabs, defaultTab }: { tabs: AccountTab[]; 
         role="tablist"
         aria-label="Account sections"
         onKeyDown={onKeyDown}
-        className="flex gap-1 overflow-x-auto border-b border-gray-200 -mx-1 px-1"
+        className="flex gap-1 overflow-x-auto border-b border-gray-200 dark:border-courtline -mx-1 px-1"
       >
         {tabs.map(t => {
           const isActive = t.id === active
@@ -74,14 +78,14 @@ export default function AccountTabs({ tabs, defaultTab }: { tabs: AccountTab[]; 
               onClick={() => select(t.id)}
               className={`shrink-0 whitespace-nowrap px-4 py-2.5 text-sm font-semibold rounded-t-lg border-b-2 -mb-px transition-colors ${
                 isActive
-                  ? 'text-orange-600 border-orange-500 bg-orange-50/60'
-                  : 'text-gray-500 border-transparent hover:text-gray-800 hover:bg-gray-50'
+                  ? 'text-orange-600 dark:text-ember-400 border-orange-500 bg-orange-50/60 dark:bg-ember-500/10'
+                  : 'text-gray-500 dark:text-chalk-dim border-transparent hover:text-gray-800 dark:hover:text-chalk hover:bg-gray-50 dark:hover:bg-ink-800'
               }`}
             >
               {t.label}
               {typeof t.count === 'number' && (
                 <span className={`ml-1.5 inline-block rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none align-middle ${
-                  isActive ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-500'
+                  isActive ? 'bg-orange-100 dark:bg-ember-500/15 text-orange-700 dark:text-ember-400' : 'bg-gray-100 dark:bg-ink-800 text-gray-500 dark:text-chalk-dim'
                 }`}>
                   {t.count}
                 </span>

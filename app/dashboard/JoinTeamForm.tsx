@@ -43,8 +43,8 @@ export default function JoinTeamForm({ hasName }: { hasName: boolean }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
       {!hasName && (
-        <p className="text-sm text-orange-600 bg-orange-50 border border-orange-200 rounded-xl px-3 py-2">
-          Set your name in the Profile tab first — it’ll be used on every team you join.
+        <p className="text-sm text-orange-600 dark:text-ember-400 bg-orange-50 dark:bg-ember-500/10 border border-orange-200 rounded-xl px-3 py-2">
+          Set your name in the Settings tab first — it’ll be used on every team you join.
         </p>
       )}
       <div className="flex gap-2">
@@ -55,7 +55,7 @@ export default function JoinTeamForm({ hasName }: { hasName: boolean }) {
           placeholder="Team code"
           value={teamCode}
           onChange={e => setTeamCode(e.target.value.toUpperCase())}
-          className="flex-1 min-w-0 bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors font-mono tracking-wider"
+          className="flex-1 min-w-0 bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl px-4 py-3 text-black dark:text-chalk placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors font-mono tracking-wider"
         />
         <button
           type="submit"
@@ -66,7 +66,7 @@ export default function JoinTeamForm({ hasName }: { hasName: boolean }) {
         </button>
       </div>
       {message && (
-        <p className={`text-sm ${status === 'error' ? 'text-red-500' : 'text-green-600'}`}>
+        <p className={`text-sm ${status === 'error' ? 'text-red-500' : 'text-green-600 dark:text-green-400'}`}>
           {message}
         </p>
       )}

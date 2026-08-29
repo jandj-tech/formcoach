@@ -108,7 +108,7 @@ export default async function TeamLeaderboardPage({
   const leadWords = words.slice(0, -1).join(' ')
 
   return (
-    <main className="min-h-screen bg-ink-950 text-chalk print:bg-white print:text-black flex flex-col">
+    <main className="min-h-screen bg-ink-950 text-chalk print:bg-white dark:print:bg-ink-900 print:text-black dark:print:text-chalk flex flex-col">
       <div className="print:hidden">
         <TopNav />
       </div>
@@ -118,7 +118,7 @@ export default async function TeamLeaderboardPage({
             <Link href="/team" className="text-sm text-ember-400 hover:text-ember-500 font-medium print:hidden">
               ← Back to your team
             </Link>
-            <p className="eyebrow text-ember-400 select-none mt-4 print:text-black">Leaderboard</p>
+            <p className="eyebrow text-ember-400 select-none mt-4 print:text-black dark:print:text-chalk">Leaderboard</p>
             {/* One line, always — long team names render smaller so the whole
                 name still fits, with an ellipsis as the last resort. */}
             <h1
@@ -129,9 +129,9 @@ export default async function TeamLeaderboardPage({
               }`}
             >
               {leadWords && <>{leadWords} </>}
-              <span className="text-gradient-ember print:text-black print:[background:none]">{lastWord}</span>
+              <span className="text-gradient-ember print:text-black dark:print:text-chalk print:[background:none]">{lastWord}</span>
             </h1>
-            <p className="text-chalk-dim text-sm mt-3 print:text-gray-500">
+            <p className="text-chalk-dim text-sm mt-3 print:text-gray-500 dark:print:text-chalk-dim">
               Every player ranked by their best shot score.
             </p>
           </div>

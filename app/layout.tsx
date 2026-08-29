@@ -2,9 +2,11 @@
 import { Archivo, Geist, Geist_Mono, Space_Grotesk } from 'next/font/google'
 import { ViewTransition } from 'react'
 import './globals.css'
+import { ThemeProvider } from 'next-themes'
 import { CartProvider } from '@/lib/cart'
 import MetaPixel from '@/components/MetaPixel'
 import CopyToast from '@/components/CopyToast'
+import BackToTop from '@/components/BackToTop'
 
 const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })
 const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] })
@@ -57,11 +59,15 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
+    // suppressHydrationWarning is required by next-themes and only here: it
+    // writes the theme class onto <html> from a pre-paint script, so the served
+    // markup and the first client render legitimately differ on this one node.
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} ${archivo.variable} ${spaceGrotesk.variable} h-full antialiased`}
     >
-      <body className="min-h-full bg-white text-black flex flex-col">
+      <body className="min-h-full bg-white text-black dark:bg-ink-950 dark:text-chalk flex flex-col">
         {/* Structured data: tells search engines who we are and what the site
             does — feeds rich results for brand and product searches. */}
         <script
@@ -103,11 +109,22 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             }),
           }}
         />
-        <CartProvider>
-          <MetaPixel />
-          <CopyToast />
-          <ViewTransition default="page-fade">{children}</ViewTransition>
-        </CartProvider>
+        {/* Light is the default and stays it — dark is opt-in from the account
+            Settings tab. enableSystem only matters once someone picks "System";
+            defaultTheme is what an untouched account gets. */}
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <CartProvider>
+            <MetaPixel />
+            <CopyToast />
+            <ViewTransition default="page-fade">{children}</ViewTransition>
+            <BackToTop />
+          </CartProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

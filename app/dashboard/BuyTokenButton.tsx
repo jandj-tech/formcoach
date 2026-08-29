@@ -54,7 +54,7 @@ export default function BuyTokenButton({ isInApp = false, initialTier = 'none' }
         <button
           onClick={handleClick}
           disabled={loading}
-          className="shrink-0 border-2 border-orange-500 text-orange-600 hover:bg-orange-100 disabled:opacity-50 text-sm font-bold px-5 py-2.5 rounded-xl transition-colors"
+          className="shrink-0 border-2 border-orange-500 text-orange-600 dark:text-ember-400 hover:bg-orange-100 dark:hover:bg-ember-500/15 disabled:opacity-50 text-sm font-bold px-5 py-2.5 rounded-xl transition-colors"
         >
           {loading
             ? 'Loading...'
@@ -62,7 +62,7 @@ export default function BuyTokenButton({ isInApp = false, initialTier = 'none' }
         </button>
       </span>
       {percentOff > 0 && (
-        <span className="text-green-600 text-xs font-semibold">{percentLabel(percentOff)}% volume discount applied</span>
+        <span className="text-green-600 dark:text-green-400 text-xs font-semibold">{percentLabel(percentOff)}% volume discount applied</span>
       )}
       <VolumeNudge
         tier={tier}

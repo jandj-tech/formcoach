@@ -28,9 +28,9 @@ export default function NicknameForm({ current }: { current: string | null }) {
 
   return (
     <form onSubmit={handleSave} className="space-y-3">
-      <p className="text-sm text-gray-600">
+      <p className="text-sm text-gray-600 dark:text-chalk-dim">
         {current
-          ? <>You currently appear as <span className="font-semibold text-black">{current}</span>.</>
+          ? <>You currently appear as <span className="font-semibold text-black dark:text-chalk">{current}</span>.</>
           : 'You have no nickname set — you currently appear by your email.'}{' '}
         Leave it blank to clear it.
       </p>
@@ -42,7 +42,7 @@ export default function NicknameForm({ current }: { current: string | null }) {
           placeholder="Nickname (e.g. Buckets, KD, Air)"
           value={nickname}
           onChange={(e) => setNickname(e.target.value)}
-          className="flex-1 min-w-0 bg-white border border-gray-300 rounded-xl px-4 py-2.5 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
+          className="flex-1 min-w-0 bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl px-4 py-2.5 text-black dark:text-chalk placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
         />
         <button
           type="submit"
@@ -52,7 +52,7 @@ export default function NicknameForm({ current }: { current: string | null }) {
           {status === 'saving' ? 'Saving…' : 'Save'}
         </button>
       </div>
-      {status === 'saved' && <p className="text-green-600 text-sm font-semibold">Nickname updated!</p>}
+      {status === 'saved' && <p className="text-green-600 dark:text-green-400 text-sm font-semibold">Nickname updated!</p>}
       {status === 'error' && <p className="text-red-500 text-sm">Could not save. Please try again.</p>}
     </form>
   )

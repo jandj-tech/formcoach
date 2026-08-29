@@ -1253,7 +1253,7 @@ export async function sendAbandonedCheckoutEmail(
     from: MARKETING_FROM,
     to,
     replyTo: SUPPORT_ADDRESS,
-    subject: 'Your LearnHoops training ball is still waiting 🏀',
+    subject: 'Your LearnHoops training ball is still waiting',
     headers: {
       'List-Unsubscribe': `<${unsubscribe}>`,
       'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',

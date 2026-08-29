@@ -3,7 +3,7 @@ import { Resend } from 'resend'
 import { INTERNAL_INBOX, NOTIFICATION_FROM } from '@/lib/email-senders'
 import { db } from '@/lib/db'
 import { resolveChatActorFromRequest } from '@/lib/team-chat'
-import { FEATURE_UPGRADE_MESSAGE } from '@/lib/team-features'
+import { NO_PLAN_MESSAGE, tierCan } from '@/lib/team-features'
 
 // Report a chat message (App Store guideline 1.2). The message is flagged to
 // support with full context; reports are reviewed within 24 hours.
@@ -21,8 +21,8 @@ export async function POST(req: NextRequest) {
 
     const actor = await resolveChatActorFromRequest(req, msg.team_id)
     if (!actor) return NextResponse.json({ error: 'Login required' }, { status: 401 })
-    if (!actor.entitled) {
-      return NextResponse.json({ error: FEATURE_UPGRADE_MESSAGE, upgradeRequired: true }, { status: 402 })
+    if (!tierCan(actor.tier, 'chat')) {
+      return NextResponse.json({ error: NO_PLAN_MESSAGE, upgradeRequired: true }, { status: 402 })
     }
 
     const resend = new Resend(process.env.RESEND_API_KEY!)

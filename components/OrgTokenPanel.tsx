@@ -5,10 +5,11 @@ import { useRouter } from 'next/navigation'
 import { useIsInApp } from '@/lib/useIsInApp'
 import VolumeSavings, { VolumeTierList } from '@/components/VolumeSavings'
 import {
-  analysisUnitCents,
+  analysisBaseCents,
   orderPricing,
   usd,
   MAX_TOKENS_PER_ORDER,
+  type OrgTier,
 } from '@/lib/team-pricing'
 
 export interface OrgPlayerOpt {
@@ -39,6 +40,7 @@ export default function OrgTokenPanel({
   teams,
   totalPlayerTokens,
   totalTeamCredits,
+  tier,
 }: {
   balance: number
   players: OrgPlayerOpt[]
@@ -46,6 +48,8 @@ export default function OrgTokenPanel({
   teams: OrgTeamOpt[]
   totalPlayerTokens: number
   totalTeamCredits: number
+  /** The organization plan, which sets both the rate and the ladder. */
+  tier: OrgTier
 }) {
   const router = useRouter()
   const inApp = useIsInApp()
@@ -74,8 +78,8 @@ export default function OrgTokenPanel({
   const [allocQty, setAllocQty] = useState(10)
 
   // Every organization gets the team rate — no roster minimum, nothing to unlock.
-  const buyBaseCents = analysisUnitCents(true)
-  const buyTotal = usd(orderPricing(buyBaseCents, buyQty).totalCents)
+  const buyBaseCents = analysisBaseCents(tier)
+  const buyTotal = usd(orderPricing(tier, buyQty).totalCents)
 
   const teamPlayers = players.filter(p => p.teamId === assignTeamId)
   const selectedTeam = teams.find(t => t.id === assignTeamId)
@@ -265,10 +269,10 @@ export default function OrgTokenPanel({
 
             <p className="text-xs text-green-600 font-semibold px-1">Team rate — $2.49 each, $1.49 when you buy 5+</p>
 
-            <VolumeTierList baseUnitCents={buyBaseCents} className="px-1" />
+            <VolumeTierList tier={tier} className="px-1" />
 
             <VolumeSavings
-              baseUnitCents={buyBaseCents}
+              tier={tier}
               quantity={buyQty}
               label="token"
               onJump={setBuyQty}

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { db } from '@/lib/db'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
-import { orgIsEntitledById, SUBSCRIPTION_ENDED_MESSAGE } from '@/lib/team-features'
+import { orgCanAddTeam, orgIsEntitledById, SUBSCRIPTION_ENDED_MESSAGE, TEAM_LIMIT_MESSAGE } from '@/lib/team-features'
 import { sendCoachInviteEmail, sendCoachAddedEmail, sendTeamCreatedEmail } from '@/lib/email'
 import { isCleanDisplayText, BLOCKED_TEXT_ERROR } from '@/lib/moderation'
 import { resolveBaseUrl } from '@/lib/base-url'
@@ -32,6 +32,15 @@ export async function POST(req: NextRequest) {
     if (!(await orgIsEntitledById(session.orgId))) {
       return NextResponse.json(
         { error: SUBSCRIPTION_ENDED_MESSAGE, subscriptionEnded: true },
+        { status: 402 },
+      )
+    }
+
+    // Basic covers one team. Class-package teams are exempt — buying a class
+    // auto-creates a team, and that was paid for separately, per player.
+    if (!(await orgCanAddTeam(session.orgId))) {
+      return NextResponse.json(
+        { error: TEAM_LIMIT_MESSAGE, upgradeRequired: true },
         { status: 402 },
       )
     }

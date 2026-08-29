@@ -2,7 +2,7 @@
 
 import { trackInitiateCheckout } from '@/lib/meta-pixel'
 import { useIsInApp } from '@/lib/useIsInApp'
-import { analysisUnitCents, usd } from '@/lib/team-pricing'
+import { analysisBaseCents, isOrgTier, usd } from '@/lib/team-pricing'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -112,7 +112,7 @@ async function fitFramesToBudget(
   return { frames: current, reduced: true }
 }
 
-interface SessionUser { id: string; email: string; tokens: number; subscribed: boolean; onTeam: boolean; onInitiatedTeam: boolean; freeUpload: boolean }
+interface SessionUser { id: string; email: string; tokens: number; subscribed: boolean; onTeam: boolean; onInitiatedTeam: boolean; orgTier?: string; freeUpload: boolean }
 
 interface TeamMode {
   code: string
@@ -919,7 +919,7 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
                   onClick={handleBuyToken}
                   className="bg-ember-500 hover:bg-ember-400 text-ink-950 font-bold px-6 py-2.5 rounded-xl text-sm transition-colors"
                 >
-                  Buy Analysis — {usd(analysisUnitCents(!!sessionUser?.onInitiatedTeam))}
+                  Buy Analysis — {usd(analysisBaseCents(isOrgTier(sessionUser?.orgTier) ? sessionUser.orgTier : 'none'))}
                 </button>
               )}
               {sessionUser?.onTeam ? (

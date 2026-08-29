@@ -2,16 +2,89 @@
 // so this file is safe to import from client components. Same rule as
 // lib/team-pricing.ts and lib/org-class-pricing.ts.
 
-/** Monthly plan, billed every month (cents). */
-export const ORG_MONTHLY_CENTS = 1499
+import { discountedUnitCents, usd, type OrgTier } from '@/lib/team-pricing'
 
-/** Annual plan, billed once a year (cents). Works out to $9.99/month. */
-export const ORG_ANNUAL_TOTAL_CENTS = 11988
+/** The two things a buyer picks: which plan, and how often they are billed. */
+export type PaidTier = 'basic' | 'plus'
+export type BillingInterval = 'monthly' | 'annual'
 
-/** The per-month figure the annual plan is advertised at (cents). */
-export const ORG_ANNUAL_MONTHLY_CENTS = 999
+export function isPaidTier(value: unknown): value is PaidTier {
+  return value === 'basic' || value === 'plus'
+}
+export function isBillingInterval(value: unknown): value is BillingInterval {
+  return value === 'monthly' || value === 'annual'
+}
 
-/** Launch offer: half off the first three months of the MONTHLY plan. */
+export interface OrgTierPlan {
+  id: PaidTier
+  name: string
+  blurb: string
+  /** Charged every month on the monthly plan (cents). */
+  monthlyCents: number
+  /** Charged once a year on the annual plan (cents). */
+  annualTotalCents: number
+  /** The per-month figure the annual plan is advertised at (cents). */
+  annualMonthlyCents: number
+  /** How many non-class teams this plan may have. Infinity for unlimited. */
+  maxTeams: number
+}
+
+/**
+ * The plans, in the order they appear on the page.
+ *
+ * Every price on every surface reads from here, so there is exactly one place
+ * to change what a plan costs.
+ */
+export const ORG_TIERS: Readonly<Record<PaidTier, OrgTierPlan>> = {
+  basic: {
+    id: 'basic',
+    name: 'Basic',
+    blurb: 'One team, cheaper analyses',
+    monthlyCents: 999,
+    annualTotalCents: 9588, // $7.99/mo
+    annualMonthlyCents: 799,
+    maxTeams: 1,
+  },
+  plus: {
+    id: 'plus',
+    name: 'Plus',
+    blurb: 'Every team, every feature',
+    monthlyCents: 1999,
+    annualTotalCents: 17988, // $14.99/mo
+    annualMonthlyCents: 1499,
+    maxTeams: Infinity,
+  },
+}
+
+export const ORG_TIER_ORDER: ReadonlyArray<PaidTier> = ['basic', 'plus']
+
+/** What one billing cycle costs, in cents. */
+export function planTotalCents(tier: PaidTier, interval: BillingInterval): number {
+  const p = ORG_TIERS[tier]
+  return interval === 'annual' ? p.annualTotalCents : p.monthlyCents
+}
+
+/** The figure shown as "per month" for either interval. */
+export function planPerMonthCents(tier: PaidTier, interval: BillingInterval): number {
+  const p = ORG_TIERS[tier]
+  return interval === 'annual' ? p.annualMonthlyCents : p.monthlyCents
+}
+
+/** What annual saves against twelve monthly payments (cents). $24 / $60. */
+export function annualSavingsCents(tier: PaidTier): number {
+  const p = ORG_TIERS[tier]
+  return p.monthlyCents * 12 - p.annualTotalCents
+}
+
+/** How much cheaper annual is, as a whole percent. 20% / 25%. */
+export function annualPercentOff(tier: PaidTier): number {
+  const p = ORG_TIERS[tier]
+  return Math.round((annualSavingsCents(tier) / (p.monthlyCents * 12)) * 100)
+}
+
+// --- launch offer ----------------------------------------------------------
+
+/** Launch offer: half off the first three months of a MONTHLY plan. */
 export const LAUNCH_OFFER_PERCENT_OFF = 50
 export const LAUNCH_OFFER_MONTHS = 3
 
@@ -30,38 +103,60 @@ export const LAUNCH_OFFER_MAX_GRANTS = 10
 /** Stripe coupon id for the launch offer. Created lazily — see lib/org-subscription.ts. */
 export const LAUNCH_COUPON_ID = 'org-launch-50-3mo'
 
-export type OrgPlan = 'monthly' | 'annual'
-
-/** True for a plan string that came off the wire. */
-export function isOrgPlan(value: unknown): value is OrgPlan {
-  return value === 'monthly' || value === 'annual'
-}
-
-/** What one billing cycle costs, in cents. */
-export function planTotalCents(plan: OrgPlan): number {
-  return plan === 'annual' ? ORG_ANNUAL_TOTAL_CENTS : ORG_MONTHLY_CENTS
-}
-
 /**
  * The discounted first-3-months monthly price (cents).
  *
- * Note 1499 * 50% is 749.5¢, so this rounds. Stripe does its own rounding on
- * the invoice — confirm the first invoice really reads this figure in test mode
- * before advertising it.
+ * Both tiers land on a half cent — 999 × 50% = 499.5 and 1999 × 50% = 999.5 —
+ * so Math.round decides the advertised figure while STRIPE decides the invoice.
+ * Confirm the first invoice matches this in test mode before trusting the copy;
+ * if it rounds the other way, move the list price to $9.98 / $19.98 so the
+ * halves are exact rather than papering over it in the label.
  */
-export function launchOfferMonthlyCents(): number {
-  return Math.round((ORG_MONTHLY_CENTS * (100 - LAUNCH_OFFER_PERCENT_OFF)) / 100)
+export function launchOfferMonthlyCents(tier: PaidTier): number {
+  return Math.round((ORG_TIERS[tier].monthlyCents * (100 - LAUNCH_OFFER_PERCENT_OFF)) / 100)
 }
 
-/** What the annual plan saves against twelve monthly payments (cents). Exactly $60.00. */
-export function annualSavingsCents(): number {
-  return ORG_MONTHLY_CENTS * 12 - ORG_ANNUAL_TOTAL_CENTS
+// --- what each plan includes ----------------------------------------------
+
+/**
+ * One row per capability, with a flag per plan.
+ *
+ * Deliberately a single list rather than two, so both cards render the same
+ * rows and a cross appears next to what Basic lacks. The difference between the
+ * plans is then visible on the page instead of implied by absence — which is
+ * both more honest and the entire upsell.
+ */
+export interface OrgPlanFeature {
+  label: string
+  note?: string
+  basic: boolean
+  plus: boolean
 }
 
-/** How much cheaper the annual plan is, as a whole percent. */
-export function annualPercentOff(): number {
-  return Math.round((annualSavingsCents() / (ORG_MONTHLY_CENTS * 12)) * 100)
-}
+export const ORG_PLAN_FEATURES: ReadonlyArray<OrgPlanFeature> = [
+  {
+    label: 'Cheaper analysis tokens',
+    note: `${usd(discountedUnitCents('basic', 1))} each — vs ${usd(discountedUnitCents('none', 1))} with no plan`,
+    basic: true,
+    plus: true,
+  },
+  {
+    label: 'Best token rate at volume',
+    note: `${usd(discountedUnitCents('plus', 10))} each at 10+, vs ${usd(discountedUnitCents('basic', 10))} on Basic`,
+    basic: false,
+    plus: true,
+  },
+  { label: 'Team chat for coaches and players', basic: true, plus: true },
+  { label: 'Player leaderboards and improvement tracking', basic: true, plus: true },
+  {
+    label: 'Access to the 10-week shooting class',
+    note: 'enrolment billed per player',
+    basic: true,
+    plus: true,
+  },
+  { label: 'Team scheduling with RSVPs', basic: false, plus: true },
+  { label: 'Unlimited teams and coaches', note: 'Basic covers one team', basic: false, plus: true },
+]
 
 /** Format cents for display: 1499 -> "$14.99". */
 export function orgUsd(cents: number): string {
@@ -69,23 +164,11 @@ export function orgUsd(cents: number): string {
 }
 
 /**
- * What the plan includes, in the order it reads best on the pricing card.
- *
- * `note` carries the honest caveat where there is one. The shooting class is
- * the important case: the plan grants the right to enrol, but enrolment is
- * still billed per player, and a card that implies otherwise is a refund
- * request waiting to happen.
+ * The pricing tier a paid plan grants. Trivial today, but it keeps the mapping
+ * in one place: `PaidTier` is what someone buys, `OrgTier` is what the token
+ * ladder reads, and they are separate ideas — a lapsed org is `none` for
+ * pricing while never having been a `PaidTier` at all.
  */
-export interface OrgPlanFeature {
-  label: string
-  note?: string
+export function pricingTierFor(tier: PaidTier): OrgTier {
+  return tier
 }
-
-export const ORG_PLAN_FEATURES: ReadonlyArray<OrgPlanFeature> = [
-  { label: 'Analysis tokens at $2.49', note: '$1.49 each when you buy 5 or more — vs $3.49 solo' },
-  { label: 'Team scheduling with RSVPs' },
-  { label: 'Team chat for coaches and players' },
-  { label: 'Player leaderboards and improvement tracking' },
-  { label: 'Unlimited teams and coaches under one organization' },
-  { label: 'Access to the 10-week shooting class', note: 'enrolment billed per player' },
-]

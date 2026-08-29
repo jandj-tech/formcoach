@@ -1435,9 +1435,9 @@ export default function TeamSchedulePanel({
   if (locked)
     return (
       <div className={`rounded-xl p-5 text-center space-y-2 ${t.panel}`}>
-        <p className={`text-sm font-bold ${t.text}`}>Scheduling is part of the organization plan</p>
+        <p className={`text-sm font-bold ${t.text}`}>Scheduling is part of the Plus plan</p>
         <p className={`text-xs ${t.dim}`}>
-          Start an organization to turn on scheduling, chat and leaderboards for every team you run.
+          Upgrade to Plus to turn on scheduling and RSVPs for every team you run.
         </p>
         <a
           href="/org/signup"

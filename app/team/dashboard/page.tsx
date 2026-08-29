@@ -5,6 +5,7 @@ import { db } from '@/lib/db'
 import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
 import TeamDashboardClient from './TeamDashboardClient'
+import { teamTier } from '@/lib/team-features'
 
 export default async function TeamDashboardPage() {
   const session = await getTeamSession()
@@ -216,7 +217,7 @@ export default async function TeamDashboardPage() {
     <main className="min-h-screen bg-white flex flex-col">
       <TopNav />
       <TeamDashboardClient
-        team={{ id: team.id, name: team.name, accessCode: team.access_code, credits: team.credits, tokenPool: teamTokenPool }}
+        team={{ id: team.id, name: team.name, accessCode: team.access_code, credits: team.credits, tokenPool: teamTokenPool, tier: await teamTier(team.id) }}
         leaderboard={leaderboard}
         improved={improved}
         members={members}

@@ -8,8 +8,9 @@ import { orderPricing, percentLabel, usd, MAX_TOKENS_PER_ORDER } from '@/lib/tea
 import QuantityStepper from '@/components/QuantityStepper'
 import VolumeNudge from '@/components/VolumeNudge'
 import Link from 'next/link'
+import type { OrgTier } from '@/lib/team-pricing'
 
-export default function PremiumCTA({ dark = false, onTeam = false }: { dark?: boolean; onTeam?: boolean }) {
+export default function PremiumCTA({ dark = false, initialTier = 'none' }: { dark?: boolean; initialTier?: OrgTier }) {
   const inApp = useIsInApp()
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
@@ -17,8 +18,8 @@ export default function PremiumCTA({ dark = false, onTeam = false }: { dark?: bo
   const [currency, setCurrency] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [qty, setQty] = useState(1)
-  const { baseUnitCents } = useAnalysisPrice(onTeam)
-  const { percentOff, unitCents, totalCents, savingsCents } = orderPricing(baseUnitCents, qty)
+  const { tier, baseUnitCents } = useAnalysisPrice(initialTier)
+  const { percentOff, unitCents, totalCents, savingsCents } = orderPricing(tier, qty)
   const price = (baseUnitCents / 100).toFixed(2)
 
   useEffect(() => {
@@ -121,7 +122,7 @@ export default function PremiumCTA({ dark = false, onTeam = false }: { dark?: bo
           </button>
         </div>
         <VolumeNudge
-          baseUnitCents={baseUnitCents}
+          tier={tier}
           quantity={qty}
           onJump={(q) => setQty(Math.min(MAX_TOKENS_PER_ORDER, q))}
           className="mt-3"

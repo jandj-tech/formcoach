@@ -9,7 +9,7 @@ import OrgDashboardClient from './OrgDashboardClient'
 import LogoutButton from './LogoutButton'
 import ManageBillingButton from '@/components/ManageBillingButton'
 import ReactivatePanel from '@/components/ReactivatePanel'
-import { orgIsEntitledById } from '@/lib/team-features'
+import { orgTierById } from '@/lib/team-features'
 import type { ClassPackage } from './OrgDashboardClient'
 import type { LeaderboardRow } from '@/components/LeaderboardTable'
 import Link from 'next/link'
@@ -57,7 +57,8 @@ export default async function OrgDashboardPage() {
 
   // One predicate decides everything: a lapsed plan closes the same gates a
   // never-subscribed org would face, and reopens them all the moment it is paid.
-  const orgEntitled = await orgIsEntitledById(org.id)
+  const orgTier = await orgTierById(org.id)
+  const orgEntitled = orgTier !== 'none'
 
   // The organization's own token balance. Queried separately so a missing
   // column (pre-migration) can't break the dashboard.
@@ -277,7 +278,7 @@ export default async function OrgDashboardPage() {
           </div>
         )}
 
-        <OrgDashboardClient teams={teams} orgName={org.name} classPackages={classPackages} myUploads={myUploads} orgTokenBalance={orgTokenBalance} />
+        <OrgDashboardClient orgTier={orgTier} teams={teams} orgName={org.name} classPackages={classPackages} myUploads={myUploads} orgTokenBalance={orgTokenBalance} />
       </div>
       <SiteFooter />
     </main>

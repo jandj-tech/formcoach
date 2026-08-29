@@ -3,12 +3,12 @@
 import VideoUploader from './VideoUploader'
 import BuySelfCreditsButton from './BuySelfCreditsButton'
 import { useIsInApp } from '@/lib/useIsInApp'
-import { analysisUnitCents, usd, TEAM_FULL_RATE_CENTS, TEAM_FULL_RATE_MIN_QTY } from '@/lib/team-pricing'
+import { discountedUnitCents, usd, TEAM_FULL_RATE_MIN_QTY, type OrgTier } from '@/lib/team-pricing'
 
 // The analyze-page uploader for coaches and org owners. The upload zone is
 // always shown — with a transparent "0 credits" overlay when empty — and the
 // credit-purchase panel sits below it.
-export default function CoachSelfUploader({ credits }: { credits: number }) {
+export default function CoachSelfUploader({ credits, tier }: { credits: number; tier: OrgTier }) {
   const inApp = useIsInApp()
   return (
     <div className="w-full max-w-lg mx-auto space-y-4 px-2">
@@ -22,10 +22,10 @@ export default function CoachSelfUploader({ credits }: { credits: number }) {
               {credits} analysis credit{credits !== 1 ? 's' : ''} remaining
             </p>
             <p className="text-xs text-gray-500 mt-0.5">
-              {`${usd(analysisUnitCents(true))} per analysis, ${usd(TEAM_FULL_RATE_CENTS)} when you buy ${TEAM_FULL_RATE_MIN_QTY} or more.`}
+              {`${usd(discountedUnitCents(tier, 1))} per analysis, ${usd(discountedUnitCents(tier, TEAM_FULL_RATE_MIN_QTY))} when you buy ${TEAM_FULL_RATE_MIN_QTY} or more.`}
             </p>
           </div>
-          <BuySelfCreditsButton />
+          <BuySelfCreditsButton tier={tier} />
         </div>
       )}
     </div>

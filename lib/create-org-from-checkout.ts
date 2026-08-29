@@ -10,7 +10,7 @@ import {
   getPendingByToken,
   organizationForPendingToken,
 } from '@/lib/pending-org'
-import { isOrgPlan } from '@/lib/org-subscription-pricing'
+import { isBillingInterval, isPaidTier } from '@/lib/org-subscription-pricing'
 
 export interface CreatedOrg {
   orgId: string
@@ -71,7 +71,9 @@ export async function createOrgFromCheckout(
   }
 
   const planMeta = session.metadata?.plan
-  const plan = isOrgPlan(planMeta) ? planMeta : null
+  const plan = isBillingInterval(planMeta) ? planMeta : null
+  const tierMeta = session.metadata?.tier
+  const tier = isPaidTier(tierMeta) ? tierMeta : null
   const customerId = stripeIdOf(session.customer as string | { id: string } | null)
   const subscriptionId = stripeIdOf(session.subscription as string | { id: string } | null)
 
@@ -82,12 +84,12 @@ export async function createOrgFromCheckout(
       INSERT INTO organizations (
         name, admin_email, password_hash, access_code,
         stripe_customer_id, stripe_subscription_id,
-        subscription_status, subscription_plan
+        subscription_status, subscription_plan, subscription_tier
       )
       VALUES (
         ${pending.orgName}, ${pending.adminEmail}, ${pending.passwordHash}, ${accessCode},
         ${customerId}, ${subscriptionId},
-        'active', ${plan}
+        'active', ${plan}, ${tier}
       )
       RETURNING id, name
     `) as unknown as [{ id: string; name: string }]

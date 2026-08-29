@@ -2,8 +2,8 @@ import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth'
 import { isInAppRequest } from '@/lib/in-app'
 import { db } from '@/lib/db'
-import { userIsOnEntitledTeam } from '@/lib/team-features'
-import { analysisUnitCents } from '@/lib/team-pricing'
+import { userTier } from '@/lib/team-features'
+import { analysisBaseCents } from '@/lib/team-pricing'
 import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
 import InfoTip from '@/components/InfoTip'
@@ -171,7 +171,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     new Date(user.subscription_expires_at) > new Date()
 
   const tokens = user.analysis_tokens ?? 0
-  const onTeam = await userIsOnEntitledTeam(user.id)
+  const tier = await userTier(user.id)
 
   function scoreColor(score: number) {
     if (score >= 8) return 'text-green-600'
@@ -183,7 +183,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     ? `${user.first_name} ${user.last_initial}`
     : null
   const hasName = !!fullName
-  const tokenPrice = (analysisUnitCents(onTeam) / 100).toFixed(2)
+  const tokenPrice = (analysisBaseCents(tier) / 100).toFixed(2)
 
   const shotsTab = (
     <div className="space-y-3">
@@ -404,7 +404,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               )}
             </div>
             <div className="flex items-center gap-3 flex-wrap">
-              {!isSubscribed && <BuyTokenButton isInApp={isInApp} onTeam={onTeam} />}
+              {!isSubscribed && <BuyTokenButton isInApp={isInApp} initialTier={tier} />}
               <Link
                 href="/analyze"
                 className="bg-orange-500 hover:bg-orange-400 text-ink-950 font-bold text-sm px-5 py-2.5 rounded-xl transition-colors"

@@ -7,9 +7,10 @@ import { currencyForRequest } from '@/lib/region'
 import { resolveBaseUrl } from '@/lib/base-url'
 import { orgIsEntitledById } from '@/lib/team-features'
 import {
-  isOrgPlan,
-  ORG_ANNUAL_TOTAL_CENTS,
-  ORG_MONTHLY_CENTS,
+  isBillingInterval,
+  isPaidTier,
+  ORG_TIERS,
+  planTotalCents,
 } from '@/lib/org-subscription-pricing'
 
 const BASE_URL = resolveBaseUrl()
@@ -42,8 +43,9 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json()
-    const plan = body?.plan
-    if (!isOrgPlan(plan)) {
+    const tier = body?.tier
+    const interval = body?.interval
+    if (!isPaidTier(tier) || !isBillingInterval(interval)) {
       return NextResponse.json({ error: 'Pick a plan' }, { status: 400 })
     }
 
@@ -66,7 +68,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Organization not found' }, { status: 404 })
     }
 
-    const isAnnual = plan === 'annual'
+    const isAnnual = interval === 'annual'
 
     const checkout = await getStripe().checkout.sessions.create({
       mode: 'subscription',
@@ -75,10 +77,10 @@ export async function POST(req: NextRequest) {
           quantity: 1,
           price_data: {
             currency: currencyForRequest(req),
-            unit_amount: isAnnual ? ORG_ANNUAL_TOTAL_CENTS : ORG_MONTHLY_CENTS,
+            unit_amount: planTotalCents(tier, interval),
             recurring: { interval: isAnnual ? 'year' : 'month' },
             product_data: {
-              name: `LearnHoops Organization — ${isAnnual ? 'Annual' : 'Monthly'}`,
+              name: `LearnHoops Organization ${ORG_TIERS[tier].name} — ${isAnnual ? 'Annual' : 'Monthly'}`,
             },
           },
         },
@@ -94,7 +96,8 @@ export async function POST(req: NextRequest) {
       metadata: {
         type: 'org_reactivate',
         orgId: session.orgId,
-        plan,
+        plan: interval,
+        tier,
       },
       // Lifecycle events carry no checkout-session metadata, so stamp the
       // subscription too — that is what customer.subscription.* keys on.
@@ -102,7 +105,8 @@ export async function POST(req: NextRequest) {
         metadata: {
           type: 'org_reactivate',
           orgId: session.orgId,
-          plan,
+          plan: interval,
+          tier,
         },
       },
       // Via a route handler, not straight to the dashboard: it applies the
@@ -114,7 +118,8 @@ export async function POST(req: NextRequest) {
 
     console.log('[org/reactivate] checkout created', {
       orgId: session.orgId,
-      plan,
+      tier,
+      interval,
       reusedCustomer: !!org.stripe_customer_id,
       sessionId: checkout.id,
     })

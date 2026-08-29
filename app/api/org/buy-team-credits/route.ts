@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { db } from '@/lib/db'
-import { TEAM_TOKEN_PRICE_CENTS, REGULAR_ANALYSIS_PRICE_CENTS, discountedUnitCents } from '@/lib/team-tokens'
-import { orgIsEntitledById } from '@/lib/team-features'
+import { discountedUnitCents } from '@/lib/team-tokens'
+import { orgTierById } from '@/lib/team-features'
 import { rejectInAppPurchase } from '@/lib/in-app'
 import { currencyForRequest } from '@/lib/region'
 import { resolveBaseUrl } from '@/lib/base-url'
@@ -32,11 +32,10 @@ export async function POST(req: NextRequest) {
     // included — no roster minimum anywhere.
     // A lapsed organization pays the regular rate on new purchases. Tokens it
     // already bought keep working — see lib/team-features.ts.
-    const entitled = await orgIsEntitledById(session.orgId)
-    const baseAmount = entitled ? TEAM_TOKEN_PRICE_CENTS : REGULAR_ANALYSIS_PRICE_CENTS
+    const tier = await orgTierById(session.orgId)
     // Volume discount comes off whichever base rate applies to this buyer.
-    const unitAmount = discountedUnitCents(baseAmount, quantity)
-    console.log('[buy-team-credits] org pricing', { orgId: session.orgId, teamId: team.id, entitled, baseAmount, unitAmount, quantity })
+    const unitAmount = discountedUnitCents(tier, quantity)
+    console.log('[buy-team-credits] org pricing', { orgId: session.orgId, teamId: team.id, tier, unitAmount, quantity })
 
     const stripeSession = await getStripe().checkout.sessions.create({
       mode: 'payment',

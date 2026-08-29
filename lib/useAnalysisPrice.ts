@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { analysisUnitCents } from './team-pricing'
+import { analysisBaseCents, isOrgTier, type OrgTier } from './team-pricing'
 
 /**
  * The signed-in player's own per-analysis price.
@@ -15,16 +15,16 @@ import { analysisUnitCents } from './team-pricing'
  * The session field is still called `onInitiatedTeam` because shipped iOS
  * builds read that name; it now means simply "on a team".
  */
-export function useAnalysisPrice(initialOnTeam = false) {
-  const [onTeam, setOnTeam] = useState(initialOnTeam)
+export function useAnalysisPrice(initialTier: OrgTier = 'none') {
+  const [tier, setTier] = useState<OrgTier>(initialTier)
 
   useEffect(() => {
     let alive = true
     fetch('/api/auth/session')
       .then((r) => r.json())
       .then((d) => {
-        if (alive && typeof d?.user?.onInitiatedTeam === 'boolean') {
-          setOnTeam(d.user.onInitiatedTeam)
+        if (alive && isOrgTier(d?.user?.orgTier)) {
+          setTier(d.user.orgTier)
         }
       })
       .catch(() => {
@@ -35,5 +35,5 @@ export function useAnalysisPrice(initialOnTeam = false) {
     }
   }, [])
 
-  return { onTeam, baseUnitCents: analysisUnitCents(onTeam) }
+  return { tier, baseUnitCents: analysisBaseCents(tier) }
 }

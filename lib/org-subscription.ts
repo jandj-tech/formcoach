@@ -127,6 +127,7 @@ export async function applyOrgReactivation(session: Stripe.Checkout.Session): Pr
           stripe_subscription_id = ${subscriptionId},
           subscription_status = 'active',
           subscription_plan = ${session.metadata?.plan ?? null},
+          subscription_tier = ${session.metadata?.tier ?? null},
           subscription_cancel_at_period_end = FALSE
       WHERE id = ${orgId}
       RETURNING id

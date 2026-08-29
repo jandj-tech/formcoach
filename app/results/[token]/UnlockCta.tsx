@@ -39,8 +39,8 @@ export default function UnlockCta({ resultsPath, justPurchased }: { resultsPath:
   // The viewer's own rate, not the report owner's. A results link is shareable,
   // and /api/buy-token charges whoever is signed in here — so this hook is the
   // only source that agrees with what the card will actually be billed.
-  const { baseUnitCents } = useAnalysisPrice()
-  const selected = orderPricing(baseUnitCents, qty)
+  const { tier, baseUnitCents } = useAnalysisPrice()
+  const selected = orderPricing(tier, qty)
 
   useEffect(() => {
     if (!justPurchased) return
@@ -110,7 +110,7 @@ export default function UnlockCta({ resultsPath, justPurchased }: { resultsPath:
             className="w-full flex flex-col gap-1.5"
           >
             {PACKS.map((n) => {
-              const pack = orderPricing(baseUnitCents, n)
+              const pack = orderPricing(tier, n)
               const active = qty === n
               return (
                 <button

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { resolveChatActorFromRequest } from '@/lib/team-chat'
-import { FEATURE_UPGRADE_MESSAGE } from '@/lib/team-features'
+import { FEATURE_UPGRADE_MESSAGE, tierCan } from '@/lib/team-features'
 import { isCleanDisplayText } from '@/lib/moderation'
 import {
   EVENT_TYPES,
@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
 
   const actor = await resolveChatActorFromRequest(req, teamId)
   if (!actor) return NextResponse.json({ error: 'Login required' }, { status: 401 })
-  if (!actor.entitled) {
+  if (!tierCan(actor.tier, 'schedule')) {
     return NextResponse.json({ error: FEATURE_UPGRADE_MESSAGE, upgradeRequired: true }, { status: 402 })
   }
 
@@ -105,7 +105,7 @@ export async function POST(req: NextRequest) {
 
   const actor = await resolveChatActorFromRequest(req, teamId)
   if (!actor) return NextResponse.json({ error: 'Login required' }, { status: 401 })
-  if (!actor.entitled) {
+  if (!tierCan(actor.tier, 'schedule')) {
     return NextResponse.json({ error: FEATURE_UPGRADE_MESSAGE, upgradeRequired: true }, { status: 402 })
   }
   if (!actor.identity.isCoach) return NextResponse.json({ error: 'Coach only' }, { status: 403 })
@@ -186,7 +186,7 @@ export async function PATCH(req: NextRequest) {
 
   const actor = await resolveChatActorFromRequest(req, teamId)
   if (!actor) return NextResponse.json({ error: 'Login required' }, { status: 401 })
-  if (!actor.entitled) {
+  if (!tierCan(actor.tier, 'schedule')) {
     return NextResponse.json({ error: FEATURE_UPGRADE_MESSAGE, upgradeRequired: true }, { status: 402 })
   }
   if (!actor.identity.isCoach) return NextResponse.json({ error: 'Coach only' }, { status: 403 })
@@ -280,7 +280,7 @@ export async function DELETE(req: NextRequest) {
 
   const actor = await resolveChatActorFromRequest(req, teamId)
   if (!actor) return NextResponse.json({ error: 'Login required' }, { status: 401 })
-  if (!actor.entitled) {
+  if (!tierCan(actor.tier, 'schedule')) {
     return NextResponse.json({ error: FEATURE_UPGRADE_MESSAGE, upgradeRequired: true }, { status: 402 })
   }
   if (!actor.identity.isCoach) return NextResponse.json({ error: 'Coach only' }, { status: 403 })

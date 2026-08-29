@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { trackInitiateCheckout } from '@/lib/meta-pixel'
 import { useIsInApp } from '@/lib/useIsInApp'
-import { orderPricing, percentLabel, usd, REGULAR_ANALYSIS_PRICE_CENTS, MAX_TOKENS_PER_ORDER } from '@/lib/team-pricing'
+import { orderPricing, percentLabel, usd, MAX_TOKENS_PER_ORDER } from '@/lib/team-pricing'
 import QuantityStepper from '@/components/QuantityStepper'
 import VolumeNudge from '@/components/VolumeNudge'
 
@@ -151,14 +151,14 @@ export default function TokenPacks({ dark = false }: { dark?: boolean }) {
   }
 
   const cur = currency ? ` ${currency}` : ''
-  const custom = orderPricing(REGULAR_ANALYSIS_PRICE_CENTS, customQty)
-  const floorUnit = orderPricing(REGULAR_ANALYSIS_PRICE_CENTS, 10).unitCents
+  const custom = orderPricing('none', customQty)
+  const floorUnit = orderPricing('none', 10).unitCents
 
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
       {PACKS.map(({ qty, badge, highlight }) => {
-        const p = orderPricing(REGULAR_ANALYSIS_PRICE_CENTS, qty)
+        const p = orderPricing('none', qty)
         return (
           <div
             key={qty}
@@ -212,7 +212,7 @@ export default function TokenPacks({ dark = false }: { dark?: boolean }) {
             <QuantityStepper value={customQty} onChange={setCustomQty} min={1} max={MAX_TOKENS_PER_ORDER} size="sm" ariaLabel="Number of analysis tokens" />
           </div>
           <VolumeNudge
-            baseUnitCents={REGULAR_ANALYSIS_PRICE_CENTS}
+            tier="none"
             quantity={customQty}
             onJump={(q) => setCustomQty(Math.min(MAX_TOKENS_PER_ORDER, q))}
             label="tokens"

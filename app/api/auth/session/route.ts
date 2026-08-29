@@ -3,7 +3,7 @@ import { getSessionFromRequest } from '@/lib/auth'
 import { getTeamSessionFromRequest } from '@/lib/team-auth'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { db } from '@/lib/db'
-import { userIsOnEntitledTeam } from '@/lib/team-features'
+import { userTier } from '@/lib/team-features'
 
 export async function GET(req: NextRequest) {
   // 1. Player session — also returns token/subscription info used elsewhere.
@@ -86,7 +86,8 @@ export async function GET(req: NextRequest) {
       // the name `onInitiatedTeam` on purpose — it is a wire field that
       // already-shipped iOS builds and lib/useAnalysisPrice.ts read. Change
       // what it means, never what it is called.
-      const onInitiatedTeam = onTeam && (await userIsOnEntitledTeam(user.id))
+      const tier = onTeam ? await userTier(user.id) : 'none'
+      const onInitiatedTeam = tier !== 'none'
 
       // The free signup analysis has been discontinued — no account gets a
       // free upload, so this is always false.
@@ -104,7 +105,9 @@ export async function GET(req: NextRequest) {
       const appTokens = legacyAppBuild && freeUpload ? tokens + 1 : tokens
 
       return NextResponse.json({
-        user: { id: user.id, email: user.email, subscribed, tokens: appTokens, onTeam, onInitiatedTeam, freeUpload },
+        // orgTier is the web client's field; onInitiatedTeam stays a boolean
+        // for already-shipped iOS builds that read it.
+        user: { id: user.id, email: user.email, subscribed, tokens: appTokens, onTeam, onInitiatedTeam, orgTier: tier, freeUpload },
         account: { type: 'player', dashboard: '/dashboard' },
       })
     }

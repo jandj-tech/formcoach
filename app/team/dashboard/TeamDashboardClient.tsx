@@ -21,9 +21,10 @@ import Section from '@/components/account/Section'
 import TeamSchedulePanel from '@/components/TeamSchedulePanel'
 import VolumeSavings, { VolumeTierList } from '@/components/VolumeSavings'
 import {
-  analysisUnitCents,
+  analysisBaseCents,
   orderPricing,
   usd,
+  type OrgTier,
 } from '@/lib/team-pricing'
 import { copyToClipboard } from '@/lib/copy'
 import { useCart } from '@/lib/cart'
@@ -34,6 +35,8 @@ interface Team {
   accessCode: string
   credits: number
   tokenPool: number
+  /** What this team pays for tokens, and which features it may use. */
+  tier: OrgTier
 }
 
 interface LeaderboardEntry {
@@ -294,8 +297,9 @@ export default function TeamDashboardClient({
     })),
   ]
 
-  const creditBaseCents = analysisUnitCents(true)
-  const creditRate = (analysisUnitCents(true) / 100).toFixed(2)
+  const tier = team.tier
+  const creditBaseCents = analysisBaseCents(tier)
+  const creditRate = (creditBaseCents / 100).toFixed(2)
   const rosterCount = members.length + pendingMembers.length
 
   /* ── Players tab ──────────────────────────────────────────────── */
@@ -686,10 +690,10 @@ export default function TeamDashboardClient({
               />
             </div>
 
-            <VolumeTierList baseUnitCents={creditBaseCents} className="px-1" />
+            <VolumeTierList tier={tier} className="px-1" />
 
             <VolumeSavings
-              baseUnitCents={creditBaseCents}
+              tier={tier}
               quantity={quantity}
               label="credit"
               onJump={(q) => { setQuantity(Math.min(500, q)); setCustomQty('') }}
@@ -702,7 +706,7 @@ export default function TeamDashboardClient({
             >
               {buying
                 ? 'Redirecting to checkout…'
-                : `Buy ${quantity} Credit${quantity !== 1 ? 's' : ''} — ${usd(orderPricing(creditBaseCents, quantity).totalCents)}`}
+                : `Buy ${quantity} Credit${quantity !== 1 ? 's' : ''} — ${usd(orderPricing(tier, quantity).totalCents)}`}
             </button>
           </div>
         </Section>

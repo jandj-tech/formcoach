@@ -1,6 +1,6 @@
 'use client'
 
-import { tiersFor, orderPricing, percentLabel, usd, TEAM_TOKEN_PRICE_CENTS } from '@/lib/team-pricing'
+import { tiersFor, orderPricing, percentLabel, usd, analysisBaseCents, type OrgTier } from '@/lib/team-pricing'
 import VolumeNudge from '@/components/VolumeNudge'
 
 /**
@@ -9,19 +9,19 @@ import VolumeNudge from '@/components/VolumeNudge'
  * more tokens would reach the next tier.
  */
 export default function VolumeSavings({
-  baseUnitCents,
+  tier,
   quantity,
   label = 'token',
   onJump,
 }: {
-  baseUnitCents: number
+  tier: OrgTier
   quantity: number
   label?: string
   /** Lets the tier nudge move the order up to the tier it is offering. */
   onJump?: (quantity: number) => void
 }) {
   const { percentOff, unitCents, totalCents, fullTotalCents, savingsCents } = orderPricing(
-    baseUnitCents,
+    tier,
     quantity,
   )
 
@@ -31,7 +31,7 @@ export default function VolumeSavings({
         <p className="text-sm text-gray-600">
           {quantity} {quantity === 1 ? label : `${label}s`} × {usd(unitCents)}
           {percentOff > 0 && (
-            <span className="ml-1.5 text-xs text-gray-400 line-through">{usd(baseUnitCents)}</span>
+            <span className="ml-1.5 text-xs text-gray-400 line-through">{usd(analysisBaseCents(tier))}</span>
           )}
         </p>
         <div className="text-right shrink-0">
@@ -49,7 +49,7 @@ export default function VolumeSavings({
       )}
 
       <VolumeNudge
-        baseUnitCents={baseUnitCents}
+        tier={tier}
         quantity={quantity}
         onJump={onJump}
         label={`${label}s`}
@@ -61,23 +61,23 @@ export default function VolumeSavings({
 /**
  * Compact list of every tier — so buyers can see the discounts before choosing.
  *
- * `baseUnitCents` is required rather than defaulted: there are two ladders now,
+ * `tier` is required rather than defaulted: there are two ladders now,
  * and a default would quietly show a team buyer the regular one — advertising
  * a discount they cannot get, on a screen they are about to pay from.
  */
 export function VolumeTierList({
-  baseUnitCents,
+  tier,
   className = '',
 }: {
-  baseUnitCents: number
+  tier: OrgTier
   className?: string
 }) {
-  const ascending = [...tiersFor(baseUnitCents)].reverse()
-  const onTeamRate = baseUnitCents <= TEAM_TOKEN_PRICE_CENTS
+  const ascending = [...tiersFor(tier)].reverse()
+  const onTeamRate = tier !== 'none'
   return (
     <div className={`flex flex-wrap items-center gap-1.5 ${className}`}>
       <span className="text-[11px] text-gray-500">
-        {onTeamRate ? `Bulk pricing on your ${usd(baseUnitCents)} rate:` : 'Bulk pricing:'}
+        {onTeamRate ? `Bulk pricing on your ${usd(analysisBaseCents(tier))} rate:` : 'Bulk pricing:'}
       </span>
       {ascending.map((t) => (
         <span

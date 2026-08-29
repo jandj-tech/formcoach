@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { getStripe } from '@/lib/stripe'
-import { TEAM_TOKEN_PRICE_CENTS, REGULAR_ANALYSIS_PRICE_CENTS, discountedUnitCents, MAX_TOKENS_PER_ORDER } from '@/lib/team-tokens'
-import { orgIsEntitledById } from '@/lib/team-features'
+import { discountedUnitCents, MAX_TOKENS_PER_ORDER } from '@/lib/team-tokens'
+import { orgTierById } from '@/lib/team-features'
 import { rejectInAppPurchase } from '@/lib/in-app'
 import { currencyForRequest } from '@/lib/region'
 import { resolveBaseUrl } from '@/lib/base-url'
@@ -30,11 +30,10 @@ export async function POST(req: NextRequest) {
 
     // A lapsed organization pays the regular rate on new purchases. Tokens it
     // already bought keep working — see lib/team-features.ts.
-    const entitled = await orgIsEntitledById(session.orgId)
-    const baseAmount = entitled ? TEAM_TOKEN_PRICE_CENTS : REGULAR_ANALYSIS_PRICE_CENTS
+    const tier = await orgTierById(session.orgId)
     // Volume discount comes off whichever base rate applies to this buyer.
-    const unitAmount = discountedUnitCents(baseAmount, qty)
-    console.log('[buy-tokens] org pricing', { orgId: session.orgId, entitled, baseAmount, unitAmount, qty })
+    const unitAmount = discountedUnitCents(tier, qty)
+    console.log('[buy-tokens] org pricing', { orgId: session.orgId, tier, unitAmount, qty })
 
     const checkout = await getStripe().checkout.sessions.create({
       mode: 'payment',

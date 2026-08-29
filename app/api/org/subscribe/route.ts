@@ -10,10 +10,10 @@ import {
   offerIsLive,
 } from '@/lib/pending-org'
 import {
-  isOrgPlan,
+  isBillingInterval,
+  isPaidTier,
   launchOfferMonthlyCents,
-  ORG_ANNUAL_TOTAL_CENTS,
-  ORG_MONTHLY_CENTS,
+  ORG_TIERS,
   planTotalCents,
 } from '@/lib/org-subscription-pricing'
 
@@ -33,8 +33,9 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json()
-    const plan = body?.plan
-    if (!isOrgPlan(plan)) {
+    const tier = body?.tier
+    const interval = body?.interval
+    if (!isPaidTier(tier) || !isBillingInterval(interval)) {
       return NextResponse.json({ error: 'Pick a plan' }, { status: 400 })
     }
 
@@ -50,7 +51,7 @@ export async function POST(req: NextRequest) {
     // `offerIsLive` re-reads the deadline stored on the pending row and also
     // enforces monthly-only: on a yearly interval a 3-month repeating coupon
     // covers the entire first invoice, i.e. 50% off a whole year.
-    const offerApplies = offerIsLive(pending, plan)
+    const offerApplies = offerIsLive(pending, interval)
 
     // If the client asked for the offer and the server disagrees, say so
     // loudly instead of quietly charging full price. Silently creating a
@@ -61,14 +62,14 @@ export async function POST(req: NextRequest) {
         {
           error: 'That launch offer has expired.',
           expired: true,
-          currentPriceCents: planTotalCents(plan),
+          currentPriceCents: planTotalCents(tier, interval),
         },
         { status: 409 },
       )
     }
 
-    const isAnnual = plan === 'annual'
-    const unitAmount = isAnnual ? ORG_ANNUAL_TOTAL_CENTS : ORG_MONTHLY_CENTS
+    const isAnnual = interval === 'annual'
+    const unitAmount = planTotalCents(tier, interval)
 
     // `discounts` and `allow_promotion_codes` are MUTUALLY EXCLUSIVE — Stripe
     // errors if both are sent. Every other checkout in this repo sets
@@ -90,7 +91,7 @@ export async function POST(req: NextRequest) {
             unit_amount: unitAmount,
             recurring: { interval: isAnnual ? 'year' : 'month' },
             product_data: {
-              name: `LearnHoops Organization — ${isAnnual ? 'Annual' : 'Monthly'}`,
+              name: `LearnHoops Organization ${ORG_TIERS[tier].name} — ${isAnnual ? 'Annual' : 'Monthly'}`,
             },
           },
         },
@@ -100,7 +101,8 @@ export async function POST(req: NextRequest) {
       metadata: {
         type: 'org_subscription',
         pendingToken: pending.token,
-        plan,
+        plan: interval,
+        tier,
       },
       // customer.subscription.* events carry NO checkout-session metadata, so
       // the same fields are stamped on the subscription itself. Without this
@@ -109,7 +111,8 @@ export async function POST(req: NextRequest) {
         metadata: {
           type: 'org_subscription',
           pendingToken: pending.token,
-          plan,
+          plan: interval,
+          tier,
         },
       },
       // Deliberately NO after_expiration.recovery: the abandoned-cart branch in
@@ -119,13 +122,14 @@ export async function POST(req: NextRequest) {
       cancel_url: `${BASE_URL}/org/pricing?canceled=1`,
     })
 
-    await markPendingCheckout(pending.token, plan, checkout.id)
+    await markPendingCheckout(pending.token, tier, interval, checkout.id)
 
     console.log('[org/subscribe] checkout created', {
-      plan,
+      tier,
+      interval,
       offerApplies,
       unitAmount,
-      firstInvoiceCents: offerApplies ? launchOfferMonthlyCents() : unitAmount,
+      firstInvoiceCents: offerApplies ? launchOfferMonthlyCents(tier) : unitAmount,
       sessionId: checkout.id,
     })
 

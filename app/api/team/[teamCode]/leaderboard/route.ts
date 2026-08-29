@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getTeamSessionFromRequest } from '@/lib/team-auth'
 import { db } from '@/lib/db'
-import { teamIsEntitled, FEATURE_UPGRADE_MESSAGE } from '@/lib/team-features'
+import { teamCan, NO_PLAN_MESSAGE } from '@/lib/team-features'
 
 export async function GET(
   req: NextRequest,
@@ -24,8 +24,8 @@ export async function GET(
 
   // Leaderboards are part of the organization plan. This route does not use
   // the chat actor, so it carries its own check.
-  if (!(await teamIsEntitled(team.id))) {
-    return NextResponse.json({ error: FEATURE_UPGRADE_MESSAGE, upgradeRequired: true }, { status: 402 })
+  if (!(await teamCan(team.id, 'leaderboard'))) {
+    return NextResponse.json({ error: NO_PLAN_MESSAGE, upgradeRequired: true }, { status: 402 })
   }
 
   const leaderboard = await db`

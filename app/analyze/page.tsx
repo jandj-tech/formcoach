@@ -7,7 +7,8 @@ import PremiumCTA from '@/components/PremiumCTA'
 import { getSession } from '@/lib/auth'
 import { getTeamSession } from '@/lib/team-auth'
 import { getOrgSession } from '@/lib/org-auth'
-import { userIsOnEntitledTeam } from '@/lib/team-features'
+import { userTier, teamTier, orgTierById } from '@/lib/team-features'
+import type { OrgTier } from '@/lib/team-pricing'
 import { db } from '@/lib/db'
 
 export const metadata: Metadata = {
@@ -25,8 +26,8 @@ export default async function AnalyzePage() {
   const orgSession = playerSession || teamSession ? null : await getOrgSession()
 
   const coachEmail = teamSession?.adminEmail ?? orgSession?.adminEmail ?? null
-  let coachSelf: { credits: number } | null = null
-  const playerOnTeam = playerSession ? await userIsOnEntitledTeam(playerSession.userId) : false
+  let coachSelf: { credits: number; tier: OrgTier } | null = null
+  const playerTier = playerSession ? await userTier(playerSession.userId) : 'none'
 
   if (coachEmail) {
     let credits = 0
@@ -47,7 +48,14 @@ export default async function AnalyzePage() {
     } catch {
       // coach_credits / token_balance column missing pre-migration
     }
-    coachSelf = { credits }
+    coachSelf = {
+      credits,
+      tier: teamSession
+        ? await teamTier(teamSession.teamId)
+        : orgSession
+          ? await orgTierById(orgSession.orgId)
+          : 'none',
+    }
   }
 
   return (
@@ -74,14 +82,14 @@ export default async function AnalyzePage() {
         {/* The upload flow keeps its light panel so every state stays readable. */}
         <div className="w-full max-w-xl bg-white rounded-3xl p-3 sm:p-5 shadow-[0_0_60px_-20px_rgba(255,92,26,0.35)]">
           {coachSelf ? (
-            <CoachSelfUploader credits={coachSelf.credits} />
+            <CoachSelfUploader credits={coachSelf.credits} tier={coachSelf.tier} />
           ) : (
             <VideoUploader />
           )}
         </div>
         {!coachSelf && (
           <div className="w-full max-w-xl mt-4 px-2">
-            <PremiumCTA dark onTeam={playerOnTeam} />
+            <PremiumCTA dark initialTier={playerTier} />
           </div>
         )}
         <p className="text-chalk-dim text-xs mt-5 text-center max-w-sm px-4">

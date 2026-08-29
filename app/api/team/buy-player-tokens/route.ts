@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getTeamSessionFromRequest } from '@/lib/team-auth'
 import { getStripe } from '@/lib/stripe'
-import { TEAM_TOKEN_PRICE_CENTS, REGULAR_ANALYSIS_PRICE_CENTS, discountedUnitCents } from '@/lib/team-tokens'
-import { teamIsEntitled } from '@/lib/team-features'
+import { discountedUnitCents } from '@/lib/team-tokens'
+import { teamTier } from '@/lib/team-features'
 import { rejectInAppPurchase } from '@/lib/in-app'
 import { currencyForRequest } from '@/lib/region'
 import { resolveBaseUrl } from '@/lib/base-url'
@@ -35,13 +35,11 @@ export async function POST(req: NextRequest) {
     }
 
     // A team in a lapsed organization pays the regular rate on new tokens.
-    const baseAmount = (await teamIsEntitled(session.teamId))
-      ? TEAM_TOKEN_PRICE_CENTS
-      : REGULAR_ANALYSIS_PRICE_CENTS
+    const tier = await teamTier(session.teamId)
 
     const totalTokens = ids.length * qty
     // The tier is set by the whole order — tokens per player x number of players.
-    const unitAmount = discountedUnitCents(baseAmount, totalTokens)
+    const unitAmount = discountedUnitCents(tier, totalTokens)
 
     const checkout = await getStripe().checkout.sessions.create({
       mode: 'payment',

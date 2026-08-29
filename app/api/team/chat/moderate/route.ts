@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { resolveChatActorFromRequest } from '@/lib/team-chat'
-import { FEATURE_UPGRADE_MESSAGE } from '@/lib/team-features'
+import { NO_PLAN_MESSAGE, tierCan } from '@/lib/team-features'
 
 // Coach moderation + everyone's self-service actions:
 //   { teamId, action: 'mode', mode: 'everyone' | 'coach-only' }   (coach)
@@ -17,8 +17,8 @@ export async function POST(req: NextRequest) {
 
   const actor = await resolveChatActorFromRequest(req, teamId)
   if (!actor) return NextResponse.json({ error: 'Login required' }, { status: 401 })
-  if (!actor.entitled) {
-    return NextResponse.json({ error: FEATURE_UPGRADE_MESSAGE, upgradeRequired: true }, { status: 402 })
+  if (!tierCan(actor.tier, 'chat')) {
+    return NextResponse.json({ error: NO_PLAN_MESSAGE, upgradeRequired: true }, { status: 402 })
   }
   const identity = actor.identity
 

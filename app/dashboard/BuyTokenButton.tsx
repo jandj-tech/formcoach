@@ -6,16 +6,17 @@ import { useAnalysisPrice } from '@/lib/useAnalysisPrice'
 import { orderPricing, percentLabel, usd, MAX_TOKENS_PER_ORDER } from '@/lib/team-pricing'
 import QuantityStepper from '@/components/QuantityStepper'
 import VolumeNudge from '@/components/VolumeNudge'
+import type { OrgTier } from '@/lib/team-pricing'
 
-export default function BuyTokenButton({ isInApp = false, onTeam = false }: { isInApp?: boolean; onTeam?: boolean }) {
+export default function BuyTokenButton({ isInApp = false, initialTier = 'none' }: { isInApp?: boolean; initialTier?: OrgTier }) {
   const inAppUA = useIsInApp()
   // Display only — the server picks the currency from the request itself.
   const [currency, setCurrency] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [qty, setQty] = useState(1)
-  const { baseUnitCents } = useAnalysisPrice(onTeam)
-  const { percentOff, totalCents } = orderPricing(baseUnitCents, qty)
+  const { tier, baseUnitCents } = useAnalysisPrice(initialTier)
+  const { percentOff, totalCents } = orderPricing(tier, qty)
 
   useEffect(() => {
     fetch('/api/region').then(r => r.json()).then(({ currency: c }) => setCurrency(typeof c === 'string' ? c : null)).catch(() => {})
@@ -64,7 +65,7 @@ export default function BuyTokenButton({ isInApp = false, onTeam = false }: { is
         <span className="text-green-600 text-xs font-semibold">{percentLabel(percentOff)}% volume discount applied</span>
       )}
       <VolumeNudge
-        baseUnitCents={baseUnitCents}
+        tier={tier}
         quantity={qty}
         onJump={(q) => setQty(Math.min(MAX_TOKENS_PER_ORDER, q))}
         className="w-full max-w-[19rem]"

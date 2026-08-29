@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe'
 import { getSessionFromRequest } from '@/lib/auth'
-import { analysisUnitCents, discountedUnitCents, MAX_TOKENS_PER_ORDER } from '@/lib/team-pricing'
-import { userIsOnEntitledTeam } from '@/lib/team-features'
+import { discountedUnitCents, MAX_TOKENS_PER_ORDER } from '@/lib/team-pricing'
+import { userTier } from '@/lib/team-features'
 import { isValidCompCode, getCompCouponId } from '@/lib/comp'
 import { rejectInAppPurchase } from '@/lib/in-app'
 import { currencyForRequest } from '@/lib/region'
@@ -39,10 +39,10 @@ export async function POST(req: NextRequest) {
     const rawQty = Number(body.quantity ?? 1)
     const quantity = Math.min(MAX_TOKENS_PER_ORDER, Math.max(1, Math.floor(Number.isFinite(rawQty) ? rawQty : 1)))
 
-    const userOnTeam = await userIsOnEntitledTeam(session.userId)
+    const tier = await userTier(session.userId)
     // Volume tiers stack on whichever base rate this player is on, matching
     // every other buy flow.
-    const unitAmount = discountedUnitCents(analysisUnitCents(userOnTeam), quantity)
+    const unitAmount = discountedUnitCents(tier, quantity)
 
     // A valid comp code zeroes the total via a 100%-off coupon so Stripe
     // skips the card form. discounts / allow_promotion_codes are exclusive.

@@ -2,17 +2,17 @@
 
 import { useState } from 'react'
 import { useIsInApp } from '@/lib/useIsInApp'
-import { analysisUnitCents, orderPricing, percentLabel, usd, MAX_COACH_CREDITS_PER_ORDER } from '@/lib/team-pricing'
+import { orderPricing, percentLabel, usd, MAX_COACH_CREDITS_PER_ORDER, type OrgTier } from '@/lib/team-pricing'
 import QuantityStepper from '@/components/QuantityStepper'
 
 // Buys analysis credits for a coach / org owner's own uploads. Coaches and
 // org owners always get the team rate, with the same volume tiers every other
 // buy flow uses.
-export default function BuySelfCreditsButton() {
+export default function BuySelfCreditsButton({ tier }: { tier: OrgTier }) {
   const inApp = useIsInApp()
   const [loading, setLoading] = useState(false)
   const [qty, setQty] = useState(1)
-  const { percentOff, totalCents } = orderPricing(analysisUnitCents(true), qty)
+  const { percentOff, totalCents } = orderPricing(tier, qty)
 
   // Digital purchases inside the iOS app must use native in-app purchase.
   if (inApp) return null

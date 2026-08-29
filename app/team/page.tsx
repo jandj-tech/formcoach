@@ -9,11 +9,11 @@ import { getOrgSession } from '@/lib/org-auth'
 import { db } from '@/lib/db'
 import TeamHubClient, { type HubTeam } from './TeamHubClient'
 import { GraduationCapIcon, TrendingUpIcon, TrophyIcon } from 'lucide-react'
-import { TEAM_TOKEN_PRICE_CENTS, TEAM_VOLUME_TIERS, percentLabel, usd } from '@/lib/team-pricing'
+import { TEAM_TOKEN_PRICE_CENTS, PLUS_VOLUME_TIERS, percentLabel, usd, type VolumeTier } from '@/lib/team-pricing'
 
 // The deepest tier a team can reach, read off the ladder rather than typed.
-const bestTeamDiscount = TEAM_VOLUME_TIERS.reduce(
-  (top, tier) => Math.max(top, tier.percentOff),
+const bestTeamDiscount = PLUS_VOLUME_TIERS.reduce(
+  (top: number, tier: VolumeTier) => Math.max(top, tier.percentOff),
   0,
 )
 

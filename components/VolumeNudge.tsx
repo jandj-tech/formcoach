@@ -1,6 +1,6 @@
 'use client'
 
-import { orderPricing, percentLabel, usd } from '@/lib/team-pricing'
+import { orderPricing, percentLabel, usd, type OrgTier } from '@/lib/team-pricing'
 
 /**
  * "Add 2 more and save 5%" — the offer to buy up a tier.
@@ -14,23 +14,23 @@ import { orderPricing, percentLabel, usd } from '@/lib/team-pricing'
  * can never advertise a discount the buyer cannot actually get.
  */
 export default function VolumeNudge({
-  baseUnitCents,
+  tier,
   quantity,
   onJump,
   label = 'analyses',
   className = '',
 }: {
-  baseUnitCents: number
+  tier: OrgTier
   quantity: number
   /** Given the tier's quantity, move the order to it. */
   onJump?: (quantity: number) => void
   label?: string
   className?: string
 }) {
-  const { nextTier } = orderPricing(baseUnitCents, quantity)
+  const { nextTier } = orderPricing(tier, quantity)
   if (!nextTier) return null
 
-  const jumped = orderPricing(baseUnitCents, nextTier.minQty)
+  const jumped = orderPricing(tier, nextTier.minQty)
   const more = nextTier.minQty - Math.max(0, Math.floor(quantity) || 0)
   if (jumped.savingsCents <= 0 || more <= 0) return null
 

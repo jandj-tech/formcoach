@@ -13,6 +13,7 @@ import TokenBalances from '@/components/TokenBalances'
 import InlineEdit from '@/components/InlineEdit'
 import LeaderboardTable, { type LeaderboardRow } from '@/components/LeaderboardTable'
 import SortMenu, { type SortOption } from '@/components/SortMenu'
+import type { OrgTier } from '@/lib/team-pricing'
 import OrgTokenPanel from '@/components/OrgTokenPanel'
 import TeamChatPanel from '@/components/TeamChatPanel'
 import EmailTeamPanel from '@/components/EmailTeamPanel'
@@ -86,6 +87,8 @@ interface Props {
   classPackages: ClassPackage[]
   myUploads: Shot[]
   orgTokenBalance: number
+  /** The organization plan — sets the token rate and which features are open. */
+  orgTier: OrgTier
 }
 
 
@@ -97,7 +100,7 @@ const PLAYER_SORT_OPTIONS: SortOption<PlayerSortMode>[] = [
   { value: 'score-asc', label: 'Lowest score' },
 ]
 
-export default function OrgDashboardClient({ teams, orgName, classPackages, myUploads, orgTokenBalance }: Props) {
+export default function OrgDashboardClient({ teams, orgName, classPackages, myUploads, orgTokenBalance, orgTier }: Props) {
   const router = useRouter()
   const inApp = useIsInApp()
   const [expanded, setExpanded] = useState<string | null>(null)
@@ -1586,6 +1589,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
         teams={teams.map(t => ({ id: t.id, name: t.name, coachName: t.coachNickname || t.adminEmail, ageGroup: t.ageGroup, memberCount: t.members.length, credits: t.credits }))}
         totalPlayerTokens={totalPlayerTokens}
         totalTeamCredits={totalTeamCredits}
+        tier={orgTier}
       />
     </div>
   )

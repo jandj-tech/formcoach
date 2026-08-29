@@ -5,7 +5,8 @@ import { db } from '@/lib/db'
 import {
   LAUNCH_OFFER_MAX_GRANTS,
   LAUNCH_OFFER_WINDOW_SECONDS,
-  type OrgPlan,
+  type BillingInterval,
+  type PaidTier,
 } from '@/lib/org-subscription-pricing'
 
 /**
@@ -186,22 +187,23 @@ export async function armLaunchOffer(token: string): Promise<Date | null> {
  * entire year — so the offer is monthly-only and that is enforced here rather
  * than trusted from the client.
  */
-export function offerIsLive(pending: PendingOrgSignup, plan: OrgPlan): boolean {
-  if (plan !== 'monthly') return false
+export function offerIsLive(pending: PendingOrgSignup, interval: BillingInterval): boolean {
+  if (interval !== 'monthly') return false
   if (!pending.offerExpiresAt) return false
   return new Date(pending.offerExpiresAt).getTime() > Date.now()
 }
 
-/** Record which plan the buyer took to checkout, and the Stripe session id. */
+/** Record which plan and interval the buyer took to checkout, with the session id. */
 export async function markPendingCheckout(
   token: string,
-  plan: OrgPlan,
+  tier: PaidTier,
+  interval: BillingInterval,
   stripeSessionId: string,
 ): Promise<void> {
   try {
     await db`
       UPDATE pending_org_signups
-      SET plan = ${plan}, stripe_session_id = ${stripeSessionId}
+      SET plan = ${interval}, tier = ${tier}, stripe_session_id = ${stripeSessionId}
       WHERE token = ${token}
     `
   } catch (err) {

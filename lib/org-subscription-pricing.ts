@@ -110,14 +110,10 @@ export const LAUNCH_OFFER_AMOUNT_OFF_CENTS: Readonly<Record<PaidTier, number>> =
 /** How long the launch offer stays open once the pricing page is loaded. */
 export const LAUNCH_OFFER_WINDOW_SECONDS = 300
 
-/**
- * How many times one signup may re-arm the countdown.
- *
- * The offer is meant to reset when someone comes back, so this is not a
- * per-visit limit in any way a real person would notice — it is a ceiling that
- * stops the discount from being renewable forever by a script.
- */
-export const LAUNCH_OFFER_MAX_GRANTS = 10
+// There is no re-arm cap any more. The countdown is set once, when the signup
+// form is submitted, and starting a fresh signup is the only way to reset it —
+// so the rate limiter on /api/org/signup/start is what bounds how often the
+// offer can be renewed, rather than a counter on the row.
 
 /**
  * Stripe coupon id for a tier's launch offer. Created lazily — see

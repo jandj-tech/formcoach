@@ -3,7 +3,6 @@ import { cookies } from 'next/headers'
 import type { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import {
-  LAUNCH_OFFER_MAX_GRANTS,
   LAUNCH_OFFER_WINDOW_SECONDS,
   type BillingInterval,
   type PaidTier,
@@ -90,6 +89,16 @@ export function clearPendingCookieOptions() {
 /**
  * Create the pending row. `passwordHash` must already be bcrypt-hashed by the
  * caller — this function never sees a plaintext password.
+ *
+ * The launch-offer countdown starts HERE, at the moment someone presses "Get
+ * started today", and runs from there. It is not re-armed by loading the
+ * pricing page, so reloading shows the time actually remaining rather than a
+ * fresh five minutes — a countdown that silently restarts on refresh is not a
+ * countdown.
+ *
+ * Pressing "Get started today" again does reset it, because that writes a new
+ * row. The rate limiter on /api/org/signup/start is what bounds how often that
+ * can happen.
  */
 export async function createPendingOrgSignup(input: {
   orgName: string
@@ -102,8 +111,17 @@ export async function createPendingOrgSignup(input: {
   const token = randomBytes(32).toString('base64url')
 
   const [row] = (await db`
-    INSERT INTO pending_org_signups (token, org_name, admin_email, player_count, password_hash)
-    VALUES (${token}, ${input.orgName}, ${input.adminEmail}, ${input.playerCount}, ${input.passwordHash})
+    INSERT INTO pending_org_signups (
+      token, org_name, admin_email, player_count, password_hash,
+      offer_expires_at, offer_grants
+    )
+    VALUES (
+      ${token}, ${input.orgName}, ${input.adminEmail}, ${input.playerCount}, ${input.passwordHash},
+      -- make_interval, not "$n * INTERVAL '1 second'": a bound parameter has no
+      -- inferable type in that expression and Postgres rejects it as
+      -- text * interval. make_interval takes a plain integer.
+      NOW() + make_interval(secs => ${LAUNCH_OFFER_WINDOW_SECONDS}), 1
+    )
     RETURNING id, token, org_name, admin_email, player_count, password_hash,
               offer_expires_at, offer_grants, consumed_at
   `) as unknown as [PendingRow]
@@ -134,49 +152,6 @@ export async function getPendingFromCookie(): Promise<PendingOrgSignup | null> {
 export async function getPendingFromRequest(req: NextRequest): Promise<PendingOrgSignup | null> {
   const token = req.cookies.get(COOKIE)?.value
   return token ? getPendingByToken(token) : null
-}
-
-/**
- * Start (or restart) the launch-offer countdown, returning the deadline.
- *
- * The server owns the clock. The client renders a countdown to whatever
- * timestamp comes back and never invents one of its own, and
- * /api/org/subscribe re-reads this column rather than trusting anything the
- * client claims.
- *
- * The countdown deliberately re-arms on each visit — that is the product
- * decision — but `offer_grants` bounds how many times, so the discount is not
- * infinitely renewable by a script. A real visitor never reaches the ceiling.
- * Returns the existing deadline unchanged once the ceiling is hit.
- */
-export async function armLaunchOffer(token: string): Promise<Date | null> {
-  try {
-    const [row] = (await db`
-      UPDATE pending_org_signups
-      -- make_interval, not "$n * INTERVAL '1 second'": a bound parameter has no
-      -- inferable type in that expression and Postgres rejects it as
-      -- text * interval. make_interval takes a plain integer.
-      SET offer_expires_at = NOW() + make_interval(secs => ${LAUNCH_OFFER_WINDOW_SECONDS}),
-          offer_grants = offer_grants + 1
-      WHERE token = ${token}
-        AND consumed_at IS NULL
-        AND expires_at > NOW()
-        AND offer_grants < ${LAUNCH_OFFER_MAX_GRANTS}
-      RETURNING offer_expires_at
-    `) as unknown as [{ offer_expires_at: Date } | undefined]
-
-    if (row) return row.offer_expires_at
-
-    // Ceiling reached (or the row is gone) — report the stored deadline as-is
-    // so an already-running countdown keeps counting down honestly.
-    const [existing] = (await db`
-      SELECT offer_expires_at FROM pending_org_signups WHERE token = ${token}
-    `) as unknown as [{ offer_expires_at: Date | null } | undefined]
-    return existing?.offer_expires_at ?? null
-  } catch (err) {
-    console.error('[pending-org] arming the launch offer failed:', err)
-    return null
-  }
 }
 
 /**

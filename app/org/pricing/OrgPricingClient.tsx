@@ -123,14 +123,14 @@ export default function OrgPricingClient({ orgName, offerExpiresAt, inApp }: Pro
       {/* ── The countdown. Deliberately the loudest thing on the page. ─────── */}
       {offerLive && !inApp && (
         <div
-          className="mb-6 rounded-2xl border-2 border-ember-500 bg-ember-500/10 px-5 py-5 text-center"
+          className="mb-6 rounded-2xl border-2 border-ember-500 bg-ember-500/10 px-5 py-4 text-center"
           role="status"
         >
           <p className="eyebrow text-ember-400 mb-2 flex items-center justify-center gap-2 select-none">
             <span className="w-2 h-2 rounded-full bg-ember-500 animate-pulse" aria-hidden />
             Launch offer ends in
           </p>
-          <p className="font-numeric font-black text-5xl sm:text-6xl text-chalk leading-none tabular-nums">
+          <p className="font-numeric font-black text-3xl sm:text-4xl text-chalk leading-none tabular-nums">
             {remaining === null ? '5:00' : formatRemaining(remaining)}
           </p>
           <p className="text-sm text-chalk mt-3">

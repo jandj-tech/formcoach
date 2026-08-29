@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
 import { isInAppRequest } from '@/lib/in-app'
-import { armLaunchOffer, getPendingFromCookie } from '@/lib/pending-org'
+import { getPendingFromCookie } from '@/lib/pending-org'
 import OrgPricingClient from './OrgPricingClient'
 
 // Reads cookies and writes the offer deadline, so it must never be cached.
@@ -24,11 +24,11 @@ export default async function OrgPricingPage() {
   // cannot be bought.
   if (!pending) redirect('/org/signup')
 
-  // Arm the countdown server-side and hand the client a deadline it can only
-  // render, never invent. Deliberately re-arms on each visit — the offer is
-  // meant to come back — but lib/pending-org.ts caps how many times, so it is
-  // not infinitely renewable by a script.
-  const offerExpiresAt = await armLaunchOffer(pending.token)
+  // The deadline was set when they pressed "Get started today"; this page only
+  // reads it. Re-arming here would mean the countdown silently restarted on
+  // every refresh, which is not a countdown. Starting a new signup resets it,
+  // because that writes a new pending row.
+  const offerExpiresAt = pending.offerExpiresAt
   const inApp = await isInAppRequest()
 
   return (

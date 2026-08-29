@@ -73,6 +73,35 @@ export async function ensureLaunchCoupon(): Promise<string> {
 }
 
 /**
+ * The Stripe Product for a tier, created on first use.
+ *
+ * Only the in-place plan change needs this. Checkout can build a price purely
+ * inline with `product_data`, but `SubscriptionItemUpdateParams.PriceData`
+ * requires `product` — an existing Product id — instead (verified in
+ * node_modules/stripe/cjs/resources/SubscriptionItems.d.ts). A Product is
+ * currency-agnostic, unlike a Price, so one per tier still serves both USD and
+ * CAD off the same numeric amount.
+ *
+ * Idempotent by id, the same lazy pattern as ensureLaunchCoupon.
+ */
+export async function ensureTierProduct(tier: 'basic' | 'plus', name: string): Promise<string> {
+  const id = `learnhoops-org-${tier}`
+  const stripe = getStripe()
+  try {
+    await stripe.products.retrieve(id)
+  } catch {
+    try {
+      await stripe.products.create({ id, name })
+    } catch (err) {
+      // A concurrent request may have created it between the two calls.
+      const code = (err as { code?: string })?.code
+      if (code !== 'resource_already_exists') throw err
+    }
+  }
+  return id
+}
+
+/**
  * Mirror a subscription's state onto its organization.
  *
  * Driven by customer.subscription.updated and .deleted. `updated` covers

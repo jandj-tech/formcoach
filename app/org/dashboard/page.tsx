@@ -9,6 +9,8 @@ import OrgDashboardClient from './OrgDashboardClient'
 import LogoutButton from './LogoutButton'
 import ManageBillingButton from '@/components/ManageBillingButton'
 import ReactivatePanel from '@/components/ReactivatePanel'
+import ChangePlanControl from '@/components/ChangePlanControl'
+import { isPaidTier, isBillingInterval } from '@/lib/org-subscription-pricing'
 import { orgTierById } from '@/lib/team-features'
 import type { ClassPackage } from './OrgDashboardClient'
 import type { LeaderboardRow } from '@/components/LeaderboardTable'
@@ -58,6 +60,25 @@ export default async function OrgDashboardPage() {
   // One predicate decides everything: a lapsed plan closes the same gates a
   // never-subscribed org would face, and reopens them all the moment it is paid.
   const orgTier = await orgTierById(org.id)
+
+  // Billing shape for the plan switcher. A grandfathered or comped org has no
+  // Stripe customer, so it gets no switcher at all rather than one that errors.
+  let billing = { tier: null as null | 'basic' | 'plus', interval: null as null | 'monthly' | 'annual', hasBilling: false }
+  try {
+    const [b] = (await db`
+      SELECT subscription_tier, subscription_plan, (stripe_subscription_id IS NOT NULL) AS has_billing
+      FROM organizations WHERE id = ${org.id}
+    `) as unknown as [{ subscription_tier: string | null; subscription_plan: string | null; has_billing: boolean } | undefined]
+    if (b) {
+      billing = {
+        tier: isPaidTier(b.subscription_tier) ? b.subscription_tier : null,
+        interval: isBillingInterval(b.subscription_plan) ? b.subscription_plan : null,
+        hasBilling: b.has_billing,
+      }
+    }
+  } catch {
+    // Tier columns not migrated yet — no switcher, which is the safe default.
+  }
   const orgEntitled = orgTier !== 'none'
 
   // The organization's own token balance. Queried separately so a missing
@@ -271,6 +292,16 @@ export default async function OrgDashboardPage() {
             Coaches enter this code when registering a team to link it to your organization.
           </p>
         </div>
+
+        {orgEntitled && billing.hasBilling && (
+          <div className="mb-6">
+            <ChangePlanControl
+              currentTier={billing.tier}
+              currentInterval={billing.interval}
+              hasBilling={billing.hasBilling}
+            />
+          </div>
+        )}
 
         {!orgEntitled && (
           <div className="mb-6">

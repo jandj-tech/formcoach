@@ -2,9 +2,12 @@ import type Stripe from 'stripe'
 import { getStripe } from '@/lib/stripe'
 import { db } from '@/lib/db'
 import {
-  LAUNCH_COUPON_ID,
+  LAUNCH_OFFER_AMOUNT_OFF_CENTS,
   LAUNCH_OFFER_MONTHS,
-  LAUNCH_OFFER_PERCENT_OFF,
+  launchCouponId,
+  orgUsd,
+  ORG_TIERS,
+  type PaidTier,
 } from '@/lib/org-subscription-pricing'
 
 /**
@@ -38,29 +41,40 @@ export function subscriptionPeriodEnd(sub: Stripe.Subscription): Date | null {
 }
 
 /**
- * Create the launch coupon if it does not exist yet, and return its id.
+ * Create a tier's launch coupon if it does not exist yet, and return its id.
  *
  * Idempotent by id, the same lazy pattern lib/comp.ts uses for the 100%-off
- * comp coupon. `percent_off` rather than `amount_off`: an amount coupon is
- * pinned to one currency and this app bills both USD and CAD off the same
- * numeric price (see lib/region.ts), which would need two coupons.
+ * comp coupon.
+ *
+ * `amount_off` rather than `percent_off`: half of 999¢ is 499.5¢, so a
+ * percentage would leave Stripe's rounding to decide whether the first invoice
+ * says $4.99 or $5.00 after the page had already promised one of them. A fixed
+ * $5.00 off $9.99 is exactly $4.99, every time.
+ *
+ * An amount coupon needs a currency, and this app bills the same numeric price
+ * in USD and CAD (lib/region.ts). `currency_options` carries both on ONE
+ * coupon — the amounts are identical because the prices are.
  *
  * Deliberately no `max_redemptions` — a global cap would turn a per-visitor
  * offer into a race between strangers. Eligibility is decided per signup in
  * lib/pending-org.ts.
  */
-export async function ensureLaunchCoupon(): Promise<string> {
+export async function ensureLaunchCoupon(tier: PaidTier): Promise<string> {
+  const id = launchCouponId(tier)
+  const amountOff = LAUNCH_OFFER_AMOUNT_OFF_CENTS[tier]
   const stripe = getStripe()
   try {
-    await stripe.coupons.retrieve(LAUNCH_COUPON_ID)
+    await stripe.coupons.retrieve(id)
   } catch {
     try {
       await stripe.coupons.create({
-        id: LAUNCH_COUPON_ID,
-        percent_off: LAUNCH_OFFER_PERCENT_OFF,
+        id,
+        amount_off: amountOff,
+        currency: 'usd',
+        currency_options: { cad: { amount_off: amountOff } },
         duration: 'repeating',
         duration_in_months: LAUNCH_OFFER_MONTHS,
-        name: `${LAUNCH_OFFER_PERCENT_OFF}% off your first ${LAUNCH_OFFER_MONTHS} months`,
+        name: `${orgUsd(amountOff)} off ${ORG_TIERS[tier].name} for ${LAUNCH_OFFER_MONTHS} months`,
       })
     } catch (err) {
       // A concurrent request may have created it between the retrieve and the
@@ -69,7 +83,7 @@ export async function ensureLaunchCoupon(): Promise<string> {
       if (code !== 'resource_already_exists') throw err
     }
   }
-  return LAUNCH_COUPON_ID
+  return id
 }
 
 /**

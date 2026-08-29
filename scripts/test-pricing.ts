@@ -25,6 +25,12 @@ import {
   orderPricing,
   type OrgTier,
 } from '../lib/team-pricing'
+import {
+  launchOfferMonthlyCents,
+  LAUNCH_OFFER_PERCENT_OFF,
+  ORG_TIERS,
+  type PaidTier,
+} from '../lib/org-subscription-pricing'
 
 let pass = 0
 const failures: string[] = []
@@ -219,6 +225,28 @@ for (const q of [0, -1, 0.5, 2.9, NaN]) {
 }
 // 2.9 must not buy the 3-token tier it hasn't paid for.
 check('q=2.9 does not reach the 3-tier', volumeDiscountPercent('none', 2.9) === 0)
+
+// --- launch offer lands on exact cents -------------------------------------
+// The whole reason the discount is a fixed amount and not a percentage: half
+// of 999 is 499.5, and a price that depends on which way Stripe rounds is a
+// price the page cannot honestly advertise. These must be whole cents AND
+// match what the cards say.
+for (const [tier, want] of [['basic', 499], ['plus', 999]] as Array<[PaidTier, number]>) {
+  const got = launchOfferMonthlyCents(tier)
+  check(`launch offer: ${tier} first-3-months price is ${want}`, got === want, `got ${got}`)
+  check(
+    `launch offer: ${tier} price and discount are both whole cents`,
+    Number.isInteger(got) && Number.isInteger(ORG_TIERS[tier].monthlyCents - got),
+  )
+  // Never advertise a bigger discount than is actually given. Landing slightly
+  // OVER the advertised percentage is fine; landing under is a false claim.
+  const actualPercent = ((ORG_TIERS[tier].monthlyCents - got) / ORG_TIERS[tier].monthlyCents) * 100
+  check(
+    `launch offer: ${tier} gives at least the advertised ${LAUNCH_OFFER_PERCENT_OFF}%`,
+    actualPercent >= LAUNCH_OFFER_PERCENT_OFF,
+    `actual ${actualPercent.toFixed(2)}%`,
+  )
+}
 
 // --- caps still reach the deepest tier -------------------------------------
 check('MAX_TOKENS_PER_ORDER reaches the top tier', MAX_TOKENS_PER_ORDER >= 10)

@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
     // allow_promotion_codes unconditionally, so this is the one spot where
     // copy-pasting that pattern would break the request.
     const discountFields = offerApplies
-      ? { discounts: [{ coupon: await ensureLaunchCoupon() }] }
+      ? { discounts: [{ coupon: await ensureLaunchCoupon(tier) }] }
       : { allow_promotion_codes: true as const }
 
     const checkout = await getStripe().checkout.sessions.create({

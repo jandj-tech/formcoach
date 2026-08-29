@@ -672,6 +672,42 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ received: true })
   }
 
+  // --- Refunds ---
+  // A refund issued from the Stripe dashboard used to leave no trace here, so
+  // the order still read as a clean sale. This does NOT cancel anything: a
+  // refund and a cancellation are separate acts, and refunding a month while
+  // leaving the plan running is a normal goodwill gesture. Cancelling is what
+  // customer.subscription.deleted is for.
+  //
+  // amount_refunded is Stripe's running total, not a delta, so a second partial
+  // refund overwrites rather than accumulating.
+  if (event.type === 'charge.refunded') {
+    const charge = event.data.object as Stripe.Charge
+    const paymentIntent =
+      typeof charge.payment_intent === 'string' ? charge.payment_intent : charge.payment_intent?.id ?? null
+
+    if (paymentIntent) {
+      try {
+        const rows = (await db`
+          UPDATE orders
+          SET refunded_at = NOW(), refunded_cents = ${charge.amount_refunded}
+          WHERE stripe_payment_intent_id = ${paymentIntent}
+          RETURNING id
+        `) as unknown as unknown[]
+        console.log('[stripe webhook] charge.refunded', {
+          paymentIntent,
+          refundedCents: charge.amount_refunded,
+          fullyRefunded: charge.refunded,
+          ordersMarked: rows.length,
+        })
+      } catch (err) {
+        // Bookkeeping only — never ask Stripe to retry a refund record.
+        console.error('[stripe webhook] refund record failed:', err)
+      }
+    }
+    return NextResponse.json({ received: true })
+  }
+
   // --- Subscription lifecycle ---
   // 'updated' covers status transitions (active <-> past_due <-> canceled),
   // plan changes, cancel_at_period_end, AND the period rolling forward on

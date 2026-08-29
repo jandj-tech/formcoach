@@ -88,6 +88,25 @@ export function annualPercentOff(tier: PaidTier): number {
 export const LAUNCH_OFFER_PERCENT_OFF = 50
 export const LAUNCH_OFFER_MONTHS = 3
 
+/**
+ * The discount as a fixed AMOUNT per tier, not a percentage.
+ *
+ * A percentage lands on a half cent on both tiers — 999 × 50% = 499.5 — which
+ * would leave Stripe's rounding to decide whether the invoice says $4.99 or
+ * $5.00 while the page had already committed to one of them. A fixed amount
+ * lands exactly, and keeps the list prices on .99:
+ *
+ *   Basic   $9.99 − $5.00  = $4.99
+ *   Plus   $19.99 − $10.00 = $9.99
+ *
+ * Both are a hair over half off (50.05%), so advertising "half price" gives
+ * slightly MORE than promised rather than less — the safe direction to err.
+ */
+export const LAUNCH_OFFER_AMOUNT_OFF_CENTS: Readonly<Record<PaidTier, number>> = {
+  basic: 500,
+  plus: 1000,
+}
+
 /** How long the launch offer stays open once the pricing page is loaded. */
 export const LAUNCH_OFFER_WINDOW_SECONDS = 300
 
@@ -100,20 +119,24 @@ export const LAUNCH_OFFER_WINDOW_SECONDS = 300
  */
 export const LAUNCH_OFFER_MAX_GRANTS = 10
 
-/** Stripe coupon id for the launch offer. Created lazily — see lib/org-subscription.ts. */
-export const LAUNCH_COUPON_ID = 'org-launch-50-3mo'
+/**
+ * Stripe coupon id for a tier's launch offer. Created lazily — see
+ * lib/org-subscription.ts.
+ *
+ * The amount is baked into the id so changing the discount creates a NEW
+ * coupon rather than silently reusing one carrying the old figure. A Stripe
+ * coupon's amount cannot be edited after creation.
+ */
+export function launchCouponId(tier: PaidTier): string {
+  return `org-launch-${tier}-${LAUNCH_OFFER_AMOUNT_OFF_CENTS[tier]}off-${LAUNCH_OFFER_MONTHS}mo`
+}
 
 /**
- * The discounted first-3-months monthly price (cents).
- *
- * Both tiers land on a half cent — 999 × 50% = 499.5 and 1999 × 50% = 999.5 —
- * so Math.round decides the advertised figure while STRIPE decides the invoice.
- * Confirm the first invoice matches this in test mode before trusting the copy;
- * if it rounds the other way, move the list price to $9.98 / $19.98 so the
- * halves are exact rather than papering over it in the label.
+ * The discounted first-3-months monthly price (cents). Exact by construction —
+ * see LAUNCH_OFFER_AMOUNT_OFF_CENTS for why this is an amount, not a percent.
  */
 export function launchOfferMonthlyCents(tier: PaidTier): number {
-  return Math.round((ORG_TIERS[tier].monthlyCents * (100 - LAUNCH_OFFER_PERCENT_OFF)) / 100)
+  return ORG_TIERS[tier].monthlyCents - LAUNCH_OFFER_AMOUNT_OFF_CENTS[tier]
 }
 
 // --- what each plan includes ----------------------------------------------

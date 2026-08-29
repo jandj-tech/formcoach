@@ -43,11 +43,13 @@ export async function recordPurchase(
 
     await db`
       INSERT INTO orders (
-        stripe_session_id, email, customer_name,
+        stripe_session_id, stripe_payment_intent_id, email, customer_name,
         variant, size, amount_total, currency,
         kind, quantity, description, buyer_kind, buyer_ref, status
       ) VALUES (
-        ${session.id}, ${email}, ${session.customer_details?.name ?? null},
+        ${session.id},
+        ${typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id ?? null},
+        ${email}, ${session.customer_details?.name ?? null},
         NULL, NULL, ${session.amount_total ?? 0}, ${session.currency ?? 'usd'},
         ${fields.kind}, ${Math.max(0, Math.floor(fields.quantity) || 0)},
         ${fields.description}, ${fields.buyerKind ?? null}, ${fields.buyerRef ?? null},

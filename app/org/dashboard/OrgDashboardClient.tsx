@@ -19,6 +19,7 @@ import TeamChatPanel from '@/components/TeamChatPanel'
 import EmailTeamPanel from '@/components/EmailTeamPanel'
 import PlayerShotList, { type Shot } from '@/components/PlayerShotList'
 import PrintButton from '@/components/PrintButton'
+import TeamSchedulePanel from '@/components/TeamSchedulePanel'
 import { CLASS_MIN_PLAYERS, CLASS_BULK_THRESHOLD, classPriceCents } from '@/lib/org-class-pricing'
 import { copyToClipboard } from '@/lib/copy'
 
@@ -121,6 +122,8 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   const [playerSort, setPlayerSort] = useState<Record<string, PlayerSortMode>>({})
   const [allPlayersSort, setAllPlayersSort] = useState<PlayerSortMode>('name')
   const [teamLbModal, setTeamLbModal] = useState<string | null>(null)
+  // Team id whose full month schedule is open in a modal.
+  const [scheduleModal, setScheduleModal] = useState<string | null>(null)
   const [emailSelected, setEmailSelected] = useState<Record<string, boolean>>({})
   const [emailDraftTeam, setEmailDraftTeam] = useState<string | null>(null)
   const [emailCopied, setEmailCopied] = useState<'emails' | 'body' | null>(null)
@@ -915,6 +918,24 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                   >
                     Open team dashboard →
                   </button>
+
+                  {/* This team's week at a glance. "Open full schedule" opens
+                      the month in a modal rather than navigating away, so the
+                      org owner never leaves this page to check a date. The
+                      panel 402s and offers the upgrade on its own when the
+                      plan doesn't include scheduling — the tier isn't guessed
+                      here, because an individually grandfathered team keeps
+                      scheduling even under a Basic org. */}
+                  <div className="border border-gray-200 rounded-2xl p-4 space-y-3">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Schedule</p>
+                    <TeamSchedulePanel
+                      teamId={team.id}
+                      theme="light"
+                      compact
+                      onOpenFull={() => setScheduleModal(team.id)}
+                      upgradeCta={{ href: '#org-billing', label: 'Change your plan' }}
+                    />
+                  </div>
 
                   {/* Class-package details — only when this team is the auto-created
                       team for a class purchase. Surfaces join code, stats, the
@@ -1996,6 +2017,43 @@ Please reach out if you have any questions. We look forward to helping you impro
       })()}
 
       {/* Team leaderboard popup with print — portaled to <body> for a clean printout */}
+      {/* The full schedule: the month, in place. Wider than the leaderboard
+          modal because a month grid is seven columns, and not compact, so the
+          org owner can create and edit events here rather than hopping to the
+          coach dashboard. */}
+      {scheduleModal && (() => {
+        const t = teams.find(tm => tm.id === scheduleModal)
+        if (!t) return null
+        return createPortal(
+          <div
+            className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+            onClick={() => setScheduleModal(null)}
+          >
+            <div
+              className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-auto p-6 space-y-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between gap-4">
+                <h2 className="text-xl font-black text-black">{t.name} Schedule</h2>
+                <button
+                  onClick={() => setScheduleModal(null)}
+                  className="shrink-0 text-sm font-semibold text-gray-400 hover:text-red-500 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+              <TeamSchedulePanel
+                teamId={t.id}
+                theme="light"
+                initialView="month"
+                upgradeCta={{ href: '#org-billing', label: 'Change your plan' }}
+              />
+            </div>
+          </div>,
+          document.body,
+        )
+      })()}
+
       {teamLbModal && (() => {
         const t = teams.find(tm => tm.id === teamLbModal)
         if (!t) return null

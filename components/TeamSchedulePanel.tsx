@@ -1035,6 +1035,23 @@ function sameLocalDay(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
 }
 
+function startOfMonthLocal(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), 1)
+}
+
+/** Month arithmetic through the Date constructor, which normalizes overflow. */
+function addMonthsLocal(monthStart: Date, n: number): Date {
+  return new Date(monthStart.getFullYear(), monthStart.getMonth() + n, 1)
+}
+
+/** How many weeks from this one a date sits, for jumping the week view to it. */
+function weekOffsetOf(day: Date): number {
+  const from = startOfWeekLocal(new Date()).getTime()
+  const to = startOfWeekLocal(day).getTime()
+  // Local-midnight anchors can differ by an hour across a DST switch — round.
+  return Math.round((to - from) / (7 * 24 * 60 * 60 * 1000))
+}
+
 function weekRangeLabel(weekStart: Date): string {
   const end = new Date(weekStart)
   end.setDate(end.getDate() + 6)
@@ -1155,18 +1172,188 @@ function WeekCalendar({
   )
 }
 
+/**
+ * A day cell holds three chips before it stops; past that the count becomes a
+ * link into that day's week, where there is room to read them all. Silently
+ * truncating a day would hide events from the one screen meant to show them.
+ */
+const MAX_CHIPS_PER_DAY = 3
+
+function MonthCalendar({
+  monthStart,
+  events,
+  dark,
+  selectedId,
+  isCurrentMonth,
+  onSelect,
+  onStep,
+  onToday,
+  onOpenDay,
+}: {
+  monthStart: Date // local midnight on the 1st
+  events: ScheduleEvent[] // everything inside the rendered grid, sorted by start
+  dark: boolean
+  selectedId: string | null
+  isCurrentMonth: boolean
+  onSelect: (id: string) => void
+  onStep: (dir: -1 | 1) => void
+  onToday: () => void
+  onOpenDay: (day: Date) => void
+}) {
+  const t = themeClasses(dark)
+  const today = new Date()
+  const border = dark ? 'border-courtline' : 'border-gray-200'
+  const divide = dark ? 'divide-courtline' : 'divide-gray-200'
+  const navBtn = `w-8 h-8 rounded-lg inline-flex items-center justify-center ${t.btnIdle}`
+
+  // Whole weeks covering the month: 5 or 6 rows depending on where the 1st
+  // falls, never a trailing row that belongs entirely to the next month.
+  const gridStart = startOfWeekLocal(monthStart)
+  const monthEnd = addMonthsLocal(monthStart, 1)
+  const weeks: Date[][] = []
+  for (const cursor = new Date(gridStart); cursor < monthEnd; cursor.setDate(cursor.getDate() + 7)) {
+    const rowStart = new Date(cursor)
+    weeks.push(
+      Array.from(
+        { length: 7 },
+        (_, i) => new Date(rowStart.getFullYear(), rowStart.getMonth(), rowStart.getDate() + i),
+      ),
+    )
+  }
+  // Locale decides the letters; gridStart is always a Sunday, so the order is
+  // the same one the grid is laid out in.
+  const weekdays = weeks[0].map(d => d.toLocaleDateString(undefined, { weekday: 'narrow' }))
+
+  return (
+    <div className={`rounded-2xl overflow-hidden border ${border} ${dark ? '' : 'bg-white'}`}>
+      {/* Nav bar — same shape as the week view, so switching doesn't move it */}
+      <div className={`flex items-center justify-between gap-2 px-3 py-2.5 border-b ${border}`}>
+        <div className="flex items-center gap-1.5">
+          <button type="button" aria-label="Previous month" onClick={() => onStep(-1)} className={navBtn}>
+            <ChevronLeftIcon className="w-4 h-4" aria-hidden />
+          </button>
+          <button type="button" aria-label="Next month" onClick={() => onStep(1)} className={navBtn}>
+            <ChevronRightIcon className="w-4 h-4" aria-hidden />
+          </button>
+          {!isCurrentMonth && (
+            <button type="button" onClick={onToday} className={`rounded-lg px-2.5 h-8 text-xs font-bold ${t.btnIdle}`}>
+              Today
+            </button>
+          )}
+        </div>
+        <p className={`font-display font-black uppercase text-sm tracking-wide ${t.text}`}>
+          {monthStart.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
+        </p>
+      </div>
+
+      <div className={`grid grid-cols-7 border-b ${border}`}>
+        {weekdays.map((label, i) => (
+          <div key={i} className={`py-1.5 text-center text-[10px] font-bold uppercase ${t.faint}`}>
+            {label}
+          </div>
+        ))}
+      </div>
+
+      <div className={`divide-y ${divide}`}>
+        {weeks.map((week, wi) => (
+          <div key={wi} className={`grid grid-cols-7 divide-x ${divide}`}>
+            {week.map(day => {
+              const dayEvents = events.filter(e => sameLocalDay(new Date(e.startsAt), day))
+              const inMonth = day.getMonth() === monthStart.getMonth()
+              const isToday = sameLocalDay(day, today)
+              const shown = dayEvents.slice(0, MAX_CHIPS_PER_DAY)
+              const hiddenCount = dayEvents.length - shown.length
+              return (
+                <div
+                  key={day.getTime()}
+                  className={`p-1 sm:p-1.5 min-h-[4.75rem] sm:min-h-[6.5rem] min-w-0 ${inMonth ? '' : 'opacity-40'}`}
+                >
+                  <div className="flex justify-center sm:justify-start">
+                    <span
+                      className={`text-[11px] font-bold w-5 h-5 rounded-full inline-flex items-center justify-center ${
+                        isToday ? (dark ? 'bg-ember-500 text-ink-950' : 'bg-orange-500 text-ink-950') : t.dim
+                      }`}
+                    >
+                      {day.getDate()}
+                    </span>
+                  </div>
+                  <div className="mt-1 space-y-0.5">
+                    {shown.map(e => {
+                      const chipCls = e.type === 'game' ? t.chipGame : e.type === 'practice' ? t.chipPractice : t.chipOther
+                      const time = e.timeTbd ? 'TBD' : timeLabel(e.startsAt)
+                      const name = e.title || typeLabel(e.type)
+                      return (
+                        <button
+                          key={e.id}
+                          type="button"
+                          onClick={() => onSelect(e.id)}
+                          aria-pressed={selectedId === e.id}
+                          // Cells are a seventh of the width, so the phone chip
+                          // carries only the time; the title is in the card the
+                          // tap opens, and in the tooltip here.
+                          title={`${time} · ${name}`}
+                          className={`block w-full text-left rounded px-1 py-0.5 text-[10px] leading-tight font-semibold truncate transition-shadow ${chipCls} ${
+                            e.status === 'cancelled' ? 'line-through opacity-50' : ''
+                          } ${selectedId === e.id ? (dark ? 'ring-2 ring-chalk' : 'ring-2 ring-black/50') : ''}`}
+                        >
+                          <span className="sm:hidden">{time}</span>
+                          <span className="hidden sm:inline">
+                            {time} · {name}
+                          </span>
+                        </button>
+                      )
+                    })}
+                    {hiddenCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => onOpenDay(day)}
+                        className={`block w-full text-left px-1 text-[10px] font-bold ${t.link}`}
+                      >
+                        +{hiddenCount} more
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ---------------------------------------------------------------------------
 // The panel
 // ---------------------------------------------------------------------------
+
+export type CalendarView = 'week' | 'month'
 
 export default function TeamSchedulePanel({
   teamId,
   theme = 'light',
   compact = false,
+  initialView = 'week',
+  onOpenFull,
+  upgradeCta = { href: '/org/signup', label: 'Get started today' },
 }: {
   teamId: string
   theme?: 'light' | 'dark'
   compact?: boolean
+  /** Which calendar the panel opens on. The org dashboard opens the month. */
+  initialView?: CalendarView
+  /**
+   * What the compact panel's "full schedule" control does. Given a callback it
+   * becomes a button instead of a link to /team — the org dashboard opens the
+   * month in place, because the player hub is not an admin's page.
+   */
+  onOpenFull?: () => void
+  /**
+   * Where the Plus-plan upsell points. Defaults to signup, which is right for
+   * someone with no organization — but an org already paying for Basic needs
+   * its plan switcher, not a second subscription.
+   */
+  upgradeCta?: { href: string; label: string }
 }) {
   const dark = theme === 'dark'
   const t = themeClasses(dark)
@@ -1176,9 +1363,11 @@ export default function TeamSchedulePanel({
   // from 'error' so the empty state can offer the upgrade instead of a shrug.
   const [locked, setLocked] = useState(false)
   const [past, setPast] = useState<ScheduleData | 'error' | null>(null)
-  // Calendar position (weeks from the current one) and the tapped event.
-  // null = auto (first event of the visible week); 'closed' = user collapsed.
+  // Calendar position (weeks or months from the current one) and the tapped
+  // event. null = auto (first event of the visible week); 'closed' = collapsed.
+  const [view, setView] = useState<CalendarView>(initialView)
   const [weekOffset, setWeekOffset] = useState(0)
+  const [monthOffset, setMonthOffset] = useState(0)
   const [selected, setSelected] = useState<string | 'closed' | null>(null)
   const [showCreate, setShowCreate] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -1222,7 +1411,11 @@ export default function TeamSchedulePanel({
   useEffect(() => {
     setData(null)
     loadUpcoming()
-  }, [loadUpcoming])
+    // A month grid always reaches into the past — even this month starts before
+    // today — so opening on the month needs the past window that the week view
+    // only fetches once you navigate backwards.
+    if (initialView === 'month') loadPast()
+  }, [loadUpcoming, loadPast, initialView])
   /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
@@ -1440,10 +1633,10 @@ export default function TeamSchedulePanel({
           Upgrade to Plus to turn on scheduling and RSVPs for every team you run.
         </p>
         <a
-          href="/org/signup"
+          href={upgradeCta.href}
           className="inline-block mt-1 bg-orange-500 hover:bg-orange-400 text-ink-950 font-bold text-sm px-5 py-2.5 rounded-xl transition-colors"
         >
-          Get started today
+          {upgradeCta.label}
         </a>
       </div>
     )
@@ -1463,10 +1656,20 @@ export default function TeamSchedulePanel({
   weekStart.setDate(weekStart.getDate() + weekOffset * 7)
   const weekEnd = new Date(weekStart)
   weekEnd.setDate(weekEnd.getDate() + 7)
+  const monthStart = addMonthsLocal(startOfMonthLocal(new Date()), monthOffset)
+  // Six weeks from the grid's first Sunday is the widest a month grid can be,
+  // so filtering to it covers every cell the month view can render.
+  const monthGridStart = startOfWeekLocal(monthStart)
+  const monthGridEnd = new Date(
+    monthGridStart.getFullYear(),
+    monthGridStart.getMonth(),
+    monthGridStart.getDate() + 42,
+  )
+  const [rangeStart, rangeEnd] = view === 'month' ? [monthGridStart, monthGridEnd] : [weekStart, weekEnd]
   const visibleEvents = pool
     .filter(e => {
       const ts = new Date(e.startsAt).getTime()
-      return ts >= weekStart.getTime() && ts < weekEnd.getTime()
+      return ts >= rangeStart.getTime() && ts < rangeEnd.getTime()
     })
     .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime())
   const shownEvent =
@@ -1474,14 +1677,50 @@ export default function TeamSchedulePanel({
       ? null
       : selected
         ? (visibleEvents.find(e => e.id === selected) ?? null)
-        : (visibleEvents[0] ?? null)
+        // A week has few enough events to open the first one automatically; a
+        // month does not, so the grid stays the whole view until something is
+        // tapped.
+        : view === 'month'
+          ? null
+          : (visibleEvents[0] ?? null)
+  // Both views draw from the same pool, so the past window is needed whenever
+  // the visible range starts before today.
+  const needsPast = view === 'month' || weekOffset < 0
 
   function gotoWeek(offset: number) {
+    setView('week')
     setWeekOffset(offset)
     setSelected(null) // back to auto-select for the new week
     // Past weeks need the past window — fetch on first visit, retry on error.
     if (offset < 0 && (past === null || past === 'error')) loadPast()
   }
+
+  function gotoMonth(offset: number) {
+    setMonthOffset(offset)
+    setSelected(null)
+    if (past === null || past === 'error') loadPast()
+  }
+
+  function switchView(next: CalendarView) {
+    setView(next)
+    setSelected(null)
+    if (next === 'month' && (past === null || past === 'error')) loadPast()
+  }
+
+  /** "+N more" in a month cell: open that day's week, where they all fit. */
+  function openDay(day: Date) {
+    gotoWeek(weekOffsetOf(day))
+  }
+
+  // "Nothing here" means nothing in either window — not merely nothing
+  // upcoming, which would contradict a month grid full of finished events.
+  // The prompt to create one is only honest where the form exists, so the
+  // compact card (which has no form) states the fact and stops.
+  const emptyMessage = !data.isCoach
+    ? 'No upcoming events. Your coach hasn’t scheduled anything yet.'
+    : compact
+      ? 'No events yet.'
+      : 'No events yet — schedule your first practice.'
 
   function renderCard(event: ScheduleEvent, isPast: boolean) {
     return (
@@ -1521,7 +1760,23 @@ export default function TeamSchedulePanel({
 
       {/* Top bar: create (coach) + manual refresh — schedule isn't chat, no polling */}
       {!compact && (
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className={`inline-flex rounded-xl overflow-hidden ${t.segBorder}`} role="group" aria-label="Calendar view">
+            {(['week', 'month'] as const).map(option => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => switchView(option)}
+                aria-pressed={view === option}
+                className={`px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide transition-colors ${
+                  view === option ? t.segActive : t.segIdle
+                }`}
+              >
+                {option === 'week' ? 'Week' : 'Month'}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
           {isCoach && (
             <button
               type="button"
@@ -1543,6 +1798,7 @@ export default function TeamSchedulePanel({
           >
             ↻
           </button>
+          </div>
         </div>
       )}
 
@@ -1558,38 +1814,56 @@ export default function TeamSchedulePanel({
         />
       )}
 
-      {/* Events — the same week calendar everywhere; compact adds the hub link */}
-      <WeekCalendar
-        weekStart={weekStart}
-        events={visibleEvents}
-        dark={dark}
-        selectedId={shownEvent?.id ?? null}
-        isCurrentWeek={weekOffset === 0}
-        onSelect={id => setSelected(shownEvent?.id === id ? 'closed' : id)}
-        onStep={dir => gotoWeek(weekOffset + dir)}
-        onToday={() => gotoWeek(0)}
-      />
-      {weekOffset < 0 && past === null && (
+      {/* The calendar. Compact is week-only and adds the full-schedule link. */}
+      {view === 'month' ? (
+        <MonthCalendar
+          monthStart={monthStart}
+          events={visibleEvents}
+          dark={dark}
+          selectedId={shownEvent?.id ?? null}
+          isCurrentMonth={monthOffset === 0}
+          onSelect={id => setSelected(shownEvent?.id === id ? 'closed' : id)}
+          onStep={dir => gotoMonth(monthOffset + dir)}
+          onToday={() => gotoMonth(0)}
+          onOpenDay={openDay}
+        />
+      ) : (
+        <WeekCalendar
+          weekStart={weekStart}
+          events={visibleEvents}
+          dark={dark}
+          selectedId={shownEvent?.id ?? null}
+          isCurrentWeek={weekOffset === 0}
+          onSelect={id => setSelected(shownEvent?.id === id ? 'closed' : id)}
+          onStep={dir => gotoWeek(weekOffset + dir)}
+          onToday={() => gotoWeek(0)}
+        />
+      )}
+      {needsPast && past === null && (
         <p className={`text-sm py-2 text-center ${t.dim}`}>Loading past events…</p>
       )}
-      {weekOffset < 0 && past === 'error' && (
+      {needsPast && past === 'error' && (
         <p className={`text-sm py-2 text-center ${t.dim}`}>Couldn&apos;t load past events.</p>
       )}
-      {data.events.length === 0 && (
-        <p className={`text-sm py-2 text-center ${t.dim}`}>
-          {isCoach
-            ? 'No events yet — schedule your first practice.'
-            : 'No upcoming events. Your coach hasn’t scheduled anything yet.'}
-        </p>
-      )}
+      {pool.length === 0 && <p className={`text-sm py-2 text-center ${t.dim}`}>{emptyMessage}</p>}
       {/* The tapped event's full card — RSVP, attendance, coach actions */}
       {shownEvent && renderCard(shownEvent, pastIds.has(shownEvent.id))}
 
       {compact && (
         <div>
-          <Link href="/team" className={`text-sm font-semibold transition-colors ${t.link}`}>
-            Full schedule →
-          </Link>
+          {onOpenFull ? (
+            <button
+              type="button"
+              onClick={onOpenFull}
+              className={`text-sm font-semibold transition-colors ${t.link}`}
+            >
+              Open full schedule →
+            </button>
+          ) : (
+            <Link href="/team" className={`text-sm font-semibold transition-colors ${t.link}`}>
+              Full schedule →
+            </Link>
+          )}
         </div>
       )}
     </div>

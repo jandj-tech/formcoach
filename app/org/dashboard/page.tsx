@@ -294,7 +294,9 @@ export default async function OrgDashboardPage() {
         </div>
 
         {orgEntitled && billing.hasBilling && (
-          <div className="mb-6">
+          // Anchored so the Plus-only upsells further down the page (the team
+          // schedule card) can send a paying Basic org straight here.
+          <div id="org-billing" className="mb-6 scroll-mt-24">
             <ChangePlanControl
               currentTier={billing.tier}
               currentInterval={billing.interval}

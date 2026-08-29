@@ -39,6 +39,14 @@ export const NOTIFICATION_FROM = process.env.EMAIL_FROM || 'LearnHoops <noreply@
 export const SUPPORT_ADDRESS = process.env.SUPPORT_EMAIL || 'support@learnhoops.com'
 
 /**
+ * Sender for mail that WANTS a reply. Coaching and help content sits here
+ * rather than under noreply@: "my video will not upload" is a reply we want
+ * to receive, and a reply is also one of the strongest positive signals a
+ * mailbox provider reads. Replies reach the same inbox as the support form.
+ */
+export const SUPPORT_FROM = `LearnHoops <${SUPPORT_ADDRESS}>`
+
+/**
  * Marketing sender. Defaults to the notification sender, NOT to a marketing
  * subdomain: Resend rejects any send from a domain it has not verified, and
  * defaulting to an unverified news.learnhoops.com would fail every marketing

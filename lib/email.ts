@@ -9,7 +9,7 @@ function getResend() {
 // transactional and marketing must not share a From address. The sending
 // domain must be verified in the Resend dashboard before an address will
 // deliver; until then, set EMAIL_FROM to `onboarding@resend.dev`.
-import { INTERNAL_INBOX, MARKETING_FROM, NOTIFICATION_FROM, SUPPORT_ADDRESS } from './email-senders'
+import { INTERNAL_INBOX, MARKETING_FROM, NOTIFICATION_FROM, SUPPORT_ADDRESS, SUPPORT_FROM } from './email-senders'
 
 export const BASE_URL = resolveBaseUrl()
 
@@ -1347,7 +1347,7 @@ export async function sendFilmingTipsEmail(to: string) {
   const unsubscribe = `${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}`
 
   const { data, error } = await getResend().emails.send({
-    from: NOTIFICATION_FROM,
+    from: SUPPORT_FROM,
     to,
     // Plain and descriptive on purpose. A benefit-promise subject ("get a
     // better score…") is a Promotions-tab signal; naming what the email

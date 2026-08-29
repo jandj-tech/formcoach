@@ -98,6 +98,47 @@ export async function syncSubscriptionToOrg(sub: Stripe.Subscription): Promise<v
 }
 
 /**
+ * Point an existing organization at a newly-bought subscription and switch it
+ * back on.
+ *
+ * Shared by the webhook and by the success route the buyer lands on, for the
+ * same reason org creation is: whichever arrives first wins and the other is a
+ * harmless repeat. Without the second caller, a slow or missed webhook leaves
+ * someone who has just paid staring at a dashboard that still says their plan
+ * has ended.
+ *
+ * Idempotent by construction — it writes the same values every time, and
+ * `subscription_status = 'active'` is not an increment.
+ *
+ * Returns false only when the session carries no orgId or the update matched
+ * nothing, so callers can tell "not ready" from "done".
+ */
+export async function applyOrgReactivation(session: Stripe.Checkout.Session): Promise<boolean> {
+  const orgId = session.metadata?.orgId
+  if (!orgId) return false
+
+  const customerId = stripeIdOf(session.customer as string | { id: string } | null)
+  const subscriptionId = stripeIdOf(session.subscription as string | { id: string } | null)
+
+  try {
+    const rows = (await db`
+      UPDATE organizations
+      SET stripe_customer_id = COALESCE(${customerId}, stripe_customer_id),
+          stripe_subscription_id = ${subscriptionId},
+          subscription_status = 'active',
+          subscription_plan = ${session.metadata?.plan ?? null},
+          subscription_cancel_at_period_end = FALSE
+      WHERE id = ${orgId}
+      RETURNING id
+    `) as unknown as unknown[]
+    return rows.length > 0
+  } catch (err) {
+    console.error('[org-subscription] reactivation failed:', orgId, err)
+    return false
+  }
+}
+
+/**
  * Open a Stripe billing portal session for an organization.
  *
  * Returns null when the org has no Stripe customer — which is the normal case

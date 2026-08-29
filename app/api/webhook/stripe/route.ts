@@ -9,7 +9,7 @@ import { claimStripeSession, releaseStripeSessionClaim } from '@/lib/stripe-idem
 import { recordPurchase } from '@/lib/record-purchase'
 import { resolveBaseUrl } from '@/lib/base-url'
 import { createOrgFromCheckout } from '@/lib/create-org-from-checkout'
-import { syncSubscriptionToOrg } from '@/lib/org-subscription'
+import { applyOrgReactivation, syncSubscriptionToOrg } from '@/lib/org-subscription'
 
 export async function POST(req: NextRequest) {
   try {
@@ -95,33 +95,19 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
     // to active, which re-opens every gate in lib/team-features.ts at once.
     if (metaType === 'org_reactivate') {
       const orgId = session.metadata?.orgId
-      if (orgId) {
-        const customerId = typeof session.customer === 'string' ? session.customer : session.customer?.id ?? null
-        const subscriptionId =
-          typeof session.subscription === 'string' ? session.subscription : session.subscription?.id ?? null
-        try {
-          await db`
-            UPDATE organizations
-            SET stripe_customer_id = COALESCE(${customerId}, stripe_customer_id),
-                stripe_subscription_id = ${subscriptionId},
-                subscription_status = 'active',
-                subscription_plan = ${session.metadata?.plan ?? null},
-                subscription_cancel_at_period_end = FALSE
-            WHERE id = ${orgId}
-          `
-          await recordPurchase(session, {
-            kind: 'org_subscription',
-            description: `LearnHoops Organization — reactivated (${session.metadata?.plan ?? 'monthly'})`,
-            quantity: 1,
-            buyerKind: 'org',
-            buyerRef: orgId,
-          })
-          console.log('[stripe webhook] org reactivated', { orgId, subscriptionId })
-        } catch (err) {
-          console.error('[stripe webhook] org reactivation failed:', err)
-          return NextResponse.json({ received: true, handled: false })
-        }
+      // The same call /api/org/reactivate/complete makes, so the two can never
+      // drift. Both are idempotent; whichever lands first wins.
+      const applied = await applyOrgReactivation(session)
+      if (applied && orgId) {
+        await recordPurchase(session, {
+          kind: 'org_subscription',
+          description: `LearnHoops Organization — reactivated (${session.metadata?.plan ?? 'monthly'})`,
+          quantity: 1,
+          buyerKind: 'org',
+          buyerRef: orgId,
+        })
       }
+      console.log('[stripe webhook] org_reactivate', { orgId, applied })
       return NextResponse.json({ received: true })
     }
 

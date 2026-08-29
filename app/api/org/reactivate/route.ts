@@ -105,7 +105,10 @@ export async function POST(req: NextRequest) {
           plan,
         },
       },
-      success_url: `${BASE_URL}/org/dashboard?reactivated=1`,
+      // Via a route handler, not straight to the dashboard: it applies the
+      // same update the webhook does, so a slow webhook never shows a paying
+      // customer a "your plan has ended" screen.
+      success_url: `${BASE_URL}/api/org/reactivate/complete?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${BASE_URL}/org/dashboard`,
     })
 

@@ -18,7 +18,6 @@ import JoinTeamForm from './JoinTeamForm'
 import LeaveTeamButton from './LeaveTeamButton'
 import NicknameForm from './NicknameForm'
 import NameForm from './NameForm'
-import JoinTeamPopup from './JoinTeamPopup'
 import TeamChatPanel from '@/components/TeamChatPanel'
 import TeamSchedulePanel from '@/components/TeamSchedulePanel'
 import AppearanceSection from '@/components/account/AppearanceSection'
@@ -371,7 +370,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   return (
     <main className="min-h-screen bg-white dark:bg-ink-900 flex flex-col">
       <TopNav />
-      <JoinTeamPopup hasTeam={teams.length > 0} hasName={hasName} />
 
       <div className="max-w-3xl mx-auto w-full px-6 py-10 space-y-6 flex-1">
         {/* ── Header ─────────────────────────────────────────────── */}

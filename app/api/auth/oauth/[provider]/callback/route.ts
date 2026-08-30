@@ -135,14 +135,17 @@ async function finish(req: NextRequest, providerParam: string, input: CallbackIn
       return res
     }
 
-    const target = result.accountType === 'player' ? safeNext(state.next) : result.redirect
+    // A team code carried through the provider round-trip still needs a first
+    // name and last initial that no provider supplies, so land on the invite
+    // card for that team — it names the team and takes both inline, which is
+    // the same place a password signup with ?teamCode= ends up.
+    const target =
+      result.accountType === 'player' && state.teamCode
+        ? `/join/${encodeURIComponent(state.teamCode.toUpperCase())}`
+        : result.accountType === 'player'
+          ? safeNext(state.next)
+          : result.redirect
     const url = new URL(target, origin)
-    // A team code typed on the signup form needs a first name and last initial
-    // that no provider supplies, so hand it to the dashboard's join popup —
-    // the same one a password signup with ?teamCode= ends up at.
-    if (result.accountType === 'player' && state.teamCode) {
-      url.searchParams.set('joinTeam', state.teamCode)
-    }
     const res = NextResponse.redirect(url)
     res.cookies.set(result.cookie)
     clearOtherSessions(res, result.keepCookie)

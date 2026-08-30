@@ -67,9 +67,11 @@ function SignupForm() {
 
       const tc = teamCode.trim()
       if (tc) {
-        // Carry the team code to the dashboard, which pops up the
-        // "enter your name to join" prompt.
-        router.push(`/dashboard?joinTeam=${encodeURIComponent(tc)}`)
+        // Back to the invite card, which names the team and takes the player's
+        // name inline. This used to jump to /dashboard?joinTeam=, where a
+        // full-screen popup asked for the same two fields with none of the
+        // context about which team they were joining.
+        router.push(`/join/${encodeURIComponent(tc.toUpperCase())}`)
       } else {
         const next = searchParams.get('next') || '/dashboard'
         router.push(next)

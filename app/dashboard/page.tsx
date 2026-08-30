@@ -2,8 +2,8 @@ import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth'
 import { isInAppRequest } from '@/lib/in-app'
 import { db } from '@/lib/db'
-import { userTier } from '@/lib/team-features'
-import { analysisBaseCents } from '@/lib/team-pricing'
+import { userHasInitiatedTeam } from '@/lib/team-tokens'
+import { analysisUnitCents } from '@/lib/team-pricing'
 import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
 import InfoTip from '@/components/InfoTip'
@@ -21,7 +21,6 @@ import NameForm from './NameForm'
 import JoinTeamPopup from './JoinTeamPopup'
 import TeamChatPanel from '@/components/TeamChatPanel'
 import TeamSchedulePanel from '@/components/TeamSchedulePanel'
-import AppearanceSection from '@/components/account/AppearanceSection'
 
 type UserRow = {
   id: string
@@ -103,15 +102,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   // Couldn't load data — show the actual error instead of a blank server error.
   if (loadError) {
     return (
-      <main className="min-h-screen bg-white dark:bg-ink-900 flex flex-col">
+      <main className="min-h-screen bg-white flex flex-col">
         <TopNav />
         <div className="max-w-3xl mx-auto w-full px-6 py-20 space-y-4 text-center">
           <div className="text-5xl">⚠️</div>
-          <h1 className="text-2xl font-black text-black dark:text-chalk">Couldn&apos;t load your account</h1>
-          <p className="text-gray-500 dark:text-chalk-dim text-sm">
+          <h1 className="text-2xl font-black text-black">Couldn&apos;t load your account</h1>
+          <p className="text-gray-500 text-sm">
             Something went wrong reading your data. Technical detail:
           </p>
-          <pre className="text-left text-xs bg-gray-100 dark:bg-ink-800 border border-gray-200 dark:border-courtline rounded-lg p-4 overflow-x-auto whitespace-pre-wrap text-red-600 dark:text-red-400">
+          <pre className="text-left text-xs bg-gray-100 border border-gray-200 rounded-lg p-4 overflow-x-auto whitespace-pre-wrap text-red-600">
             {loadError}
           </pre>
           <div className="pt-2">
@@ -172,10 +171,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     new Date(user.subscription_expires_at) > new Date()
 
   const tokens = user.analysis_tokens ?? 0
-  const tier = await userTier(user.id)
+  const onInitiatedTeam = await userHasInitiatedTeam(user.id)
 
   function scoreColor(score: number) {
-    if (score >= 8) return 'text-green-600 dark:text-green-400'
+    if (score >= 8) return 'text-green-600'
     if (score >= 6) return 'text-orange-500'
     return 'text-red-500'
   }
@@ -184,17 +183,17 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     ? `${user.first_name} ${user.last_initial}`
     : null
   const hasName = !!fullName
-  const tokenPrice = (analysisBaseCents(tier) / 100).toFixed(2)
+  const tokenPrice = (analysisUnitCents(onInitiatedTeam) / 100).toFixed(2)
 
   const shotsTab = (
     <div className="space-y-3">
       {submissions.length === 0 ? (
-        <div className="text-center py-16 space-y-4 bg-gray-50 dark:bg-ink-800 border border-gray-200 dark:border-courtline rounded-2xl">
+        <div className="text-center py-16 space-y-4 bg-gray-50 border border-gray-200 rounded-2xl">
           <div className="text-5xl">🏀</div>
-          <p className="text-black dark:text-chalk font-semibold">No shots analyzed yet</p>
+          <p className="text-black font-semibold">No shots analyzed yet</p>
           <Link
             href="/analyze"
-            className="inline-block bg-orange-500 hover:bg-orange-400 text-ink-950 font-bold px-6 py-3 rounded-xl transition-colors"
+            className="inline-block bg-orange-500 hover:bg-orange-400 text-white font-bold px-6 py-3 rounded-xl transition-colors"
           >
             Analyze Your Shot
           </Link>
@@ -212,20 +211,20 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               <div key={sub.id} className="flex items-center gap-2">
                 <Link
                   href={`/results/${sub.token}`}
-                  className="flex-1 min-w-0 flex items-center gap-4 bg-gray-50 dark:bg-ink-800 hover:bg-orange-50 dark:hover:bg-ember-500/10 border border-gray-200 dark:border-courtline hover:border-orange-200 rounded-xl p-4 transition-colors group"
+                  className="flex-1 min-w-0 flex items-center gap-4 bg-gray-50 hover:bg-orange-50 border border-gray-200 hover:border-orange-200 rounded-xl p-4 transition-colors group"
                 >
                   {thumb ? (
                     <img
                       src={thumb}
                       alt="Shot frame"
-                      className="w-16 h-16 object-cover rounded-lg shrink-0 bg-gray-200 dark:bg-ink-700"
+                      className="w-16 h-16 object-cover rounded-lg shrink-0 bg-gray-200"
                     />
                   ) : (
-                    <div className="w-16 h-16 bg-gray-200 dark:bg-ink-700 rounded-lg shrink-0 flex items-center justify-center text-2xl">🏀</div>
+                    <div className="w-16 h-16 bg-gray-200 rounded-lg shrink-0 flex items-center justify-center text-2xl">🏀</div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-500 dark:text-chalk-dim">{date}</p>
-                    <p className="text-black dark:text-chalk font-semibold text-sm mt-0.5 group-hover:text-orange-600 dark:group-hover:text-ember-400 transition-colors">
+                    <p className="text-sm text-gray-500">{date}</p>
+                    <p className="text-black font-semibold text-sm mt-0.5 group-hover:text-orange-600 transition-colors">
                       View Shot Breakdown →
                     </p>
                   </div>
@@ -244,7 +243,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <div className="text-center pt-2">
             <Link
               href="/analyze"
-              className="inline-block bg-orange-500 hover:bg-orange-400 text-ink-950 font-bold px-8 py-3 rounded-xl transition-colors"
+              className="inline-block bg-orange-500 hover:bg-orange-400 text-white font-bold px-8 py-3 rounded-xl transition-colors"
             >
               + Analyze Another Shot
             </Link>
@@ -254,10 +253,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     </div>
   )
 
-  const settingsTab = (
+  const profileTab = (
     <div className="space-y-4">
-      <AppearanceSection />
-
       <Section
         title="Display name"
         tipLabel="What is my display name used for?"
@@ -279,10 +276,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <NicknameForm current={user.nickname ?? null} />
       </Section>
 
-      <div className="border border-red-200 dark:border-red-900/60 rounded-2xl p-5 flex flex-wrap items-center justify-between gap-3">
+      <div className="border border-red-200 rounded-2xl p-5 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-black dark:text-chalk">Delete account</h3>
-          <p className="text-gray-500 dark:text-chalk-dim text-xs mt-1">
+          <h3 className="text-sm font-semibold text-black">Delete account</h3>
+          <p className="text-gray-500 text-xs mt-1">
             Permanently removes your account and all shot history. This cannot be undone.
           </p>
         </div>
@@ -303,39 +300,39 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <details
             key={t.id}
             open={i === 0}
-            className="group bg-gray-50 dark:bg-ink-800 border border-gray-200 dark:border-courtline rounded-2xl"
+            className="group bg-gray-50 border border-gray-200 rounded-2xl"
           >
             <summary className="flex items-center justify-between gap-3 p-4 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
               <div className="min-w-0">
-                <p className="font-bold text-black dark:text-chalk truncate">{t.name}</p>
-                <p className="text-gray-500 dark:text-chalk-dim text-xs mt-0.5">
+                <p className="font-bold text-black truncate">{t.name}</p>
+                <p className="text-gray-500 text-xs mt-0.5">
                   Team code:{' '}
-                  <span className="font-mono font-semibold text-gray-700 dark:text-chalk-dim">{t.access_code}</span>
+                  <span className="font-mono font-semibold text-gray-700">{t.access_code}</span>
                 </p>
               </div>
               <svg
-                className="w-5 h-5 text-gray-400 dark:text-chalk-dim transition-transform group-open:rotate-180 shrink-0"
+                className="w-5 h-5 text-gray-400 transition-transform group-open:rotate-180 shrink-0"
                 viewBox="0 0 20 20" fill="currentColor" aria-hidden
               >
                 <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
               </svg>
             </summary>
 
-            <div className="px-4 pb-4 space-y-2 border-t border-gray-200 dark:border-courtline pt-3">
+            <div className="px-4 pb-4 space-y-2 border-t border-gray-200 pt-3">
               <div className="flex items-start justify-between gap-3">
                 {teamCoaches.length > 0 ? (
-                  <p className="text-xs text-gray-500 dark:text-chalk-dim min-w-0">
+                  <p className="text-xs text-gray-500 min-w-0">
                     <span className="font-semibold uppercase tracking-wide">
                       {teamCoaches.length === 1 ? 'Coach' : 'Coaches'}:
                     </span>{' '}
-                    <span className="text-gray-700 dark:text-chalk-dim">{teamCoaches.join(', ')}</span>
+                    <span className="text-gray-700">{teamCoaches.join(', ')}</span>
                   </p>
                 ) : <span />}
                 <LeaveTeamButton teamId={t.id} teamName={t.name} />
               </div>
               <Link
                 href={`/dashboard/leaderboard?team=${t.id}`}
-                className="inline-block text-sm font-semibold text-orange-600 dark:text-ember-400 hover:text-orange-500 transition-colors"
+                className="inline-block text-sm font-semibold text-orange-600 hover:text-orange-500 transition-colors"
               >
                 View Team Leaderboard →
               </Link>
@@ -358,7 +355,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       })}
 
       <div className="space-y-2">
-        <p className="text-sm text-gray-600 dark:text-chalk-dim">
+        <p className="text-sm text-gray-600">
           {teams.length === 0
             ? 'Have a team code? Enter it to join your team.'
             : 'Have another team code? Join another team — handy for house or summer league.'}
@@ -369,7 +366,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   )
 
   return (
-    <main className="min-h-screen bg-white dark:bg-ink-900 flex flex-col">
+    <main className="min-h-screen bg-white flex flex-col">
       <TopNav />
       <JoinTeamPopup hasTeam={teams.length > 0} hasName={hasName} />
 
@@ -377,49 +374,57 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         {/* ── Header ─────────────────────────────────────────────── */}
         <header className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="text-2xl font-black text-black dark:text-chalk">
+            <h1 className="text-2xl font-black text-black">
               {fullName || user.nickname || 'Your Account'}
             </h1>
-            <p className="text-gray-500 dark:text-chalk-dim text-sm mt-1 truncate">{user.email}</p>
+            <p className="text-gray-500 text-sm mt-1 truncate">{user.email}</p>
           </div>
           <LogoutButton />
         </header>
 
         {/* ── Shot tokens — always visible above the tabs ────────── */}
-        <section className="bg-orange-50 dark:bg-ember-500/10 border border-orange-200 rounded-2xl p-5">
+        <section className="bg-orange-50 border border-orange-200 rounded-2xl p-5">
           <div className="flex items-center gap-2">
-            <h2 className="text-xs font-bold text-gray-500 dark:text-chalk-dim uppercase tracking-wide">Shot Tokens</h2>
+            <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wide">Shot Tokens</h2>
             <InfoTip label="What are shot tokens?" align="left">
-              1 token = 1 AI shot analysis. Every training ball from the shop
-              includes 5 free tokens, or you can buy single tokens here for
-              ${tokenPrice} each.
+              {isInApp ? (
+                // In-app purchases have their own (App Store) pricing — quoting
+                // the web price here would show a number the buy button doesn't
+                // charge.
+                <>1 token = 1 AI shot analysis. Every training ball from the shop
+                includes 5 free tokens, or you can buy single tokens right here.</>
+              ) : (
+                <>1 token = 1 AI shot analysis. Every training ball from the shop
+                includes 5 free tokens, or you can buy single tokens here for
+                ${tokenPrice} each.</>
+              )}
             </InfoTip>
           </div>
           <div className="mt-2 flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-baseline gap-2">
               {isSubscribed ? (
-                <span className="text-3xl font-black text-orange-600 dark:text-ember-400">Unlimited</span>
+                <span className="text-3xl font-black text-orange-600">Unlimited</span>
               ) : (
                 <>
-                  <span className="text-4xl font-black text-black dark:text-chalk">{tokens}</span>
-                  <span className="text-gray-500 dark:text-chalk-dim text-sm">token{tokens !== 1 ? 's' : ''} left</span>
+                  <span className="text-4xl font-black text-black">{tokens}</span>
+                  <span className="text-gray-500 text-sm">token{tokens !== 1 ? 's' : ''} left</span>
                 </>
               )}
             </div>
             <div className="flex items-center gap-3 flex-wrap">
-              {!isSubscribed && <BuyTokenButton isInApp={isInApp} initialTier={tier} />}
+              {!isSubscribed && <BuyTokenButton isInApp={isInApp} initiated={onInitiatedTeam} />}
               <Link
                 href="/analyze"
-                className="bg-orange-500 hover:bg-orange-400 text-ink-950 font-bold text-sm px-5 py-2.5 rounded-xl transition-colors"
+                className="bg-orange-500 hover:bg-orange-400 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-colors"
               >
                 Analyze a Shot
               </Link>
             </div>
           </div>
           {!isSubscribed && !isInApp && (
-            <p className="text-gray-500 dark:text-chalk-dim text-xs mt-3">
+            <p className="text-gray-500 text-xs mt-3">
               Tip: every{' '}
-              <Link href="/shop" className="text-orange-600 dark:text-ember-400 hover:text-orange-500 font-medium transition-colors">
+              <Link href="/shop" className="text-orange-600 hover:text-orange-500 font-medium transition-colors">
                 training ball
               </Link>{' '}
               comes with 5 free analyses.
@@ -438,9 +443,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               count: teams.length,
               content: teamsTab,
             },
-            // Renamed from "Profile" once it grew past name-and-nickname into
-            // real settings. `profile` stays as an alias so old links land.
-            { id: 'settings', label: 'Settings', content: settingsTab, aliases: ['profile'] },
+            { id: 'profile', label: 'Profile', content: profileTab },
           ]}
         />
       </div>

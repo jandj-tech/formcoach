@@ -45,12 +45,22 @@ export async function getSessionFromRequest(req: NextRequest): Promise<SessionPa
   if (cookieToken) return verifySession(cookieToken)
 
   // Mobile app sends JWT as Bearer token instead of cookie. Reject team/org
-  // tokens here so one can't be replayed on player routes (legacy player
-  // tokens have no `kind` and stay valid).
+  // tokens here so one can't be replayed on player routes. Legacy player
+  // tokens have no `kind` and stay valid — but a legacy team/org token also
+  // has no `kind` and MUST NOT half-pass as a player (it produced a split
+  // "player with no userId" state in the app), so the player-only field
+  // `userId` is required too.
   const auth = req.headers.get('Authorization')
   if (auth?.startsWith('Bearer ')) {
     const payload = await verifySession(auth.slice(7))
-    if (payload && (payload.kind === undefined || payload.kind === 'player')) return payload
+    if (
+      payload &&
+      typeof payload.userId === 'string' &&
+      payload.userId.length > 0 &&
+      (payload.kind === undefined || payload.kind === 'player')
+    ) {
+      return payload
+    }
     return null
   }
 

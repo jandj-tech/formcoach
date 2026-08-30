@@ -44,11 +44,14 @@ export async function getOrgSessionFromRequest(req: NextRequest): Promise<OrgSes
   if (token) return verifyOrgSession(token)
 
   // Mobile app: org session arrives as a Bearer token. Require kind === 'org'
-  // so a player/team token can't be accepted here.
+  // so a player/team token can't be accepted here. Legacy org tokens (minted
+  // before `kind` existed) are recognised by their `orgId` — a field no player
+  // or team token carries — so an org signed in on an old build keeps working.
   const auth = req.headers.get('Authorization')
   if (auth?.startsWith('Bearer ')) {
     const payload = await verifyOrgSession(auth.slice(7))
-    return payload?.kind === 'org' ? payload : null
+    if (!payload || typeof payload.orgId !== 'string' || !payload.orgId) return null
+    return payload.kind === 'org' || payload.kind === undefined ? payload : null
   }
 
   return null

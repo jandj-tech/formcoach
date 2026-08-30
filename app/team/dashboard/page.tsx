@@ -167,19 +167,60 @@ export default async function TeamDashboardPage() {
 
   // Head coach's display name — queried separately so a missing column
   // (pre-migration) can't break the whole dashboard.
-  let hasClassPackage = false
+  let classPackageId: string | null = null
   try {
     const [row] = (await db`
       SELECT coach_nickname,
              COALESCE(token_pool, 0)::int AS token_pool,
-             (class_package_id IS NOT NULL) AS has_class_package
+             class_package_id
       FROM teams WHERE id = ${team.id}
-    `) as unknown as [{ coach_nickname: string | null; token_pool: number; has_class_package: boolean } | undefined]
+    `) as unknown as [{ coach_nickname: string | null; token_pool: number; class_package_id: string | null } | undefined]
     headCoachNickname = row?.coach_nickname ?? null
     teamTokenPool = row?.token_pool ?? 0
-    hasClassPackage = !!row?.has_class_package
+    classPackageId = row?.class_package_id ?? null
   } catch (err) {
     console.error('[team/dashboard] team meta query failed:', err)
+  }
+
+  // The 10-Week Shooting Class this team is running, if any. The dashboard
+  // used to fetch `class_package_id` and throw the answer away, so a coach
+  // whose team was enrolled saw nothing about the program they were meant to
+  // be delivering — no roster progress, no session plan, nothing.
+  let classProgram: {
+    id: string
+    playerCount: number
+    enrolledCount: number
+    completedCount: number
+    tokenPool: number
+  } | null = null
+  if (classPackageId) {
+    try {
+      const [row] = (await db`
+        SELECT p.id,
+               p.player_count,
+               COALESCE(p.token_pool, 0)::int AS token_pool,
+               COUNT(e.id)::int AS enrolled_count,
+               COUNT(e.final_submission_id)::int AS completed_count
+        FROM org_class_packages p
+        LEFT JOIN org_class_enrollments e ON e.package_id = p.id
+        WHERE p.id = ${classPackageId}
+        GROUP BY p.id
+      `) as unknown as [{
+        id: string; player_count: number; token_pool: number
+        enrolled_count: number; completed_count: number
+      } | undefined]
+      if (row) {
+        classProgram = {
+          id: row.id,
+          playerCount: row.player_count,
+          enrolledCount: row.enrolled_count,
+          completedCount: row.completed_count,
+          tokenPool: row.token_pool,
+        }
+      }
+    } catch (err) {
+      console.error('[team/dashboard] class package query failed:', err)
+    }
   }
   // The coach's own shot uploads, shown as a list in "My Uploads".
   let myUploads: Array<{ id: string; token: string; created_at: string; overall_score: string | number | null }> = []
@@ -232,6 +273,7 @@ export default async function TeamDashboardPage() {
         fromOrg={fromOrg}
         myUploads={myUploads}
         coachCredits={coachCredits}
+        classProgram={classProgram}
       />
       <SiteFooter />
     </main>

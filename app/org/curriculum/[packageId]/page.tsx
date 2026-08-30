@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { redirect } from 'next/navigation'
 import { getOrgSession } from '@/lib/org-auth'
+import { getTeamSession } from '@/lib/team-auth'
 import PrintButton from './PrintButton'
 
 interface Props {
@@ -14,17 +15,31 @@ export default async function CurriculumPage({ params }: Props) {
     redirect('/org/dashboard')
   }
 
-  const session = await getOrgSession()
-  if (!session) redirect('/org/login')
+  // Two ways in. The organization that bought the class owns it — but the
+  // COACH is the person who actually delivers these ten sessions, and this
+  // page was org-only, so the plan they were meant to teach from was the one
+  // thing they could not open. A coach gets in when their own team is the
+  // team this package was assigned to; nothing wider.
+  const orgSession = await getOrgSession()
+  const teamSession = orgSession ? null : await getTeamSession()
+  if (!orgSession && !teamSession) redirect('/org/login')
 
-  const rows = await db`
-    SELECT p.id, p.player_count, p.created_at, o.name AS org_name
-    FROM org_class_packages p
-    JOIN organizations o ON o.id = p.org_id
-    WHERE p.id = ${packageId} AND p.org_id = ${session.orgId}
-  ` as unknown as { id: string; player_count: number; created_at: string; org_name: string }[]
+  const rows = orgSession
+    ? (await db`
+        SELECT p.id, p.player_count, p.created_at, o.name AS org_name
+        FROM org_class_packages p
+        JOIN organizations o ON o.id = p.org_id
+        WHERE p.id = ${packageId} AND p.org_id = ${orgSession.orgId}
+      `) as unknown as { id: string; player_count: number; created_at: string; org_name: string }[]
+    : (await db`
+        SELECT p.id, p.player_count, p.created_at, o.name AS org_name
+        FROM org_class_packages p
+        JOIN organizations o ON o.id = p.org_id
+        JOIN teams t ON t.class_package_id = p.id
+        WHERE p.id = ${packageId} AND t.id = ${teamSession!.teamId}
+      `) as unknown as { id: string; player_count: number; created_at: string; org_name: string }[]
 
-  if (!rows[0]) redirect('/org/dashboard')
+  if (!rows[0]) redirect(orgSession ? '/org/dashboard' : '/team/dashboard')
   const pkg = rows[0]
 
   const sessions = [

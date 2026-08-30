@@ -182,7 +182,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const fullName = user.first_name && user.last_initial
     ? `${user.first_name} ${user.last_initial}`
     : null
-  const hasName = !!fullName
   const tokenPrice = (analysisBaseCents(tier) / 100).toFixed(2)
 
   const shotsTab = (
@@ -356,14 +355,17 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         )
       })}
 
-      <div className="space-y-2">
-        <p className="text-sm text-gray-600 dark:text-chalk-dim">
-          {teams.length === 0
-            ? 'Have a team code? Enter it to join your team.'
-            : 'Have another team code? Join another team — handy for house or summer league.'}
-        </p>
-        <JoinTeamForm hasName={hasName} />
-      </div>
+      {teams.length === 0 ? (
+        <JoinTeamForm variant="empty" />
+      ) : (
+        <div className="space-y-2">
+          <p className="text-sm text-gray-600 dark:text-chalk-dim">
+            Have another team code? Join another team — handy for house or
+            summer league.
+          </p>
+          <JoinTeamForm />
+        </div>
+      )}
     </div>
   )
 

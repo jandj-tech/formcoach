@@ -36,6 +36,7 @@ import DashboardHeader from '@/components/backend/DashboardHeader'
 import { StatGrid, StatCard } from '@/components/backend/StatGrid'
 import { backendButton } from '@/components/backend/button-styles'
 import { ArrowRightIcon, Building2Icon, LogOutIcon } from 'lucide-react'
+import { CLASS_ANALYSES_PER_PLAYER } from '@/lib/org-class-pricing'
 
 interface Team {
   id: string
@@ -96,6 +97,14 @@ interface Props {
   fromOrg: boolean
   myUploads: Shot[]
   coachCredits: number
+  /** The 10-Week Shooting Class this team is running, or null if it isn't. */
+  classProgram: {
+    id: string
+    playerCount: number
+    enrolledCount: number
+    completedCount: number
+    tokenPool: number
+  } | null
 }
 
 export default function TeamDashboardClient({
@@ -114,6 +123,7 @@ export default function TeamDashboardClient({
   fromOrg,
   myUploads,
   coachCredits,
+  classProgram,
 }: Props) {
   const router = useRouter()
   const { clear: clearCart } = useCart()
@@ -612,6 +622,87 @@ export default function TeamDashboardClient({
     </div>
   )
 
+  /* ── Program tab ──────────────────────────────────────────────── */
+  // The 10-Week Shooting Class is sold to organizations, which assign it to a
+  // team. Either way the COACH is the person who actually runs it week to
+  // week, so this is where their copy of it lives: how far the roster has got,
+  // and the session plan. A coach whose team has no class still gets an
+  // explanation — before this tab existed the program was invisible to them.
+  const programTab = classProgram ? (
+    <div className="space-y-4">
+      <div className="rounded-2xl border border-gray-200 dark:border-courtline p-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h3 className="font-black text-black dark:text-chalk">10-Week Shooting Class</h3>
+            <p className="text-xs text-gray-600 dark:text-chalk-dim mt-0.5">
+              Ten sessions, from a baseline analysis to a final evaluation and certificate.
+            </p>
+          </div>
+          <Link href={`/org/curriculum/${classProgram.id}`} className={backendButton('secondary')}>
+            Session plan
+            <ArrowRightIcon aria-hidden />
+          </Link>
+        </div>
+
+        <div className="mt-5 grid grid-cols-3 gap-3">
+          {[
+            { label: 'Places', value: classProgram.playerCount },
+            { label: 'Enrolled', value: classProgram.enrolledCount },
+            { label: 'Finished', value: classProgram.completedCount },
+          ].map(s => (
+            <div key={s.label} className="rounded-xl bg-gray-50 dark:bg-ink-800 px-4 py-3">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-chalk-dim">{s.label}</p>
+              <p className="text-2xl font-black text-black dark:text-chalk tabular-nums">{s.value}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* A progress bar rather than a bare fraction: "6 of 20 finished" is
+            the one number a coach checks repeatedly during the ten weeks. */}
+        {classProgram.playerCount > 0 && (
+          <div className="mt-4">
+            <div className="h-2 rounded-full bg-gray-100 dark:bg-ink-800 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-ember-500 transition-[width]"
+                style={{ width: `${Math.min(100, Math.round((classProgram.completedCount / classProgram.playerCount) * 100))}%` }}
+              />
+            </div>
+            <p className="text-xs text-gray-500 dark:text-chalk-dim mt-1.5">
+              {classProgram.completedCount} of {classProgram.playerCount} finished
+              {classProgram.enrolledCount < classProgram.playerCount && (
+                <> · {classProgram.playerCount - classProgram.enrolledCount} place
+                {classProgram.playerCount - classProgram.enrolledCount === 1 ? '' : 's'} still open</>
+              )}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {classProgram.tokenPool > 0 && (
+        <p className="text-xs text-gray-500 dark:text-chalk-dim">
+          The class came with {classProgram.tokenPool} analysis token{classProgram.tokenPool === 1 ? '' : 's'} for this
+          team. They sit in the token pool and are handed out from Tokens &amp; Credits.
+        </p>
+      )}
+    </div>
+  ) : (
+    <div className="rounded-2xl border border-gray-200 dark:border-courtline p-5">
+      <h3 className="font-black text-black dark:text-chalk">10-Week Shooting Class</h3>
+      <p className="text-sm text-gray-600 dark:text-chalk-dim mt-1.5 leading-relaxed">
+        Ten structured sessions that take a player from a baseline shot analysis
+        through grip, elbow, stance, release and arc, to a final evaluation and a
+        certificate. Every place includes {CLASS_ANALYSES_PER_PLAYER} analyses and a training ball.
+      </p>
+      <p className="text-sm text-gray-600 dark:text-chalk-dim mt-3 leading-relaxed">
+        The class runs through an organization — a club, school or academy buys
+        the places and assigns them to its teams. This team isn&apos;t part of one
+        yet, so there&apos;s nothing to run here. If your club already has a
+        LearnHoops organization, ask them to add this team to it; the class then
+        shows up on this tab.
+      </p>
+    </div>
+  )
+
   /* ── Tokens & Credits tab ─────────────────────────────────────── */
   const settingsTab = (
     <div className="space-y-4">
@@ -949,6 +1040,10 @@ export default function TeamDashboardClient({
           { id: 'email', label: 'Email Team', content: <EmailTeamPanel teamId={team.id} playerCount={members.length} /> },
           { id: 'uploads', label: 'Uploads', content: uploadsTab },
           { id: 'leaderboard', label: 'Leaderboard', count: leaderboard.length, content: leaderboardTab },
+          // Program sits next to Chat: it is week-to-week coaching work, not
+          // billing. Hidden in the app only when there is nothing to run —
+          // an enrolled team still wants its progress courtside.
+          ...(classProgram || !inApp ? [{ id: 'program', label: 'Program', content: programTab }] : []),
           { id: 'credits', label: 'Tokens & Credits', content: creditsTab },
           { id: 'settings', label: 'Settings', content: settingsTab },
         ]}

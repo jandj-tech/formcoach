@@ -40,9 +40,21 @@ export default function TopNav() {
     pathname.startsWith('/dashboard') ||
     pathname.startsWith('/team/dashboard') ||
     pathname.startsWith('/org/dashboard')
+  // "/team" is the organization information & signup page. A signed-in org or
+  // coach already has their dashboard on the Account chip, so for them this
+  // item is relabelled to say what it actually is — info, not their hub.
+  const isAdminAccount = account?.type === 'org' || account?.type === 'team'
+  const orgTab = {
+    href: '/team',
+    label: isAdminAccount ? 'Organization Info' : 'Organizations',
+  }
+  // Admins' dashboards live under /team/dashboard — light the info item only
+  // on the info page itself, never on their dashboard.
+  const orgTabActive = isAdminAccount ? pathname === '/team' : pathname.startsWith('/team')
+
   const mobileTabs = [
     ...tabs,
-    { href: '/team', label: 'Organizations' },
+    orgTab,
     { href: accountHref, label: accountLabel },
   ]
 
@@ -124,13 +136,13 @@ export default function TopNav() {
               )
             })}
             <Link
-              href="/team"
-              data-active={pathname.startsWith('/team')}
+              href={orgTab.href}
+              data-active={orgTabActive}
               className={`nav-underline px-3 py-2.5 text-sm font-semibold transition-colors ${
-                pathname.startsWith('/team') ? 'text-chalk' : 'text-chalk-dim hover:text-chalk'
+                orgTabActive ? 'text-chalk' : 'text-chalk-dim hover:text-chalk'
               }`}
             >
-              Organizations
+              {orgTab.label}
             </Link>
             <Link
               href={accountHref}

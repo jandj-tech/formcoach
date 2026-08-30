@@ -36,21 +36,26 @@ const THEMES = {
     sortOption: 'text-gray-700 hover:bg-orange-50',
     sortOptionActive: 'font-bold text-orange-600',
     card: 'border-gray-200 bg-white shadow-sm',
-    thead: 'bg-gray-50 border-b border-gray-200',
+    thead: 'bg-gray-50/80 border-b border-gray-200',
     th: 'text-gray-500',
     tbody: 'divide-gray-100',
-    rowTop: 'bg-orange-50/50 hover:bg-orange-50',
+    rowTop: 'bg-amber-50/40 hover:bg-amber-50/70',
     row: 'hover:bg-gray-50',
-    name: 'text-black',
-    nameLink: 'text-black hover:text-orange-600',
-    team: 'text-gray-600',
+    name: 'text-gray-900',
+    nameLink: 'text-gray-900 hover:text-orange-600',
+    team: 'text-gray-500',
     avg: 'text-gray-500',
     uploads: 'text-gray-400',
     rankNum: 'text-gray-400',
-    rankTints: ['bg-amber-100', 'bg-gray-100', 'bg-orange-100'],
-    scoreHigh: 'text-green-600',
-    scoreMid: 'text-orange-500',
-    scoreLow: 'text-red-500',
+    // Top-3 rank badges: numbered, tinted — no medals, no emoji.
+    rankTints: [
+      'bg-amber-100 text-amber-800',
+      'bg-gray-200 text-gray-700',
+      'bg-orange-100 text-orange-800',
+    ],
+    scoreHigh: 'text-green-700',
+    scoreMid: 'text-orange-600',
+    scoreLow: 'text-red-600',
   },
   dark: {
     sortBtn: 'text-chalk-dim hover:text-chalk border-courtline',
@@ -71,13 +76,13 @@ const THEMES = {
     uploads: 'text-chalk-dim print:text-gray-400',
     rankNum: 'text-chalk-dim print:text-gray-400',
     rankTints: [
-      'bg-amber-400/15 print:bg-transparent',
-      'bg-chalk/10 print:bg-transparent',
-      'bg-ember-500/20 print:bg-transparent',
+      'bg-amber-400/15 text-amber-300 print:bg-transparent print:text-amber-800',
+      'bg-chalk/10 text-chalk print:bg-transparent print:text-gray-700',
+      'bg-ember-500/20 text-ember-400 print:bg-transparent print:text-orange-800',
     ],
-    scoreHigh: 'text-green-400 print:text-green-600',
-    scoreMid: 'text-ember-400 print:text-orange-500',
-    scoreLow: 'text-red-400 print:text-red-500',
+    scoreHigh: 'text-green-400 print:text-green-700',
+    scoreMid: 'text-ember-400 print:text-orange-600',
+    scoreLow: 'text-red-400 print:text-red-600',
   },
 } as const
 
@@ -93,17 +98,19 @@ function scoreColor(score: number, t: (typeof THEMES)[Theme]) {
   return t.scoreLow
 }
 
-// Fixed-size rank badge so medal rows and numbered rows stay aligned.
+// Fixed-size numbered rank badge. The top three get a subtle tinted disc
+// (gold / silver / bronze hues) but stay as plain numerals — professional,
+// print-safe, and consistent with the rest of the table.
 function RankBadge({ rank, t }: { rank: number; t: (typeof THEMES)[Theme] }) {
   if (rank <= 3) {
     return (
-      <span className={`inline-flex h-8 w-8 items-center justify-center rounded-full text-base ${t.rankTints[rank - 1]}`}>
-        {rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉'}
+      <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold tabular-nums ${t.rankTints[rank - 1]}`}>
+        {rank}
       </span>
     )
   }
   return (
-    <span className={`inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold tabular-nums ${t.rankNum}`}>
+    <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold tabular-nums ${t.rankNum}`}>
       {rank}
     </span>
   )
@@ -207,10 +214,15 @@ export default function LeaderboardTable({
           <button
             type="button"
             onClick={() => setMenuOpen((o) => !o)}
-            className={`flex items-center gap-1.5 text-sm font-semibold border rounded-lg px-3 py-1.5 transition-colors ${t.sortBtn}`}
+            className={`flex items-center gap-1.5 text-sm font-medium border rounded-lg px-3 py-1.5 transition-colors ${t.sortBtn}`}
           >
-            Sort by: <span className={t.sortBtnValue}>{currentLabel}</span>
-            <span className={`transition-transform ${menuOpen ? 'rotate-180' : ''} ${theme === 'dark' ? 'text-chalk-dim' : 'text-gray-400'}`}>▾</span>
+            Sort by: <span className={`font-semibold ${t.sortBtnValue}`}>{currentLabel}</span>
+            <svg
+              className={`w-3.5 h-3.5 transition-transform ${menuOpen ? 'rotate-180' : ''} ${theme === 'dark' ? 'text-chalk-dim' : 'text-gray-400'}`}
+              viewBox="0 0 20 20" fill="currentColor" aria-hidden
+            >
+              <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+            </svg>
           </button>
           {menuOpen && (
             <div className={`absolute right-0 top-full mt-1 z-40 w-44 border rounded-xl shadow-lg overflow-hidden py-1 ${t.sortMenu}`}>
@@ -239,16 +251,16 @@ export default function LeaderboardTable({
           <table className="w-full">
             <thead className={t.thead}>
               <tr>
-                <th className={`pl-4 pr-2 py-3 text-left text-xs font-semibold uppercase tracking-wide w-12 ${t.th}`}>Rank</th>
-                <th className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide ${t.th}`}>Player</th>
+                <th className={`pl-4 pr-2 py-3 text-left text-[11px] font-semibold uppercase tracking-wider w-12 ${t.th}`}>Rank</th>
+                <th className={`px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider ${t.th}`}>Player</th>
                 {showTeam && (
-                  <th className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide ${t.th}`}>Team</th>
+                  <th className={`px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider ${t.th}`}>Team</th>
                 )}
-                <th className={`px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide ${t.th}`}>Best</th>
+                <th className={`px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider ${t.th}`}>Best</th>
                 {hasAvg && (
-                  <th className={`px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide ${t.th}`}>Avg</th>
+                  <th className={`px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider ${t.th}`}>Avg</th>
                 )}
-                <th className={`px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide ${t.th}`}>Uploads</th>
+                <th className={`px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider ${t.th}`}>Uploads</th>
               </tr>
             </thead>
             <tbody className={`divide-y ${t.tbody}`}>
@@ -264,7 +276,7 @@ export default function LeaderboardTable({
                     <td className="pl-4 pr-2 py-2.5">
                       <RankBadge rank={rank} t={t} />
                     </td>
-                    <td className="px-4 py-2.5 font-semibold whitespace-nowrap">
+                    <td className="px-4 py-2.5 text-sm font-medium whitespace-nowrap">
                       {href ? (
                         <Link href={href} className={`hover:underline transition-colors ${t.nameLink}`}>
                           {name}
@@ -276,11 +288,11 @@ export default function LeaderboardTable({
                     {showTeam && (
                       <td className={`px-4 py-2.5 text-sm whitespace-nowrap ${t.team}`}>{entry.team_name ?? '—'}</td>
                     )}
-                    <td className={`px-4 py-2.5 text-right font-black tabular-nums ${scoreColor(score, t)}`}>
+                    <td className={`px-4 py-2.5 text-right text-sm font-bold tabular-nums ${scoreColor(score, t)}`}>
                       {score.toFixed(1)}
                     </td>
                     {hasAvg && (
-                      <td className={`px-4 py-2.5 text-right text-sm font-semibold tabular-nums ${t.avg}`}>
+                      <td className={`px-4 py-2.5 text-right text-sm tabular-nums ${t.avg}`}>
                         {avg != null ? avg.toFixed(1) : '—'}
                       </td>
                     )}

@@ -28,7 +28,7 @@ export default function EmailTeamPanel({ teamId, playerCount }: { teamId?: strin
       if (!res.ok) {
         setResult(data.error ?? 'Could not send — please try again.')
       } else {
-        setResult(`✅ Sent to ${data.sent} player${data.sent !== 1 ? 's' : ''}.`)
+        setResult(`Sent to ${data.sent} player${data.sent !== 1 ? 's' : ''}.`)
         setMessage('')
         setSubject('')
       }
@@ -42,7 +42,7 @@ export default function EmailTeamPanel({ teamId, playerCount }: { teamId?: strin
   return (
     <div className="space-y-3">
       <div>
-        <p className="text-sm font-bold text-black">📣 Email your whole team</p>
+        <p className="text-sm font-semibold text-gray-900">Email your whole team</p>
         <p className="text-xs text-gray-500 mt-0.5">
           Every registered player{typeof playerCount === 'number' ? ` (${playerCount})` : ''} gets this in their inbox right away — for urgent things like a canceled practice. Replies come to your email.
         </p>
@@ -71,7 +71,7 @@ export default function EmailTeamPanel({ teamId, playerCount }: { teamId?: strin
         >
           {sending ? 'Sending…' : 'Send to Team'}
         </button>
-        {result && <p className={`text-sm font-semibold ${result.startsWith('✅') ? 'text-green-600' : 'text-red-500'}`}>{result}</p>}
+        {result && <p className={`text-sm font-semibold ${result.startsWith('Sent') ? 'text-green-600' : 'text-red-500'}`}>{result}</p>}
       </div>
     </div>
   )

@@ -18,8 +18,19 @@ import TeamChatPanel from '@/components/TeamChatPanel'
 import EmailTeamPanel from '@/components/EmailTeamPanel'
 import PlayerShotList, { type Shot } from '@/components/PlayerShotList'
 import PrintButton from '@/components/PrintButton'
+import BillingHistory from '@/components/BillingHistory'
 import { CLASS_MIN_PLAYERS, CLASS_BULK_THRESHOLD, classPriceCents } from '@/lib/org-class-pricing'
 import { copyToClipboard } from '@/lib/copy'
+import {
+  AwardIcon,
+  CoinsIcon,
+  MailIcon,
+  MessageCircleIcon,
+  PackageIcon,
+  PrinterIcon,
+  SendIcon,
+  TargetIcon,
+} from 'lucide-react'
 
 interface Member {
   id: string
@@ -84,6 +95,7 @@ export interface ClassPackage {
 interface Props {
   teams: TeamData[]
   orgName: string
+  orgCode: string
   classPackages: ClassPackage[]
   myUploads: Shot[]
   orgTokenBalance: number
@@ -98,7 +110,7 @@ const PLAYER_SORT_OPTIONS: SortOption<PlayerSortMode>[] = [
   { value: 'score-asc', label: 'Lowest score' },
 ]
 
-export default function OrgDashboardClient({ teams, orgName, classPackages, myUploads, orgTokenBalance }: Props) {
+export default function OrgDashboardClient({ teams, orgName, orgCode, classPackages, myUploads, orgTokenBalance }: Props) {
   const router = useRouter()
   const inApp = useIsInApp()
   const [expanded, setExpanded] = useState<string | null>(null)
@@ -154,13 +166,6 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   const [teamAssignEach, setTeamAssignEach] = useState<Record<string, number>>({})
   const [teamAssignBusy, setTeamAssignBusy] = useState<string | null>(null)
   const [teamAssignMsg, setTeamAssignMsg] = useState<Record<string, string>>({})
-
-  // Quick send from the always-visible org balance banner. Recipient values
-  // are 'coach:<email>' (personal credits) or 'team:<id>' (shared credits).
-  const [quickSendTo, setQuickSendTo] = useState('')
-  const [quickSendQty, setQuickSendQty] = useState(5)
-  const [quickSendBusy, setQuickSendBusy] = useState(false)
-  const [quickSendMsg, setQuickSendMsg] = useState('')
 
   const [addOpen, setAddOpen] = useState(false)
   const [newName, setNewName] = useState('')
@@ -363,48 +368,15 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
     }
   }
 
-  async function quickSend() {
-    if (!quickSendTo) {
-      setQuickSendMsg('Choose a coach or team first.')
-      return
+  // Switch to a tab (AccountTabs keys off data-tab buttons) and optionally
+  // scroll to a card inside it — used by the overview's Buy / Send shortcuts.
+  function goToTab(tabId: string, anchor?: string) {
+    document.querySelector<HTMLButtonElement>(`[data-tab="${tabId}"]`)?.click()
+    if (anchor) {
+      setTimeout(() => {
+        document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 60)
     }
-    const qty = Math.max(1, quickSendQty)
-    if (qty > orgTokenBalance) {
-      setQuickSendMsg(`Not enough tokens — need ${qty}, have ${orgTokenBalance}.`)
-      return
-    }
-    const isCoach = quickSendTo.startsWith('coach:')
-    setQuickSendBusy(true)
-    setQuickSendMsg('')
-    try {
-      const res = await fetch(
-        isCoach ? '/api/org/give-coach-credits' : '/api/org/allocate-team-credits',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(
-            isCoach
-              ? { coachEmail: quickSendTo.slice('coach:'.length), quantity: qty }
-              : { teamId: quickSendTo.slice('team:'.length), quantity: qty },
-          ),
-        },
-      )
-      const data = await res.json()
-      if (!res.ok) {
-        setQuickSendMsg(data.error || 'Could not send credits.')
-        setQuickSendBusy(false)
-        return
-      }
-      setQuickSendMsg(
-        isCoach
-          ? `Sent ${qty} personal credit${qty !== 1 ? 's' : ''} to the coach.`
-          : `Sent ${qty} team credit${qty !== 1 ? 's' : ''} to the team.`,
-      )
-      router.refresh()
-    } catch {
-      setQuickSendMsg('Something went wrong. Please try again.')
-    }
-    setQuickSendBusy(false)
   }
 
   async function openTeam(teamId: string) {
@@ -653,13 +625,13 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
         {/* Perks row */}
         <div className="grid grid-cols-3 gap-2">
           {[
-            { icon: '🏀', label: '1 Training Ball', sub: 'per player' },
-            { icon: '🎯', label: '2 Shot Analyses', sub: 'start & end' },
-            { icon: '🏆', label: 'Certificate', sub: 'with scores' },
+            { Icon: PackageIcon, label: '1 Training Ball', sub: 'per player' },
+            { Icon: TargetIcon, label: '2 Shot Analyses', sub: 'start & end' },
+            { Icon: AwardIcon, label: 'Certificate', sub: 'with scores' },
           ].map(p => (
-            <div key={p.label} className="bg-white/15 rounded-xl px-3 py-2 text-center">
-              <p className="text-xl">{p.icon}</p>
-              <p className="font-bold text-sm leading-tight mt-0.5">{p.label}</p>
+            <div key={p.label} className="bg-white/15 rounded-xl px-3 py-2.5 text-center">
+              <p.Icon className="w-5 h-5 mx-auto text-orange-100" aria-hidden />
+              <p className="font-bold text-sm leading-tight mt-1">{p.label}</p>
               <p className="text-orange-200 text-xs">{p.sub}</p>
             </div>
           ))}
@@ -667,9 +639,15 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
 
         {/* 10-week outline */}
         <details className="group">
-          <summary className="cursor-pointer text-sm font-semibold text-orange-100 hover:text-white list-none flex items-center gap-1">
-            <span className="group-open:hidden">▶ View 10-week session outline</span>
-            <span className="hidden group-open:inline">▼ Hide session outline</span>
+          <summary className="cursor-pointer text-sm font-semibold text-orange-100 hover:text-white list-none flex items-center gap-1.5 [&::-webkit-details-marker]:hidden">
+            <svg
+              className="w-4 h-4 transition-transform group-open:rotate-180"
+              viewBox="0 0 20 20" fill="currentColor" aria-hidden
+            >
+              <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+            </svg>
+            <span className="group-open:hidden">View 10-week session outline</span>
+            <span className="hidden group-open:inline">Hide session outline</span>
           </summary>
           <div className="mt-3 grid grid-cols-2 gap-1.5 text-xs">
             {[
@@ -775,7 +753,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   const addTeamSection = (
     <div className="border border-gray-200 rounded-2xl p-5 space-y-3">
       <div className="flex items-center justify-between gap-4">
-        <h2 className="text-xl font-black text-black">Add a Team</h2>
+        <h2 className="text-xl font-bold text-gray-900">Add a Team</h2>
         <button
           onClick={() => {
             setAddOpen(o => !o)
@@ -873,7 +851,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
     <div className="space-y-4">
       {addTeamSection}
 
-      <h2 className="text-xl font-black text-black">Your Teams</h2>
+      <h2 className="text-xl font-bold text-gray-900">Your Teams</h2>
 
       <div className="space-y-3">
         {teams.map(team => {
@@ -905,10 +883,65 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                   {/* Open this team's coach dashboard */}
                   <button
                     onClick={() => openTeam(team.id)}
-                    className="text-sm font-bold text-orange-500 hover:text-orange-400 transition-colors"
+                    className="text-sm font-semibold text-orange-600 hover:text-orange-500 transition-colors"
                   >
                     Open team dashboard →
                   </button>
+
+                  {/* Invite players — the team code and signup link together,
+                      in one place. The link pre-fills the code, so either
+                      route lands the player on this roster. */}
+                  {(() => {
+                    const invitePkg = team.classPackageId
+                      ? classPackages.find(p => p.id === team.classPackageId)
+                      : null
+                    return (
+                      <div className="bg-white border border-gray-200 rounded-2xl p-4 space-y-3">
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-sm font-semibold text-gray-900">Invite players</p>
+                          <InfoTip label="How do players join this team?" align="left">
+                            Send players the signup link — it opens the signup
+                            page with this team&apos;s code pre-filled. Or give
+                            them the code to type in themselves. Either way
+                            they land on this roster automatically.
+                          </InfoTip>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+                          <div>
+                            <p className="text-xs font-medium text-gray-500">Team code</p>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <p className="text-xl font-bold text-gray-900 font-mono tracking-widest">{team.accessCode}</p>
+                              <button
+                                onClick={() => copyToClipboard(team.accessCode, 'Team code copied!')}
+                                className="text-xs font-semibold text-orange-600 hover:text-orange-500 transition-colors"
+                              >
+                                Copy
+                              </button>
+                            </div>
+                          </div>
+                          <div className="flex-1 min-w-[14rem]">
+                            <p className="text-xs font-medium text-gray-500 mb-0.5">Signup link</p>
+                            <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
+                              <span className="flex-1 text-xs font-mono text-gray-600 truncate">
+                                {BASE_URL}/signup?teamCode={team.accessCode}
+                              </span>
+                              <button
+                                onClick={() => copyLink(team.id, team.accessCode)}
+                                className="shrink-0 text-xs font-semibold text-orange-600 hover:text-orange-500 transition-colors"
+                              >
+                                {copiedLink[team.id] ? 'Copied!' : 'Copy link'}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                        <p className="text-xs text-gray-400">
+                          {invitePkg
+                            ? `Up to ${invitePkg.player_count} players can join this class team.`
+                            : 'Players sign up, enter their name, and appear on the roster — no approval step.'}
+                        </p>
+                      </div>
+                    )
+                  })()}
 
                   {/* Class-package details — only when this team is the auto-created
                       team for a class purchase. Surfaces join code, stats, the
@@ -924,31 +957,6 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                     const remainingSlots = pkg.player_count - pkg.enrolled_count
                     return (
                       <div className="space-y-4 border border-orange-100 rounded-2xl p-4 bg-orange-50/30">
-                        {/* Join code */}
-                        <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
-                          <div className="min-w-0">
-                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
-                              Class join code
-                              <InfoTip label="Class join code vs organization code" align="left">
-                                Players use this code (or the join link) to
-                                join this class team. It&rsquo;s different from
-                                your organization code, which coaches use to
-                                link a new team to your organization.
-                              </InfoTip>
-                            </p>
-                            <p className="text-2xl font-black text-orange-600 tracking-widest mt-0.5">{team.accessCode}</p>
-                            <p className="text-xs text-gray-500 mt-1">
-                              Share this with your players — up to {pkg.player_count} can join. The org leader uploads videos for each.
-                            </p>
-                          </div>
-                          <button
-                            onClick={() => copyToClipboard(`${BASE_URL}/signup?teamCode=${team.accessCode}`, 'Join link copied!')}
-                            className="shrink-0 bg-white border border-orange-300 text-orange-600 text-xs font-bold px-3 py-2 rounded-lg hover:bg-orange-100"
-                          >
-                            Copy join link
-                          </button>
-                        </div>
-
                         {/* Stats */}
                         <div className="grid grid-cols-4 gap-2">
                           {[
@@ -1038,9 +1046,10 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                                 <Link
                                   href={`/org/class/${pkg.id}/certificates`}
                                   target="_blank"
-                                  className="text-xs font-bold text-orange-500 hover:text-orange-400 transition-colors"
+                                  className="inline-flex items-center gap-1 text-xs font-semibold text-orange-600 hover:text-orange-500 transition-colors"
                                 >
-                                  🖨 Print all certificates ({pkg.enrollments.filter(en => en.has_final).length})
+                                  <PrinterIcon className="w-3.5 h-3.5" aria-hidden />
+                                  Print all certificates ({pkg.enrollments.filter(en => en.has_final).length})
                                 </Link>
                               )}
                             </div>
@@ -1188,7 +1197,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                       <p className="text-xs text-gray-500">
                         {Math.max(0, 8 - team.members.length)} more player{Math.max(0, 8 - team.members.length) !== 1 ? 's' : ''} needed — at 8, every player gets 1 free token{inApp ? '' : ' and tokens unlock at $1.49 each'}.
                       </p>
-                      <p className="text-xs text-gray-400">Share the player signup link below to invite players to this team.</p>
+                      <p className="text-xs text-gray-400">Share the signup link in the Invite players card above to grow this team.</p>
                     </div>
                   )}
 
@@ -1294,38 +1303,15 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                           {team.members.some(m => emailSelected[m.id]) && (
                             <button
                               onClick={() => setEmailDraftTeam(team.id)}
-                              className="mt-2 text-sm font-bold text-orange-500 hover:text-orange-400 transition-colors"
+                              className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-orange-600 hover:text-orange-500 transition-colors"
                             >
-                              ✉ Draft outreach email ({team.members.filter(m => emailSelected[m.id]).length} selected)
+                              <MailIcon className="w-4 h-4" aria-hidden />
+                              Draft outreach email ({team.members.filter(m => emailSelected[m.id]).length} selected)
                             </button>
                           )}
                         </>
                       )}
                     </Section>
-                    <div>
-                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 flex items-center gap-1.5">
-                        Player signup link
-                        <InfoTip label="What is the player signup link?" align="left">
-                          Send this to players (or their parents). It opens the
-                          signup page with this team&rsquo;s code pre-filled, so
-                          they land on the roster automatically.
-                        </InfoTip>
-                      </p>
-                      <div className="flex items-center gap-2 bg-gray-50 border border-gray-300 rounded-xl p-2.5">
-                        <span className="flex-1 text-xs font-mono text-gray-600 truncate">
-                          {BASE_URL}/signup?teamCode={team.accessCode}
-                        </span>
-                        <button
-                          onClick={() => copyLink(team.id, team.accessCode)}
-                          className="shrink-0 text-sm font-semibold text-orange-500 hover:text-orange-400 transition-colors"
-                        >
-                          {copiedLink[team.id] ? 'Copied!' : 'Copy'}
-                        </button>
-                      </div>
-                      <p className="text-xs text-gray-400 mt-1">
-                        Players open this link, sign up with the code pre-filled, then enter their name to join.
-                      </p>
-                    </div>
                   </div>
 
                   {/* Token balances — only on non-class teams. Class teams
@@ -1485,16 +1471,19 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                       onClick={() => setBuyOpen(prev => ({ ...prev, [team.id]: !isBuyOpen }))}
                       className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-gray-50 hover:bg-orange-50 transition-colors text-left"
                     >
-                      <p className="text-sm font-bold text-black">Buy Tokens for This Team</p>
+                      <p className="text-sm font-semibold text-gray-900">Buy tokens for this team</p>
                       <span className="text-gray-400 text-sm shrink-0">{isBuyOpen ? '−' : '+'}</span>
                     </button>
                     {isBuyOpen && (
                       <div className="px-4 py-4 space-y-3">
+                        <p className="text-xs text-gray-500">
+                          Checkout goes straight to the destination you pick — no need to send afterwards.
+                        </p>
                         {!team.initiated && !teams.some(t => t.initiated) && (
                           <p className="text-xs text-orange-600 font-semibold">Team not yet active — tokens are $3.49 each until any of your teams reaches 8 players.</p>
                         )}
                         <div className="space-y-1">
-                          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Send to</label>
+                          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Buy for</label>
                           <select
                             value={dest}
                             onChange={e => setDestSelect(prev => ({ ...prev, [team.id]: e.target.value }))}
@@ -1506,7 +1495,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                                 {memberDisplayName(m)} — {m.tokens} token{m.tokens !== 1 ? 's' : ''}
                               </option>
                             ))}
-                            <option value="coach">Team Credits — shared coach balance ({team.credits})</option>
+                            <option value="coach">Team credits — shared balance coaches spend ({team.credits} now)</option>
                           </select>
                         </div>
                         <div className="space-y-1">
@@ -1541,7 +1530,10 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
 
                   {/* Team chat — org has coach powers over its teams' chats */}
                   <div className="border-t border-gray-100 pt-4">
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">💬 Team Chat</p>
+                    <p className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                      <MessageCircleIcon className="w-3.5 h-3.5" aria-hidden />
+                      Team Chat
+                    </p>
                     <TeamChatPanel teamId={team.id} />
                   </div>
 
@@ -1578,7 +1570,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   const classTab = (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <h2 className="text-xl font-black text-black">10-Week Shooting Class</h2>
+        <h2 className="text-xl font-bold text-gray-900">10-Week Shooting Class</h2>
         <InfoTip label="What does the 10-week class include?" align="left">
           $40 per player ($36.99 each for 30+). Every player gets a training
           ball, 2 AI shot analyses (start and end of the class), and a
@@ -1593,7 +1585,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   const tokensTab = (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <h2 className="text-xl font-black text-black">Tokens &amp; Credits</h2>
+        <h2 className="text-xl font-bold text-gray-900">Tokens &amp; Credits</h2>
         <InfoTip label="What is the difference between tokens and credits?" align="left">
           <strong>Player tokens</strong> live on a player&rsquo;s own account —
           1 token = 1 shot analysis. <strong>Team credits</strong> are a shared
@@ -1610,6 +1602,19 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
         totalPlayerTokens={totalPlayerTokens}
         totalTeamCredits={totalTeamCredits}
       />
+    </div>
+  )
+
+  const billingTab = (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-xl font-bold text-gray-900">Billing</h2>
+        <p className="text-sm text-gray-500 mt-1">
+          Every purchase on this organization — tokens, team credits, class
+          packages, and shop orders. Receipts are emailed at checkout.
+        </p>
+      </div>
+      <BillingHistory endpoint="/api/org/billing" />
     </div>
   )
 
@@ -1799,9 +1804,10 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                   {selectedCount > 0 && (
                     <button
                       onClick={() => setEmailDraftTeam('__all__')}
-                      className="text-sm font-bold text-orange-500 hover:text-orange-400 transition-colors"
+                      className="inline-flex items-center gap-1.5 text-sm font-semibold text-orange-600 hover:text-orange-500 transition-colors"
                     >
-                      ✉ Draft outreach email ({selectedCount} selected)
+                      <MailIcon className="w-4 h-4" aria-hidden />
+                      Draft outreach email ({selectedCount} selected)
                     </button>
                   )}
                 </>
@@ -1815,98 +1821,66 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
 
   return (
     <div className="space-y-6">
-      {/* ── Org token balance — always visible above the tabs ─────────── */}
-      <section className="bg-orange-50 border border-orange-200 rounded-2xl p-5 space-y-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wide">Org Token Balance</h2>
-            <InfoTip label="How do org tokens work?" align="left">
-              Tokens you buy land in this org balance first. Use Quick send
-              below to move them to a coach or team, or open the Tokens tab to
-              assign them straight to players or spend them on your own
-              uploads. 1 token = 1 AI shot analysis.
+      {/* ── Overview — always visible above the tabs ──────────────────── */}
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="bg-white border border-gray-200 rounded-2xl px-4 py-3">
+          <div className="flex items-center gap-1.5">
+            <p className="text-xs font-medium text-gray-500">Organization code</p>
+            <InfoTip label="What is the organization code for?" align="left">
+              Share this code with your coaches. When a coach registers a team
+              with it, the team is linked to your organization so you can
+              send tokens and see its leaderboard here.
             </InfoTip>
           </div>
-          <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
-            <div className="flex items-baseline gap-2">
-              <span className="text-4xl font-black text-black">{orgTokenBalance}</span>
-              <span className="text-gray-500 text-sm">token{orgTokenBalance !== 1 ? 's' : ''} unassigned</span>
-            </div>
-            <div className="flex items-center gap-4 text-sm text-gray-600">
-              <span>
-                <span className="font-black text-black">{totalPlayerTokens}</span> player token{totalPlayerTokens !== 1 ? 's' : ''}
-              </span>
-              <span>
-                <span className="font-black text-black">{totalTeamCredits}</span> team credit{totalTeamCredits !== 1 ? 's' : ''}
-              </span>
-            </div>
+          <div className="mt-0.5 flex items-center gap-2">
+            <p className="text-xl font-bold text-gray-900 font-mono tracking-wider">{orgCode}</p>
+            <button
+              onClick={() => copyToClipboard(orgCode, 'Organization code copied!')}
+              className="text-xs font-semibold text-orange-600 hover:text-orange-500 transition-colors"
+            >
+              Copy
+            </button>
           </div>
         </div>
 
-        {/* Quick send — move balance tokens to a coach or team without
-            leaving the banner. */}
-        <div className="border-t border-orange-200 pt-3 space-y-2">
+        <div className="bg-orange-50 border border-orange-200 rounded-2xl px-4 py-3">
           <div className="flex items-center gap-1.5">
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Quick send</p>
-            <InfoTip label="Where do quick-sent credits go?" align="left">
-              Sending to a <strong>coach</strong> funds their personal
-              credits — only they can spend those, on their own uploads or on
-              players. Sending to a <strong>team</strong> funds its shared
-              team credits, which you and that team&apos;s coach can both
-              spend on the team.
+            <p className="text-xs font-medium text-gray-600">Available tokens</p>
+            <InfoTip label="How do org tokens work?" align="left">
+              Tokens you buy land here first. 1 token = 1 AI shot analysis.
+              Send them to players, a team&apos;s shared balance, or a coach
+              from the Tokens tab.
             </InfoTip>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <select
-              value={quickSendTo}
-              onChange={e => { setQuickSendTo(e.target.value); setQuickSendMsg('') }}
-              className="flex-1 min-w-[12rem] border border-orange-200 rounded-xl px-3 py-2.5 text-sm text-black bg-white focus:outline-none focus:border-orange-500"
-            >
-              <option value="">Choose a coach or team…</option>
-              <optgroup label="Coaches — personal credits">
-                {orgCoaches.map(c => (
-                  <option key={c.email} value={`coach:${c.email}`}>{c.label}</option>
-                ))}
-              </optgroup>
-              <optgroup label="Teams — shared team credits">
-                {teams.map(t => (
-                  <option key={t.id} value={`team:${t.id}`}>
-                    {t.name}{t.ageGroup ? ' · ' + t.ageGroup : ''} ({t.credits} credit{t.credits !== 1 ? 's' : ''})
-                  </option>
-                ))}
-              </optgroup>
-            </select>
-            <input
-              type="number"
-              min={1}
-              value={quickSendQty || ''}
-              onChange={e => {
-                const n = parseInt(e.target.value)
-                setQuickSendQty(Number.isNaN(n) ? 0 : Math.min(10000, Math.max(0, n)))
-              }}
-              onBlur={() => { if (quickSendQty < 1) setQuickSendQty(1) }}
-              aria-label="Tokens to send"
-              className="w-20 border border-orange-200 rounded-xl px-2 py-2 text-center text-black text-sm bg-white focus:outline-none focus:border-orange-500"
-            />
+          <p className="text-xl font-bold text-gray-900 tabular-nums mt-0.5">{orgTokenBalance}</p>
+          <div className="flex items-center gap-3 mt-1">
             <button
-              type="button"
-              onClick={quickSend}
-              disabled={quickSendBusy || !quickSendTo || quickSendQty < 1 || quickSendQty > orgTokenBalance}
-              className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+              onClick={() => goToTab('tokens', 'send-tokens')}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-orange-600 hover:text-orange-500 transition-colors"
             >
-              {quickSendBusy ? 'Sending…' : 'Send'}
+              <SendIcon className="w-3 h-3" aria-hidden /> Send
             </button>
+            {!inApp && (
+              <button
+                onClick={() => goToTab('tokens', 'buy-tokens')}
+                className="inline-flex items-center gap-1 text-xs font-semibold text-orange-600 hover:text-orange-500 transition-colors"
+              >
+                <CoinsIcon className="w-3 h-3" aria-hidden /> Buy
+              </button>
+            )}
           </div>
-          {quickSendQty > orgTokenBalance && (
-            <p className="text-xs font-semibold text-red-500">
-              Not enough tokens — you have {orgTokenBalance}.
-            </p>
-          )}
-          {quickSendMsg && (
-            <p className={`text-sm font-semibold ${quickSendMsg.startsWith('Sent') ? 'text-green-600' : 'text-red-500'}`}>
-              {quickSendMsg}
-            </p>
-          )}
+        </div>
+
+        <div className="bg-white border border-gray-200 rounded-2xl px-4 py-3">
+          <p className="text-xs font-medium text-gray-500">Player tokens</p>
+          <p className="text-xl font-bold text-gray-900 tabular-nums mt-0.5">{totalPlayerTokens}</p>
+          <p className="text-xs text-gray-400 mt-1">on player accounts</p>
+        </div>
+
+        <div className="bg-white border border-gray-200 rounded-2xl px-4 py-3">
+          <p className="text-xs font-medium text-gray-500">Team credits</p>
+          <p className="text-xl font-bold text-gray-900 tabular-nums mt-0.5">{totalTeamCredits}</p>
+          <p className="text-xs text-gray-400 mt-1">shared across teams</p>
         </div>
       </section>
 
@@ -1918,6 +1892,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
           ...(inApp ? [] : [{ id: 'class', label: 'Shooting Class', content: classTab }]),
           { id: 'tokens', label: 'Tokens', content: tokensTab },
           { id: 'players', label: 'Players', count: uniquePlayerCount, content: playersTab },
+          { id: 'billing', label: 'Billing', content: billingTab },
           { id: 'uploads', label: 'My Uploads', count: myUploads.length, content: uploadsTab },
         ]}
         defaultTab="teams"

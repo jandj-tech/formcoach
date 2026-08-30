@@ -40,9 +40,20 @@ export default function TopNav() {
     pathname.startsWith('/dashboard') ||
     pathname.startsWith('/team/dashboard') ||
     pathname.startsWith('/org/dashboard')
+
+  // The "Organizations" item is the sales page for visitors — but a signed-in
+  // org or coach should land on their own dashboard, not a pitch for the
+  // product they already have.
+  const orgTab =
+    account?.type === 'org'
+      ? { href: '/org/dashboard', label: 'My Organization' }
+      : account?.type === 'team'
+        ? { href: '/team/dashboard', label: 'My Team' }
+        : { href: '/team', label: 'Organizations' }
+
   const mobileTabs = [
     ...tabs,
-    { href: '/team', label: 'Organizations' },
+    orgTab,
     { href: accountHref, label: accountLabel },
   ]
 
@@ -106,13 +117,13 @@ export default function TopNav() {
               )
             })}
             <Link
-              href="/team"
-              data-active={pathname.startsWith('/team')}
+              href={orgTab.href}
+              data-active={pathname.startsWith(orgTab.href === '/team' ? '/team' : orgTab.href)}
               className={`nav-underline px-3 py-2.5 text-sm font-semibold transition-colors ${
-                pathname.startsWith('/team') ? 'text-chalk' : 'text-chalk-dim hover:text-chalk'
+                pathname.startsWith(orgTab.href === '/team' ? '/team' : orgTab.href) ? 'text-chalk' : 'text-chalk-dim hover:text-chalk'
               }`}
             >
-              Organizations
+              {orgTab.label}
             </Link>
             <Link
               href={accountHref}

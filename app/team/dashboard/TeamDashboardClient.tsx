@@ -13,6 +13,7 @@ import LeaderboardTable from '@/components/LeaderboardTable'
 import PrintButton from '@/components/PrintButton'
 import InlineEdit from '@/components/InlineEdit'
 import PlayerShotList, { type Shot } from '@/components/PlayerShotList'
+import BillingHistory from '@/components/BillingHistory'
 import InfoTip from '@/components/InfoTip'
 import AccountTabs from '@/components/account/AccountTabs'
 import TeamChatPanel from '@/components/TeamChatPanel'
@@ -785,7 +786,7 @@ export default function TeamDashboardClient({
       )}
 
       {/* ── Header ─────────────────────────────────────────────── */}
-      <header className="flex items-start justify-between gap-4">
+      <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <InlineEdit
             value={team.name}
@@ -824,17 +825,13 @@ export default function TeamDashboardClient({
             </div>
           )}
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Link
-            href="/team"
-            className="border border-orange-300 text-orange-600 hover:bg-orange-50 font-bold text-sm px-4 py-2 rounded-xl transition-colors"
-          >
-            🏢 Organization Hub
-          </Link>
+        {/* w-full on phones: the button takes its own row under the team name
+            instead of being crushed beside it and clipped off-screen. */}
+        <div className="flex w-full sm:w-auto items-center gap-2 sm:shrink-0">
           <button
             onClick={logout}
             disabled={loggingOut}
-            className="bg-orange-500 hover:bg-red-500 disabled:opacity-60 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors"
+            className="flex-1 sm:flex-none border border-gray-200 text-gray-600 hover:border-red-300 hover:text-red-600 disabled:opacity-60 font-semibold text-sm px-4 py-2 rounded-xl transition-colors whitespace-nowrap"
           >
             {loggingOut ? 'Logging out...' : 'Log out'}
           </button>
@@ -842,74 +839,70 @@ export default function TeamDashboardClient({
       </header>
 
       {/* ── Key stats — always visible above the tabs ───────────── */}
-      <section className="bg-orange-50 border border-orange-200 rounded-2xl p-5">
-        <div className="flex flex-wrap items-start gap-x-10 gap-y-4">
-          <div>
-            <div className="flex items-center gap-1.5">
-              <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wide">Team code</h2>
-              <InfoTip label="What is the team code for?" align="left">
-                Players enter this code (or use the signup link in the Players
-                tab) to join your team&apos;s roster. Only share it with your
-                own players — anyone with the code can join.
-              </InfoTip>
-            </div>
-            <p className="text-2xl font-black font-mono tracking-widest text-black mt-1">{team.accessCode}</p>
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="bg-white border border-gray-200 rounded-2xl px-4 py-3">
+          <div className="flex items-center gap-1.5">
+            <h2 className="text-xs font-medium text-gray-500">Team code</h2>
+            <InfoTip label="What is the team code for?" align="left">
+              Players enter this code (or use the signup link in the Players
+              tab) to join your team&apos;s roster. Only share it with your
+              own players — anyone with the code can join.
+            </InfoTip>
           </div>
+          <div className="mt-0.5 flex items-center gap-2">
+            <p className="text-xl font-bold font-mono tracking-widest text-gray-900">{team.accessCode}</p>
+            <button
+              onClick={copySignupLink}
+              className="text-xs font-semibold text-orange-600 hover:text-orange-500 transition-colors"
+            >
+              {copiedSignup ? 'Copied!' : 'Copy link'}
+            </button>
+          </div>
+        </div>
 
-          <div>
-            <div className="flex items-center gap-1.5">
-              <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wide">My credits</h2>
-              <InfoTip label="What are my credits?" align="left">
-                Your personal balance — 1 credit = 1 AI shot analysis. Credits
-                you buy or that your organization gives you personally land
-                here. Spend them on your own uploads or hand them to players
-                as tokens.
-              </InfoTip>
-            </div>
-            <p className="text-2xl font-black text-black mt-1">{coachCredits}</p>
+        <div className="bg-orange-50 border border-orange-200 rounded-2xl px-4 py-3">
+          <div className="flex items-center gap-1.5">
+            <h2 className="text-xs font-medium text-gray-600">My credits</h2>
+            <InfoTip label="What are my credits?" align="left">
+              Your personal balance — 1 credit = 1 AI shot analysis. Credits
+              you buy or that your organization gives you personally land
+              here. Spend them on your own uploads or hand them to players
+              as tokens.
+            </InfoTip>
           </div>
+          <p className="text-xl font-bold text-gray-900 tabular-nums mt-0.5">{coachCredits}</p>
+          <p className="text-xs text-gray-500 mt-1">
+            {team.initiated
+              ? `$${creditRate} each · discounted rate active`
+              : `$${creditRate} each · ${members.length}/8 players to unlock $1.49`}
+          </p>
+        </div>
 
-          <div>
-            <div className="flex items-center gap-1.5">
-              <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wide">Team credits</h2>
-              <InfoTip label="What are team credits?" align="left">
-                A shared balance that belongs to the team — usually funded by
-                your organization. Spend them on this team&apos;s players (or
-                your own uploads once your personal credits run out).
-              </InfoTip>
-            </div>
-            <p className="text-2xl font-black text-black mt-1">{team.credits}</p>
+        <div className="bg-white border border-gray-200 rounded-2xl px-4 py-3">
+          <div className="flex items-center gap-1.5">
+            <h2 className="text-xs font-medium text-gray-500">Team credits</h2>
+            <InfoTip label="What are team credits?" align="left">
+              A shared balance that belongs to the team — usually funded by
+              your organization. Spend them on this team&apos;s players (or
+              your own uploads once your personal credits run out).
+            </InfoTip>
           </div>
+          <p className="text-xl font-bold text-gray-900 tabular-nums mt-0.5">{team.credits}</p>
+          <p className="text-xs text-gray-400 mt-1">shared with the org</p>
+        </div>
 
-          <div>
-            <div className="flex items-center gap-1.5">
-              <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wide">Token pool</h2>
-              <InfoTip label="What is the token pool?">
-                Analysis tokens the team owns but hasn&apos;t handed out yet
-                (like the free tokens from activation). Assign them to players
-                in the Tokens &amp; Credits tab — players then spend their own
-                tokens when they upload a shot.
-              </InfoTip>
-            </div>
-            <p className="text-2xl font-black text-black mt-1">{team.tokenPool}</p>
+        <div className="bg-white border border-gray-200 rounded-2xl px-4 py-3">
+          <div className="flex items-center gap-1.5">
+            <h2 className="text-xs font-medium text-gray-500">Token pool</h2>
+            <InfoTip label="What is the token pool?" align="right">
+              Analysis tokens the team owns but hasn&apos;t handed out yet
+              (like the free tokens from activation). Assign them to players
+              in the Tokens &amp; Credits tab — players then spend their own
+              tokens when they upload a shot.
+            </InfoTip>
           </div>
-
-          <div>
-            <div className="flex items-center gap-1.5">
-              <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wide">Credit price</h2>
-              <InfoTip label="What does initiation mean?" align="right">
-                Credits start at $3.49. Once your team is initiated — 8 players
-                have joined, or a class package was purchased for it — the
-                price drops to $1.49 per credit.
-              </InfoTip>
-            </div>
-            <p className="text-2xl font-black text-black mt-1">${creditRate}</p>
-            {team.initiated ? (
-              <p className="text-[11px] text-green-600 font-semibold leading-tight">discounted rate active</p>
-            ) : (
-              <p className="text-[11px] text-gray-500 leading-tight">{members.length}/8 players to unlock $1.49</p>
-            )}
-          </div>
+          <p className="text-xl font-bold text-gray-900 tabular-nums mt-0.5">{team.tokenPool}</p>
+          <p className="text-xs text-gray-400 mt-1">unassigned tokens</p>
         </div>
       </section>
 
@@ -931,6 +924,22 @@ export default function TeamDashboardClient({
           { id: 'uploads', label: 'Uploads', content: uploadsTab },
           { id: 'leaderboard', label: 'Leaderboard', count: leaderboard.length, content: leaderboardTab },
           { id: 'credits', label: 'Tokens & Credits', content: creditsTab },
+          {
+            id: 'billing',
+            label: 'Billing',
+            content: (
+              <div className="space-y-4">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Billing</h2>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Your purchases — credits for yourself and this team.
+                    Receipts are emailed at checkout.
+                  </p>
+                </div>
+                <BillingHistory endpoint="/api/team/billing" />
+              </div>
+            ),
+          },
         ]}
       />
 

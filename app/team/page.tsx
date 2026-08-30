@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { redirect } from 'next/navigation'
 import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
 import Link from 'next/link'
@@ -92,22 +93,15 @@ export default async function TeamLandingPage() {
   const teamSession = myTeams.length === 0 ? await getTeamSession() : null
   const orgSession = myTeams.length === 0 && !teamSession ? await getOrgSession() : null
 
+  // A signed-in organization or coach has no business on the sales pitch —
+  // this page used to show them marketing with a "you're signed in" banner,
+  // which read as a broken "Organization Hub". Send them straight home.
+  if (orgSession) redirect('/org/dashboard')
+  if (teamSession) redirect('/team/dashboard')
+
   return (
     <main className="min-h-screen bg-ink-950 text-chalk flex flex-col">
       <TopNav />
-
-      {/* Coach / org: jump straight to the admin dashboard */}
-      {(teamSession || orgSession) && (
-        <div className="bg-ink-900 border-b border-courtline px-6 py-4 flex items-center justify-center gap-4 flex-wrap">
-          <p className="text-chalk-dim text-sm">You&apos;re signed in as a {orgSession ? 'organization' : 'coach'} —</p>
-          <Link
-            href={orgSession ? '/org/dashboard' : '/team/dashboard'}
-            className="bg-ember-500 hover:bg-ember-400 text-ink-950 font-bold px-5 py-2 rounded-full text-sm transition-colors"
-          >
-            Open your dashboard →
-          </Link>
-        </div>
-      )}
 
       {/* Player: the team hub — big team name, schedule with one-tap RSVP,
           roster, leaderboard link, and chat behind a dropdown that expands

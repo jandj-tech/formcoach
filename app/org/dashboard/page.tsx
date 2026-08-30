@@ -4,12 +4,10 @@ import { db } from '@/lib/db'
 import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
 import InlineEdit from '@/components/InlineEdit'
-import InfoTip from '@/components/InfoTip'
 import OrgDashboardClient from './OrgDashboardClient'
 import LogoutButton from './LogoutButton'
 import type { ClassPackage } from './OrgDashboardClient'
 import type { LeaderboardRow } from '@/components/LeaderboardTable'
-import Link from 'next/link'
 
 interface Member {
   id: string
@@ -232,45 +230,35 @@ export default async function OrgDashboardPage() {
   return (
     <main className="min-h-screen bg-white flex flex-col">
       <TopNav />
-      <div className="max-w-3xl mx-auto w-full px-6 py-10 space-y-8">
-        <div className="flex items-start justify-between gap-4">
-          <div>
+      <div className="max-w-3xl mx-auto w-full px-6 py-10 space-y-6">
+        {/* Wraps on phones: the action buttons drop to their own row instead of
+            being crushed against the title and clipped off-screen. */}
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
             <InlineEdit
               value={org.name}
               endpoint="/api/org/rename"
               bodyKey="name"
               placeholder="Organization name"
-              textClassName="text-2xl font-black text-black"
+              textClassName="text-2xl font-bold text-gray-900"
             />
-            <p className="text-gray-500 text-sm mt-1">Organization Dashboard</p>
+            <p className="text-gray-500 text-sm mt-1">
+              Organization · Signed in as <span className="font-medium text-gray-700">{session.adminEmail}</span>
+            </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Link
-              href="/team"
-              className="border border-orange-300 text-orange-600 hover:bg-orange-50 font-bold text-sm px-4 py-2 rounded-xl transition-colors"
-            >
-              🏢 Organization Hub
-            </Link>
+          <div className="flex w-full sm:w-auto items-center gap-2">
             <LogoutButton />
           </div>
         </div>
 
-        <div className="bg-orange-50 border border-orange-200 rounded-2xl p-6">
-          <p className="text-sm text-gray-500 flex items-center gap-2">
-            Organization code
-            <InfoTip label="What is the organization code for?" align="left">
-              Share this code with your coaches. When a coach registers a team
-              with it, the team is linked to your organization so you can
-              assign tokens and see its leaderboard here.
-            </InfoTip>
-          </p>
-          <p className="text-2xl font-black text-black font-mono tracking-wider">{org.access_code}</p>
-          <p className="text-xs text-gray-400 mt-1">
-            Coaches enter this code when registering a team to link it to your organization.
-          </p>
-        </div>
-
-        <OrgDashboardClient teams={teams} orgName={org.name} classPackages={classPackages} myUploads={myUploads} orgTokenBalance={orgTokenBalance} />
+        <OrgDashboardClient
+          teams={teams}
+          orgName={org.name}
+          orgCode={org.access_code}
+          classPackages={classPackages}
+          myUploads={myUploads}
+          orgTokenBalance={orgTokenBalance}
+        />
       </div>
       <SiteFooter />
     </main>

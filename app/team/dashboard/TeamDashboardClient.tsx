@@ -14,6 +14,7 @@ import PrintButton from '@/components/PrintButton'
 import InlineEdit from '@/components/InlineEdit'
 import PlayerShotList, { type Shot } from '@/components/PlayerShotList'
 import BillingHistory from '@/components/BillingHistory'
+import ClassManager, { type ClassManagerPackage } from '@/components/ClassManager'
 import InfoTip from '@/components/InfoTip'
 import AccountTabs from '@/components/account/AccountTabs'
 import TeamChatPanel from '@/components/TeamChatPanel'
@@ -87,6 +88,8 @@ interface Props {
   fromOrg: boolean
   myUploads: Shot[]
   coachCredits: number
+  /** The 10-week program this team runs, when it was created by one. */
+  classPackages: ClassManagerPackage[]
 }
 
 export default function TeamDashboardClient({
@@ -105,6 +108,7 @@ export default function TeamDashboardClient({
   fromOrg,
   myUploads,
   coachCredits,
+  classPackages,
 }: Props) {
   const router = useRouter()
   const { clear: clearCart } = useCart()
@@ -116,11 +120,6 @@ export default function TeamDashboardClient({
   const [showLeaderboard, setShowLeaderboard] = useState(false)
   const [kicking, setKicking] = useState<string | null>(null)
   const [cancelling, setCancelling] = useState<string | null>(null)
-
-  // Bulk grant state: one-click 'give N to every joined player'.
-  const [bulkGrantEach, setBulkGrantEach] = useState(2)
-  const [bulkGranting, setBulkGranting] = useState(false)
-  const [bulkGrantMsg, setBulkGrantMsg] = useState('')
 
   // Add player form
   const [addOpen, setAddOpen] = useState(false)
@@ -152,39 +151,6 @@ export default function TeamDashboardClient({
       if (url) window.location.href = url
     } catch {
       setBuying(false)
-    }
-  }
-
-  async function grantToAll() {
-    if (members.length === 0) {
-      setBulkGrantMsg('No players on this team yet.')
-      return
-    }
-    const total = members.length * bulkGrantEach
-    if (total > team.credits) {
-      setBulkGrantMsg(`Need ${total} credits, team has ${team.credits}.`)
-      return
-    }
-    setBulkGranting(true)
-    setBulkGrantMsg('')
-    try {
-      const res = await fetch('/api/team/grant-all-tokens', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tokensEach: bulkGrantEach }),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        setBulkGrantMsg(data.error || 'Could not grant tokens')
-        setBulkGranting(false)
-        return
-      }
-      setBulkGrantMsg(`Gave ${bulkGrantEach} to ${members.length} player${members.length !== 1 ? 's' : ''}.`)
-      setBulkGranting(false)
-      router.refresh()
-    } catch {
-      setBulkGrantMsg('Something went wrong.')
-      setBulkGranting(false)
     }
   }
 
@@ -527,6 +493,26 @@ export default function TeamDashboardClient({
   )
 
   /* ── Leaderboard tab ──────────────────────────────────────────── */
+  const classTab = (
+    <div className="space-y-5">
+      <div>
+        <h2 className="text-xl font-bold text-gray-900">Class Manager</h2>
+        <p className="text-sm text-gray-500 mt-1">
+          Your 10-Week Shooting Development Program — the week-by-week coach guide, roster
+          progress, standings, and completion certificates.
+        </p>
+      </div>
+      <ClassManager
+        packages={classPackages.map(pkg => ({
+          ...pkg,
+          teamName: team.name,
+          teamCredits: team.credits,
+        }))}
+        canManage
+      />
+    </div>
+  )
+
   const leaderboardTab = (
     <div className="space-y-4">
       <Section
@@ -590,51 +576,28 @@ export default function TeamDashboardClient({
   /* ── Tokens & Credits tab ─────────────────────────────────────── */
   const creditsTab = (
     <div className="space-y-4">
-      {/* Quick grant — class-style "give every joined player N credits" in
-          one click, paid out of the team's credit pool. Shown when there's
-          at least one player. */}
-      {members.length > 0 && (
-        <div className="bg-orange-50 border border-orange-200 rounded-2xl p-5 space-y-3">
-          <div className="flex items-start justify-between gap-4 flex-wrap">
-            <div>
-              <p className="font-black text-black">Quick grant credits to all players</p>
-              <p className="text-xs text-gray-600 mt-0.5">
-                Spend <span className="font-bold text-orange-600">{bulkGrantEach * members.length}</span> from this team&apos;s {team.credits} credits to give every player {bulkGrantEach} token{bulkGrantEach !== 1 ? 's' : ''}.
-              </p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Each</label>
-              {[1, 2, 5].map(n => (
-                <button
-                  key={n}
-                  onClick={() => setBulkGrantEach(n)}
-                  className={`w-10 h-10 rounded-lg text-sm font-bold transition-colors ${
-                    bulkGrantEach === n
-                      ? 'bg-orange-500 text-white border border-orange-500'
-                      : 'bg-white text-black border border-orange-200 hover:border-orange-400'
-                  }`}
-                >
-                  {n}
-                </button>
-              ))}
-              <button
-                onClick={grantToAll}
-                disabled={bulkGranting || team.credits < bulkGrantEach * members.length}
-                className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-black text-sm px-4 py-2.5 rounded-xl transition-colors"
-              >
-                {bulkGranting
-                  ? 'Granting…'
-                  : `Give ${bulkGrantEach} to all ${members.length}`}
-              </button>
-            </div>
-          </div>
-          {bulkGrantMsg && (
-            <p className={`text-sm font-medium ${bulkGrantMsg.startsWith('Gave') ? 'text-green-700' : 'text-red-600'}`}>
-              {bulkGrantMsg}
-            </p>
-          )}
+      {/* Giving is the everyday action, so it leads the tab. "Entire team"
+          mode replaces the old separate quick-grant banner. */}
+      <Section
+        title="Give credits to players"
+        tipLabel="How does giving credits work?"
+        tip="Pick the balance to pay from (My credits is your personal balance, Team credits is the shared balance your organization funds, and the Token pool holds the team's unassigned tokens), then give to the whole team at once or to specific players. Each token is one shot analysis the player can run themselves."
+        summary={`${coachCredits} personal · ${team.credits} team · ${team.tokenPool} pool`}
+        defaultOpen
+      >
+        <div className="pt-2">
+          <CoachAssignPanel
+            personalCredits={coachCredits}
+            teamCredits={team.credits}
+            tokenPool={team.tokenPool}
+            players={members.map(m => ({
+              id: m.id,
+              label: m.first_name ? formatPlayerName(m.first_name, m.last_name_initial) : m.email,
+              tokens: m.tokens,
+            }))}
+          />
         </div>
-      )}
+      </Section>
 
       {/* Buy Credits — hidden in the iOS app: digital purchases there must
           use native in-app purchase. */}
@@ -709,26 +672,6 @@ export default function TeamDashboardClient({
           </div>
         </Section>
       )}
-
-      <Section
-        title="Give tokens to players"
-        tipLabel="Which balance pays?"
-        tip="Pick the balance to pay from: My credits is your personal balance, Team credits is the shared balance your organization funds, and the Token pool holds the team's unassigned tokens (like the free activation tokens). Each token is one shot analysis the player can run themselves."
-        summary={`${coachCredits} personal · ${team.credits} team · ${team.tokenPool} pool`}
-      >
-        <div className="pt-2">
-          <CoachAssignPanel
-            personalCredits={coachCredits}
-            teamCredits={team.credits}
-            tokenPool={team.tokenPool}
-            players={members.map(m => ({
-              id: m.id,
-              label: m.first_name ? formatPlayerName(m.first_name, m.last_name_initial) : m.email,
-              tokens: m.tokens,
-            }))}
-          />
-        </div>
-      </Section>
 
       <Section
         title="Balances"
@@ -907,8 +850,9 @@ export default function TeamDashboardClient({
       </section>
 
       {/* Signpost to the flagship class program — bought at organization
-          level, so this links to the program page rather than a buy form. */}
-      {!inApp && (
+          level, so this links to the program page rather than a buy form.
+          Teams already running one get the Class Manager tab instead. */}
+      {!inApp && classPackages.length === 0 && (
         <Link
           href="/team#class-program"
           className="flex items-center justify-between gap-4 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 rounded-2xl px-5 py-4 text-white transition-colors"
@@ -930,6 +874,10 @@ export default function TeamDashboardClient({
       <AccountTabs
         tabs={[
           { id: 'players', label: 'Players', count: rosterCount, content: playersTab },
+          // A team created by a class purchase runs the program from here.
+          ...(classPackages.length > 0
+            ? [{ id: 'class', label: 'Class Manager', content: classTab }]
+            : []),
           {
             id: 'schedule',
             label: 'Schedule',

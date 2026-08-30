@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { SearchIcon, UsersIcon, UserCheckIcon } from 'lucide-react'
 
 export interface AssignPlayerOpt {
   id: string
@@ -10,11 +11,17 @@ export interface AssignPlayerOpt {
 }
 
 type Source = 'personal' | 'team' | 'pool'
+type Mode = 'team' | 'players'
 
-// One place for a coach to hand out tokens: pick which balance pays
-// (personal credits, team credits, or the team token pool), pick players,
-// pick an amount. Personal and team credits go through assign-credits;
-// the pool has its own endpoint.
+const SOURCES: Array<{ id: Source; label: string; hint: string }> = [
+  { id: 'personal', label: 'My credits', hint: 'Your own balance' },
+  { id: 'team', label: 'Team credits', hint: 'Shared with the org' },
+  { id: 'pool', label: 'Token pool', hint: 'Unassigned team tokens' },
+]
+
+// One place for a coach to hand out tokens: pick which balance pays, pick
+// the whole team or specific players, pick an amount. Personal and team
+// credits go through assign-credits; the pool has its own endpoint.
 export default function CoachAssignPanel({
   personalCredits,
   teamCredits,
@@ -28,9 +35,11 @@ export default function CoachAssignPanel({
 }) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
-  const [msg, setMsg] = useState('')
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [mode, setMode] = useState<Mode>('team')
   const [sel, setSel] = useState<Record<string, boolean>>({})
   const [each, setEach] = useState(1)
+  const [search, setSearch] = useState('')
   // Default to the first balance that actually has something in it.
   const [source, setSource] = useState<Source>(() =>
     personalCredits > 0 ? 'personal' : teamCredits > 0 ? 'team' : tokenPool > 0 ? 'pool' : 'personal',
@@ -47,8 +56,16 @@ export default function CoachAssignPanel({
     pool: 'the token pool',
   }
 
-  const selectedIds = players.filter((p) => sel[p.id]).map((p) => p.id)
-  const needed = selectedIds.length * Math.max(1, each)
+  const filteredPlayers = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return q ? players.filter(p => p.label.toLowerCase().includes(q)) : players
+  }, [players, search])
+
+  const selectedIds = mode === 'team'
+    ? players.map(p => p.id)
+    : players.filter(p => sel[p.id]).map(p => p.id)
+  const amount = Math.max(1, each)
+  const needed = selectedIds.length * amount
   const available = balances[source]
   const tooLow = selectedIds.length > 0 && needed > available
   // Another balance that could cover the same handout, for the shortfall hint.
@@ -56,23 +73,27 @@ export default function CoachAssignPanel({
     (s) => s !== source && balances[s] >= needed,
   )
 
-  function toggleAll() {
-    if (selectedIds.length === players.length) setSel({})
-    else setSel(Object.fromEntries(players.map((p) => [p.id, true])))
+  function toggleAllVisible() {
+    const ids = filteredPlayers.map(p => p.id)
+    const allOn = ids.length > 0 && ids.every(id => sel[id])
+    setSel(prev => {
+      const next = { ...prev }
+      for (const id of ids) next[id] = !allOn
+      return next
+    })
   }
 
-  async function assign() {
+  async function give() {
     if (selectedIds.length === 0) {
-      setMsg('Select at least one player')
+      setMsg({ ok: false, text: 'Select at least one player.' })
       return
     }
-    const amt = Math.max(1, each)
     if (tooLow) {
-      setMsg(`Not enough in ${sourceLabels[source]} — need ${needed}, have ${available}.`)
+      setMsg({ ok: false, text: `Not enough in ${sourceLabels[source]} — this needs ${needed}, you have ${available}.` })
       return
     }
     setBusy(true)
-    setMsg('')
+    setMsg(null)
     try {
       const res = await fetch(
         source === 'pool' ? '/api/team/assign-tokens' : '/api/team/assign-credits',
@@ -81,144 +102,218 @@ export default function CoachAssignPanel({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             playerUserIds: selectedIds,
-            tokensEach: amt,
+            tokensEach: amount,
             ...(source === 'pool' ? {} : { source }),
           }),
         },
       )
       const data = await res.json()
       if (!res.ok) {
-        setMsg(data.error || 'Could not give tokens')
+        setMsg({ ok: false, text: data.error || 'Could not give tokens' })
         setBusy(false)
         return
       }
-      setMsg(
-        `Gave ${amt} token${amt !== 1 ? 's' : ''} to ${selectedIds.length} player${selectedIds.length !== 1 ? 's' : ''} from ${sourceLabels[source]}.`,
-      )
+      setMsg({
+        ok: true,
+        text: mode === 'team'
+          ? `Gave ${amount} token${amount !== 1 ? 's' : ''} to all ${selectedIds.length} players from ${sourceLabels[source]}.`
+          : `Gave ${amount} token${amount !== 1 ? 's' : ''} to ${selectedIds.length} player${selectedIds.length !== 1 ? 's' : ''} from ${sourceLabels[source]}.`,
+      })
       setSel({})
       router.refresh()
     } catch {
-      setMsg('Something went wrong. Please try again.')
+      setMsg({ ok: false, text: 'Something went wrong. Please try again.' })
     }
     setBusy(false)
   }
 
+  if (players.length === 0) {
+    return <p className="text-sm text-gray-400">No players on your team yet — invite them from the Players tab first.</p>
+  }
+
   return (
-    <div className="space-y-3">
-      <div className="space-y-1">
-        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Pay from</label>
+    <div className="space-y-4">
+      {/* Step 1 — which balance pays */}
+      <div className="space-y-1.5">
+        <p className="text-xs font-medium text-gray-500">Pay from</p>
         <div className="grid grid-cols-3 gap-2">
-          {(
-            [
-              ['personal', 'My credits', 'Your own balance'],
-              ['team', 'Team credits', 'Shared with the org'],
-              ['pool', 'Token pool', 'Unassigned team tokens'],
-            ] as Array<[Source, string, string]>
-          ).map(([key, label, hint]) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setSource(key)}
-              disabled={balances[key] === 0}
-              className={`text-left border rounded-xl px-3 py-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                source === key
-                  ? 'border-orange-500 bg-orange-50'
-                  : 'border-gray-200 bg-white hover:border-orange-300'
-              }`}
-            >
-              <p className="text-xs text-gray-500 truncate">{label}</p>
-              <p className="text-lg font-black text-black">{balances[key]}</p>
-              <p className="text-[10px] text-gray-400 leading-tight">{balances[key] === 0 ? 'Empty' : hint}</p>
-            </button>
-          ))}
+          {SOURCES.map(s => {
+            const active = source === s.id
+            return (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => { setSource(s.id); setMsg(null) }}
+                disabled={balances[s.id] === 0}
+                className={`text-left border rounded-xl px-3 py-2.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                  active
+                    ? 'border-orange-500 bg-orange-50'
+                    : 'border-gray-200 bg-white hover:border-gray-300'
+                }`}
+              >
+                <p className={`text-xs truncate ${active ? 'text-orange-700 font-semibold' : 'text-gray-500'}`}>{s.label}</p>
+                <p className="text-lg font-bold text-gray-900 tabular-nums">{balances[s.id]}</p>
+                <p className="text-[11px] text-gray-400 leading-tight truncate">{balances[s.id] === 0 ? 'Empty' : s.hint}</p>
+              </button>
+            )
+          })}
         </div>
       </div>
 
-      {players.length === 0 ? (
-        <p className="text-xs text-gray-400">No players on your team yet.</p>
-      ) : (
-        <>
-          <div className="space-y-1">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Select players</label>
-              <button
-                type="button"
-                onClick={toggleAll}
-                className="text-xs font-semibold text-orange-500 hover:text-orange-400"
-              >
-                {selectedIds.length === players.length ? 'Deselect all' : 'Select all'}
-              </button>
-            </div>
-            <div className="max-h-48 overflow-auto border border-gray-200 rounded-xl divide-y divide-gray-100 bg-white">
-              {players.map((p) => (
-                <label
-                  key={p.id}
-                  className="flex items-center gap-2 px-3 py-1.5 cursor-pointer hover:bg-orange-50"
-                >
-                  <input
-                    type="checkbox"
-                    checked={!!sel[p.id]}
-                    onChange={() => setSel((s) => ({ ...s, [p.id]: !s[p.id] }))}
-                    className="w-4 h-4 accent-orange-500"
-                  />
-                  <span className="flex-1 text-sm text-black truncate">{p.label}</span>
-                  <span className="text-xs text-gray-400 shrink-0">{p.tokens} token{p.tokens !== 1 ? 's' : ''}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm text-gray-600">Tokens each</span>
-            <input
-              type="number"
-              min={1}
-              value={each || ''}
-              onChange={(e) => {
-                const n = parseInt(e.target.value)
-                setEach(Number.isNaN(n) ? 0 : Math.min(1000, Math.max(0, n)))
-              }}
-              onBlur={() => { if (each < 1) setEach(1) }}
-              className="w-16 border border-gray-300 rounded-lg px-2 py-1.5 text-center text-black text-sm focus:outline-none focus:border-orange-500"
-            />
-            {selectedIds.length > 0 && (
-              <span className="text-xs text-gray-500">
-                = {needed} total from {sourceLabels[source]}
-              </span>
-            )}
-          </div>
-
-          {tooLow && (
-            <p className="text-sm font-semibold text-red-500">
-              Not enough in {sourceLabels[source]} — need {needed}, have {available}.
-              {alternative && (
-                <>
-                  {' '}
-                  <button onClick={() => setSource(alternative)} className="underline font-bold">
-                    Use {sourceLabels[alternative]} instead?
-                  </button>
-                </>
-              )}
-            </p>
-          )}
-
-          {msg && (
-            <p className={`text-sm font-semibold ${msg.startsWith('Gave') ? 'text-green-600' : 'text-orange-600'}`}>
-              {msg}
-            </p>
-          )}
-
+      {/* Step 2 — who receives */}
+      <div className="space-y-1.5">
+        <p className="text-xs font-medium text-gray-500">Give to</p>
+        <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Give to">
           <button
             type="button"
-            onClick={assign}
-            disabled={busy || selectedIds.length === 0 || tooLow}
-            className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+            role="radio"
+            aria-checked={mode === 'team'}
+            onClick={() => { setMode('team'); setMsg(null) }}
+            className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-colors ${
+              mode === 'team'
+                ? 'border-orange-500 bg-orange-50 text-orange-700'
+                : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+            }`}
           >
-            {busy
-              ? 'Giving…'
-              : `Give ${needed || 0} token${needed !== 1 ? 's' : ''} to ${selectedIds.length} player${selectedIds.length !== 1 ? 's' : ''}`}
+            <UsersIcon className="w-4 h-4" aria-hidden />
+            Entire team ({players.length})
           </button>
-        </>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={mode === 'players'}
+            onClick={() => { setMode('players'); setMsg(null) }}
+            className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-colors ${
+              mode === 'players'
+                ? 'border-orange-500 bg-orange-50 text-orange-700'
+                : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+            }`}
+          >
+            <UserCheckIcon className="w-4 h-4" aria-hidden />
+            Specific players
+          </button>
+        </div>
+        {mode === 'team' && (
+          <p className="text-xs text-gray-500">Every player on the roster gets the amount below.</p>
+        )}
+      </div>
+
+      {/* Player picker — only for specific players */}
+      {mode === 'players' && (
+        <div className="border border-gray-200 rounded-xl overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b border-gray-200">
+            <span className="text-xs font-medium text-gray-500">
+              {selectedIds.length} of {players.length} selected
+            </span>
+            <button
+              type="button"
+              onClick={toggleAllVisible}
+              className="text-xs font-semibold text-orange-600 hover:text-orange-500"
+            >
+              {filteredPlayers.length > 0 && filteredPlayers.every(p => sel[p.id]) ? 'Deselect all' : 'Select all'}
+            </button>
+          </div>
+          {players.length > 6 && (
+            <div className="relative border-b border-gray-100">
+              <SearchIcon className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" aria-hidden />
+              <input
+                type="search"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search players…"
+                className="w-full pl-9 pr-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
+              />
+            </div>
+          )}
+          <div className="max-h-56 overflow-y-auto divide-y divide-gray-100">
+            {filteredPlayers.length === 0 && (
+              <p className="text-sm text-gray-400 px-4 py-3">No players match &ldquo;{search}&rdquo;.</p>
+            )}
+            {filteredPlayers.map(p => (
+              <label key={p.id} className="flex items-center gap-3 px-4 py-2 cursor-pointer hover:bg-gray-50">
+                <input
+                  type="checkbox"
+                  checked={!!sel[p.id]}
+                  onChange={() => setSel(s => ({ ...s, [p.id]: !s[p.id] }))}
+                  className="w-4 h-4 accent-orange-500 shrink-0"
+                />
+                <span className="flex-1 text-sm text-gray-900 truncate">{p.label}</span>
+                <span className="text-xs text-gray-400 shrink-0 tabular-nums">{p.tokens} token{p.tokens !== 1 ? 's' : ''}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Step 3 — amount + summary + go */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-1.5">
+          <span className="text-sm text-gray-600 mr-1">Tokens each</span>
+          {[1, 2, 5].map(n => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => setEach(n)}
+              className={`w-9 h-9 rounded-lg text-sm font-semibold border transition-colors ${
+                each === n
+                  ? 'bg-orange-500 text-white border-orange-500'
+                  : 'bg-white text-gray-900 border-gray-200 hover:border-orange-400'
+              }`}
+            >
+              {n}
+            </button>
+          ))}
+          <input
+            type="number"
+            min={1}
+            value={each || ''}
+            onChange={(e) => {
+              const n = parseInt(e.target.value)
+              setEach(Number.isNaN(n) ? 0 : Math.min(1000, Math.max(0, n)))
+            }}
+            onBlur={() => { if (each < 1) setEach(1) }}
+            aria-label="Tokens per player"
+            className="w-16 h-9 border border-gray-200 rounded-lg px-2 text-center text-gray-900 text-sm focus:outline-none focus:border-orange-500"
+          />
+        </div>
+        <span className="text-sm text-gray-500 flex-1 min-w-0">
+          {selectedIds.length > 0 && (
+            <>
+              {selectedIds.length} player{selectedIds.length !== 1 ? 's' : ''} ×{' '}
+              {amount} = <span className={`font-semibold tabular-nums ${tooLow ? 'text-red-600' : 'text-gray-900'}`}>{needed}</span> of {available}
+            </>
+          )}
+        </span>
+        <button
+          type="button"
+          onClick={give}
+          disabled={busy || selectedIds.length === 0 || tooLow}
+          className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors"
+        >
+          {busy
+            ? 'Giving…'
+            : mode === 'team'
+              ? `Give ${amount} to everyone`
+              : `Give ${needed || 0} token${needed !== 1 ? 's' : ''}`}
+        </button>
+      </div>
+
+      {tooLow && (
+        <p className="text-sm font-medium text-red-600">
+          Not enough in {sourceLabels[source]} — this needs {needed}, you have {available}.
+          {alternative && (
+            <>
+              {' '}
+              <button onClick={() => setSource(alternative)} className="underline font-semibold">
+                Use {sourceLabels[alternative]} instead?
+              </button>
+            </>
+          )}
+        </p>
+      )}
+
+      {msg && (
+        <p className={`text-sm font-medium ${msg.ok ? 'text-green-700' : 'text-red-600'}`}>{msg.text}</p>
       )}
     </div>
   )

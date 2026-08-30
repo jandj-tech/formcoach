@@ -19,6 +19,7 @@ import EmailTeamPanel from '@/components/EmailTeamPanel'
 import PlayerShotList, { type Shot } from '@/components/PlayerShotList'
 import PrintButton from '@/components/PrintButton'
 import BillingHistory from '@/components/BillingHistory'
+import ClassManager from '@/components/ClassManager'
 import { CLASS_MIN_PLAYERS, CLASS_BULK_THRESHOLD, classPriceCents } from '@/lib/org-class-pricing'
 import { copyToClipboard } from '@/lib/copy'
 import {
@@ -27,7 +28,6 @@ import {
   MailIcon,
   MessageCircleIcon,
   PackageIcon,
-  PrinterIcon,
   SendIcon,
   TargetIcon,
 } from 'lucide-react'
@@ -147,18 +147,8 @@ export default function OrgDashboardClient({ teams, orgName, orgCode, classPacka
   const [classProgramOpen, setClassProgramOpen] = useState(false)
   const [buyingClass, setBuyingClass] = useState(false)
   const [classError, setClassError] = useState('')
-  const [enrollOpen, setEnrollOpen] = useState<string | null>(null)
-  const [enrollFirstName, setEnrollFirstName] = useState('')
-  const [enrollLastInit, setEnrollLastInit] = useState('')
-  const [enrollUserId, setEnrollUserId] = useState('')
-  const [enrolling, setEnrolling] = useState(false)
-  const [enrollError, setEnrollError] = useState('')
-  const [enrollSuccess, setEnrollSuccess] = useState(false)
-  const [showLeaderboard, setShowLeaderboard] = useState<string | null>(null)
-  const [leaderboard, setLeaderboard] = useState<ClassEnrollment[]>([])
-  const [leaderboardLoading, setLeaderboardLoading] = useState(false)
-
-  const [resettingEnrollment, setResettingEnrollment] = useState<string | null>(null)
+  // Roster enrollment, class standings and progress resets all moved into
+  // <ClassManager> (Class Manager tab), which owns that state now.
 
   // Per-team "assign team credits to players" form state.
   const [teamAssignOpen, setTeamAssignOpen] = useState<Record<string, boolean>>({})
@@ -307,28 +297,6 @@ export default function OrgDashboardClient({ teams, orgName, orgCode, classPacka
       setAddError('Something went wrong. Please try again.')
       setAddStatus('error')
     }
-  }
-
-  async function resetEnrollment(enrollmentId: string, playerName: string) {
-    if (!confirm(`Clear all class progress for ${playerName}? Their next upload will count as their FIRST again.`)) return
-    setResettingEnrollment(enrollmentId)
-    try {
-      const res = await fetch('/api/org/reset-enrollment', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enrollmentId }),
-      })
-      if (!res.ok) {
-        const data = await res.json()
-        alert(data.error || 'Could not reset enrollment.')
-        setResettingEnrollment(null)
-        return
-      }
-      router.refresh()
-    } catch {
-      alert('Something went wrong.')
-    }
-    setResettingEnrollment(null)
   }
 
   async function assignTeamCreditsToPlayers(teamId: string, teamCredits: number) {
@@ -522,57 +490,6 @@ export default function OrgDashboardClient({ teams, orgName, orgCode, classPacka
     } catch {
       setClassError('Something went wrong. Please try again.')
       setBuyingClass(false)
-    }
-  }
-
-  async function handleEnroll(packageId: string) {
-    if (!enrollFirstName.trim()) { setEnrollError('First name required'); return }
-    setEnrolling(true)
-    setEnrollError('')
-    try {
-      const res = await fetch('/api/org/class/enroll', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          packageId,
-          userId: enrollUserId.trim() || undefined,
-          firstName: enrollFirstName.trim(),
-          lastNameInitial: enrollLastInit.trim() || undefined,
-        }),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        setEnrollError(data.error || 'Enrollment failed')
-        setEnrolling(false)
-        return
-      }
-      setEnrollSuccess(true)
-      setEnrollFirstName('')
-      setEnrollLastInit('')
-      setEnrollUserId('')
-      setTimeout(() => { setEnrollSuccess(false); setEnrollOpen(null); router.refresh() }, 2000)
-    } catch {
-      setEnrollError('Something went wrong.')
-    }
-    setEnrolling(false)
-  }
-
-  async function loadLeaderboard(packageId: string) {
-    setLeaderboardLoading(true)
-    try {
-      const res = await fetch(`/api/org/class/leaderboard?packageId=${packageId}`)
-      const data = await res.json()
-      setLeaderboard(data.leaderboard || [])
-    } catch { setLeaderboard([]) }
-    setLeaderboardLoading(false)
-  }
-
-  function toggleLeaderboard(packageId: string) {
-    if (showLeaderboard === packageId) {
-      setShowLeaderboard(null)
-    } else {
-      setShowLeaderboard(packageId)
-      loadLeaderboard(packageId)
     }
   }
 
@@ -972,220 +889,28 @@ export default function OrgDashboardClient({ teams, orgName, orgCode, classPacka
                     )
                   })()}
 
-                  {/* Class-package details — only when this team is the auto-created
-                      team for a class purchase. Surfaces join code, stats, the
-                      10-week PDF, enroll form, and per-player Certificate links
-                      inline so the org doesn't have to jump between cards. */}
+                  {/* This team runs a class package. The full manager (roster,
+                      progress, certificates, coach guide) lives in the Class
+                      Manager tab — this is the signpost, not a second copy. */}
                   {(() => {
                     const pkg = team.classPackageId
                       ? classPackages.find(p => p.id === team.classPackageId)
                       : null
                     if (!pkg) return null
-                    const isEnrollOpen = enrollOpen === pkg.id
-                    const isLbOpen = showLeaderboard === pkg.id
-                    const remainingSlots = pkg.player_count - pkg.enrolled_count
+                    const done = pkg.enrollments.filter(en => en.has_final).length
                     return (
-                      <div className="space-y-4 border border-orange-100 rounded-2xl p-4 bg-orange-50/30">
-                        {/* Stats */}
-                        <div className="grid grid-cols-4 gap-2">
-                          {[
-                            { label: 'Players', value: pkg.player_count },
-                            { label: 'Enrolled', value: pkg.enrolled_count },
-                            { label: 'Completed', value: pkg.completed_count },
-                            { label: 'Credits left', value: team.credits },
-                          ].map(s => (
-                            <div key={s.label} className="bg-white border border-orange-100 rounded-xl px-3 py-2 text-center">
-                              <p className="text-xs text-gray-500">{s.label}</p>
-                              <p className="text-xl font-black text-black">{s.value}</p>
-                            </div>
-                          ))}
+                      <button
+                        onClick={() => goToTab('class')}
+                        className="w-full text-left border border-orange-200 bg-orange-50/50 hover:bg-orange-50 rounded-2xl px-4 py-3 flex items-center justify-between gap-4 transition-colors"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-gray-900">10-Week Shooting Development Program</p>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {pkg.enrollments.length}/{pkg.player_count} enrolled &middot; {done} finished &middot; {team.credits} credit{team.credits !== 1 ? 's' : ''} left
+                          </p>
                         </div>
-
-                        {/* 10-week curriculum PDF */}
-                        <div className="flex items-center justify-between bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
-                          <div>
-                            <p className="text-sm font-bold text-blue-900">10-Week Session Guide</p>
-                            <p className="text-xs text-blue-600">Optional week-by-week curriculum PDF</p>
-                          </div>
-                          <a
-                            href={`/org/curriculum/${pkg.id}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-xs font-bold text-blue-700 bg-blue-100 hover:bg-blue-200 px-3 py-1.5 rounded-lg transition"
-                          >
-                            Download PDF →
-                          </a>
-                        </div>
-
-                        {/* Manual enroll */}
-                        {remainingSlots > 0 && (
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Enroll a Player</p>
-                              <button
-                                onClick={() => { setEnrollOpen(isEnrollOpen ? null : pkg.id); setEnrollSuccess(false); setEnrollError('') }}
-                                className="text-sm font-bold text-orange-500 hover:text-orange-400"
-                              >
-                                {isEnrollOpen ? 'Cancel' : '+ Add Player'}
-                              </button>
-                            </div>
-                            {isEnrollOpen && (
-                              <div className="space-y-2 bg-white border border-gray-200 rounded-xl p-4">
-                                <input
-                                  type="text"
-                                  placeholder="First name *"
-                                  value={enrollFirstName}
-                                  onChange={e => setEnrollFirstName(e.target.value)}
-                                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-black text-sm focus:outline-none focus:border-orange-500"
-                                />
-                                <input
-                                  type="text"
-                                  placeholder="Last name initial (optional)"
-                                  value={enrollLastInit}
-                                  onChange={e => setEnrollLastInit(e.target.value)}
-                                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-black text-sm focus:outline-none focus:border-orange-500"
-                                />
-                                <input
-                                  type="text"
-                                  placeholder="Player account ID (optional — links to their login)"
-                                  value={enrollUserId}
-                                  onChange={e => setEnrollUserId(e.target.value)}
-                                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-black text-sm font-mono focus:outline-none focus:border-orange-500"
-                                />
-                                {enrollError && <p className="text-red-500 text-sm">{enrollError}</p>}
-                                {enrollSuccess && <p className="text-green-600 text-sm font-medium">Player enrolled!</p>}
-                                <button
-                                  onClick={() => handleEnroll(pkg.id)}
-                                  disabled={enrolling || enrollSuccess}
-                                  className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
-                                >
-                                  {enrolling ? 'Enrolling...' : 'Enroll Player'}
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Enrolled players w/ certificate */}
-                        {pkg.enrollments.length > 0 && (
-                          <div>
-                            <div className="flex items-center justify-between gap-3 mb-2">
-                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Enrolled Players ({pkg.enrollments.length})</p>
-                              {pkg.enrollments.some(en => en.has_final) && (
-                                <Link
-                                  href={`/org/class/${pkg.id}/certificates`}
-                                  target="_blank"
-                                  className="inline-flex items-center gap-1 text-xs font-semibold text-orange-600 hover:text-orange-500 transition-colors"
-                                >
-                                  <PrinterIcon className="w-3.5 h-3.5" aria-hidden />
-                                  Print all certificates ({pkg.enrollments.filter(en => en.has_final).length})
-                                </Link>
-                              )}
-                            </div>
-                            <div className="border border-gray-100 rounded-xl divide-y divide-gray-100 bg-white">
-                              {pkg.enrollments.map(en => {
-                                const name = `${en.first_name || 'Player'}${en.last_name_initial ? ' ' + en.last_name_initial + '.' : ''}`
-                                const startScore = en.first_score != null ? Number(en.first_score).toFixed(1) : null
-                                const finalScore = en.display_final_score != null ? Number(en.display_final_score).toFixed(1) : null
-                                return (
-                                  <div key={en.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
-                                    <div className="min-w-0">
-                                      <p className="text-sm font-semibold text-black">{name}</p>
-                                      <p className="text-xs text-gray-400 mt-0.5">
-                                        {!en.has_first && 'Not started'}
-                                        {en.has_first && !en.has_final && `Start: ${startScore} — awaiting final`}
-                                        {en.has_final && `${startScore} → ${finalScore}`}
-                                      </p>
-                                    </div>
-                                    <span
-                                      className={`shrink-0 text-xs font-bold px-2 py-0.5 rounded-full ${
-                                        en.tokens > 0
-                                          ? 'bg-orange-50 text-orange-600 border border-orange-200'
-                                          : 'bg-gray-50 text-gray-400 border border-gray-200'
-                                      }`}
-                                      title="Personal analysis tokens on this player's account"
-                                    >
-                                      {en.tokens} credit{en.tokens !== 1 ? 's' : ''}
-                                    </span>
-                                    <div className="flex items-center gap-2 shrink-0">
-                                      {en.has_final ? (
-                                        <span className="text-xs bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full">Done</span>
-                                      ) : en.has_first ? (
-                                        <span className="text-xs bg-orange-100 text-orange-700 font-bold px-2 py-0.5 rounded-full">In progress</span>
-                                      ) : (
-                                        <span className="text-xs bg-gray-100 text-gray-500 font-bold px-2 py-0.5 rounded-full">Not started</span>
-                                      )}
-                                      {en.has_final && (
-                                        <Link
-                                          href={`/org/certificate/${en.id}`}
-                                          target="_blank"
-                                          className="text-xs font-bold text-orange-500 hover:text-orange-400"
-                                        >
-                                          Certificate
-                                        </Link>
-                                      )}
-                                      {(en.has_first || en.has_final) && (
-                                        <button
-                                          onClick={() => resetEnrollment(en.id, name)}
-                                          disabled={resettingEnrollment === en.id}
-                                          title="Clear first/final progress so the next upload counts as their first again"
-                                          className="text-xs font-semibold text-gray-400 hover:text-red-500 disabled:opacity-50 transition-colors"
-                                        >
-                                          {resettingEnrollment === en.id ? '…' : 'Reset'}
-                                        </button>
-                                      )}
-                                    </div>
-                                  </div>
-                                )
-                              })}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Class leaderboard toggle */}
-                        {pkg.enrollments.some(en => en.has_first) && (
-                          <div>
-                            <button
-                              onClick={() => toggleLeaderboard(pkg.id)}
-                              className="text-sm font-bold text-orange-500 hover:text-orange-400"
-                            >
-                              {isLbOpen ? 'Hide Class Leaderboard' : 'Show Class Leaderboard'}
-                            </button>
-                            {isLbOpen && (
-                              <div className="mt-3 border border-gray-100 rounded-xl overflow-hidden bg-white">
-                                <div className="bg-orange-50 px-4 py-2.5 border-b border-orange-100">
-                                  <p className="text-sm font-black text-black">Class Leaderboard</p>
-                                </div>
-                                {leaderboardLoading ? (
-                                  <p className="text-sm text-gray-400 p-4">Loading...</p>
-                                ) : (
-                                  <div className="divide-y divide-gray-100">
-                                    {leaderboard.map((en, i) => {
-                                      const lbName = `${en.first_name || 'Player'}${en.last_name_initial ? ' ' + en.last_name_initial + '.' : ''}`
-                                      const lbScore = en.display_final_score ?? en.first_score
-                                      const lbImp = en.first_score != null && en.display_final_score != null
-                                        ? (Number(en.display_final_score) - Number(en.first_score)).toFixed(1)
-                                        : null
-                                      return (
-                                        <div key={en.id} className="flex items-center gap-3 px-4 py-2.5">
-                                          <span className="text-lg font-black text-gray-300 w-6 text-center">{i + 1}</span>
-                                          <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-semibold text-black">{lbName}</p>
-                                            {lbImp && <p className="text-xs text-green-600 font-medium">+{lbImp} pts</p>}
-                                          </div>
-                                          {lbScore != null && (
-                                            <span className="text-lg font-black text-black">{Number(lbScore).toFixed(1)}</span>
-                                          )}
-                                        </div>
-                                      )
-                                    })}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
+                        <span className="shrink-0 text-xs font-semibold text-orange-600">Open Class Manager &rarr;</span>
+                      </button>
                     )
                   })()}
 
@@ -1596,18 +1321,46 @@ export default function OrgDashboardClient({ teams, orgName, orgCode, classPacka
     </div>
   )
 
+  // Once a package exists this tab stops being a sales pitch and becomes the
+  // class manager: rosters, progress, coach guide, certificates. The buy form
+  // moves below it as "start another package".
+  const hasClass = classPackages.length > 0
+
   const classTab = (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <h2 className="text-xl font-bold text-gray-900">10-Week Shooting Class</h2>
-        <InfoTip label="What does the 10-week class include?" align="left">
-          $40 per player ($36.99 each for 30+). Every player gets a training
-          ball, 2 AI shot analyses (start and end of the class), and a
-          personalized completion certificate. Buying a package also creates a
-          class team and unlocks the $1.49 token rate for your organization.
-        </InfoTip>
+    <div className="space-y-5">
+      <div>
+        <div className="flex items-center gap-2">
+          <h2 className="text-xl font-bold text-gray-900">
+            {hasClass ? 'Class Manager' : '10-Week Shooting Development Program'}
+          </h2>
+          <InfoTip label="What does the 10-week program include?" align="left">
+            $40 per player ($36.99 each for 30+). Every player gets a training
+            ball, 2 AI shot analyses (start and end of the program), and a
+            personalized completion certificate. Buying a package also creates a
+            class team and unlocks the $1.49 token rate for your organization.
+          </InfoTip>
+        </div>
+        <p className="text-sm text-gray-500 mt-1">
+          {hasClass
+            ? 'Run your program from here — week-by-week coach guide, roster progress, standings, and certificates.'
+            : 'A structured 10-week program that turns your organization into a coaching powerhouse.'}
+        </p>
       </div>
-      {classProgramSection}
+
+      {hasClass && (
+        <ClassManager
+          packages={classPackages.map(pkg => {
+            const team = teams.find(t => t.classPackageId === pkg.id)
+            return { ...pkg, teamName: team?.name ?? null, teamCredits: team?.credits ?? null }
+          })}
+          canManage
+          onStartAnother={inApp ? undefined : () => setClassProgramOpen(true)}
+        />
+      )}
+
+      {/* The pitch + buy form. Primary when there's no program yet; the
+          "start another package" target once there is. */}
+      {(!hasClass || classProgramOpen) && classProgramSection}
     </div>
   )
 
@@ -1937,8 +1690,11 @@ export default function OrgDashboardClient({ teams, orgName, orgCode, classPacka
       <AccountTabs
         tabs={[
           { id: 'teams', label: 'Teams', count: teams.length, content: teamsTab },
-          // The class purchase pitch is hidden in the iOS app (guideline 3.1.1).
-          ...(inApp ? [] : [{ id: 'class', label: 'Shooting Class', content: classTab }]),
+          // The purchase pitch is hidden in the iOS app (guideline 3.1.1), but an
+          // org that already has a program still gets its manager there.
+          ...(inApp && !hasClass
+            ? []
+            : [{ id: 'class', label: hasClass ? 'Class Manager' : 'Shooting Class', content: classTab }]),
           { id: 'leaderboard', label: 'Leaderboard', count: orgLeaderboard.length, content: leaderboardTab },
           { id: 'tokens', label: 'Tokens', content: tokensTab },
           { id: 'players', label: 'Players', count: uniquePlayerCount, content: playersTab },

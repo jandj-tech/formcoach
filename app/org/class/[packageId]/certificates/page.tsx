@@ -4,6 +4,7 @@ import { db } from '@/lib/db'
 import PrintButton from '@/components/PrintButton'
 import CertificateBlock from '@/components/CertificateBlock'
 import { getOrgSession } from '@/lib/org-auth'
+import { getTeamSession } from '@/lib/team-auth'
 
 interface Props {
   params: Promise<{ packageId: string }>
@@ -12,17 +13,24 @@ interface Props {
 export default async function BatchCertificatesPage({ params }: Props) {
   const { packageId } = await params
 
-  const orgSession = await getOrgSession()
-  if (!orgSession) {
+  // Printable by the owning org or by the coach of the class team.
+  const [orgSession, teamSession] = await Promise.all([getOrgSession(), getTeamSession()])
+  if (!orgSession && !teamSession) {
     redirect(`/login?next=/org/class/${encodeURIComponent(packageId)}/certificates`)
   }
 
-  // Package must belong to this org.
-  const [pkg] = (await db`
-    SELECT p.id, p.player_count
-    FROM org_class_packages p
-    WHERE p.id = ${packageId} AND p.org_id = ${orgSession.orgId}
-  `) as unknown as Array<{ id: string; player_count: number }>
+  const [pkg] = (orgSession
+    ? await db`
+        SELECT p.id, p.player_count
+        FROM org_class_packages p
+        WHERE p.id = ${packageId} AND p.org_id = ${orgSession.orgId}
+      `
+    : await db`
+        SELECT p.id, p.player_count
+        FROM org_class_packages p
+        JOIN teams t ON t.class_package_id = p.id
+        WHERE p.id = ${packageId} AND t.id = ${teamSession!.teamId}
+      `) as unknown as Array<{ id: string; player_count: number }>
   if (!pkg) notFound()
 
   // Only enrollments with a completed final analysis.

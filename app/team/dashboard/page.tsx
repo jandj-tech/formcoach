@@ -5,6 +5,7 @@ import { db } from '@/lib/db'
 import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
 import TeamDashboardClient from './TeamDashboardClient'
+import type { ClassManagerPackage } from '@/components/ClassManager'
 
 export default async function TeamDashboardPage() {
   const session = await getTeamSession()
@@ -168,18 +169,57 @@ export default async function TeamDashboardPage() {
   // Head coach's display name — queried separately so a missing column
   // (pre-migration) can't break the whole dashboard.
   let hasClassPackage = false
+  let classPackageId: string | null = null
   try {
     const [row] = (await db`
       SELECT coach_nickname,
              COALESCE(token_pool, 0)::int AS token_pool,
-             (class_package_id IS NOT NULL) AS has_class_package
+             class_package_id
       FROM teams WHERE id = ${team.id}
-    `) as unknown as [{ coach_nickname: string | null; token_pool: number; has_class_package: boolean } | undefined]
+    `) as unknown as [{ coach_nickname: string | null; token_pool: number; class_package_id: string | null } | undefined]
     headCoachNickname = row?.coach_nickname ?? null
     teamTokenPool = row?.token_pool ?? 0
-    hasClassPackage = !!row?.has_class_package
+    classPackageId = row?.class_package_id ?? null
+    hasClassPackage = !!classPackageId
   } catch (err) {
     console.error('[team/dashboard] team meta query failed:', err)
+  }
+
+  // The class package this team runs, if any — powers the Class Manager tab.
+  let classPackages: ClassManagerPackage[] = []
+  if (classPackageId) {
+    try {
+      const [pkg] = (await db`
+        SELECT p.id, p.player_count, p.status, p.created_at,
+               COUNT(e.id)::int AS enrolled_count,
+               COUNT(e.final_submission_id)::int AS completed_count
+        FROM org_class_packages p
+        LEFT JOIN org_class_enrollments e ON e.package_id = p.id
+        WHERE p.id = ${classPackageId}
+        GROUP BY p.id
+      `) as unknown as Array<{
+        id: string; player_count: number; status: string; created_at: string
+        enrolled_count: number; completed_count: number
+      }>
+
+      if (pkg) {
+        const enrollments = (await db`
+          SELECT
+            e.id, e.user_id, e.first_name, e.last_name_initial,
+            e.first_score, e.display_final_score,
+            (e.first_submission_id IS NOT NULL) AS has_first,
+            (e.final_submission_id IS NOT NULL) AS has_final,
+            COALESCE(u.analysis_tokens, 0)::int AS tokens
+          FROM org_class_enrollments e
+          LEFT JOIN users u ON u.id = e.user_id
+          WHERE e.package_id = ${pkg.id}
+          ORDER BY e.created_at ASC
+        `) as unknown as ClassManagerPackage['enrollments']
+        classPackages = [{ ...pkg, team_access_code: team.access_code, enrollments }]
+      }
+    } catch (err) {
+      console.error('[team/dashboard] class package query failed:', err)
+    }
   }
   // A team is initiated if a class was bought for it OR the player count
   // reached the threshold. Either path unlocks $1.49 for this team's coach.
@@ -236,6 +276,7 @@ export default async function TeamDashboardPage() {
         fromOrg={fromOrg}
         myUploads={myUploads}
         coachCredits={coachCredits}
+        classPackages={classPackages}
       />
       <SiteFooter />
     </main>

@@ -16,6 +16,7 @@ import PlayerShotList, { type Shot } from '@/components/PlayerShotList'
 import InfoTip from '@/components/InfoTip'
 import AccountTabs from '@/components/account/AccountTabs'
 import ClassManager, { type ClassManagerPackage } from '@/components/ClassManager'
+import BillingHistory from '@/components/BillingHistory'
 import TeamChatPanel from '@/components/TeamChatPanel'
 import EmailTeamPanel from '@/components/EmailTeamPanel'
 import Section from '@/components/account/Section'
@@ -659,6 +660,19 @@ export default function TeamDashboardClient({
     </div>
   )
 
+  const billingTab = (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-xl font-black text-black dark:text-chalk">Billing</h2>
+        <p className="text-sm text-gray-500 dark:text-chalk-dim mt-1">
+          Your purchases — credits for yourself and for this team. Receipts are
+          emailed at checkout.
+        </p>
+      </div>
+      <BillingHistory endpoint="/api/team/billing" />
+    </div>
+  )
+
   const creditsTab = (
     <div className="space-y-4">
       {/* Quick grant — class-style "give every joined player N credits" in
@@ -994,6 +1008,7 @@ export default function TeamDashboardClient({
           // an enrolled team still wants its progress courtside.
           ...(classProgram || !inApp ? [{ id: 'program', label: 'Program', content: programTab }] : []),
           { id: 'credits', label: 'Tokens & Credits', content: creditsTab },
+          { id: 'billing', label: 'Billing', content: billingTab },
           { id: 'settings', label: 'Settings', content: settingsTab },
         ]}
       />

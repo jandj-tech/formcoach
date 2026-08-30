@@ -38,7 +38,7 @@ export default function PrivacyPage() {
       <section className="mb-8">
         <h2 className="text-xl font-semibold mb-3">Service providers</h2>
         <p className="text-gray-300 leading-relaxed">
-          We share data with service providers only as needed to run LearnHoops: <strong>Anthropic</strong> processes video frames to generate your shot analysis; <strong>Vercel</strong> hosts our application, database, and file storage (including uploaded frames and videos); <strong>Stripe</strong> processes website payments (we never store your card details); <strong>Apple</strong> and <strong>RevenueCat</strong> process purchases made in our iOS app (RevenueCat receives your account ID and purchase history to deliver what you bought); <strong>Resend</strong> sends our transactional and marketing email; and <strong>Twilio</strong> may be used to send order-related text messages for physical orders. On our <em>website</em> we also use Meta (Facebook) advertising tools — see Cookies and advertising below.
+          We share data with service providers only as needed to run LearnHoops: <strong>Anthropic</strong> processes video frames to generate your shot analysis; <strong>Vercel</strong> hosts our application, database, and file storage (including uploaded frames and videos); <strong>Stripe</strong> processes website payments (we never store your card details); <strong>Apple</strong> and <strong>RevenueCat</strong> process purchases made in our iOS app (RevenueCat receives your account ID and purchase history to deliver what you bought); and <strong>Resend</strong> sends our transactional and marketing email. On our <em>website</em> we also use Meta (Facebook) advertising tools — see Cookies and advertising below.
         </p>
       </section>
 

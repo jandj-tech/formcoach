@@ -89,7 +89,7 @@ export default function OrgTokenPanel({
   const [tokensEach, setTokensEach] = useState(1)
   const [sendTeamId, setSendTeamId] = useState(teams[0]?.id ?? '')
   const [sendCoachEmail, setSendCoachEmail] = useState(coaches[0]?.email ?? '')
-  const [sendQty, setSendQty] = useState(5)
+  const [sendQty, setSendQty] = useState(1)
 
   const anyInitiated = teams.some(t => t.initiated)
   const buyBaseCents = analysisUnitCents(anyInitiated)

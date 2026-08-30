@@ -3,6 +3,7 @@ import { getOrgSession } from '@/lib/org-auth'
 import { db } from '@/lib/db'
 import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
+import Link from 'next/link'
 import InlineEdit from '@/components/InlineEdit'
 import OrgDashboardClient from './OrgDashboardClient'
 import LogoutButton from './LogoutButton'
@@ -259,6 +260,13 @@ export default async function OrgDashboardPage() {
           myUploads={myUploads}
           orgTokenBalance={orgTokenBalance}
         />
+
+        <p className="text-center text-xs text-gray-400 pt-2">
+          New to running an organization here?{' '}
+          <Link href="/team" className="text-orange-600 hover:text-orange-500 font-medium">
+            Learn how LearnHoops works for organizations →
+          </Link>
+        </p>
       </div>
       <SiteFooter />
     </main>

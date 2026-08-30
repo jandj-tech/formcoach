@@ -904,12 +904,29 @@ export default function TeamDashboardClient({
                     Receipts are emailed at checkout.
                   </p>
                 </div>
-                <BillingHistory endpoint="/api/team/billing" />
+                <BillingHistory
+                  endpoint="/api/team/billing"
+                  emptyAction={!inApp ? (
+                    <button
+                      onClick={() => document.querySelector<HTMLButtonElement>('[data-tab="credits"]')?.click()}
+                      className="bg-orange-500 hover:bg-orange-400 text-white font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors"
+                    >
+                      Buy your first credits
+                    </button>
+                  ) : undefined}
+                />
               </div>
             ),
           },
         ]}
       />
+
+      <p className="text-center text-xs text-gray-400 pt-2">
+        New to coaching a team here?{' '}
+        <Link href="/team" className="text-orange-600 hover:text-orange-500 font-medium">
+          Learn how LearnHoops works for teams &amp; organizations →
+        </Link>
+      </p>
 
       {/* Full-screen leaderboard popup with print — portaled to <body> so the
           printout isn't preceded by blank pages of (hidden) dashboard content. */}

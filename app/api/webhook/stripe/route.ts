@@ -3,7 +3,6 @@ import type Stripe from 'stripe'
 import { getStripe } from '@/lib/stripe'
 import { db } from '@/lib/db'
 import { sendAbandonedCheckoutEmail, sendClaimCreditsEmail, sendClassPurchaseConfirmationEmail, sendTokenPurchaseConfirmationEmail } from '@/lib/email'
-import { sendClassPurchaseConfirmationSms } from '@/lib/sms'
 import { grantBallCreditsOnce } from '@/lib/grant-ball-credits'
 import { claimStripeSession, releaseStripeSessionClaim } from '@/lib/stripe-idempotency'
 import { recordPurchase } from '@/lib/record-purchase'
@@ -375,15 +374,6 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
         } catch (emailErr) {
           console.error('Failed to send class purchase confirmation email:', emailErr)
           // Non-fatal — package and team are created, email can be resent manually
-        }
-      }
-
-      if (phone && teamAccessCode) {
-        try {
-          await sendClassPurchaseConfirmationSms(phone, orgName, playerCount, teamAccessCode)
-        } catch (smsErr) {
-          console.error('Failed to send class purchase confirmation SMS:', smsErr)
-          // Non-fatal — email already sent
         }
       }
 

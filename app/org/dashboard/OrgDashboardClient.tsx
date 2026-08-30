@@ -842,6 +842,13 @@ export default function OrgDashboardClient({ teams, orgName, orgCode, classPacka
   const totalTeamCredits = teams.reduce((s, t) => s + t.credits, 0)
   const uniquePlayerCount = new Set(teams.flatMap(t => t.members.map(m => m.id))).size
 
+  // Org-wide standings: every team's leaderboard merged, with a Team column.
+  // A player on two teams appears once per team (LeaderboardTable keys rows
+  // by player + team).
+  const orgLeaderboard: LeaderboardRow[] = teams.flatMap(t =>
+    t.leaderboard.map(r => ({ ...r, team_name: t.name })),
+  )
+
   // ── Tab contents ──────────────────────────────────────────────────
   // JSX-only grouping: all state and handlers stay above, in this same
   // component, so nothing loses its state when tabs switch (AccountTabs
@@ -849,6 +856,28 @@ export default function OrgDashboardClient({ teams, orgName, orgCode, classPacka
 
   const teamsTab = (
     <div className="space-y-4">
+      {/* Flagship program, kept in view — the full pitch and buy form live in
+          the Shooting Class tab; this banner is the signpost to it. */}
+      {!inApp && (
+        <button
+          onClick={() => goToTab('class')}
+          className="w-full flex items-center justify-between gap-4 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 rounded-2xl px-5 py-4 text-white text-left transition-colors"
+        >
+          <div className="min-w-0">
+            <p className="text-orange-100 text-[11px] font-semibold uppercase tracking-wider">
+              {classPackages.length > 0 ? 'Your flagship program' : 'Recommended for your organization'}
+            </p>
+            <p className="font-bold text-base truncate">10-Week Shooting Class · $40/player</p>
+            <p className="text-orange-100 text-xs mt-0.5 truncate">
+              Ball, 2 shot analyses &amp; a certificate per player — $36.99 each for 30+
+            </p>
+          </div>
+          <span className="shrink-0 bg-white/20 rounded-full px-4 py-2 text-sm font-semibold whitespace-nowrap">
+            {classPackages.length > 0 ? 'Open class tab →' : 'View program →'}
+          </span>
+        </button>
+      )}
+
       {addTeamSection}
 
       <h2 className="text-xl font-bold text-gray-900">Your Teams</h2>
@@ -1605,6 +1634,26 @@ export default function OrgDashboardClient({ teams, orgName, orgCode, classPacka
     </div>
   )
 
+  const leaderboardTab = (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-xl font-bold text-gray-900">Organization Leaderboard</h2>
+        <p className="text-sm text-gray-500 mt-1">
+          Every player across your teams, ranked by their best analyzed score.
+          Each team&apos;s own board (with printing) is inside its panel in the Teams tab.
+        </p>
+      </div>
+      {orgLeaderboard.length === 0 ? (
+        <div className="text-center py-12 text-gray-400 border-2 border-dashed border-gray-200 rounded-2xl">
+          <p className="font-semibold">No shots analyzed yet</p>
+          <p className="text-sm mt-1">Once players upload shots (or coaches upload for them), rankings appear here.</p>
+        </div>
+      ) : (
+        <LeaderboardTable entries={orgLeaderboard} context="org" showTeam />
+      )}
+    </div>
+  )
+
   const billingTab = (
     <div className="space-y-4">
       <div>
@@ -1890,6 +1939,7 @@ export default function OrgDashboardClient({ teams, orgName, orgCode, classPacka
           { id: 'teams', label: 'Teams', count: teams.length, content: teamsTab },
           // The class purchase pitch is hidden in the iOS app (guideline 3.1.1).
           ...(inApp ? [] : [{ id: 'class', label: 'Shooting Class', content: classTab }]),
+          { id: 'leaderboard', label: 'Leaderboard', count: orgLeaderboard.length, content: leaderboardTab },
           { id: 'tokens', label: 'Tokens', content: tokensTab },
           { id: 'players', label: 'Players', count: uniquePlayerCount, content: playersTab },
           { id: 'billing', label: 'Billing', content: billingTab },
@@ -1999,7 +2049,7 @@ Please reach out if you have any questions. We look forward to helping you impro
             onClick={() => setTeamLbModal(null)}
           >
             <div
-              className="leaderboard-modal bg-white rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-auto p-6 space-y-4"
+              className="leaderboard-modal bg-white rounded-2xl w-full max-w-3xl max-h-[85vh] overflow-auto p-6 space-y-4"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between gap-4">

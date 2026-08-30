@@ -230,7 +230,7 @@ export default async function OrgDashboardPage() {
   return (
     <main className="min-h-screen bg-white flex flex-col">
       <TopNav />
-      <div className="max-w-3xl mx-auto w-full px-6 py-10 space-y-6">
+      <div className="max-w-5xl mx-auto w-full px-6 py-10 space-y-6">
         {/* Wraps on phones: the action buttons drop to their own row instead of
             being crushed against the title and clipped off-screen. */}
         <div className="flex flex-wrap items-start justify-between gap-4">

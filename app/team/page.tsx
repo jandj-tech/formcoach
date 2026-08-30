@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import { redirect } from 'next/navigation'
 import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
 import Link from 'next/link'
@@ -93,15 +92,25 @@ export default async function TeamLandingPage() {
   const teamSession = myTeams.length === 0 ? await getTeamSession() : null
   const orgSession = myTeams.length === 0 && !teamSession ? await getOrgSession() : null
 
-  // A signed-in organization or coach has no business on the sales pitch —
-  // this page used to show them marketing with a "you're signed in" banner,
-  // which read as a broken "Organization Hub". Send them straight home.
-  if (orgSession) redirect('/org/dashboard')
-  if (teamSession) redirect('/team/dashboard')
-
   return (
     <main className="min-h-screen bg-ink-950 text-chalk flex flex-col">
       <TopNav />
+
+      {/* Coach / org: this page is information & signup — their own tools
+          live on the dashboard, one click away. */}
+      {(teamSession || orgSession) && (
+        <div className="bg-ink-900 border-b border-courtline px-6 py-3 flex items-center justify-center gap-4 flex-wrap">
+          <p className="text-chalk-dim text-sm">
+            This is the organization information &amp; signup page — your tools live on your dashboard.
+          </p>
+          <Link
+            href={orgSession ? '/org/dashboard' : '/team/dashboard'}
+            className="bg-ember-500 hover:bg-ember-400 text-ink-950 font-bold px-5 py-1.5 rounded-full text-sm transition-colors whitespace-nowrap"
+          >
+            {orgSession ? 'Open Org Dashboard' : 'Open Team Dashboard'} →
+          </Link>
+        </div>
+      )}
 
       {/* Player: the team hub — big team name, schedule with one-tap RSVP,
           roster, leaderboard link, and chat behind a dropdown that expands
@@ -176,6 +185,23 @@ export default async function TeamLandingPage() {
             <div className="text-chalk-dim text-sm">Track who&apos;s putting in the work with automatic improvement tracking.</div>
           </div>
         </div>
+
+        {/* The class program is the flagship offer for organizations — it sits
+            right under the hero so teams don't have to scroll to find it. */}
+        {!inApp && (
+          <Link
+            id="class-program"
+            href="/org/signup"
+            className="card-lift w-full max-w-3xl bg-ember-500 hover:bg-ember-400 rounded-2xl px-6 py-5 flex items-center gap-4 text-ink-950 transition-colors scroll-mt-24"
+          >
+            <GraduationCapIcon className="w-8 h-8 shrink-0" aria-hidden />
+            <div className="text-left flex-1">
+              <p className="font-display font-black uppercase text-base leading-tight">10-Week Shooting Class — for organizations</p>
+              <p className="text-ink-950/80 text-sm mt-1">Each player gets a ball, 2 shot analyses, and a certificate of completion that shows their improvement. Starting at $40/player.</p>
+            </div>
+            <span className="shrink-0 font-bold text-lg select-none" aria-hidden>→</span>
+          </Link>
+        )}
       </div>
 
       {/* CTA band */}
@@ -227,19 +253,6 @@ export default async function TeamLandingPage() {
           </div>
         </div>
 
-        {!inApp && (
-        <Link
-          href="/org/signup"
-          className="card-lift w-full bg-ember-500 hover:bg-ember-400 rounded-2xl px-6 py-5 flex items-center gap-4 text-ink-950 transition-colors"
-        >
-          <GraduationCapIcon className="w-8 h-8 shrink-0" aria-hidden />
-          <div className="text-left flex-1">
-            <p className="font-display font-black uppercase text-base leading-tight">10-Week Shooting Class — for organizations</p>
-            <p className="text-ink-950/80 text-sm mt-1">Each player gets a ball, 2 shot analyses, and a certificate of completion that shows their improvement. Starting at $40/player.</p>
-          </div>
-          <span className="shrink-0 font-bold text-lg select-none" aria-hidden>→</span>
-        </Link>
-        )}
       </div>
 
       </>)}

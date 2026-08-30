@@ -29,9 +29,17 @@ export default function TopNav() {
       .catch(() => {})
   }, [])
 
-  // Signed in → "Account" (the player, coach, or org dashboard); signed out → "Login".
+  // The account chip names the destination: coaches and orgs land on their
+  // dashboard, so call it that instead of a vague "Account".
   const accountHref = account ? account.dashboard : '/login'
-  const accountLabel = account ? 'Account' : 'Login'
+  const accountLabel =
+    account?.type === 'org'
+      ? 'Org Dashboard'
+      : account?.type === 'team'
+        ? 'Team Dashboard'
+        : account
+          ? 'Account'
+          : 'Login'
   const accountActive =
     pathname.startsWith('/login') ||
     pathname.startsWith('/signup') ||
@@ -41,15 +49,17 @@ export default function TopNav() {
     pathname.startsWith('/team/dashboard') ||
     pathname.startsWith('/org/dashboard')
 
-  // The "Organizations" item is the sales page for visitors — but a signed-in
-  // org or coach should land on their own dashboard, not a pitch for the
-  // product they already have.
-  const orgTab =
-    account?.type === 'org'
-      ? { href: '/org/dashboard', label: 'My Organization' }
-      : account?.type === 'team'
-        ? { href: '/team/dashboard', label: 'My Team' }
-        : { href: '/team', label: 'Organizations' }
+  // The "/team" page is the organization information & signup page. For a
+  // signed-in org or coach the dashboard already has its own chip above, so
+  // this item is relabelled to say exactly what it is — info, not their hub.
+  const isAdminAccount = account?.type === 'org' || account?.type === 'team'
+  const orgTab = {
+    href: '/team',
+    label: isAdminAccount ? 'Organization Info' : 'Organizations',
+  }
+  // For admins the dashboard lives under /team/dashboard — only light the
+  // info item on the info page itself, not on their dashboard.
+  const orgTabActive = isAdminAccount ? pathname === '/team' : pathname.startsWith('/team')
 
   const mobileTabs = [
     ...tabs,
@@ -118,9 +128,9 @@ export default function TopNav() {
             })}
             <Link
               href={orgTab.href}
-              data-active={pathname.startsWith(orgTab.href === '/team' ? '/team' : orgTab.href)}
+              data-active={orgTabActive}
               className={`nav-underline px-3 py-2.5 text-sm font-semibold transition-colors ${
-                pathname.startsWith(orgTab.href === '/team' ? '/team' : orgTab.href) ? 'text-chalk' : 'text-chalk-dim hover:text-chalk'
+                orgTabActive ? 'text-chalk' : 'text-chalk-dim hover:text-chalk'
               }`}
             >
               {orgTab.label}

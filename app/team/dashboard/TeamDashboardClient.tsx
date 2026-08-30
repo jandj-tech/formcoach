@@ -775,7 +775,7 @@ export default function TeamDashboardClient({
   )
 
   return (
-    <div className="max-w-3xl mx-auto w-full px-6 py-10 space-y-6 flex-1">
+    <div className="max-w-5xl mx-auto w-full px-6 py-10 space-y-6 flex-1">
       {fromOrg && (
         <Link
           href="/org/dashboard"
@@ -906,6 +906,26 @@ export default function TeamDashboardClient({
         </div>
       </section>
 
+      {/* Signpost to the flagship class program — bought at organization
+          level, so this links to the program page rather than a buy form. */}
+      {!inApp && (
+        <Link
+          href="/team#class-program"
+          className="flex items-center justify-between gap-4 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 rounded-2xl px-5 py-4 text-white transition-colors"
+        >
+          <div className="min-w-0">
+            <p className="text-orange-100 text-[11px] font-semibold uppercase tracking-wider">For your program</p>
+            <p className="font-bold text-base truncate">10-Week Shooting Class · $40/player</p>
+            <p className="text-orange-100 text-xs mt-0.5 truncate">
+              Ball, 2 shot analyses &amp; a certificate per player — run it through your organization
+            </p>
+          </div>
+          <span className="shrink-0 bg-white/20 rounded-full px-4 py-2 text-sm font-semibold whitespace-nowrap">
+            Learn more →
+          </span>
+        </Link>
+      )}
+
       {/* ── Tabs ───────────────────────────────────────────────── */}
       <AccountTabs
         tabs={[
@@ -951,7 +971,7 @@ export default function TeamDashboardClient({
           onClick={() => setShowLeaderboard(false)}
         >
           <div
-            className="leaderboard-modal bg-white rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-auto p-6 space-y-4"
+            className="leaderboard-modal bg-white rounded-2xl w-full max-w-3xl max-h-[85vh] overflow-auto p-6 space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between gap-4">

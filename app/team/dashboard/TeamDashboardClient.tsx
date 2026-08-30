@@ -145,7 +145,10 @@ export default function TeamDashboardClient({
   const [copiedSignup, setCopiedSignup] = useState(false)
 
   const BASE_URL = typeof window !== 'undefined' ? window.location.origin : 'https://learnhoops.com'
-  const playerSignupLink = `${BASE_URL}/signup?teamCode=${team.accessCode}`
+  // The invite front door (app/join/[code]) rather than /signup: it shows the
+  // player what they are joining first, and works whether or not they already
+  // have an account. A raw signup link did neither.
+  const playerSignupLink = `${BASE_URL}/join/${team.accessCode}`
 
   async function buyCredits() {
     setBuying(true)
@@ -280,7 +283,7 @@ export default function TeamDashboardClient({
   }
 
   function copySignupLink() {
-    copyToClipboard(playerSignupLink, 'Signup link copied!').then(() => {
+    copyToClipboard(playerSignupLink, 'Invite link copied!').then(() => {
       setCopiedSignup(true)
       setTimeout(() => setCopiedSignup(false), 2000)
     })
@@ -325,16 +328,15 @@ export default function TeamDashboardClient({
       <Section
         title="Invite players"
         tipLabel="How do players join the team?"
-        tip="Send players the signup link (or the team code). They create an account, enter their name, and land on your roster automatically — no approval step needed."
+        tip="Send the invite link. It shows the player your team, then signs them up or logs them in and puts them straight on your roster — no approval step. The team code does the same thing for anyone who'd rather type it."
         summary={`Code ${team.accessCode}`}
       >
         <div className="space-y-4 pt-2">
+          {/* The link leads: it is the thing a coach actually sends, and it
+              works for a player who already has an account. The code stays
+              underneath for word of mouth ("ask your coach for the code"). */}
           <div>
-            <p className="text-xs font-semibold text-gray-400 dark:text-chalk-dim uppercase tracking-wide">Team code</p>
-            <p className="text-2xl font-black font-mono tracking-widest text-black dark:text-chalk mt-0.5">{team.accessCode}</p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-gray-400 dark:text-chalk-dim uppercase tracking-wide mb-1">Player signup link</p>
+            <p className="text-xs font-semibold text-gray-400 dark:text-chalk-dim uppercase tracking-wide mb-1">Invite link</p>
             <div className="flex items-center gap-2 bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl p-2.5">
               <span className="flex-1 text-xs font-mono text-gray-600 dark:text-chalk-dim truncate">{playerSignupLink}</span>
               <button
@@ -345,8 +347,12 @@ export default function TeamDashboardClient({
               </button>
             </div>
             <p className="text-xs text-gray-500 dark:text-chalk-dim mt-1.5">
-              Share this link with players. They sign up, then enter their name to join your team.
+              Text or email this to your players. One tap and they&apos;re on the roster.
             </p>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-gray-400 dark:text-chalk-dim uppercase tracking-wide">Or give them the code</p>
+            <p className="text-xl font-black font-mono tracking-widest text-black dark:text-chalk mt-0.5">{team.accessCode}</p>
           </div>
         </div>
       </Section>

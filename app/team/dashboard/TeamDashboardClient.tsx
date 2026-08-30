@@ -21,20 +21,23 @@ import Section from '@/components/account/Section'
 import TeamSchedulePanel from '@/components/TeamSchedulePanel'
 import VolumeSavings, { VolumeTierList } from '@/components/VolumeSavings'
 import {
-  analysisUnitCents,
+  analysisBaseCents,
   orderPricing,
   usd,
+  type OrgTier,
 } from '@/lib/team-pricing'
 import { copyToClipboard } from '@/lib/copy'
 import { useCart } from '@/lib/cart'
+import AppearanceSection from '@/components/account/AppearanceSection'
 
 interface Team {
   id: string
   name: string
   accessCode: string
   credits: number
-  initiated: boolean
   tokenPool: number
+  /** What this team pays for tokens, and which features it may use. */
+  tier: OrgTier
 }
 
 interface LeaderboardEntry {
@@ -295,8 +298,9 @@ export default function TeamDashboardClient({
     })),
   ]
 
-  const creditBaseCents = analysisUnitCents(team.initiated)
-  const creditRate = (analysisUnitCents(team.initiated) / 100).toFixed(2)
+  const tier = team.tier
+  const creditBaseCents = analysisBaseCents(tier)
+  const creditRate = (creditBaseCents / 100).toFixed(2)
   const rosterCount = members.length + pendingMembers.length
 
   /* ── Players tab ──────────────────────────────────────────────── */
@@ -310,13 +314,13 @@ export default function TeamDashboardClient({
       >
         <div className="space-y-4 pt-2">
           <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Team code</p>
-            <p className="text-2xl font-black font-mono tracking-widest text-black mt-0.5">{team.accessCode}</p>
+            <p className="text-xs font-semibold text-gray-400 dark:text-chalk-dim uppercase tracking-wide">Team code</p>
+            <p className="text-2xl font-black font-mono tracking-widest text-black dark:text-chalk mt-0.5">{team.accessCode}</p>
           </div>
           <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Player signup link</p>
-            <div className="flex items-center gap-2 bg-white border border-gray-300 rounded-xl p-2.5">
-              <span className="flex-1 text-xs font-mono text-gray-600 truncate">{playerSignupLink}</span>
+            <p className="text-xs font-semibold text-gray-400 dark:text-chalk-dim uppercase tracking-wide mb-1">Player signup link</p>
+            <div className="flex items-center gap-2 bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl p-2.5">
+              <span className="flex-1 text-xs font-mono text-gray-600 dark:text-chalk-dim truncate">{playerSignupLink}</span>
               <button
                 onClick={copySignupLink}
                 className="shrink-0 text-sm font-semibold text-orange-500 hover:text-orange-400 transition-colors"
@@ -324,7 +328,7 @@ export default function TeamDashboardClient({
                 {copiedSignup ? 'Copied!' : 'Copy'}
               </button>
             </div>
-            <p className="text-xs text-gray-500 mt-1.5">
+            <p className="text-xs text-gray-500 dark:text-chalk-dim mt-1.5">
               Share this link with players. They sign up, then enter their name to join your team.
             </p>
           </div>
@@ -339,22 +343,22 @@ export default function TeamDashboardClient({
       >
         <div className="space-y-3 pt-2">
           <div className="flex items-center justify-between gap-4">
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 dark:text-chalk-dim">
               {rosterCount > 0
                 ? 'Tap a player to see their shot history.'
                 : 'No players yet — add one by name or share the invite link above.'}
             </p>
             <button
               onClick={() => { setAddOpen(o => !o); setAddStatus('idle'); setAddError(''); setNewInviteUrl('') }}
-              className="shrink-0 bg-orange-500 hover:bg-orange-400 text-white font-bold px-3 py-1.5 rounded-xl text-sm transition-colors"
+              className="shrink-0 bg-orange-500 hover:bg-orange-400 text-ink-950 font-bold px-3 py-1.5 rounded-xl text-sm transition-colors"
             >
               {addOpen ? 'Cancel' : 'Add Player'}
             </button>
           </div>
 
           {addOpen && (
-            <div className="bg-gray-50 border border-gray-200 rounded-2xl p-5 space-y-3">
-              <p className="text-sm text-gray-500">
+            <div className="bg-gray-50 dark:bg-ink-800 border border-gray-200 dark:border-courtline rounded-2xl p-5 space-y-3">
+              <p className="text-sm text-gray-500 dark:text-chalk-dim">
                 Add a player by name. You can optionally send them a link to create their account — once they sign up, they&apos;ll be automatically added to the team under this name.
               </p>
               <form onSubmit={addPlayer} className="space-y-3">
@@ -362,35 +366,37 @@ export default function TeamDashboardClient({
                   <input
                     type="text"
                     required
+                    aria-label="First name"
                     placeholder="First name"
                     value={addFirst}
                     onChange={e => setAddFirst(e.target.value)}
-                    className="flex-1 bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
+                    className="flex-1 bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl px-4 py-3 text-black dark:text-chalk placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
                   />
                   <input
                     type="text"
                     maxLength={1}
+                    aria-label="Last initial"
                     placeholder="Last initial"
                     value={addInitial}
                     onChange={e => setAddInitial(e.target.value.toUpperCase())}
-                    className="w-20 bg-white border border-gray-300 rounded-xl px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
+                    className="w-20 bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl px-4 py-3 text-black dark:text-chalk placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
                   />
                 </div>
                 {addError && <p className="text-red-500 text-sm">{addError}</p>}
                 <button
                   type="submit"
                   disabled={addStatus === 'loading'}
-                  className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+                  className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors"
                 >
                   {addStatus === 'loading' ? 'Adding...' : 'Add Player'}
                 </button>
               </form>
 
               {addStatus === 'success' && newInviteUrl && (
-                <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-2">
-                  <p className="text-sm font-semibold text-green-700">Player added! Share this link so they can sign up and join the team:</p>
+                <div className="bg-green-50 dark:bg-green-950/40 border border-green-200 rounded-xl p-4 space-y-2">
+                  <p className="text-sm font-semibold text-green-700 dark:text-green-400">Player added! Share this link so they can sign up and join the team:</p>
                   <div className="flex items-center gap-2">
-                    <span className="flex-1 text-xs font-mono text-gray-600 truncate">{newInviteUrl}</span>
+                    <span className="flex-1 text-xs font-mono text-gray-600 dark:text-chalk-dim truncate">{newInviteUrl}</span>
                     <button
                       onClick={copyNewInviteUrl}
                       className="shrink-0 text-sm font-semibold text-orange-500 hover:text-orange-400 transition-colors"
@@ -405,23 +411,23 @@ export default function TeamDashboardClient({
 
           {members.length > 0 && (
             <div className="space-y-1">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Joined with account</p>
+              <p className="text-xs font-semibold text-gray-400 dark:text-chalk-dim uppercase tracking-wide">Joined with account</p>
               {members.map(m => (
-                <div key={m.id} className="flex items-center gap-3 py-2 px-3 bg-gray-50 rounded-xl border border-gray-100">
+                <div key={m.id} className="flex items-center gap-3 py-2 px-3 bg-gray-50 dark:bg-ink-800 rounded-xl border border-gray-100 dark:border-courtline">
                   <div className="flex-1 min-w-0">
                     <Link
                       href={`/team/dashboard/member/${m.id}`}
-                      className="block truncate text-sm font-semibold text-black hover:text-orange-600 hover:underline transition-colors"
+                      className="block truncate text-sm font-semibold text-black dark:text-chalk hover:text-orange-600 dark:hover:text-ember-400 hover:underline transition-colors"
                     >
                       {m.first_name ? formatPlayerName(m.first_name, m.last_name_initial) : m.email}
                     </Link>
-                    {m.first_name && <p className="text-xs text-gray-400 truncate">{m.email}</p>}
+                    {m.first_name && <p className="text-xs text-gray-400 dark:text-chalk-dim truncate">{m.email}</p>}
                   </div>
-                  <span className="shrink-0 text-xs text-gray-400">{m.tokens} token{m.tokens !== 1 ? 's' : ''}</span>
+                  <span className="shrink-0 text-xs text-gray-400 dark:text-chalk-dim">{m.tokens} token{m.tokens !== 1 ? 's' : ''}</span>
                   <button
                     onClick={() => kickMember(m.id)}
                     disabled={kicking === m.id}
-                    className="shrink-0 text-xs font-semibold text-gray-400 hover:text-red-500 disabled:opacity-50 transition-colors"
+                    className="shrink-0 text-xs font-semibold text-gray-400 dark:text-chalk-dim hover:text-red-500 disabled:opacity-50 transition-colors"
                   >
                     {kicking === m.id ? 'Removing…' : 'Remove'}
                   </button>
@@ -432,12 +438,12 @@ export default function TeamDashboardClient({
 
           {pendingMembers.length > 0 && (
             <div className="space-y-1">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Added by coach (no account yet)</p>
+              <p className="text-xs font-semibold text-gray-400 dark:text-chalk-dim uppercase tracking-wide">Added by coach (no account yet)</p>
               {pendingMembers.map(p => {
                 const inviteUrl = p.invite_token ? `${BASE_URL}/signup?teamInvite=${p.invite_token}` : null
                 return (
-                  <div key={p.id} className="flex items-center gap-3 py-2 px-3 bg-gray-50 rounded-xl border border-gray-100">
-                    <span className="flex-1 text-sm font-semibold text-black">
+                  <div key={p.id} className="flex items-center gap-3 py-2 px-3 bg-gray-50 dark:bg-ink-800 rounded-xl border border-gray-100 dark:border-courtline">
+                    <span className="flex-1 text-sm font-semibold text-black dark:text-chalk">
                       {formatPlayerName(p.first_name, p.last_name_initial)}
                     </span>
                     {inviteUrl && (
@@ -451,7 +457,7 @@ export default function TeamDashboardClient({
                     <button
                       onClick={() => cancelPendingPlayer(p.id)}
                       disabled={cancelling === p.id}
-                      className="text-xs font-semibold text-gray-400 hover:text-red-500 disabled:opacity-50 transition-colors shrink-0"
+                      className="text-xs font-semibold text-gray-400 dark:text-chalk-dim hover:text-red-500 disabled:opacity-50 transition-colors shrink-0"
                     >
                       {cancelling === p.id ? 'Cancelling…' : 'Cancel'}
                     </button>
@@ -462,7 +468,7 @@ export default function TeamDashboardClient({
           )}
 
           {members.length === 0 && pendingMembers.length === 0 && (
-            <p className="text-sm text-gray-400">No players yet. Add a player above or have them join using the team code: <span className="font-mono font-semibold text-gray-600">{team.accessCode}</span></p>
+            <p className="text-sm text-gray-400 dark:text-chalk-dim">No players yet. Add a player above or have them join using the team code: <span className="font-mono font-semibold text-gray-600 dark:text-chalk-dim">{team.accessCode}</span></p>
           )}
         </div>
       </Section>
@@ -508,7 +514,7 @@ export default function TeamDashboardClient({
           <div className="flex justify-end">
             <Link
               href="/analyze"
-              className="shrink-0 bg-orange-500 hover:bg-orange-400 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors"
+              className="shrink-0 bg-orange-500 hover:bg-orange-400 text-ink-950 font-bold text-sm px-4 py-2 rounded-xl transition-colors"
             >
               Analyze a shot →
             </Link>
@@ -516,7 +522,7 @@ export default function TeamDashboardClient({
           {myUploads.length > 0 ? (
             <PlayerShotList shots={myUploads} />
           ) : (
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-gray-400 dark:text-chalk-dim">
               You haven&apos;t analyzed any of your own shots yet — use the Analyze page to start.
             </p>
           )}
@@ -535,7 +541,7 @@ export default function TeamDashboardClient({
         summary={`${leaderboard.length} player${leaderboard.length !== 1 ? 's' : ''}`}
       >
         {leaderboard.length === 0 ? (
-          <div className="text-center py-10 text-gray-400 border-2 border-dashed border-gray-200 rounded-2xl bg-white mt-2">
+          <div className="text-center py-10 text-gray-400 dark:text-chalk-dim border-2 border-dashed border-gray-200 dark:border-courtline rounded-2xl bg-white dark:bg-ink-900 mt-2">
             <p className="font-semibold">No shots analyzed yet</p>
             <p className="text-sm mt-1">Upload a shot in the Uploads tab to get started.</p>
           </div>
@@ -544,12 +550,12 @@ export default function TeamDashboardClient({
             <div className="flex justify-end">
               <button
                 onClick={() => setShowLeaderboard(true)}
-                className="shrink-0 bg-white border border-gray-300 hover:border-orange-400 text-black font-bold text-sm px-3 py-1.5 rounded-xl transition-colors"
+                className="shrink-0 bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline hover:border-orange-400 text-black dark:text-chalk font-bold text-sm px-3 py-1.5 rounded-xl transition-colors"
               >
                 View full / print
               </button>
             </div>
-            <LeaderboardTable entries={leaderboard} />
+            <LeaderboardTable entries={leaderboard} theme="auto" />
           </div>
         )}
       </Section>
@@ -565,15 +571,15 @@ export default function TeamDashboardClient({
             {improved.map((entry) => {
               const gain = Number(entry.latest_score) - Number(entry.first_score)
               return (
-                <div key={entry.player_id} className="bg-gray-50 border border-gray-100 rounded-2xl p-4 space-y-1">
-                  <p className="font-bold text-black">
+                <div key={entry.player_id} className="bg-gray-50 dark:bg-ink-800 border border-gray-100 dark:border-courtline rounded-2xl p-4 space-y-1">
+                  <p className="font-bold text-black dark:text-chalk">
                     {formatPlayerName(entry.first_name, entry.last_name_initial)}
                   </p>
                   <div className="flex items-center gap-2 text-sm">
-                    <span className="text-gray-400">{Number(entry.first_score).toFixed(1)}</span>
+                    <span className="text-gray-400 dark:text-chalk-dim">{Number(entry.first_score).toFixed(1)}</span>
                     <span className="text-gray-300">→</span>
-                    <span className="font-semibold text-black">{Number(entry.latest_score).toFixed(1)}</span>
-                    <span className={`font-black ml-auto ${gain >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                    <span className="font-semibold text-black dark:text-chalk">{Number(entry.latest_score).toFixed(1)}</span>
+                    <span className={`font-black ml-auto ${gain >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500'}`}>
                       {gain >= 0 ? '+' : ''}{gain.toFixed(1)}
                     </span>
                   </div>
@@ -587,30 +593,36 @@ export default function TeamDashboardClient({
   )
 
   /* ── Tokens & Credits tab ─────────────────────────────────────── */
+  const settingsTab = (
+    <div className="space-y-4">
+      <AppearanceSection />
+    </div>
+  )
+
   const creditsTab = (
     <div className="space-y-4">
       {/* Quick grant — class-style "give every joined player N credits" in
           one click, paid out of the team's credit pool. Shown when there's
           at least one player. */}
       {members.length > 0 && (
-        <div className="bg-orange-50 border border-orange-200 rounded-2xl p-5 space-y-3">
+        <div className="bg-orange-50 dark:bg-ember-500/10 border border-orange-200 rounded-2xl p-5 space-y-3">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
-              <p className="font-black text-black">Quick grant credits to all players</p>
-              <p className="text-xs text-gray-600 mt-0.5">
-                Spend <span className="font-bold text-orange-600">{bulkGrantEach * members.length}</span> from this team&apos;s {team.credits} credits to give every player {bulkGrantEach} token{bulkGrantEach !== 1 ? 's' : ''}.
+              <p className="font-black text-black dark:text-chalk">Quick grant credits to all players</p>
+              <p className="text-xs text-gray-600 dark:text-chalk-dim mt-0.5">
+                Spend <span className="font-bold text-orange-600 dark:text-ember-400">{bulkGrantEach * members.length}</span> from this team&apos;s {team.credits} credits to give every player {bulkGrantEach} token{bulkGrantEach !== 1 ? 's' : ''}.
               </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Each</label>
+              <label className="text-xs font-semibold text-gray-500 dark:text-chalk-dim uppercase tracking-wide">Each</label>
               {[1, 2, 5].map(n => (
                 <button
                   key={n}
                   onClick={() => setBulkGrantEach(n)}
                   className={`w-10 h-10 rounded-lg text-sm font-bold transition-colors ${
                     bulkGrantEach === n
-                      ? 'bg-orange-500 text-white border border-orange-500'
-                      : 'bg-white text-black border border-orange-200 hover:border-orange-400'
+                      ? 'bg-orange-500 text-ink-950 border border-orange-500'
+                      : 'bg-white dark:bg-ink-900 text-black dark:text-chalk border border-orange-200 hover:border-orange-400'
                   }`}
                 >
                   {n}
@@ -619,7 +631,7 @@ export default function TeamDashboardClient({
               <button
                 onClick={grantToAll}
                 disabled={bulkGranting || team.credits < bulkGrantEach * members.length}
-                className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-black text-sm px-4 py-2.5 rounded-xl transition-colors"
+                className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-black text-sm px-4 py-2.5 rounded-xl transition-colors"
               >
                 {bulkGranting
                   ? 'Granting…'
@@ -628,7 +640,7 @@ export default function TeamDashboardClient({
             </div>
           </div>
           {bulkGrantMsg && (
-            <p className={`text-sm font-medium ${bulkGrantMsg.startsWith('Gave') ? 'text-green-700' : 'text-red-600'}`}>
+            <p className={`text-sm font-medium ${bulkGrantMsg.startsWith('Gave') ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
               {bulkGrantMsg}
             </p>
           )}
@@ -645,14 +657,12 @@ export default function TeamDashboardClient({
           summary={`$${creditRate} per credit`}
         >
           <div className="space-y-4 pt-2">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 dark:text-chalk-dim">
               ${creditRate} per credit
-              {team.initiated
-                ? <span className="ml-1.5 text-xs text-green-600 font-semibold">discounted $1.49 rate active</span>
-                : <span className="ml-1.5 text-xs text-gray-500">drops to $1.49 once your team reaches 8 players</span>}
+              <span className="ml-1.5 text-xs text-green-600 dark:text-green-400 font-semibold">team rate — $1.49 each when you buy 5+</span>
             </p>
             <div className="space-y-2">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Quantity</p>
+              <p className="text-xs font-semibold text-gray-500 dark:text-chalk-dim uppercase tracking-wide">Quantity</p>
               <div className="flex gap-2">
                 {[1, 5, 10].map(q => (
                   <button
@@ -661,8 +671,8 @@ export default function TeamDashboardClient({
                     onClick={() => { setQuantity(q); setCustomQty('') }}
                     className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-colors ${
                       quantity === q && !customQty
-                        ? 'bg-orange-500 text-white border-orange-500'
-                        : 'bg-white text-black border-gray-300 hover:border-orange-400'
+                        ? 'bg-orange-500 text-ink-950 border-orange-500'
+                        : 'bg-white dark:bg-ink-900 text-black dark:text-chalk border-gray-300 dark:border-courtline hover:border-orange-400'
                     }`}
                   >
                     {q}
@@ -683,14 +693,14 @@ export default function TeamDashboardClient({
                 onFocus={e => e.target.select()}
                 placeholder="Or enter a custom amount…"
                 aria-label="Custom credit amount"
-                className="w-full py-2.5 px-3 border border-gray-300 rounded-xl text-black text-sm placeholder:text-gray-400 placeholder:font-normal focus:outline-none focus:border-orange-500"
+                className="w-full py-2.5 px-3 border border-gray-300 dark:border-courtline rounded-xl text-black dark:text-chalk text-sm placeholder:text-gray-400 dark:placeholder:text-chalk-dim placeholder:font-normal focus:outline-none focus:border-orange-500"
               />
             </div>
 
-            <VolumeTierList baseUnitCents={creditBaseCents} className="px-1" />
+            <VolumeTierList tier={tier} className="px-1" />
 
             <VolumeSavings
-              baseUnitCents={creditBaseCents}
+              tier={tier}
               quantity={quantity}
               label="credit"
               onJump={(q) => { setQuantity(Math.min(500, q)); setCustomQty('') }}
@@ -699,11 +709,11 @@ export default function TeamDashboardClient({
             <button
               onClick={buyCredits}
               disabled={buying}
-              className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-black py-3 rounded-xl transition-colors"
+              className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-black py-3 rounded-xl transition-colors"
             >
               {buying
                 ? 'Redirecting to checkout…'
-                : `Buy ${quantity} Credit${quantity !== 1 ? 's' : ''} — ${usd(orderPricing(creditBaseCents, quantity).totalCents)}`}
+                : `Buy ${quantity} Credit${quantity !== 1 ? 's' : ''} — ${usd(orderPricing(tier, quantity).totalCents)}`}
             </button>
           </div>
         </Section>
@@ -736,29 +746,6 @@ export default function TeamDashboardClient({
         summary={`${team.tokenPool} in pool`}
       >
         <div className="space-y-4 pt-2">
-          {!team.initiated && (
-            <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-bold text-black">Team not yet active</p>
-                <span className="text-xs font-black text-orange-500">{members.length}/8 players</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-orange-500 h-2 rounded-full transition-all"
-                  style={{ width: `${Math.min(100, (members.length / 8) * 100)}%` }}
-                />
-              </div>
-              <p className="text-xs text-gray-500 leading-relaxed">
-                {8 - members.length > 0
-                  ? `${8 - members.length} more player${8 - members.length !== 1 ? 's' : ''} needed to activate this team.`
-                  : 'Almost there!'
-                }
-                {' '}Once you reach 8 players, every player on the team automatically gets <strong>1 free analysis token</strong>{inApp ? '' : ', and the team unlocks the ability to purchase additional tokens at $1.49 each'}.
-              </p>
-              <p className="text-xs text-gray-400">Share your team signup link (in the Players tab) to invite players.</p>
-            </div>
-          )}
-
           <TokenBalances
             players={members.map(m => ({
               id: m.id,
@@ -785,18 +772,21 @@ export default function TeamDashboardClient({
       )}
 
       {/* ── Header ─────────────────────────────────────────────── */}
+      {/* flex-wrap: on phones the action buttons take their own row instead of
+          being crushed beside the team name and clipped off-screen (the app's
+          webview had the Organization Hub and Log out buttons unreachable). */}
       <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
+        <div className="min-w-0">
           <InlineEdit
             value={team.name}
             endpoint="/api/team/rename"
             bodyKey="name"
             placeholder="Team name"
-            textClassName="text-2xl font-black text-black"
+            textClassName="text-2xl font-black text-black dark:text-chalk"
           />
-          <p className="text-gray-500 text-sm mt-1">
+          <p className="text-gray-500 dark:text-chalk-dim text-sm mt-1">
             Team Dashboard · Logged in as{' '}
-            <span className="font-semibold text-gray-700">{myNickname || adminEmail}</span>
+            <span className="font-semibold text-gray-700 dark:text-chalk-dim">{myNickname || adminEmail}</span>
           </p>
           {allTeams.length > 1 && (
             <div className="flex flex-wrap gap-2 mt-2">
@@ -814,8 +804,8 @@ export default function TeamDashboardClient({
                   }}
                   className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${
                     t.id === currentTeamId
-                      ? 'bg-orange-500 text-white'
-                      : 'bg-white border border-gray-300 text-black hover:border-orange-400'
+                      ? 'bg-orange-500 text-ink-950'
+                      : 'bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline text-black dark:text-chalk hover:border-orange-400'
                   }`}
                 >
                   {t.name}
@@ -824,19 +814,17 @@ export default function TeamDashboardClient({
             </div>
           )}
         </div>
-        {/* w-full on phones: the buttons take their own row under the team name
-            instead of being crushed beside it and clipped off-screen. */}
         <div className="flex w-full sm:w-auto items-center gap-2 sm:shrink-0">
           <Link
             href="/team"
-            className="flex-1 sm:flex-none text-center border border-orange-300 text-orange-600 hover:bg-orange-50 font-bold text-sm px-4 py-2 rounded-xl transition-colors whitespace-nowrap"
+            className="flex-1 sm:flex-none text-center border border-orange-300 text-orange-600 dark:text-ember-400 hover:bg-orange-50 dark:hover:bg-ember-500/10 font-bold text-sm px-4 py-2 rounded-xl transition-colors whitespace-nowrap"
           >
             🏢 Organization Hub
           </Link>
           <button
             onClick={logout}
             disabled={loggingOut}
-            className="flex-1 sm:flex-none bg-orange-500 hover:bg-red-500 disabled:opacity-60 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors whitespace-nowrap"
+            className="flex-1 sm:flex-none bg-orange-500 hover:bg-red-500 disabled:opacity-60 text-ink-950 font-bold text-sm px-4 py-2 rounded-xl transition-colors whitespace-nowrap"
           >
             {loggingOut ? 'Logging out...' : 'Log out'}
           </button>
@@ -844,23 +832,23 @@ export default function TeamDashboardClient({
       </header>
 
       {/* ── Key stats — always visible above the tabs ───────────── */}
-      <section className="bg-orange-50 border border-orange-200 rounded-2xl p-5">
+      <section className="bg-orange-50 dark:bg-ember-500/10 border border-orange-200 rounded-2xl p-5">
         <div className="flex flex-wrap items-start gap-x-10 gap-y-4">
           <div>
             <div className="flex items-center gap-1.5">
-              <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wide">Team code</h2>
+              <h2 className="text-xs font-bold text-gray-500 dark:text-chalk-dim uppercase tracking-wide">Team code</h2>
               <InfoTip label="What is the team code for?" align="left">
                 Players enter this code (or use the signup link in the Players
                 tab) to join your team&apos;s roster. Only share it with your
                 own players — anyone with the code can join.
               </InfoTip>
             </div>
-            <p className="text-2xl font-black font-mono tracking-widest text-black mt-1">{team.accessCode}</p>
+            <p className="text-2xl font-black font-mono tracking-widest text-black dark:text-chalk mt-1">{team.accessCode}</p>
           </div>
 
           <div>
             <div className="flex items-center gap-1.5">
-              <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wide">My credits</h2>
+              <h2 className="text-xs font-bold text-gray-500 dark:text-chalk-dim uppercase tracking-wide">My credits</h2>
               <InfoTip label="What are my credits?" align="left">
                 Your personal balance — 1 credit = 1 AI shot analysis. Credits
                 you buy or that your organization gives you personally land
@@ -868,24 +856,24 @@ export default function TeamDashboardClient({
                 as tokens.
               </InfoTip>
             </div>
-            <p className="text-2xl font-black text-black mt-1">{coachCredits}</p>
+            <p className="text-2xl font-black text-black dark:text-chalk mt-1">{coachCredits}</p>
           </div>
 
           <div>
             <div className="flex items-center gap-1.5">
-              <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wide">Team credits</h2>
+              <h2 className="text-xs font-bold text-gray-500 dark:text-chalk-dim uppercase tracking-wide">Team credits</h2>
               <InfoTip label="What are team credits?" align="left">
                 A shared balance that belongs to the team — usually funded by
                 your organization. Spend them on this team&apos;s players (or
                 your own uploads once your personal credits run out).
               </InfoTip>
             </div>
-            <p className="text-2xl font-black text-black mt-1">{team.credits}</p>
+            <p className="text-2xl font-black text-black dark:text-chalk mt-1">{team.credits}</p>
           </div>
 
           <div>
             <div className="flex items-center gap-1.5">
-              <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wide">Token pool</h2>
+              <h2 className="text-xs font-bold text-gray-500 dark:text-chalk-dim uppercase tracking-wide">Token pool</h2>
               <InfoTip label="What is the token pool?">
                 Analysis tokens the team owns but hasn&apos;t handed out yet
                 (like the free tokens from activation). Assign them to players
@@ -893,24 +881,20 @@ export default function TeamDashboardClient({
                 tokens when they upload a shot.
               </InfoTip>
             </div>
-            <p className="text-2xl font-black text-black mt-1">{team.tokenPool}</p>
+            <p className="text-2xl font-black text-black dark:text-chalk mt-1">{team.tokenPool}</p>
           </div>
 
           <div>
             <div className="flex items-center gap-1.5">
-              <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wide">Credit price</h2>
-              <InfoTip label="What does initiation mean?" align="right">
-                Credits start at $3.49. Once your team is initiated — 8 players
-                have joined, or a class package was purchased for it — the
-                price drops to $1.49 per credit.
+              <h2 className="text-xs font-bold text-gray-500 dark:text-chalk-dim uppercase tracking-wide">Credit price</h2>
+              <InfoTip label="How is the credit price set?" align="right">
+                Every team gets the team rate from day one — no player minimum.
+                Credits are $2.49 each, dropping to $1.49 each when you buy 5
+                or more in one order.
               </InfoTip>
             </div>
-            <p className="text-2xl font-black text-black mt-1">${creditRate}</p>
-            {team.initiated ? (
-              <p className="text-[11px] text-green-600 font-semibold leading-tight">discounted rate active</p>
-            ) : (
-              <p className="text-[11px] text-gray-500 leading-tight">{members.length}/8 players to unlock $1.49</p>
-            )}
+            <p className="text-2xl font-black text-black dark:text-chalk mt-1">${creditRate}</p>
+            <p className="text-[11px] text-green-600 dark:text-green-400 font-semibold leading-tight">team rate active</p>
           </div>
         </div>
       </section>
@@ -933,6 +917,7 @@ export default function TeamDashboardClient({
           { id: 'uploads', label: 'Uploads', content: uploadsTab },
           { id: 'leaderboard', label: 'Leaderboard', count: leaderboard.length, content: leaderboardTab },
           { id: 'credits', label: 'Tokens & Credits', content: creditsTab },
+          { id: 'settings', label: 'Settings', content: settingsTab },
         ]}
       />
 
@@ -944,22 +929,22 @@ export default function TeamDashboardClient({
           onClick={() => setShowLeaderboard(false)}
         >
           <div
-            className="leaderboard-modal bg-white rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-auto p-6 space-y-4"
+            className="leaderboard-modal bg-white dark:bg-ink-900 rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-auto p-6 space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between gap-4">
-              <h2 className="text-xl font-black text-black">{team.name} Leaderboard</h2>
+              <h2 className="text-xl font-black text-black dark:text-chalk">{team.name} Leaderboard</h2>
               <div className="flex items-center gap-2 print:hidden">
                 <PrintButton label="Print" />
                 <button
                   onClick={() => setShowLeaderboard(false)}
-                  className="shrink-0 text-sm font-semibold text-gray-400 hover:text-red-500 transition-colors"
+                  className="shrink-0 text-sm font-semibold text-gray-400 dark:text-chalk-dim hover:text-red-500 transition-colors"
                 >
                   Close
                 </button>
               </div>
             </div>
-            <LeaderboardTable entries={leaderboard} />
+            <LeaderboardTable entries={leaderboard} theme="auto" />
           </div>
         </div>,
         document.body,

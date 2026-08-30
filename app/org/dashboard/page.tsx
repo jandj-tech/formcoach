@@ -7,6 +7,11 @@ import InlineEdit from '@/components/InlineEdit'
 import InfoTip from '@/components/InfoTip'
 import OrgDashboardClient from './OrgDashboardClient'
 import LogoutButton from './LogoutButton'
+import ManageBillingButton from '@/components/ManageBillingButton'
+import ReactivatePanel from '@/components/ReactivatePanel'
+import ChangePlanControl from '@/components/ChangePlanControl'
+import { isPaidTier, isBillingInterval } from '@/lib/org-subscription-pricing'
+import { orgTierById } from '@/lib/team-features'
 import type { ClassPackage } from './OrgDashboardClient'
 import type { LeaderboardRow } from '@/components/LeaderboardTable'
 import Link from 'next/link'
@@ -37,7 +42,6 @@ interface TeamData {
   members: Member[]
   coaches: Coach[]
   coachNickname: string | null
-  initiated: boolean
   tokenPool: number
   leaderboard: LeaderboardRow[]
 }
@@ -52,6 +56,30 @@ export default async function OrgDashboardPage() {
   ` as unknown as [{ id: string; name: string; access_code: string } | undefined]
 
   if (!org) redirect('/login')
+
+  // One predicate decides everything: a lapsed plan closes the same gates a
+  // never-subscribed org would face, and reopens them all the moment it is paid.
+  const orgTier = await orgTierById(org.id)
+
+  // Billing shape for the plan switcher. A grandfathered or comped org has no
+  // Stripe customer, so it gets no switcher at all rather than one that errors.
+  let billing = { tier: null as null | 'basic' | 'plus', interval: null as null | 'monthly' | 'annual', hasBilling: false }
+  try {
+    const [b] = (await db`
+      SELECT subscription_tier, subscription_plan, (stripe_subscription_id IS NOT NULL) AS has_billing
+      FROM organizations WHERE id = ${org.id}
+    `) as unknown as [{ subscription_tier: string | null; subscription_plan: string | null; has_billing: boolean } | undefined]
+    if (b) {
+      billing = {
+        tier: isPaidTier(b.subscription_tier) ? b.subscription_tier : null,
+        interval: isBillingInterval(b.subscription_plan) ? b.subscription_plan : null,
+        hasBilling: b.has_billing,
+      }
+    }
+  } catch {
+    // Tier columns not migrated yet — no switcher, which is the safe default.
+  }
+  const orgEntitled = orgTier !== 'none'
 
   // The organization's own token balance. Queried separately so a missing
   // column (pre-migration) can't break the dashboard.
@@ -154,11 +182,6 @@ export default async function OrgDashboardPage() {
         } catch {
           // coach_nickname / token_pool columns may not exist yet
         }
-        // A team is initiated if it has a class package OR has reached the
-        // player threshold. Both unlock the $1.49 rate everywhere this team
-        // is involved.
-        const initiated = !!t.class_package_id || members.length >= 8
-
         // Leaderboard: account players (by user_id) + coach-added players (by team_player_id).
         let leaderboard: LeaderboardRow[] = []
         try {
@@ -204,7 +227,6 @@ export default async function OrgDashboardPage() {
           members,
           coaches,
           coachNickname,
-          initiated,
           tokenPool,
           leaderboard,
         }
@@ -230,11 +252,12 @@ export default async function OrgDashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-white flex flex-col">
+    <main className="min-h-screen bg-white dark:bg-ink-900 flex flex-col">
       <TopNav />
       <div className="max-w-3xl mx-auto w-full px-6 py-10 space-y-8">
-        {/* Wraps on phones: the action buttons drop to their own row instead of
-            being crushed against the title and clipped off-screen. */}
+        {/* flex-wrap: on phones the three action buttons take their own row
+            (wrapping among themselves) instead of being crushed beside the
+            org name and clipped off-screen in the app's webview. */}
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <InlineEdit
@@ -242,23 +265,24 @@ export default async function OrgDashboardPage() {
               endpoint="/api/org/rename"
               bodyKey="name"
               placeholder="Organization name"
-              textClassName="text-2xl font-black text-black"
+              textClassName="text-2xl font-black text-black dark:text-chalk"
             />
-            <p className="text-gray-500 text-sm mt-1">Organization Dashboard</p>
+            <p className="text-gray-500 dark:text-chalk-dim text-sm mt-1">Organization Dashboard</p>
           </div>
-          <div className="flex w-full sm:w-auto items-center gap-2">
+          <div className="flex w-full sm:w-auto flex-wrap items-center gap-2">
             <Link
               href="/team"
-              className="flex-1 sm:flex-none text-center border border-orange-300 text-orange-600 hover:bg-orange-50 font-bold text-sm px-4 py-2 rounded-xl transition-colors whitespace-nowrap"
+              className="border border-orange-300 text-orange-600 dark:text-ember-400 hover:bg-orange-50 dark:hover:bg-ember-500/10 font-bold text-sm px-4 py-2 rounded-xl transition-colors whitespace-nowrap"
             >
               🏢 Organization Hub
             </Link>
+            <ManageBillingButton />
             <LogoutButton />
           </div>
         </div>
 
-        <div className="bg-orange-50 border border-orange-200 rounded-2xl p-6">
-          <p className="text-sm text-gray-500 flex items-center gap-2">
+        <div className="bg-orange-50 dark:bg-ember-500/10 border border-orange-200 rounded-2xl p-6">
+          <p className="text-sm text-gray-500 dark:text-chalk-dim flex items-center gap-2">
             Organization code
             <InfoTip label="What is the organization code for?" align="left">
               Share this code with your coaches. When a coach registers a team
@@ -266,13 +290,31 @@ export default async function OrgDashboardPage() {
               assign tokens and see its leaderboard here.
             </InfoTip>
           </p>
-          <p className="text-2xl font-black text-black font-mono tracking-wider">{org.access_code}</p>
-          <p className="text-xs text-gray-400 mt-1">
+          <p className="text-2xl font-black text-black dark:text-chalk font-mono tracking-wider">{org.access_code}</p>
+          <p className="text-xs text-gray-400 dark:text-chalk-dim mt-1">
             Coaches enter this code when registering a team to link it to your organization.
           </p>
         </div>
 
-        <OrgDashboardClient teams={teams} orgName={org.name} classPackages={classPackages} myUploads={myUploads} orgTokenBalance={orgTokenBalance} />
+        {orgEntitled && billing.hasBilling && (
+          // Anchored so the Plus-only upsells further down the page (the team
+          // schedule card) can send a paying Basic org straight here.
+          <div id="org-billing" className="mb-6 scroll-mt-24">
+            <ChangePlanControl
+              currentTier={billing.tier}
+              currentInterval={billing.interval}
+              hasBilling={billing.hasBilling}
+            />
+          </div>
+        )}
+
+        {!orgEntitled && (
+          <div className="mb-6">
+            <ReactivatePanel />
+          </div>
+        )}
+
+        <OrgDashboardClient orgTier={orgTier} teams={teams} orgName={org.name} classPackages={classPackages} myUploads={myUploads} orgTokenBalance={orgTokenBalance} />
       </div>
       <SiteFooter />
     </main>

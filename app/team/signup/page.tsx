@@ -4,6 +4,7 @@ import { useIsInApp } from '@/lib/useIsInApp'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import TopNav from '@/components/TopNav'
+import WebOnlySignup from '@/components/WebOnlySignup'
 import SiteFooter from '@/components/SiteFooter'
 import PasswordInput from '@/components/PasswordInput'
 import Turnstile, { TURNSTILE_ENABLED } from '@/components/Turnstile'
@@ -65,6 +66,10 @@ export default function TeamSignupPage() {
       setStatus('error')
     }
   }
+
+  // Coach and organization accounts are created on the website only —
+  // they are billed surfaces with rosters and invoices behind them.
+  if (inApp) return <WebOnlySignup kind="team" />
 
   return (
     <main className="min-h-screen bg-white flex flex-col">

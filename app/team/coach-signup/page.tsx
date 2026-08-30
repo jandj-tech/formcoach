@@ -3,6 +3,8 @@
 import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import TopNav from '@/components/TopNav'
+import WebOnlySignup from '@/components/WebOnlySignup'
+import { useIsInApp } from '@/lib/useIsInApp'
 import SiteFooter from '@/components/SiteFooter'
 import PasswordInput from '@/components/PasswordInput'
 
@@ -87,6 +89,11 @@ function CoachSignupForm() {
 }
 
 export default function CoachSignupPage() {
+  // Coach and organization accounts are created on the website only —
+  // they are billed surfaces with rosters and invoices behind them.
+  const inApp = useIsInApp()
+  if (inApp) return <WebOnlySignup kind="coach" />
+
   return (
     <Suspense>
       <CoachSignupForm />

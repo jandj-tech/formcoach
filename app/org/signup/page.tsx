@@ -3,6 +3,8 @@
 import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import TopNav from '@/components/TopNav'
+import WebOnlySignup from '@/components/WebOnlySignup'
+import { useIsInApp } from '@/lib/useIsInApp'
 import SiteFooter from '@/components/SiteFooter'
 import PasswordInput from '@/components/PasswordInput'
 import Turnstile, { TURNSTILE_ENABLED } from '@/components/Turnstile'
@@ -241,6 +243,11 @@ function OrgSignupInner() {
 }
 
 export default function OrgSignupPage() {
+  // Coach and organization accounts are created on the website only —
+  // they are billed surfaces with rosters and invoices behind them.
+  const inApp = useIsInApp()
+  if (inApp) return <WebOnlySignup kind="organization" />
+
   return (
     <Suspense>
       <OrgSignupInner />

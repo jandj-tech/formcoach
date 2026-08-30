@@ -8,6 +8,7 @@ import Link from 'next/link'
 import OrgAddCoach from './OrgAddCoach'
 import AccountTabs from '@/components/account/AccountTabs'
 import ClassManager from '@/components/ClassManager'
+import BillingHistory from '@/components/BillingHistory'
 import Section from '@/components/account/Section'
 import InfoTip from '@/components/InfoTip'
 import TokenBalances from '@/components/TokenBalances'
@@ -1305,6 +1306,19 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   // Once a package exists this tab stops being a sales pitch and becomes the
   // place the program is actually run from. The buy form moves below it, as
   // the target of "start another package".
+  const billingTab = (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-xl font-black text-black dark:text-chalk">Billing</h2>
+        <p className="text-sm text-gray-500 dark:text-chalk-dim mt-1">
+          Every purchase on this organization — tokens, team credits, program
+          packages and shop orders. Receipts are emailed at checkout.
+        </p>
+      </div>
+      <BillingHistory endpoint="/api/org/billing" />
+    </div>
+  )
+
   const leaderboardTab = (
     <div className="space-y-4">
       <div>
@@ -1703,6 +1717,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
           { id: 'tokens', label: 'Tokens', content: tokensTab },
           { id: 'leaderboard', label: 'Leaderboard', count: orgLeaderboard.length, content: leaderboardTab },
           { id: 'players', label: 'Players', count: uniquePlayerCount, content: playersTab },
+          { id: 'billing', label: 'Billing', content: billingTab },
           { id: 'uploads', label: 'My Uploads', count: myUploads.length, content: uploadsTab },
           { id: 'settings', label: 'Settings', content: settingsTab },
         ]}

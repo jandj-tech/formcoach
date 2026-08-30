@@ -66,7 +66,7 @@ Copy every existing Vercel env var over, then change/add these:
 | `REVENUECAT_WEBHOOK_SECRET` | must equal the Authorization header value configured in RevenueCat → Integrations → Webhooks; `/api/iap/webhook` rejects mismatches once set |
 
 Keep all the others as-is: `ANTHROPIC_API_KEY`, `STRIPE_SECRET_KEY`,
-`TWILIO_*`, `RESEND_API_KEY`, `JWT_SECRET`, `META_*`, `YOUTUBE_*`, etc.
+`RESEND_API_KEY`, `JWT_SECRET`, `META_*`, `YOUTUBE_*`, etc.
 
 ### Warehouse addresses (shipping)
 

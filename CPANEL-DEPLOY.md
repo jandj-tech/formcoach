@@ -42,7 +42,7 @@ Send them the request in the chat. It must turn on, for the `learnhoops` account
     npm i -g vercel && vercel env pull .env.local
 
 Brings every secret over (`DATABASE_URL`=Neon, `ANTHROPIC_API_KEY`,
-`STRIPE_*`, `TWILIO_*`, `RESEND_API_KEY`, `JWT_SECRET`, `META_*`, `YOUTUBE_*`)
+`STRIPE_*`, `RESEND_API_KEY`, `JWT_SECRET`, `META_*`, `YOUTUBE_*`)
 plus the storage vars from MIGRATION.md. These get entered into Application
 Manager's env-var UI for the app.
 

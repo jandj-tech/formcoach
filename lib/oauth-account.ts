@@ -41,14 +41,14 @@ export class OAuthSignInError extends Error {}
 export async function signInWithOAuthProfile(profile: OAuthProfile): Promise<OAuthSignInResult> {
   const email = profile.emailVerified && profile.email ? profile.email.toLowerCase().trim() : null
 
-  // 1. A provider identity we have seen before always wins: it is the only
-  //    thing that still identifies an Apple private-relay user, whose address
-  //    matches nothing.
+  // 1. The provider identity we have seen before, if any. It is refreshed here
+  //    but does NOT decide the session on its own — see below.
   const [identity] = (await db`
     SELECT user_id FROM user_oauth_identities
     WHERE provider = ${profile.provider} AND subject = ${profile.subject}
   `) as unknown as [{ user_id: string } | undefined]
 
+  let identityUser: { id: string; email: string } | null = null
   if (identity) {
     const [user] = (await db`
       SELECT id, email FROM users WHERE id = ${identity.user_id}
@@ -61,19 +61,20 @@ export async function signInWithOAuthProfile(profile: OAuthProfile): Promise<OAu
             refresh_token = COALESCE(${profile.refreshToken ?? null}, refresh_token)
         WHERE provider = ${profile.provider} AND subject = ${profile.subject}
       `
-      return playerResult(user, false)
+      identityUser = user
+    } else {
+      // Identity outlived its user (shouldn't happen — the FK cascades). Drop
+      // it and fall through rather than 500-ing.
+      await db`
+        DELETE FROM user_oauth_identities
+        WHERE provider = ${profile.provider} AND subject = ${profile.subject}
+      `
     }
-    // Identity outlived its user (shouldn't happen — the FK cascades). Drop it
-    // and fall through to creating a fresh account rather than 500-ing.
-    await db`
-      DELETE FROM user_oauth_identities
-      WHERE provider = ${profile.provider} AND subject = ${profile.subject}
-    `
   }
 
-  // Without a verified address there is nothing left to match on, so a first
-  // visit can only become a brand-new player account.
-  if (!email) return createPlayer(profile, null)
+  // Without a verified address the provider identity is the only handle we
+  // have — that is exactly the Apple private-relay case — so it decides alone.
+  if (!email) return identityUser ? playerResult(identityUser, false) : createPlayer(profile, null)
 
   // 2. Organization admin
   const [org] = (await db`
@@ -128,6 +129,19 @@ export async function signInWithOAuthProfile(profile: OAuthProfile): Promise<OAu
   } catch (err) {
     console.warn('team_coaches lookup failed during OAuth sign-in:', err instanceof Error ? err.message : err)
   }
+
+  // 4b. No organization or coach account claims this verified address, so the
+  //     provider identity we refreshed above is the answer.
+  //
+  //     Order matters here, and it used to be wrong. This lookup ran FIRST and
+  //     returned immediately, so anyone who had ever tapped "Continue with
+  //     Google" as a player was pinned to that player account forever — the
+  //     org/team/coach checks below it never ran. A coach who signed in with
+  //     Google got a player session, landed on the player dashboard, and in the
+  //     iOS app saw the "join a team with a code" screen while the webview
+  //     (holding a real team cookie) still showed them as the coach. Password
+  //     login has always preferred the coach account; this now matches it.
+  if (identityUser) return playerResult(identityUser, false)
 
   // 5. Existing player with this address — link the provider to it. This is the
   //    path that keeps someone who signed up with a password from accidentally

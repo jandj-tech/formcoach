@@ -1,17 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getOrgSessionFromRequest } from '@/lib/org-auth'
+import { canManageClassPackage } from '@/lib/org-class-access'
 
 export async function POST(req: NextRequest) {
-  const session = await getOrgSessionFromRequest(req)
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
   const { packageId, userId, firstName, lastNameInitial } = await req.json()
   if (!packageId || !firstName) {
     return NextResponse.json({ error: 'packageId and firstName required' }, { status: 400 })
   }
 
-  // Verify package belongs to this org and has capacity. No more
+  // The owning org or the class team's coach — both run the class manager.
+  if (!(await canManageClassPackage(req, packageId))) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // Re-check capacity. No more
   // token-pool deduction or per-player token grant — the new model has the
   // org leader / coach uploading on each player's behalf out of the team's
   // credit pool, so players don't carry personal tokens.
@@ -20,7 +22,7 @@ export async function POST(req: NextRequest) {
            COUNT(e.id)::int AS enrolled_count
     FROM org_class_packages p
     LEFT JOIN org_class_enrollments e ON e.package_id = p.id
-    WHERE p.id = ${packageId} AND p.org_id = ${session.orgId}
+    WHERE p.id = ${packageId}
     GROUP BY p.id
   ` as unknown as [{ id: string; player_count: number; status: string; enrolled_count: number } | undefined]
 

@@ -5,6 +5,7 @@ import { db } from '@/lib/db'
 import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
 import TeamDashboardClient from './TeamDashboardClient'
+import type { ClassManagerPackage } from '@/components/ClassManager'
 import { teamTier } from '@/lib/team-features'
 
 export default async function TeamDashboardPage() {
@@ -186,35 +187,44 @@ export default async function TeamDashboardPage() {
   // used to fetch `class_package_id` and throw the answer away, so a coach
   // whose team was enrolled saw nothing about the program they were meant to
   // be delivering — no roster progress, no session plan, nothing.
-  let classProgram: {
-    id: string
-    playerCount: number
-    enrolledCount: number
-    completedCount: number
-    tokenPool: number
-  } | null = null
+  let classProgram: (ClassManagerPackage & { tokenPool: number }) | null = null
   if (classPackageId) {
     try {
       const [row] = (await db`
         SELECT p.id,
                p.player_count,
-               COALESCE(p.token_pool, 0)::int AS token_pool,
-               COUNT(e.id)::int AS enrolled_count,
-               COUNT(e.final_submission_id)::int AS completed_count
+               p.status,
+               p.created_at,
+               COALESCE(p.token_pool, 0)::int AS token_pool
         FROM org_class_packages p
-        LEFT JOIN org_class_enrollments e ON e.package_id = p.id
         WHERE p.id = ${classPackageId}
-        GROUP BY p.id
       `) as unknown as [{
-        id: string; player_count: number; token_pool: number
-        enrolled_count: number; completed_count: number
+        id: string; player_count: number; status: string
+        created_at: string; token_pool: number
       } | undefined]
+
       if (row) {
+        // The coach runs the roster week to week, so they get the same rows the
+        // org sees — not just the counts.
+        const enrollments = (await db`
+          SELECT e.id, e.first_name, e.last_name_initial,
+                 e.first_score, e.display_final_score,
+                 (e.first_submission_id IS NOT NULL) AS has_first,
+                 (e.final_submission_id IS NOT NULL) AS has_final
+          FROM org_class_enrollments e
+          WHERE e.package_id = ${row.id}
+          ORDER BY e.created_at ASC
+        `) as unknown as ClassManagerPackage['enrollments']
+
         classProgram = {
           id: row.id,
-          playerCount: row.player_count,
-          enrolledCount: row.enrolled_count,
-          completedCount: row.completed_count,
+          player_count: row.player_count,
+          status: row.status,
+          created_at: row.created_at,
+          team_access_code: team.access_code,
+          enrollments,
+          teamName: team.name,
+          teamCredits: team.credits,
           tokenPool: row.token_pool,
         }
       }

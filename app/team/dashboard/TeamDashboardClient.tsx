@@ -15,6 +15,7 @@ import InlineEdit from '@/components/InlineEdit'
 import PlayerShotList, { type Shot } from '@/components/PlayerShotList'
 import InfoTip from '@/components/InfoTip'
 import AccountTabs from '@/components/account/AccountTabs'
+import ClassManager, { type ClassManagerPackage } from '@/components/ClassManager'
 import TeamChatPanel from '@/components/TeamChatPanel'
 import EmailTeamPanel from '@/components/EmailTeamPanel'
 import Section from '@/components/account/Section'
@@ -98,13 +99,7 @@ interface Props {
   myUploads: Shot[]
   coachCredits: number
   /** The 10-Week Shooting Class this team is running, or null if it isn't. */
-  classProgram: {
-    id: string
-    playerCount: number
-    enrolledCount: number
-    completedCount: number
-    tokenPool: number
-  } | null
+  classProgram: (ClassManagerPackage & { tokenPool: number }) | null
 }
 
 export default function TeamDashboardClient({
@@ -630,53 +625,7 @@ export default function TeamDashboardClient({
   // explanation — before this tab existed the program was invisible to them.
   const programTab = classProgram ? (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-gray-200 dark:border-courtline p-5">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
-            <h3 className="font-black text-black dark:text-chalk">10-Week Shooting Class</h3>
-            <p className="text-xs text-gray-600 dark:text-chalk-dim mt-0.5">
-              Ten sessions, from a baseline analysis to a final evaluation and certificate.
-            </p>
-          </div>
-          <Link href={`/org/curriculum/${classProgram.id}`} className={backendButton('secondary')}>
-            Session plan
-            <ArrowRightIcon aria-hidden />
-          </Link>
-        </div>
-
-        <div className="mt-5 grid grid-cols-3 gap-3">
-          {[
-            { label: 'Places', value: classProgram.playerCount },
-            { label: 'Enrolled', value: classProgram.enrolledCount },
-            { label: 'Finished', value: classProgram.completedCount },
-          ].map(s => (
-            <div key={s.label} className="rounded-xl bg-gray-50 dark:bg-ink-800 px-4 py-3">
-              <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-chalk-dim">{s.label}</p>
-              <p className="text-2xl font-black text-black dark:text-chalk tabular-nums">{s.value}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* A progress bar rather than a bare fraction: "6 of 20 finished" is
-            the one number a coach checks repeatedly during the ten weeks. */}
-        {classProgram.playerCount > 0 && (
-          <div className="mt-4">
-            <div className="h-2 rounded-full bg-gray-100 dark:bg-ink-800 overflow-hidden">
-              <div
-                className="h-full rounded-full bg-ember-500 transition-[width]"
-                style={{ width: `${Math.min(100, Math.round((classProgram.completedCount / classProgram.playerCount) * 100))}%` }}
-              />
-            </div>
-            <p className="text-xs text-gray-500 dark:text-chalk-dim mt-1.5">
-              {classProgram.completedCount} of {classProgram.playerCount} finished
-              {classProgram.enrolledCount < classProgram.playerCount && (
-                <> · {classProgram.playerCount - classProgram.enrolledCount} place
-                {classProgram.playerCount - classProgram.enrolledCount === 1 ? '' : 's'} still open</>
-              )}
-            </p>
-          </div>
-        )}
-      </div>
+      <ClassManager packages={[classProgram]} canManage />
 
       {classProgram.tokenPool > 0 && (
         <p className="text-xs text-gray-500 dark:text-chalk-dim">

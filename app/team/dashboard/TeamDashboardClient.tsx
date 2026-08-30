@@ -22,7 +22,9 @@ import TeamSchedulePanel from '@/components/TeamSchedulePanel'
 import VolumeSavings, { VolumeTierList } from '@/components/VolumeSavings'
 import {
   analysisBaseCents,
+  discountedUnitCents,
   orderPricing,
+  tiersFor,
   usd,
   type OrgTier,
 } from '@/lib/team-pricing'
@@ -306,6 +308,15 @@ export default function TeamDashboardClient({
   const tier = team.tier
   const creditBaseCents = analysisBaseCents(tier)
   const creditRate = (creditBaseCents / 100).toFixed(2)
+  // A team only earns the discounted team rate through an organization plan.
+  // A standalone team resolves to tier 'none' and pays the same price as any
+  // individual — the copy below has to say so rather than advertising a rate
+  // this team cannot get.
+  const onTeamRate = tier !== 'none'
+  // The team's own first volume step, read off its ladder instead of typed in,
+  // so repricing lib/team-pricing.ts can never leave a stale number here.
+  const firstStep = tiersFor(tier).reduce((lowest, t) => (t.minQty < lowest.minQty ? t : lowest))
+  const firstStepRate = usd(discountedUnitCents(tier, firstStep.minQty))
   const rosterCount = members.length + pendingMembers.length
 
   /* ── Players tab ──────────────────────────────────────────────── */
@@ -662,7 +673,13 @@ export default function TeamDashboardClient({
           <div className="space-y-4 pt-2">
             <p className="text-sm text-gray-600 dark:text-chalk-dim">
               ${creditRate} per credit
-              <span className="ml-1.5 text-xs text-green-600 dark:text-green-400 font-semibold">team rate — $1.49 each when you buy 5+</span>
+              <span
+                className={`ml-1.5 text-xs font-semibold ${
+                  onTeamRate ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-chalk-dim'
+                }`}
+              >
+                {onTeamRate ? 'team rate' : 'regular rate'} — {firstStepRate} each when you buy {firstStep.minQty}+
+              </span>
             </p>
             <div className="space-y-2">
               <p className="text-xs font-semibold text-gray-500 dark:text-chalk-dim uppercase tracking-wide">Quantity</p>
@@ -886,12 +903,24 @@ export default function TeamDashboardClient({
           <StatCard
             label="Credit price"
             value={`$${creditRate}`}
-            note={<span className="text-green-600 dark:text-green-400">team rate active</span>}
+            note={
+              onTeamRate
+                ? <span className="text-green-600 dark:text-green-400">team rate active</span>
+                : <span className="text-gray-500 dark:text-chalk-dim">regular rate</span>
+            }
             hint={
               <InfoTip label="How is the credit price set?" align="right">
-                Every team gets the team rate from day one — no player minimum.
-                Credits are $2.49 each, dropping to $1.49 each when you buy 5
-                or more in one order.
+                {onTeamRate ? (
+                  <>Your organization plan earns the team rate: ${creditRate} per
+                  credit, dropping to {firstStepRate} each when you buy{' '}
+                  {firstStep.minQty} or more in one order.</>
+                ) : (
+                  <>This team isn&apos;t on an organization plan, so credits are
+                  the regular ${creditRate} each — the same price anyone pays —
+                  dropping to {firstStepRate} each when you buy {firstStep.minQty}{' '}
+                  or more in one order. The lower team rate comes with an
+                  organization plan.</>
+                )}
               </InfoTip>
             }
           />

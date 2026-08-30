@@ -122,8 +122,8 @@ export default function CoachAssignPanel({
               disabled={balances[key] === 0}
               className={`text-left border rounded-xl px-3 py-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                 source === key
-                  ? 'border-orange-500 bg-orange-50'
-                  : 'border-gray-200 bg-white hover:border-orange-300'
+                  ? 'border-ember-500 bg-ember-50'
+                  : 'border-gray-200 bg-white hover:border-ember-300'
               }`}
             >
               <p className="text-xs text-gray-500 truncate">{label}</p>
@@ -144,7 +144,7 @@ export default function CoachAssignPanel({
               <button
                 type="button"
                 onClick={toggleAll}
-                className="text-xs font-semibold text-orange-500 hover:text-orange-400"
+                className="text-xs font-semibold text-ember-500 hover:text-ember-400"
               >
                 {selectedIds.length === players.length ? 'Deselect all' : 'Select all'}
               </button>
@@ -153,13 +153,13 @@ export default function CoachAssignPanel({
               {players.map((p) => (
                 <label
                   key={p.id}
-                  className="flex items-center gap-2 px-3 py-1.5 cursor-pointer hover:bg-orange-50"
+                  className="flex items-center gap-2 px-3 py-1.5 cursor-pointer hover:bg-ember-50"
                 >
                   <input
                     type="checkbox"
                     checked={!!sel[p.id]}
                     onChange={() => setSel((s) => ({ ...s, [p.id]: !s[p.id] }))}
-                    className="w-4 h-4 accent-orange-500"
+                    className="w-4 h-4 accent-ember-500"
                   />
                   <span className="flex-1 text-sm text-black truncate">{p.label}</span>
                   <span className="text-xs text-gray-400 shrink-0">{p.tokens} token{p.tokens !== 1 ? 's' : ''}</span>
@@ -179,7 +179,7 @@ export default function CoachAssignPanel({
                 setEach(Number.isNaN(n) ? 0 : Math.min(1000, Math.max(0, n)))
               }}
               onBlur={() => { if (each < 1) setEach(1) }}
-              className="w-16 border border-gray-300 rounded-lg px-2 py-1.5 text-center text-black text-sm focus:outline-none focus:border-orange-500"
+              className="w-16 border border-gray-300 rounded-lg px-2 py-1.5 text-center text-black text-sm focus:outline-none focus:border-ember-500"
             />
             {selectedIds.length > 0 && (
               <span className="text-xs text-gray-500">
@@ -203,7 +203,7 @@ export default function CoachAssignPanel({
           )}
 
           {msg && (
-            <p className={`text-sm font-semibold ${msg.startsWith('Gave') ? 'text-green-600' : 'text-orange-600'}`}>
+            <p className={`text-sm font-semibold ${msg.startsWith('Gave') ? 'text-green-600' : 'text-ember-600'}`}>
               {msg}
             </p>
           )}
@@ -212,7 +212,7 @@ export default function CoachAssignPanel({
             type="button"
             onClick={assign}
             disabled={busy || selectedIds.length === 0 || tooLow}
-            className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+            className="bg-ember-500 hover:bg-ember-400 disabled:bg-ember-300 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors"
           >
             {busy
               ? 'Giving…'

@@ -15,6 +15,11 @@ import { orgTierById } from '@/lib/team-features'
 import type { ClassPackage } from './OrgDashboardClient'
 import type { LeaderboardRow } from '@/components/LeaderboardTable'
 import Link from 'next/link'
+import { Building2Icon } from 'lucide-react'
+import DashboardShell from '@/components/backend/DashboardShell'
+import DashboardHeader from '@/components/backend/DashboardHeader'
+import { StatGrid, StatCard } from '@/components/backend/StatGrid'
+import { backendButton } from '@/components/backend/button-styles'
 
 interface Member {
   id: string
@@ -252,49 +257,84 @@ export default async function OrgDashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-white dark:bg-ink-900 flex flex-col">
+    <main className="min-h-screen bg-white dark:bg-ink-950 flex flex-col">
       <TopNav />
-      <div className="max-w-3xl mx-auto w-full px-6 py-10 space-y-8">
-        {/* flex-wrap: on phones the three action buttons take their own row
-            (wrapping among themselves) instead of being crushed beside the
-            org name and clipped off-screen in the app's webview. */}
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
+      <DashboardShell>
+        <DashboardHeader
+          eyebrow="Organization dashboard"
+          title={
             <InlineEdit
               value={org.name}
               endpoint="/api/org/rename"
               bodyKey="name"
               placeholder="Organization name"
-              textClassName="text-2xl font-black text-black dark:text-chalk"
+              textClassName="text-2xl sm:text-3xl font-black text-black dark:text-chalk"
             />
-            <p className="text-gray-500 dark:text-chalk-dim text-sm mt-1">Organization Dashboard</p>
-          </div>
-          <div className="flex w-full sm:w-auto flex-wrap items-center gap-2">
-            <Link
-              href="/team"
-              className="border border-orange-300 text-orange-600 dark:text-ember-400 hover:bg-orange-50 dark:hover:bg-ember-500/10 font-bold text-sm px-4 py-2 rounded-xl transition-colors whitespace-nowrap"
-            >
-              🏢 Organization Hub
-            </Link>
-            <ManageBillingButton />
-            <LogoutButton />
-          </div>
-        </div>
+          }
+          meta={`${teams.length} team${teams.length === 1 ? '' : 's'} · signed in as ${session.adminEmail}`}
+          actions={
+            <>
+              <Link href="/team" className={backendButton('quiet')}>
+                <Building2Icon aria-hidden />
+                Organization Hub
+              </Link>
+              <ManageBillingButton />
+              <LogoutButton />
+            </>
+          }
+        />
 
-        <div className="bg-orange-50 dark:bg-ember-500/10 border border-orange-200 rounded-2xl p-6">
-          <p className="text-sm text-gray-500 dark:text-chalk-dim flex items-center gap-2">
-            Organization code
-            <InfoTip label="What is the organization code for?" align="left">
-              Share this code with your coaches. When a coach registers a team
-              with it, the team is linked to your organization so you can
-              assign tokens and see its leaderboard here.
-            </InfoTip>
-          </p>
-          <p className="text-2xl font-black text-black dark:text-chalk font-mono tracking-wider">{org.access_code}</p>
-          <p className="text-xs text-gray-400 dark:text-chalk-dim mt-1">
-            Coaches enter this code when registering a team to link it to your organization.
-          </p>
-        </div>
+        <StatGrid>
+          <StatCard
+            label="Organization code"
+            value={org.access_code}
+            mono
+            accent
+            note={
+              <span className="text-gray-500 dark:text-chalk-dim">
+                Coaches enter this when registering a team
+              </span>
+            }
+            hint={
+              <InfoTip label="What is the organization code for?" align="left">
+                Share this code with your coaches. When a coach registers a team
+                with it, the team is linked to your organization so you can
+                assign tokens and see its leaderboard here.
+              </InfoTip>
+            }
+          />
+          <StatCard
+            label="Teams"
+            value={teams.length}
+            hint={
+              <InfoTip label="What counts as a team?" align="left">
+                Every team a coach registered with your organization code.
+                Open one to manage its roster, credits and schedule.
+              </InfoTip>
+            }
+          />
+          <StatCard
+            label="Players"
+            value={teams.reduce((n, t) => n + t.members.length, 0)}
+            hint={
+              <InfoTip label="What counts as a player?">
+                Players who have joined one of your teams&apos; rosters, across
+                the whole organization.
+              </InfoTip>
+            }
+          />
+          <StatCard
+            label="Org credits"
+            value={orgTokenBalance}
+            hint={
+              <InfoTip label="What are organization credits?" align="right">
+                A pool your organization owns. Hand credits to any team or
+                coach from the Credits section below — 1 credit = 1 AI shot
+                analysis.
+              </InfoTip>
+            }
+          />
+        </StatGrid>
 
         {orgEntitled && billing.hasBilling && (
           // Anchored so the Plus-only upsells further down the page (the team
@@ -315,7 +355,7 @@ export default async function OrgDashboardPage() {
         )}
 
         <OrgDashboardClient orgTier={orgTier} teams={teams} orgName={org.name} classPackages={classPackages} myUploads={myUploads} orgTokenBalance={orgTokenBalance} />
-      </div>
+      </DashboardShell>
       <SiteFooter />
     </main>
   )

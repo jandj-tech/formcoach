@@ -1,9 +1,10 @@
 import { redirect, notFound } from 'next/navigation'
-import Link from 'next/link'
 import { getTeamSession } from '@/lib/team-auth'
 import { db } from '@/lib/db'
 import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
+import DashboardShell from '@/components/backend/DashboardShell'
+import DashboardHeader from '@/components/backend/DashboardHeader'
 import PlayerShotList from '@/components/PlayerShotList'
 
 // Coach/team-admin view of a single player's analyzed shots and scores.
@@ -37,22 +38,18 @@ export default async function TeamPlayerPage({ params }: { params: Promise<{ pla
   const playerName = `${player.first_name}${player.last_name_initial ? ` ${player.last_name_initial}.` : ''}`
 
   return (
-    <main className="min-h-screen bg-white flex flex-col">
+    <main className="min-h-screen bg-white dark:bg-ink-950 flex flex-col">
       <TopNav />
-      <div className="max-w-3xl mx-auto w-full px-6 py-10 space-y-6">
-        <Link href="/team/dashboard" className="text-sm text-orange-500 hover:underline">
-          ← Back to team dashboard
-        </Link>
-
-        <div>
-          <h1 className="text-2xl font-black text-black">{playerName}</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            {shots.length} shot{shots.length !== 1 ? 's' : ''} analyzed
-          </p>
-        </div>
+      <DashboardShell>
+        <DashboardHeader
+          eyebrow="Player"
+          title={<h1 className="text-2xl sm:text-3xl font-black text-black dark:text-chalk">{playerName}</h1>}
+          meta={`${shots.length} shot${shots.length !== 1 ? 's' : ''} analyzed`}
+          back={{ href: '/team/dashboard', label: 'Back to team dashboard' }}
+        />
 
         <PlayerShotList shots={shots} showNotesLink />
-      </div>
+      </DashboardShell>
       <SiteFooter />
     </main>
   )

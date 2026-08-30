@@ -8,7 +8,7 @@ import { getTeamSession } from '@/lib/team-auth'
 import { getOrgSession } from '@/lib/org-auth'
 import { db } from '@/lib/db'
 import TeamHubClient, { type HubTeam } from './TeamHubClient'
-import { GraduationCapIcon, TrendingUpIcon, TrophyIcon } from 'lucide-react'
+import { ArrowRightIcon, GraduationCapIcon, TargetIcon, TrendingUpIcon, TrophyIcon } from 'lucide-react'
 import { TEAM_TOKEN_PRICE_CENTS, PLUS_VOLUME_TIERS, percentLabel, usd, type VolumeTier } from '@/lib/team-pricing'
 
 // The deepest tier a team can reach, read off the ladder rather than typed.
@@ -102,9 +102,10 @@ export default async function TeamLandingPage() {
           <p className="text-chalk-dim text-sm">You&apos;re signed in as a {orgSession ? 'organization' : 'coach'} —</p>
           <Link
             href={orgSession ? '/org/dashboard' : '/team/dashboard'}
-            className="bg-ember-500 hover:bg-ember-400 text-ink-950 font-bold px-5 py-2 rounded-full text-sm transition-colors"
+            className="inline-flex items-center gap-1.5 bg-ember-500 hover:bg-ember-400 text-ink-950 font-bold px-5 py-2 rounded-full text-sm transition-colors"
           >
-            Open your dashboard →
+            Open your dashboard
+            <ArrowRightIcon aria-hidden className="w-4 h-4" />
           </Link>
         </div>
       )}
@@ -148,7 +149,7 @@ export default async function TeamLandingPage() {
           <div className="card-lift bg-ink-900 border border-courtline rounded-2xl p-6 space-y-2">
             {inApp ? (
               <>
-                <div className="font-numeric text-3xl text-ember-500">🎯</div>
+                <TargetIcon aria-hidden className="w-8 h-8 text-ember-500" />
                 <div className="font-display font-bold uppercase text-chalk">Pay as you go</div>
                 <div className="text-chalk-dim text-sm">Use analysis credits whenever your team needs them.</div>
               </>
@@ -243,7 +244,7 @@ export default async function TeamLandingPage() {
             <p className="font-display font-black uppercase text-base leading-tight">10-Week Shooting Class — for organizations</p>
             <p className="text-ink-950/80 text-sm mt-1">Each player gets a ball, 2 shot analyses, and a certificate of completion that shows their improvement. Starting at $40/player.</p>
           </div>
-          <span className="shrink-0 font-bold text-lg select-none" aria-hidden>→</span>
+          <ArrowRightIcon aria-hidden className="w-5 h-5 shrink-0" />
         </Link>
         )}
       </div>

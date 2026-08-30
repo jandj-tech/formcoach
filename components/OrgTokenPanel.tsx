@@ -192,14 +192,14 @@ export default function OrgTokenPanel({
     <div className="border border-gray-200 rounded-2xl overflow-hidden">
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between gap-4 px-5 py-4 bg-gray-50 hover:bg-orange-50 transition-colors text-left"
+        className="w-full flex items-center justify-between gap-4 px-5 py-4 bg-gray-50 hover:bg-ember-50 transition-colors text-left"
       >
         <div>
           <h2 className="text-xl font-black text-black">Your Tokens</h2>
           <p className="text-sm text-gray-500 mt-0.5">Org token balance &amp; distribution</p>
         </div>
         <div className="flex items-center gap-3 shrink-0">
-          <div className="bg-orange-50 border border-orange-200 rounded-xl px-3 py-1.5 text-right">
+          <div className="bg-ember-50 border border-ember-200 rounded-xl px-3 py-1.5 text-right">
             <p className="text-xs text-gray-500">Balance</p>
             <p className="text-lg font-black text-black">{balance}</p>
           </div>
@@ -210,21 +210,21 @@ export default function OrgTokenPanel({
       {open && (
         <div className="px-5 pb-5 pt-3 space-y-5">
           <div className="grid grid-cols-3 gap-2">
-            <div className="bg-orange-50 border border-orange-200 rounded-xl px-3 py-2">
+            <div className="bg-ember-50 border border-ember-200 rounded-xl px-3 py-2">
               <p className="text-xs text-gray-500">Your balance</p>
               <p className="text-2xl font-black text-black">{balance}</p>
             </div>
-            <div className="bg-orange-50 border border-orange-200 rounded-xl px-3 py-2">
+            <div className="bg-ember-50 border border-ember-200 rounded-xl px-3 py-2">
               <p className="text-xs text-gray-500">Player tokens</p>
               <p className="text-2xl font-black text-black">{totalPlayerTokens}</p>
             </div>
-            <div className="bg-orange-50 border border-orange-200 rounded-xl px-3 py-2">
+            <div className="bg-ember-50 border border-ember-200 rounded-xl px-3 py-2">
               <p className="text-xs text-gray-500">Team credits</p>
               <p className="text-2xl font-black text-black">{totalTeamCredits}</p>
             </div>
           </div>
 
-          {msg && <p className="text-sm text-orange-600 font-semibold">{msg}</p>}
+          {msg && <p className="text-sm text-ember-600 font-semibold">{msg}</p>}
 
           {/* Buy tokens — hidden in the iOS app; digital purchases there must use native in-app purchase */}
           {!inApp && (
@@ -241,8 +241,8 @@ export default function OrgTokenPanel({
                     onClick={() => { setBuyQty(q); setCustomQty('') }}
                     className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-colors ${
                       buyQty === q && !customQty
-                        ? 'bg-orange-500 text-ink-950 border-orange-500'
-                        : 'bg-white text-black border-gray-300 hover:border-orange-400'
+                        ? 'bg-ember-500 text-ink-950 border-ember-500'
+                        : 'bg-white text-black border-gray-300 hover:border-ember-400'
                     }`}
                   >
                     {q}
@@ -263,7 +263,7 @@ export default function OrgTokenPanel({
                 onFocus={e => e.target.select()}
                 placeholder="Or enter a custom amount…"
                 aria-label="Custom token amount"
-                className="w-full py-2.5 px-3 border border-gray-300 rounded-xl text-black text-sm placeholder:text-gray-400 placeholder:font-normal focus:outline-none focus:border-orange-500"
+                className="w-full py-2.5 px-3 border border-gray-300 rounded-xl text-black text-sm placeholder:text-gray-400 placeholder:font-normal focus:outline-none focus:border-ember-500"
               />
             </div>
 
@@ -282,7 +282,7 @@ export default function OrgTokenPanel({
               type="button"
               onClick={buyTokens}
               disabled={busy}
-              className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-black py-3 rounded-xl transition-colors"
+              className="w-full bg-ember-500 hover:bg-ember-400 disabled:bg-ember-300 text-ink-950 font-black py-3 rounded-xl transition-colors"
             >
               {busy ? 'Redirecting to checkout...' : `Buy ${buyQty} Token${buyQty !== 1 ? 's' : ''} — ${buyTotal}`}
             </button>
@@ -301,7 +301,7 @@ export default function OrgTokenPanel({
                   <select
                     value={assignTeamId}
                     onChange={e => { setAssignTeamId(e.target.value); setSelectedPlayerIds(new Set()) }}
-                    className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-black bg-white focus:outline-none focus:border-orange-500"
+                    className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-black bg-white focus:outline-none focus:border-ember-500"
                   >
                     {teams.map(t => (
                       <option key={t.id} value={t.id}>
@@ -323,8 +323,8 @@ export default function OrgTokenPanel({
                       disabled={balance === 0}
                       className={`text-left border rounded-xl px-3 py-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                         assignSource === 'balance'
-                          ? 'border-orange-500 bg-orange-50'
-                          : 'border-gray-200 bg-white hover:border-orange-300'
+                          ? 'border-ember-500 bg-ember-50'
+                          : 'border-gray-200 bg-white hover:border-ember-300'
                       }`}
                     >
                       <p className="text-xs text-gray-500">Your balance</p>
@@ -337,8 +337,8 @@ export default function OrgTokenPanel({
                       disabled={teamCredits === 0}
                       className={`text-left border rounded-xl px-3 py-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                         assignSource === 'team'
-                          ? 'border-orange-500 bg-orange-50'
-                          : 'border-gray-200 bg-white hover:border-orange-300'
+                          ? 'border-ember-500 bg-ember-50'
+                          : 'border-gray-200 bg-white hover:border-ember-300'
                       }`}
                     >
                       <p className="text-xs text-gray-500 truncate">This team&apos;s credits</p>
@@ -357,7 +357,7 @@ export default function OrgTokenPanel({
                       <button
                         type="button"
                         onClick={toggleAllPlayers}
-                        className="text-xs font-semibold text-orange-500 hover:text-orange-400"
+                        className="text-xs font-semibold text-ember-500 hover:text-ember-400"
                       >
                         {selectedPlayerIds.size === teamPlayers.length ? 'Deselect all' : 'Select all'}
                       </button>
@@ -369,7 +369,7 @@ export default function OrgTokenPanel({
                             type="checkbox"
                             checked={selectedPlayerIds.has(p.id)}
                             onChange={() => togglePlayer(p.id)}
-                            className="w-4 h-4 accent-orange-500 shrink-0"
+                            className="w-4 h-4 accent-ember-500 shrink-0"
                           />
                           <span className="text-sm text-black">{p.label}</span>
                         </label>
@@ -389,7 +389,7 @@ export default function OrgTokenPanel({
                       setAssignEach(Number.isNaN(n) ? 0 : Math.min(1000, Math.max(0, n)))
                     }}
                     onBlur={() => { if (assignEach < 1) setAssignEach(1) }}
-                    className="w-16 border border-gray-300 rounded-xl px-2 py-2 text-center text-black text-sm focus:outline-none focus:border-orange-500"
+                    className="w-16 border border-gray-300 rounded-xl px-2 py-2 text-center text-black text-sm focus:outline-none focus:border-ember-500"
                   />
                   {selectedPlayerIds.size > 0 && (
                     <span className="text-xs text-gray-500">
@@ -416,7 +416,7 @@ export default function OrgTokenPanel({
                   type="button"
                   onClick={assignToPlayers}
                   disabled={busy || selectedPlayerIds.size === 0 || sourceTooLow}
-                  className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+                  className="bg-ember-500 hover:bg-ember-400 disabled:bg-ember-300 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors"
                 >
                   {`Assign tokens from ${assignSource === 'balance' ? 'your balance' : 'team credits'}`}
                 </button>
@@ -439,7 +439,7 @@ export default function OrgTokenPanel({
                 <select
                   value={allocTeamId}
                   onChange={e => setAllocTeamId(e.target.value)}
-                  className="flex-1 min-w-[10rem] border border-gray-300 rounded-xl px-3 py-2.5 text-black text-sm focus:outline-none focus:border-orange-500"
+                  className="flex-1 min-w-[10rem] border border-gray-300 rounded-xl px-3 py-2.5 text-black text-sm focus:outline-none focus:border-ember-500"
                 >
                   {teams.map(t => (
                     <option key={t.id} value={t.id}>
@@ -456,13 +456,13 @@ export default function OrgTokenPanel({
                     setAllocQty(Number.isNaN(n) ? 0 : Math.min(10000, Math.max(0, n)))
                   }}
                   onBlur={() => { if (allocQty < 1) setAllocQty(1) }}
-                  className="w-20 border border-gray-300 rounded-xl px-2 py-2 text-center text-black text-sm focus:outline-none focus:border-orange-500"
+                  className="w-20 border border-gray-300 rounded-xl px-2 py-2 text-center text-black text-sm focus:outline-none focus:border-ember-500"
                 />
                 <button
                   type="button"
                   onClick={allocateToTeam}
                   disabled={busy || allocQty < 1 || allocQty > balance}
-                  className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+                  className="bg-ember-500 hover:bg-ember-400 disabled:bg-ember-300 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors"
                 >
                   Allocate
                 </button>
@@ -484,7 +484,7 @@ export default function OrgTokenPanel({
                 <select
                   value={coachEmail}
                   onChange={e => setCoachEmail(e.target.value)}
-                  className="flex-1 min-w-[10rem] border border-gray-300 rounded-xl px-3 py-2.5 text-black text-sm focus:outline-none focus:border-orange-500"
+                  className="flex-1 min-w-[10rem] border border-gray-300 rounded-xl px-3 py-2.5 text-black text-sm focus:outline-none focus:border-ember-500"
                 >
                   {coaches.map(c => <option key={c.email} value={c.email}>{c.label}</option>)}
                 </select>
@@ -497,10 +497,10 @@ export default function OrgTokenPanel({
                     setGiveQty(Number.isNaN(n) ? 0 : Math.min(1000, Math.max(0, n)))
                   }}
                   onBlur={() => { if (giveQty < 1) setGiveQty(1) }}
-                  className="w-16 border border-gray-300 rounded-xl px-2 py-2 text-center text-black text-sm focus:outline-none focus:border-orange-500"
+                  className="w-16 border border-gray-300 rounded-xl px-2 py-2 text-center text-black text-sm focus:outline-none focus:border-ember-500"
                 />
                 <button type="button" onClick={giveToCoach} disabled={busy}
-                  className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors">
+                  className="bg-ember-500 hover:bg-ember-400 disabled:bg-ember-300 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors">
                   Give credits
                 </button>
               </div>

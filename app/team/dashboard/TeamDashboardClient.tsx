@@ -29,6 +29,11 @@ import {
 import { copyToClipboard } from '@/lib/copy'
 import { useCart } from '@/lib/cart'
 import AppearanceSection from '@/components/account/AppearanceSection'
+import DashboardShell from '@/components/backend/DashboardShell'
+import DashboardHeader from '@/components/backend/DashboardHeader'
+import { StatGrid, StatCard } from '@/components/backend/StatGrid'
+import { backendButton } from '@/components/backend/button-styles'
+import { ArrowRightIcon, Building2Icon, LogOutIcon } from 'lucide-react'
 
 interface Team {
   id: string
@@ -323,7 +328,7 @@ export default function TeamDashboardClient({
               <span className="flex-1 text-xs font-mono text-gray-600 dark:text-chalk-dim truncate">{playerSignupLink}</span>
               <button
                 onClick={copySignupLink}
-                className="shrink-0 text-sm font-semibold text-orange-500 hover:text-orange-400 transition-colors"
+                className="shrink-0 text-sm font-semibold text-ember-500 hover:text-ember-400 transition-colors"
               >
                 {copiedSignup ? 'Copied!' : 'Copy'}
               </button>
@@ -350,7 +355,7 @@ export default function TeamDashboardClient({
             </p>
             <button
               onClick={() => { setAddOpen(o => !o); setAddStatus('idle'); setAddError(''); setNewInviteUrl('') }}
-              className="shrink-0 bg-orange-500 hover:bg-orange-400 text-ink-950 font-bold px-3 py-1.5 rounded-xl text-sm transition-colors"
+              className="shrink-0 bg-ember-500 hover:bg-ember-400 text-ink-950 font-bold px-3 py-1.5 rounded-xl text-sm transition-colors"
             >
               {addOpen ? 'Cancel' : 'Add Player'}
             </button>
@@ -370,7 +375,7 @@ export default function TeamDashboardClient({
                     placeholder="First name"
                     value={addFirst}
                     onChange={e => setAddFirst(e.target.value)}
-                    className="flex-1 bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl px-4 py-3 text-black dark:text-chalk placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
+                    className="flex-1 bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl px-4 py-3 text-black dark:text-chalk placeholder-gray-400 focus:outline-none focus:border-ember-500 transition-colors"
                   />
                   <input
                     type="text"
@@ -379,14 +384,14 @@ export default function TeamDashboardClient({
                     placeholder="Last initial"
                     value={addInitial}
                     onChange={e => setAddInitial(e.target.value.toUpperCase())}
-                    className="w-20 bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl px-4 py-3 text-black dark:text-chalk placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
+                    className="w-20 bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl px-4 py-3 text-black dark:text-chalk placeholder-gray-400 focus:outline-none focus:border-ember-500 transition-colors"
                   />
                 </div>
                 {addError && <p className="text-red-500 text-sm">{addError}</p>}
                 <button
                   type="submit"
                   disabled={addStatus === 'loading'}
-                  className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+                  className="bg-ember-500 hover:bg-ember-400 disabled:bg-ember-300 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors"
                 >
                   {addStatus === 'loading' ? 'Adding...' : 'Add Player'}
                 </button>
@@ -399,7 +404,7 @@ export default function TeamDashboardClient({
                     <span className="flex-1 text-xs font-mono text-gray-600 dark:text-chalk-dim truncate">{newInviteUrl}</span>
                     <button
                       onClick={copyNewInviteUrl}
-                      className="shrink-0 text-sm font-semibold text-orange-500 hover:text-orange-400 transition-colors"
+                      className="shrink-0 text-sm font-semibold text-ember-500 hover:text-ember-400 transition-colors"
                     >
                       {copiedInvite ? 'Copied!' : 'Copy'}
                     </button>
@@ -417,7 +422,7 @@ export default function TeamDashboardClient({
                   <div className="flex-1 min-w-0">
                     <Link
                       href={`/team/dashboard/member/${m.id}`}
-                      className="block truncate text-sm font-semibold text-black dark:text-chalk hover:text-orange-600 dark:hover:text-ember-400 hover:underline transition-colors"
+                      className="block truncate text-sm font-semibold text-black dark:text-chalk hover:text-ember-600 dark:hover:text-ember-400 hover:underline transition-colors"
                     >
                       {m.first_name ? formatPlayerName(m.first_name, m.last_name_initial) : m.email}
                     </Link>
@@ -449,7 +454,7 @@ export default function TeamDashboardClient({
                     {inviteUrl && (
                       <button
                         onClick={() => copyInviteUrl(inviteUrl, p.id)}
-                        className="text-xs font-semibold text-orange-500 hover:text-orange-400 transition-colors shrink-0"
+                        className="text-xs font-semibold text-ember-500 hover:text-ember-400 transition-colors shrink-0"
                       >
                         {copiedId === p.id ? 'Copied!' : 'Copy invite link'}
                       </button>
@@ -512,11 +517,9 @@ export default function TeamDashboardClient({
       >
         <div className="space-y-3 pt-2">
           <div className="flex justify-end">
-            <Link
-              href="/analyze"
-              className="shrink-0 bg-orange-500 hover:bg-orange-400 text-ink-950 font-bold text-sm px-4 py-2 rounded-xl transition-colors"
-            >
-              Analyze a shot →
+            <Link href="/analyze" className={backendButton('primary', 'shrink-0')}>
+              Analyze a shot
+              <ArrowRightIcon aria-hidden />
             </Link>
           </div>
           {myUploads.length > 0 ? (
@@ -550,7 +553,7 @@ export default function TeamDashboardClient({
             <div className="flex justify-end">
               <button
                 onClick={() => setShowLeaderboard(true)}
-                className="shrink-0 bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline hover:border-orange-400 text-black dark:text-chalk font-bold text-sm px-3 py-1.5 rounded-xl transition-colors"
+                className="shrink-0 bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline hover:border-ember-400 text-black dark:text-chalk font-bold text-sm px-3 py-1.5 rounded-xl transition-colors"
               >
                 View full / print
               </button>
@@ -577,7 +580,7 @@ export default function TeamDashboardClient({
                   </p>
                   <div className="flex items-center gap-2 text-sm">
                     <span className="text-gray-400 dark:text-chalk-dim">{Number(entry.first_score).toFixed(1)}</span>
-                    <span className="text-gray-300">→</span>
+                    <ArrowRightIcon aria-hidden className="w-3.5 h-3.5 text-gray-300 dark:text-chalk-dim" />
                     <span className="font-semibold text-black dark:text-chalk">{Number(entry.latest_score).toFixed(1)}</span>
                     <span className={`font-black ml-auto ${gain >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500'}`}>
                       {gain >= 0 ? '+' : ''}{gain.toFixed(1)}
@@ -605,12 +608,12 @@ export default function TeamDashboardClient({
           one click, paid out of the team's credit pool. Shown when there's
           at least one player. */}
       {members.length > 0 && (
-        <div className="bg-orange-50 dark:bg-ember-500/10 border border-orange-200 rounded-2xl p-5 space-y-3">
+        <div className="bg-ember-50 dark:bg-ember-500/10 border border-ember-200 rounded-2xl p-5 space-y-3">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
               <p className="font-black text-black dark:text-chalk">Quick grant credits to all players</p>
               <p className="text-xs text-gray-600 dark:text-chalk-dim mt-0.5">
-                Spend <span className="font-bold text-orange-600 dark:text-ember-400">{bulkGrantEach * members.length}</span> from this team&apos;s {team.credits} credits to give every player {bulkGrantEach} token{bulkGrantEach !== 1 ? 's' : ''}.
+                Spend <span className="font-bold text-ember-600 dark:text-ember-400">{bulkGrantEach * members.length}</span> from this team&apos;s {team.credits} credits to give every player {bulkGrantEach} token{bulkGrantEach !== 1 ? 's' : ''}.
               </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
@@ -621,8 +624,8 @@ export default function TeamDashboardClient({
                   onClick={() => setBulkGrantEach(n)}
                   className={`w-10 h-10 rounded-lg text-sm font-bold transition-colors ${
                     bulkGrantEach === n
-                      ? 'bg-orange-500 text-ink-950 border border-orange-500'
-                      : 'bg-white dark:bg-ink-900 text-black dark:text-chalk border border-orange-200 hover:border-orange-400'
+                      ? 'bg-ember-500 text-ink-950 border border-ember-500'
+                      : 'bg-white dark:bg-ink-900 text-black dark:text-chalk border border-ember-200 hover:border-ember-400'
                   }`}
                 >
                   {n}
@@ -631,7 +634,7 @@ export default function TeamDashboardClient({
               <button
                 onClick={grantToAll}
                 disabled={bulkGranting || team.credits < bulkGrantEach * members.length}
-                className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-black text-sm px-4 py-2.5 rounded-xl transition-colors"
+                className="bg-ember-500 hover:bg-ember-400 disabled:bg-ember-300 text-ink-950 font-black text-sm px-4 py-2.5 rounded-xl transition-colors"
               >
                 {bulkGranting
                   ? 'Granting…'
@@ -671,8 +674,8 @@ export default function TeamDashboardClient({
                     onClick={() => { setQuantity(q); setCustomQty('') }}
                     className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-colors ${
                       quantity === q && !customQty
-                        ? 'bg-orange-500 text-ink-950 border-orange-500'
-                        : 'bg-white dark:bg-ink-900 text-black dark:text-chalk border-gray-300 dark:border-courtline hover:border-orange-400'
+                        ? 'bg-ember-500 text-ink-950 border-ember-500'
+                        : 'bg-white dark:bg-ink-900 text-black dark:text-chalk border-gray-300 dark:border-courtline hover:border-ember-400'
                     }`}
                   >
                     {q}
@@ -693,7 +696,7 @@ export default function TeamDashboardClient({
                 onFocus={e => e.target.select()}
                 placeholder="Or enter a custom amount…"
                 aria-label="Custom credit amount"
-                className="w-full py-2.5 px-3 border border-gray-300 dark:border-courtline rounded-xl text-black dark:text-chalk text-sm placeholder:text-gray-400 dark:placeholder:text-chalk-dim placeholder:font-normal focus:outline-none focus:border-orange-500"
+                className="w-full py-2.5 px-3 border border-gray-300 dark:border-courtline rounded-xl text-black dark:text-chalk text-sm placeholder:text-gray-400 dark:placeholder:text-chalk-dim placeholder:font-normal focus:outline-none focus:border-ember-500"
               />
             </div>
 
@@ -709,7 +712,7 @@ export default function TeamDashboardClient({
             <button
               onClick={buyCredits}
               disabled={buying}
-              className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-black py-3 rounded-xl transition-colors"
+              className="w-full bg-ember-500 hover:bg-ember-400 disabled:bg-ember-300 text-ink-950 font-black py-3 rounded-xl transition-colors"
             >
               {buying
                 ? 'Redirecting to checkout…'
@@ -761,146 +764,139 @@ export default function TeamDashboardClient({
   )
 
   return (
-    <div className="max-w-3xl mx-auto w-full px-6 py-10 space-y-6 flex-1">
-      {fromOrg && (
-        <Link
-          href="/org/dashboard"
-          className="inline-flex items-center gap-1.5 text-sm font-semibold text-orange-500 hover:text-orange-400 transition-colors"
-        >
-          ← Back to organization dashboard
-        </Link>
-      )}
-
-      {/* ── Header ─────────────────────────────────────────────── */}
-      {/* flex-wrap: on phones the action buttons take their own row instead of
-          being crushed beside the team name and clipped off-screen (the app's
-          webview had the Organization Hub and Log out buttons unreachable). */}
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
+    <DashboardShell>
+      <DashboardHeader
+        eyebrow="Team dashboard"
+        title={
           <InlineEdit
             value={team.name}
             endpoint="/api/team/rename"
             bodyKey="name"
             placeholder="Team name"
-            textClassName="text-2xl font-black text-black dark:text-chalk"
+            textClassName="text-2xl sm:text-3xl font-black text-black dark:text-chalk"
           />
-          <p className="text-gray-500 dark:text-chalk-dim text-sm mt-1">
-            Team Dashboard · Logged in as{' '}
-            <span className="font-semibold text-gray-700 dark:text-chalk-dim">{myNickname || adminEmail}</span>
-          </p>
-          {allTeams.length > 1 && (
-            <div className="flex flex-wrap gap-2 mt-2">
-              {allTeams.map(t => (
-                <button
-                  key={t.id}
-                  onClick={() => {
-                    if (t.id !== currentTeamId) {
-                      fetch('/api/team/select', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ teamId: t.id, email: adminEmail }),
-                      }).then(() => router.refresh())
-                    }
-                  }}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${
-                    t.id === currentTeamId
-                      ? 'bg-orange-500 text-ink-950'
-                      : 'bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline text-black dark:text-chalk hover:border-orange-400'
-                  }`}
-                >
-                  {t.name}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-        <div className="flex w-full sm:w-auto items-center gap-2 sm:shrink-0">
-          {!inApp && <Link
-            href="/team"
-            className="flex-1 sm:flex-none text-center border border-orange-300 text-orange-600 dark:text-ember-400 hover:bg-orange-50 dark:hover:bg-ember-500/10 font-bold text-sm px-4 py-2 rounded-xl transition-colors whitespace-nowrap"
-          >
-            🏢 Organization Hub
-          </Link>}
-          <button
-            onClick={logout}
-            disabled={loggingOut}
-            className="flex-1 sm:flex-none bg-orange-500 hover:bg-red-500 disabled:opacity-60 text-ink-950 font-bold text-sm px-4 py-2 rounded-xl transition-colors whitespace-nowrap"
-          >
-            {loggingOut ? 'Logging out...' : 'Log out'}
-          </button>
-        </div>
-      </header>
-
-      {/* ── Key stats — always visible above the tabs ───────────── */}
-      <section className="bg-orange-50 dark:bg-ember-500/10 border border-orange-200 rounded-2xl p-5">
-        <div className="flex flex-wrap items-start gap-x-10 gap-y-4">
-          <div>
-            <div className="flex items-center gap-1.5">
-              <h2 className="text-xs font-bold text-gray-500 dark:text-chalk-dim uppercase tracking-wide">Team code</h2>
-              <InfoTip label="What is the team code for?" align="left">
-                Players enter this code (or use the signup link in the Players
-                tab) to join your team&apos;s roster. Only share it with your
-                own players — anyone with the code can join.
-              </InfoTip>
-            </div>
-            <p className="text-2xl font-black font-mono tracking-widest text-black dark:text-chalk mt-1">{team.accessCode}</p>
+        }
+        meta={
+          <>
+            Signed in as{' '}
+            <span className="font-semibold text-gray-700 dark:text-chalk">{myNickname || adminEmail}</span>
+          </>
+        }
+        back={fromOrg ? { href: '/org/dashboard', label: 'Back to organization dashboard' } : undefined}
+        actions={
+          <>
+            {!inApp && (
+              <Link href="/team" className={backendButton('quiet')}>
+                <Building2Icon aria-hidden />
+                Organization Hub
+              </Link>
+            )}
+            <button onClick={logout} disabled={loggingOut} className={backendButton('quiet')}>
+              <LogOutIcon aria-hidden />
+              {loggingOut ? 'Logging out…' : 'Log out'}
+            </button>
+          </>
+        }
+      >
+        {allTeams.length > 1 && (
+          <div className="flex flex-wrap gap-2">
+            {allTeams.map(t => (
+              <button
+                key={t.id}
+                onClick={() => {
+                  if (t.id !== currentTeamId) {
+                    fetch('/api/team/select', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ teamId: t.id, email: adminEmail }),
+                    }).then(() => router.refresh())
+                  }
+                }}
+                aria-pressed={t.id === currentTeamId}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                  t.id === currentTeamId
+                    ? 'bg-ember-500 text-ink-950'
+                    : 'bg-white dark:bg-ink-900 border border-gray-200 dark:border-courtline text-black dark:text-chalk hover:border-ember-400'
+                }`}
+              >
+                {t.name}
+              </button>
+            ))}
           </div>
+        )}
+      </DashboardHeader>
 
-          <div>
-            <div className="flex items-center gap-1.5">
-              <h2 className="text-xs font-bold text-gray-500 dark:text-chalk-dim uppercase tracking-wide">My credits</h2>
-              <InfoTip label="What are my credits?" align="left">
-                Your personal balance — 1 credit = 1 AI shot analysis. Credits
-                you buy or that your organization gives you personally land
-                here. Spend them on your own uploads or hand them to players
-                as tokens.
-              </InfoTip>
-            </div>
-            <p className="text-2xl font-black text-black dark:text-chalk mt-1">{coachCredits}</p>
-          </div>
+      {/* ── Key numbers — always visible above the tabs ───────────── */}
+      <StatGrid>
+        <StatCard
+          label="Team code"
+          value={team.accessCode}
+          mono
+          accent
+          hint={
+            <InfoTip label="What is the team code for?" align="left">
+              Players enter this code (or use the signup link in the Players
+              tab) to join your team&apos;s roster. Only share it with your
+              own players — anyone with the code can join.
+            </InfoTip>
+          }
+        />
 
-          <div>
-            <div className="flex items-center gap-1.5">
-              <h2 className="text-xs font-bold text-gray-500 dark:text-chalk-dim uppercase tracking-wide">Team credits</h2>
-              <InfoTip label="What are team credits?" align="left">
-                A shared balance that belongs to the team — usually funded by
-                your organization. Spend them on this team&apos;s players (or
-                your own uploads once your personal credits run out).
-              </InfoTip>
-            </div>
-            <p className="text-2xl font-black text-black dark:text-chalk mt-1">{team.credits}</p>
-          </div>
+        <StatCard
+          label="My credits"
+          value={coachCredits}
+          hint={
+            <InfoTip label="What are my credits?" align="left">
+              Your personal balance — 1 credit = 1 AI shot analysis. Credits
+              you buy or that your organization gives you personally land
+              here. Spend them on your own uploads or hand them to players
+              as tokens.
+            </InfoTip>
+          }
+        />
 
-          <div>
-            <div className="flex items-center gap-1.5">
-              <h2 className="text-xs font-bold text-gray-500 dark:text-chalk-dim uppercase tracking-wide">Token pool</h2>
-              <InfoTip label="What is the token pool?">
-                Analysis tokens the team owns but hasn&apos;t handed out yet
-                (like the free tokens from activation). Assign them to players
-                in the Tokens &amp; Credits tab — players then spend their own
-                tokens when they upload a shot.
-              </InfoTip>
-            </div>
-            <p className="text-2xl font-black text-black dark:text-chalk mt-1">{team.tokenPool}</p>
-          </div>
+        <StatCard
+          label="Team credits"
+          value={team.credits}
+          hint={
+            <InfoTip label="What are team credits?" align="left">
+              A shared balance that belongs to the team — usually funded by
+              your organization. Spend them on this team&apos;s players (or
+              your own uploads once your personal credits run out).
+            </InfoTip>
+          }
+        />
 
-          {/* Web credit pricing does not exist inside the iOS app — IAP has its
-              own prices, so quoting $2.49 here reads as a broken discount. */}
-          {!inApp && <div>
-            <div className="flex items-center gap-1.5">
-              <h2 className="text-xs font-bold text-gray-500 dark:text-chalk-dim uppercase tracking-wide">Credit price</h2>
+        <StatCard
+          label="Token pool"
+          value={team.tokenPool}
+          hint={
+            <InfoTip label="What is the token pool?">
+              Analysis tokens the team owns but hasn&apos;t handed out yet
+              (like the free tokens from activation). Assign them to players
+              in the Tokens &amp; Credits tab — players then spend their own
+              tokens when they upload a shot.
+            </InfoTip>
+          }
+        />
+
+        {/* Web credit pricing does not exist inside the iOS app — IAP has its
+            own prices, so quoting $2.49 here reads as a broken discount. */}
+        {!inApp && (
+          <StatCard
+            label="Credit price"
+            value={`$${creditRate}`}
+            note={<span className="text-green-600 dark:text-green-400">team rate active</span>}
+            hint={
               <InfoTip label="How is the credit price set?" align="right">
                 Every team gets the team rate from day one — no player minimum.
                 Credits are $2.49 each, dropping to $1.49 each when you buy 5
                 or more in one order.
               </InfoTip>
-            </div>
-            <p className="text-2xl font-black text-black dark:text-chalk mt-1">${creditRate}</p>
-            <p className="text-[11px] text-green-600 dark:text-green-400 font-semibold leading-tight">team rate active</p>
-          </div>}
-        </div>
-      </section>
-
+            }
+          />
+        )}
+      </StatGrid>
       {/* ── Tabs ───────────────────────────────────────────────── */}
       <AccountTabs
         tabs={[
@@ -951,6 +947,6 @@ export default function TeamDashboardClient({
         </div>,
         document.body,
       )}
-    </div>
+    </DashboardShell>
   )
 }

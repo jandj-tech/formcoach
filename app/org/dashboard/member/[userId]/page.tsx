@@ -1,9 +1,10 @@
 import { redirect, notFound } from 'next/navigation'
-import Link from 'next/link'
 import { getOrgSession } from '@/lib/org-auth'
 import { db } from '@/lib/db'
 import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
+import DashboardShell from '@/components/backend/DashboardShell'
+import DashboardHeader from '@/components/backend/DashboardHeader'
 import PlayerShotList from '@/components/PlayerShotList'
 
 // Org-admin view of a player's analyzed shots — the player must be on a team in the org.
@@ -45,22 +46,18 @@ export default async function OrgMemberShotsPage({ params }: { params: Promise<{
     : (player.nickname || player.email)
 
   return (
-    <main className="min-h-screen bg-white flex flex-col">
+    <main className="min-h-screen bg-white dark:bg-ink-950 flex flex-col">
       <TopNav />
-      <div className="max-w-3xl mx-auto w-full px-6 py-10 space-y-6">
-        <Link href="/org/dashboard" className="text-sm text-orange-500 hover:underline">
-          ← Back to organization dashboard
-        </Link>
-
-        <div>
-          <h1 className="text-2xl font-black text-black">{playerName}</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            {player.team_name} · {shots.length} shot{shots.length !== 1 ? 's' : ''} analyzed
-          </p>
-        </div>
+      <DashboardShell>
+        <DashboardHeader
+          eyebrow="Player"
+          title={<h1 className="text-2xl sm:text-3xl font-black text-black dark:text-chalk">{playerName}</h1>}
+          meta={`${player.team_name} · ${shots.length} shot${shots.length !== 1 ? 's' : ''} analyzed`}
+          back={{ href: '/org/dashboard', label: 'Back to organization dashboard' }}
+        />
 
         <PlayerShotList shots={shots} />
-      </div>
+      </DashboardShell>
       <SiteFooter />
     </main>
   )

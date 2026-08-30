@@ -23,6 +23,17 @@ import TeamSchedulePanel from '@/components/TeamSchedulePanel'
 import { CLASS_MIN_PLAYERS, CLASS_BULK_THRESHOLD, classPriceCents } from '@/lib/org-class-pricing'
 import { copyToClipboard } from '@/lib/copy'
 import AppearanceSection from '@/components/account/AppearanceSection'
+import { backendButton } from '@/components/backend/button-styles'
+import {
+  ArrowRightIcon,
+  DownloadIcon,
+  MailIcon,
+  MessageSquareIcon,
+  PrinterIcon,
+  TargetIcon,
+  TrophyIcon,
+} from 'lucide-react'
+import { BasketballIcon } from '@/components/backend/BasketballIcon'
 
 interface Member {
   id: string
@@ -621,23 +632,23 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
       {!classProgramOpen ? (
         <button
           onClick={() => setClassProgramOpen(true)}
-          className="w-full flex items-center justify-between gap-4 bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 rounded-2xl px-5 py-4 text-white text-left transition-colors"
+          className="w-full flex items-center justify-between gap-4 bg-gradient-to-br from-ember-500 to-ember-600 hover:from-ember-400 hover:to-ember-500 rounded-2xl px-5 py-4 text-white text-left transition-colors"
         >
           <div className="min-w-0">
-            <p className="text-orange-100 text-[10px] font-bold uppercase tracking-widest">New</p>
+            <p className="text-ember-100 text-[10px] font-bold uppercase tracking-widest">New</p>
             <p className="font-black text-base truncate">10-Week Shooting Class · $40/player</p>
-            <p className="text-orange-100 text-xs mt-0.5">{classPackages.length > 0 ? 'Buy another class package' : 'Tap to expand the buy form'}</p>
+            <p className="text-ember-100 text-xs mt-0.5">{classPackages.length > 0 ? 'Buy another class package' : 'Tap to expand the buy form'}</p>
           </div>
           <span className="text-2xl font-black shrink-0">+</span>
         </button>
       ) : (
-      <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-6 text-white space-y-5">
+      <div className="bg-gradient-to-br from-ember-500 to-ember-600 rounded-2xl p-6 text-white space-y-5">
         {/* Header */}
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="space-y-1">
-            <p className="text-orange-100 text-xs font-bold uppercase tracking-widest">New</p>
+            <p className="text-ember-100 text-xs font-bold uppercase tracking-widest">New</p>
             <h2 className="text-2xl font-black">10-Week Shooting Class</h2>
-            <p className="text-orange-100 text-sm max-w-sm">
+            <p className="text-ember-100 text-sm max-w-sm">
               A structured program that turns your organization into a coaching powerhouse.
               Each player gets a ball, 2 shot analyses, and a personalized completion certificate.
             </p>
@@ -645,8 +656,8 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
           <div className="flex items-start gap-2 shrink-0">
             <div className="bg-white/20 rounded-xl px-4 py-3 text-center">
               <p className="text-4xl font-black">$40</p>
-              <p className="text-orange-100 text-xs">per player</p>
-              <p className="text-orange-200 text-xs mt-1">$36.99/player for 30+</p>
+              <p className="text-ember-100 text-xs">per player</p>
+              <p className="text-ember-200 text-xs mt-1">$36.99/player for 30+</p>
             </div>
             <button
               onClick={() => setClassProgramOpen(false)}
@@ -659,21 +670,21 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
         {/* Perks row */}
         <div className="grid grid-cols-3 gap-2">
           {[
-            { icon: '🏀', label: '1 Training Ball', sub: 'per player' },
-            { icon: '🎯', label: '2 Shot Analyses', sub: 'start & end' },
-            { icon: '🏆', label: 'Certificate', sub: 'with scores' },
+            { Icon: BasketballIcon, label: '1 Training Ball', sub: 'per player' },
+            { Icon: TargetIcon, label: '2 Shot Analyses', sub: 'start & end' },
+            { Icon: TrophyIcon, label: 'Certificate', sub: 'with scores' },
           ].map(p => (
             <div key={p.label} className="bg-white/15 rounded-xl px-3 py-2 text-center">
-              <p className="text-xl">{p.icon}</p>
+              <div className="flex justify-center"><p.Icon aria-hidden className="w-5 h-5" /></div>
               <p className="font-bold text-sm leading-tight mt-0.5">{p.label}</p>
-              <p className="text-orange-200 text-xs">{p.sub}</p>
+              <p className="text-ember-200 text-xs">{p.sub}</p>
             </div>
           ))}
         </div>
 
         {/* 10-week outline */}
         <details className="group">
-          <summary className="cursor-pointer text-sm font-semibold text-orange-100 hover:text-white list-none flex items-center gap-1">
+          <summary className="cursor-pointer text-sm font-semibold text-ember-100 hover:text-white list-none flex items-center gap-1">
             <span className="group-open:hidden">▶ View 10-week session outline</span>
             <span className="hidden group-open:inline">▼ Hide session outline</span>
           </summary>
@@ -690,7 +701,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
               'Session 9 — Full shot flow',
               'Session 10 — Final evaluation + certificate',
             ].map(s => (
-              <div key={s} className="bg-white/10 rounded-lg px-2.5 py-1.5 text-orange-50 font-medium">{s}</div>
+              <div key={s} className="bg-white/10 rounded-lg px-2.5 py-1.5 text-ember-50 font-medium">{s}</div>
             ))}
           </div>
         </details>
@@ -701,10 +712,10 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
         {/* Buy form — inside the same card */}
         <div className="space-y-3">
           <p className="font-black text-white text-base">Purchase a Class Package</p>
-          <p className="text-orange-100 text-xs">Minimum {CLASS_MIN_PLAYERS} players total. Each player gets a training ball, 2 analysis tokens, and a certificate when they complete both evaluations.</p>
+          <p className="text-ember-100 text-xs">Minimum {CLASS_MIN_PLAYERS} players total. Each player gets a training ball, 2 analysis tokens, and a certificate when they complete both evaluations.</p>
 
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-orange-200 uppercase tracking-wide">Players by ball size</label>
+            <label className="text-xs font-semibold text-ember-200 uppercase tracking-wide">Players by ball size</label>
             <div className="space-y-2">
               {([
                 { key: 'size5' as const, label: 'Size 5', sub: 'Youth · 27.5"', value: classSize5, set: setClassSize5 },
@@ -714,7 +725,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                 <div key={row.key} className="flex items-center gap-3 bg-white/10 rounded-xl px-3 py-2">
                   <div className="flex-1 min-w-0">
                     <p className="text-white font-bold text-sm">{row.label}</p>
-                    <p className="text-orange-200 text-xs">{row.sub}</p>
+                    <p className="text-ember-200 text-xs">{row.sub}</p>
                   </div>
                   <button
                     onClick={() => row.set(v => Math.max(0, v - 1))}
@@ -735,7 +746,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
               ))}
             </div>
             <div className="flex items-center justify-between text-xs">
-              <span className="text-orange-200">Total players</span>
+              <span className="text-ember-200">Total players</span>
               <span className={`font-black text-base ${classPlayerCount < CLASS_MIN_PLAYERS ? 'text-red-200' : 'text-white'}`}>
                 {classPlayerCount}
               </span>
@@ -750,8 +761,8 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
 
           <div className="bg-white/15 rounded-xl px-4 py-3 flex items-center justify-between">
             <div>
-              <p className="text-sm text-orange-100">{classPlayerCount} players × ${classPricePerPlayer}</p>
-              <p className="text-xs text-orange-200 mt-0.5">{classPlayerCount * 2} total analyses + {classPlayerCount} certificates</p>
+              <p className="text-sm text-ember-100">{classPlayerCount} players × ${classPricePerPlayer}</p>
+              <p className="text-xs text-ember-200 mt-0.5">{classPlayerCount * 2} total analyses + {classPlayerCount} certificates</p>
             </div>
             <p className="text-2xl font-black text-white">${classTotal.toLocaleString()}</p>
           </div>
@@ -763,7 +774,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
             <button
               onClick={handleBuyClass}
               disabled={buyingClass || classPlayerCount < CLASS_MIN_PLAYERS}
-              className="w-full bg-white dark:bg-ink-900 hover:bg-orange-50 dark:hover:bg-ember-500/10 disabled:bg-white/60 disabled:text-orange-400 text-orange-600 dark:text-ember-400 font-black py-3 rounded-xl transition-colors"
+              className="w-full bg-white dark:bg-ink-900 hover:bg-ember-50 dark:hover:bg-ember-500/10 disabled:bg-white/60 disabled:text-ember-400 text-ember-600 dark:text-ember-400 font-black py-3 rounded-xl transition-colors"
             >
               {buyingClass ? 'Redirecting to checkout...' : `Buy Class Package — $${classTotal.toLocaleString()}`}
             </button>
@@ -788,7 +799,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
             setAddStatus('idle')
             setAddError('')
           }}
-          className="bg-orange-500 hover:bg-orange-400 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+          className="bg-ember-500 hover:bg-ember-400 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors"
         >
           {addOpen ? 'Cancel' : 'Add Team'}
         </button>
@@ -803,7 +814,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
             placeholder="Team name (e.g. Westside Hawks)"
             value={newName}
             onChange={e => setNewName(e.target.value)}
-            className="w-full bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl px-4 py-3 text-black dark:text-chalk placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
+            className="w-full bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl px-4 py-3 text-black dark:text-chalk placeholder-gray-400 focus:outline-none focus:border-ember-500 transition-colors"
           />
           <input
             type="text"
@@ -811,7 +822,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
             placeholder="Age group (optional) — e.g. U14, Varsity, JV"
             value={newAgeGroup}
             onChange={e => setNewAgeGroup(e.target.value)}
-            className="w-full bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl px-4 py-3 text-black dark:text-chalk placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
+            className="w-full bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl px-4 py-3 text-black dark:text-chalk placeholder-gray-400 focus:outline-none focus:border-ember-500 transition-colors"
           />
           <input
             type="email"
@@ -819,7 +830,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
             placeholder="Coach email — leave blank to coach it yourself"
             value={newCoachEmail}
             onChange={e => setNewCoachEmail(e.target.value)}
-            className="w-full bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl px-4 py-3 text-black dark:text-chalk placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
+            className="w-full bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl px-4 py-3 text-black dark:text-chalk placeholder-gray-400 focus:outline-none focus:border-ember-500 transition-colors"
           />
           <input
             type="text"
@@ -827,7 +838,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
             placeholder="Coach name (shown as the coach)"
             value={newCoachName}
             onChange={e => setNewCoachName(e.target.value)}
-            className="w-full bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl px-4 py-3 text-black dark:text-chalk placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
+            className="w-full bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl px-4 py-3 text-black dark:text-chalk placeholder-gray-400 focus:outline-none focus:border-ember-500 transition-colors"
           />
           <p className="text-xs text-gray-400 dark:text-chalk-dim">
             With an email, the coach is invited to set up their own account. Leave it blank to
@@ -844,7 +855,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
           <button
             type="submit"
             disabled={addStatus === 'loading' || addStatus === 'success'}
-            className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+            className="bg-ember-500 hover:bg-ember-400 disabled:bg-ember-300 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors"
           >
             {addStatus === 'loading'
               ? 'Adding team...'
@@ -897,7 +908,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
             <div key={team.id} id={`team-panel-${team.id}`} className="scroll-mt-24 border border-gray-200 dark:border-courtline rounded-2xl overflow-hidden">
               <button
                 onClick={() => setExpanded(isOpen ? null : team.id)}
-                className="w-full flex items-center justify-between gap-4 px-5 py-4 bg-gray-50 dark:bg-ink-800 hover:bg-orange-50 dark:hover:bg-ember-500/10 transition-colors text-left"
+                className="w-full flex items-center justify-between gap-4 px-5 py-4 bg-gray-50 dark:bg-ink-800 hover:bg-ember-50 dark:hover:bg-ember-500/10 transition-colors text-left"
               >
                 <div>
                   <p className="font-bold text-black dark:text-chalk">{team.name}</p>
@@ -915,9 +926,10 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                   {/* Open this team's coach dashboard */}
                   <button
                     onClick={() => openTeam(team.id)}
-                    className="text-sm font-bold text-orange-500 hover:text-orange-400 transition-colors"
+                    className="inline-flex items-center gap-1.5 text-sm font-bold text-ember-600 dark:text-ember-400 hover:text-ember-500 transition-colors"
                   >
-                    Open team dashboard →
+                    Open team dashboard
+                    <ArrowRightIcon aria-hidden className="w-4 h-4" />
                   </button>
 
                   {/* This team's week at a glance. "Open full schedule" opens
@@ -951,9 +963,9 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                     const isLbOpen = showLeaderboard === pkg.id
                     const remainingSlots = pkg.player_count - pkg.enrolled_count
                     return (
-                      <div className="space-y-4 border border-orange-100 rounded-2xl p-4 bg-orange-50/30">
+                      <div className="space-y-4 border border-ember-100 rounded-2xl p-4 bg-ember-50/30">
                         {/* Join code */}
-                        <div className="bg-orange-50 dark:bg-ember-500/10 border border-orange-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
+                        <div className="bg-ember-50 dark:bg-ember-500/10 border border-ember-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
                           <div className="min-w-0">
                             <p className="text-xs font-semibold text-gray-500 dark:text-chalk-dim uppercase tracking-wide flex items-center gap-1.5">
                               Class join code
@@ -964,14 +976,14 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                                 link a new team to your organization.
                               </InfoTip>
                             </p>
-                            <p className="text-2xl font-black text-orange-600 dark:text-ember-400 tracking-widest mt-0.5">{team.accessCode}</p>
+                            <p className="text-2xl font-black text-ember-600 dark:text-ember-400 tracking-widest mt-0.5">{team.accessCode}</p>
                             <p className="text-xs text-gray-500 dark:text-chalk-dim mt-1">
                               Share this with your players — up to {pkg.player_count} can join. The org leader uploads videos for each.
                             </p>
                           </div>
                           <button
                             onClick={() => copyToClipboard(`${BASE_URL}/signup?teamCode=${team.accessCode}`, 'Join link copied!')}
-                            className="shrink-0 bg-white dark:bg-ink-900 border border-orange-300 text-orange-600 dark:text-ember-400 text-xs font-bold px-3 py-2 rounded-lg hover:bg-orange-100 dark:hover:bg-ember-500/15"
+                            className="shrink-0 bg-white dark:bg-ink-900 border border-ember-300 text-ember-600 dark:text-ember-400 text-xs font-bold px-3 py-2 rounded-lg hover:bg-ember-100 dark:hover:bg-ember-500/15"
                           >
                             Copy join link
                           </button>
@@ -985,7 +997,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                             { label: 'Completed', value: pkg.completed_count },
                             { label: 'Credits left', value: team.credits },
                           ].map(s => (
-                            <div key={s.label} className="bg-white dark:bg-ink-900 border border-orange-100 rounded-xl px-3 py-2 text-center">
+                            <div key={s.label} className="bg-white dark:bg-ink-900 border border-ember-100 rounded-xl px-3 py-2 text-center">
                               <p className="text-xs text-gray-500 dark:text-chalk-dim">{s.label}</p>
                               <p className="text-xl font-black text-black dark:text-chalk">{s.value}</p>
                             </div>
@@ -1002,9 +1014,10 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                             href={`/org/curriculum/${pkg.id}`}
                             target="_blank"
                             rel="noreferrer"
-                            className="text-xs font-bold text-blue-700 dark:text-blue-400 bg-blue-100 hover:bg-blue-200 px-3 py-1.5 rounded-lg transition"
+                            className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 dark:text-blue-400 bg-blue-100 hover:bg-blue-200 px-3 py-1.5 rounded-lg transition"
                           >
-                            Download PDF →
+                            <DownloadIcon aria-hidden className="w-3.5 h-3.5" />
+                            Download PDF
                           </a>
                         </div>
 
@@ -1015,7 +1028,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                               <p className="text-xs font-semibold text-gray-500 dark:text-chalk-dim uppercase tracking-wide">Enroll a Player</p>
                               <button
                                 onClick={() => { setEnrollOpen(isEnrollOpen ? null : pkg.id); setEnrollSuccess(false); setEnrollError('') }}
-                                className="text-sm font-bold text-orange-500 hover:text-orange-400"
+                                className="text-sm font-bold text-ember-500 hover:text-ember-400"
                               >
                                 {isEnrollOpen ? 'Cancel' : '+ Add Player'}
                               </button>
@@ -1028,7 +1041,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                                   placeholder="First name *"
                                   value={enrollFirstName}
                                   onChange={e => setEnrollFirstName(e.target.value)}
-                                  className="w-full border border-gray-300 dark:border-courtline rounded-xl px-3 py-2 text-black dark:text-chalk text-sm focus:outline-none focus:border-orange-500"
+                                  className="w-full border border-gray-300 dark:border-courtline rounded-xl px-3 py-2 text-black dark:text-chalk text-sm focus:outline-none focus:border-ember-500"
                                 />
                                 <input
                                   type="text"
@@ -1036,7 +1049,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                                   placeholder="Last name initial (optional)"
                                   value={enrollLastInit}
                                   onChange={e => setEnrollLastInit(e.target.value)}
-                                  className="w-full border border-gray-300 dark:border-courtline rounded-xl px-3 py-2 text-black dark:text-chalk text-sm focus:outline-none focus:border-orange-500"
+                                  className="w-full border border-gray-300 dark:border-courtline rounded-xl px-3 py-2 text-black dark:text-chalk text-sm focus:outline-none focus:border-ember-500"
                                 />
                                 <input
                                   type="text"
@@ -1044,14 +1057,14 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                                   placeholder="Player account ID (optional — links to their login)"
                                   value={enrollUserId}
                                   onChange={e => setEnrollUserId(e.target.value)}
-                                  className="w-full border border-gray-300 dark:border-courtline rounded-xl px-3 py-2 text-black dark:text-chalk text-sm font-mono focus:outline-none focus:border-orange-500"
+                                  className="w-full border border-gray-300 dark:border-courtline rounded-xl px-3 py-2 text-black dark:text-chalk text-sm font-mono focus:outline-none focus:border-ember-500"
                                 />
                                 {enrollError && <p className="text-red-500 text-sm">{enrollError}</p>}
                                 {enrollSuccess && <p className="text-green-600 dark:text-green-400 text-sm font-medium">Player enrolled!</p>}
                                 <button
                                   onClick={() => handleEnroll(pkg.id)}
                                   disabled={enrolling || enrollSuccess}
-                                  className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+                                  className="bg-ember-500 hover:bg-ember-400 disabled:bg-ember-300 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors"
                                 >
                                   {enrolling ? 'Enrolling...' : 'Enroll Player'}
                                 </button>
@@ -1069,9 +1082,10 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                                 <Link
                                   href={`/org/class/${pkg.id}/certificates`}
                                   target="_blank"
-                                  className="text-xs font-bold text-orange-500 hover:text-orange-400 transition-colors"
+                                  className="inline-flex items-center gap-1.5 text-xs font-bold text-ember-600 dark:text-ember-400 hover:text-ember-500 transition-colors"
                                 >
-                                  🖨 Print all certificates ({pkg.enrollments.filter(en => en.has_final).length})
+                                  <PrinterIcon aria-hidden className="w-3.5 h-3.5" />
+                                  Print all certificates ({pkg.enrollments.filter(en => en.has_final).length})
                                 </Link>
                               )}
                             </div>
@@ -1093,7 +1107,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                                     <span
                                       className={`shrink-0 text-xs font-bold px-2 py-0.5 rounded-full ${
                                         en.tokens > 0
-                                          ? 'bg-orange-50 dark:bg-ember-500/10 text-orange-600 dark:text-ember-400 border border-orange-200'
+                                          ? 'bg-ember-50 dark:bg-ember-500/10 text-ember-600 dark:text-ember-400 border border-ember-200'
                                           : 'bg-gray-50 dark:bg-ink-800 text-gray-400 dark:text-chalk-dim border border-gray-200 dark:border-courtline'
                                       }`}
                                       title="Personal analysis tokens on this player's account"
@@ -1104,7 +1118,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                                       {en.has_final ? (
                                         <span className="text-xs bg-green-100 text-green-700 dark:text-green-400 font-bold px-2 py-0.5 rounded-full">Done</span>
                                       ) : en.has_first ? (
-                                        <span className="text-xs bg-orange-100 dark:bg-ember-500/15 text-orange-700 dark:text-ember-400 font-bold px-2 py-0.5 rounded-full">In progress</span>
+                                        <span className="text-xs bg-ember-100 dark:bg-ember-500/15 text-ember-700 dark:text-ember-400 font-bold px-2 py-0.5 rounded-full">In progress</span>
                                       ) : (
                                         <span className="text-xs bg-gray-100 dark:bg-ink-800 text-gray-500 dark:text-chalk-dim font-bold px-2 py-0.5 rounded-full">Not started</span>
                                       )}
@@ -1112,7 +1126,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                                         <Link
                                           href={`/org/certificate/${en.id}`}
                                           target="_blank"
-                                          className="text-xs font-bold text-orange-500 hover:text-orange-400"
+                                          className="text-xs font-bold text-ember-500 hover:text-ember-400"
                                         >
                                           Certificate
                                         </Link>
@@ -1140,13 +1154,13 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                           <div>
                             <button
                               onClick={() => toggleLeaderboard(pkg.id)}
-                              className="text-sm font-bold text-orange-500 hover:text-orange-400"
+                              className="text-sm font-bold text-ember-500 hover:text-ember-400"
                             >
                               {isLbOpen ? 'Hide Class Leaderboard' : 'Show Class Leaderboard'}
                             </button>
                             {isLbOpen && (
                               <div className="mt-3 border border-gray-100 dark:border-courtline rounded-xl overflow-hidden bg-white dark:bg-ink-900">
-                                <div className="bg-orange-50 dark:bg-ember-500/10 px-4 py-2.5 border-b border-orange-100">
+                                <div className="bg-ember-50 dark:bg-ember-500/10 px-4 py-2.5 border-b border-ember-100">
                                   <p className="text-sm font-black text-black dark:text-chalk">Class Leaderboard</p>
                                 </div>
                                 {leaderboardLoading ? (
@@ -1211,7 +1225,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                             {team.coachNickname && <p className="text-xs text-gray-400 dark:text-chalk-dim truncate">{team.adminEmail}</p>}
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
-                            <span className="text-xs bg-orange-100 dark:bg-ember-500/15 text-orange-700 dark:text-ember-400 font-bold px-2 py-0.5 rounded-full">Head coach</span>
+                            <span className="text-xs bg-ember-100 dark:bg-ember-500/15 text-ember-700 dark:text-ember-400 font-bold px-2 py-0.5 rounded-full">Head coach</span>
                             <button
                               onClick={() => removeHeadCoach(team.id)}
                               disabled={removingCoach === `head-${team.id}`}
@@ -1273,11 +1287,11 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                                     type="checkbox"
                                     checked={!!emailSelected[m.id]}
                                     onChange={() => toggleEmailMember(m.id)}
-                                    className="w-4 h-4 accent-orange-500 shrink-0"
+                                    className="w-4 h-4 accent-ember-500 shrink-0"
                                   />
                                   <Link
                                     href={`/org/dashboard/member/${m.id}`}
-                                    className="text-sm font-semibold text-black dark:text-chalk truncate hover:text-orange-600 dark:hover:text-ember-400 hover:underline transition-colors"
+                                    className="text-sm font-semibold text-black dark:text-chalk truncate hover:text-ember-600 dark:hover:text-ember-400 hover:underline transition-colors"
                                   >
                                     {memberDisplayName(m)}
                                   </Link>
@@ -1298,9 +1312,10 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                           {team.members.some(m => emailSelected[m.id]) && (
                             <button
                               onClick={() => setEmailDraftTeam(team.id)}
-                              className="mt-2 text-sm font-bold text-orange-500 hover:text-orange-400 transition-colors"
+                              className="mt-2 inline-flex items-center gap-1.5 text-sm font-bold text-ember-600 dark:text-ember-400 hover:text-ember-500 transition-colors"
                             >
-                              ✉ Draft outreach email ({team.members.filter(m => emailSelected[m.id]).length} selected)
+                              <MailIcon aria-hidden className="w-4 h-4" />
+                              Draft outreach email ({team.members.filter(m => emailSelected[m.id]).length} selected)
                             </button>
                           )}
                         </>
@@ -1321,7 +1336,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                         </span>
                         <button
                           onClick={() => copyLink(team.id, team.accessCode)}
-                          className="shrink-0 text-sm font-semibold text-orange-500 hover:text-orange-400 transition-colors"
+                          className="shrink-0 text-sm font-semibold text-ember-500 hover:text-ember-400 transition-colors"
                         >
                           {copiedLink[team.id] ? 'Copied!' : 'Copy'}
                         </button>
@@ -1358,15 +1373,15 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                     const msg = teamAssignMsg[team.id]
                     const isAssignBusy = teamAssignBusy === team.id
                     return (
-                      <div className="border border-orange-100 rounded-xl overflow-hidden">
+                      <div className="border border-ember-100 rounded-xl overflow-hidden">
                         <button
                           onClick={() => setTeamAssignOpen(prev => ({ ...prev, [team.id]: !isAssignOpen }))}
-                          className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-orange-50 dark:bg-ember-500/10 hover:bg-orange-100 dark:hover:bg-ember-500/15 transition-colors text-left"
+                          className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-ember-50 dark:bg-ember-500/10 hover:bg-ember-100 dark:hover:bg-ember-500/15 transition-colors text-left"
                         >
                           <div className="min-w-0">
                             <p className="text-sm font-bold text-black dark:text-chalk">Assign team credits to players</p>
                             <p className="text-xs text-gray-500 dark:text-chalk-dim mt-0.5">
-                              Team credits: <span className="font-bold text-orange-600 dark:text-ember-400">{team.credits}</span>
+                              Team credits: <span className="font-bold text-ember-600 dark:text-ember-400">{team.credits}</span>
                               {' '}— spend on specific players in this team.
                             </p>
                           </div>
@@ -1389,8 +1404,8 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                                         onClick={() => setTeamAssignEach(prev => ({ ...prev, [team.id]: q }))}
                                         className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-colors ${
                                           each === q
-                                            ? 'bg-orange-500 text-ink-950'
-                                            : 'bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline text-black dark:text-chalk hover:border-orange-400'
+                                            ? 'bg-ember-500 text-ink-950'
+                                            : 'bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline text-black dark:text-chalk hover:border-ember-400'
                                         }`}
                                       >
                                         {q}
@@ -1404,7 +1419,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                                         const n = parseInt(e.target.value)
                                         setTeamAssignEach(prev => ({ ...prev, [team.id]: Number.isNaN(n) ? 1 : Math.max(1, n) }))
                                       }}
-                                      className="w-16 border border-gray-300 dark:border-courtline rounded-lg px-2 py-1.5 text-black dark:text-chalk text-sm text-center focus:outline-none focus:border-orange-500"
+                                      className="w-16 border border-gray-300 dark:border-courtline rounded-lg px-2 py-1.5 text-black dark:text-chalk text-sm text-center focus:outline-none focus:border-ember-500"
                                     />
                                   </div>
                                 </div>
@@ -1419,7 +1434,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                                           ...prev,
                                           [team.id]: { ...(prev[team.id] || {}), [m.id]: !(prev[team.id]?.[m.id]) },
                                         }))}
-                                        className="w-4 h-4 accent-orange-500"
+                                        className="w-4 h-4 accent-ember-500"
                                       />
                                       <span className="flex-1 text-sm text-black dark:text-chalk">{memberDisplayName(m)}</span>
                                       <span className="text-xs text-gray-400 dark:text-chalk-dim">{m.tokens} token{m.tokens !== 1 ? 's' : ''}</span>
@@ -1444,7 +1459,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                                 <button
                                   onClick={() => assignTeamCreditsToPlayers(team.id, team.credits)}
                                   disabled={isAssignBusy || selectedIds.length === 0 || totalNeeded > team.credits}
-                                  className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+                                  className="bg-ember-500 hover:bg-ember-400 disabled:bg-ember-300 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors"
                                 >
                                   {isAssignBusy ? 'Assigning…' : `Assign ${totalNeeded} credit${totalNeeded !== 1 ? 's' : ''}`}
                                 </button>
@@ -1468,7 +1483,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                         <div className="flex justify-end">
                           <button
                             onClick={() => setTeamLbModal(team.id)}
-                            className="shrink-0 text-xs font-bold text-orange-500 hover:text-orange-400 transition-colors"
+                            className="shrink-0 text-xs font-bold text-ember-500 hover:text-ember-400 transition-colors"
                           >
                             View full &amp; print
                           </button>
@@ -1487,7 +1502,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                   <div className="border border-gray-200 dark:border-courtline rounded-xl overflow-hidden">
                     <button
                       onClick={() => setBuyOpen(prev => ({ ...prev, [team.id]: !isBuyOpen }))}
-                      className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-gray-50 dark:bg-ink-800 hover:bg-orange-50 dark:hover:bg-ember-500/10 transition-colors text-left"
+                      className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-gray-50 dark:bg-ink-800 hover:bg-ember-50 dark:hover:bg-ember-500/10 transition-colors text-left"
                     >
                       <p className="text-sm font-bold text-black dark:text-chalk">Buy Tokens for This Team</p>
                       <span className="text-gray-400 dark:text-chalk-dim text-sm shrink-0">{isBuyOpen ? '−' : '+'}</span>
@@ -1499,7 +1514,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                           <select
                             value={dest}
                             onChange={e => setDestSelect(prev => ({ ...prev, [team.id]: e.target.value }))}
-                            className="w-full border border-gray-300 dark:border-courtline rounded-xl px-3 py-2.5 text-sm text-black dark:text-chalk bg-white dark:bg-ink-900 focus:outline-none focus:border-orange-500"
+                            className="w-full border border-gray-300 dark:border-courtline rounded-xl px-3 py-2.5 text-sm text-black dark:text-chalk bg-white dark:bg-ink-900 focus:outline-none focus:border-ember-500"
                           >
                             <option value="all">All Players ({team.members.length})</option>
                             {team.members.map(m => (
@@ -1517,7 +1532,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                           <select
                             value={qty}
                             onChange={e => setQuantity(prev => ({ ...prev, [team.id]: Number(e.target.value) }))}
-                            className="w-full border border-gray-300 dark:border-courtline rounded-xl px-3 py-2.5 text-sm text-black dark:text-chalk bg-white dark:bg-ink-900 focus:outline-none focus:border-orange-500"
+                            className="w-full border border-gray-300 dark:border-courtline rounded-xl px-3 py-2.5 text-sm text-black dark:text-chalk bg-white dark:bg-ink-900 focus:outline-none focus:border-ember-500"
                           >
                             <option value={1}>1</option>
                             <option value={5}>5</option>
@@ -1530,7 +1545,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                           <button
                             onClick={() => handleBuy(team)}
                             disabled={buying}
-                            className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold py-2.5 rounded-xl text-sm transition-colors"
+                            className="w-full bg-ember-500 hover:bg-ember-400 disabled:bg-ember-300 text-ink-950 font-bold py-2.5 rounded-xl text-sm transition-colors"
                           >
                             {buying ? 'Redirecting...' : 'Buy Tokens'}
                           </button>
@@ -1542,7 +1557,10 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
 
                   {/* Team chat — org has coach powers over its teams' chats */}
                   <div className="border-t border-gray-100 dark:border-courtline pt-4">
-                    <p className="text-xs font-semibold text-gray-500 dark:text-chalk-dim uppercase tracking-wide mb-2">💬 Team Chat</p>
+                    <p className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 dark:text-chalk-dim uppercase tracking-wide mb-2">
+                      <MessageSquareIcon aria-hidden className="w-3.5 h-3.5" />
+                      Team Chat
+                    </p>
                     <TeamChatPanel teamId={team.id} />
                   </div>
 
@@ -1628,7 +1646,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
       <div className="border border-gray-200 dark:border-courtline rounded-2xl overflow-hidden">
         <button
           onClick={() => setShowMyUploads(o => !o)}
-          className="w-full flex items-center justify-between gap-4 px-5 py-4 bg-gray-50 dark:bg-ink-800 hover:bg-orange-50 dark:hover:bg-ember-500/10 transition-colors text-left"
+          className="w-full flex items-center justify-between gap-4 px-5 py-4 bg-gray-50 dark:bg-ink-800 hover:bg-ember-50 dark:hover:bg-ember-500/10 transition-colors text-left"
         >
           <div>
             <p className="font-bold text-black dark:text-chalk">My Uploads</p>
@@ -1641,11 +1659,9 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
         {showMyUploads && (
           <div className="p-4 space-y-3">
             <div className="flex justify-end">
-              <Link
-                href="/analyze"
-                className="shrink-0 bg-orange-500 hover:bg-orange-400 text-ink-950 font-bold text-sm px-4 py-2 rounded-xl transition-colors"
-              >
-                Analyze a shot →
+              <Link href="/analyze" className={backendButton('primary', 'shrink-0')}>
+                Analyze a shot
+                <ArrowRightIcon aria-hidden />
               </Link>
             </div>
             {myUploads.length > 0 ? (
@@ -1667,7 +1683,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
       <div className="border border-gray-200 dark:border-courtline rounded-2xl overflow-hidden">
         <button
           onClick={() => setShowAllPlayers(o => !o)}
-          className="w-full flex items-center justify-between gap-4 px-5 py-4 bg-gray-50 dark:bg-ink-800 hover:bg-orange-50 dark:hover:bg-ember-500/10 transition-colors text-left"
+          className="w-full flex items-center justify-between gap-4 px-5 py-4 bg-gray-50 dark:bg-ink-800 hover:bg-ember-50 dark:hover:bg-ember-500/10 transition-colors text-left"
         >
           <div>
             <p className="font-bold text-black dark:text-chalk">All Players</p>
@@ -1757,13 +1773,13 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                                 type="checkbox"
                                 checked={!!emailSelected[m.id]}
                                 onChange={() => toggleEmailMember(m.id)}
-                                className="w-4 h-4 accent-orange-500"
+                                className="w-4 h-4 accent-ember-500"
                               />
                             </td>
                             <td className="px-3 py-2.5">
                               <Link
                                 href={`/org/dashboard/member/${m.id}`}
-                                className="text-sm font-semibold text-black dark:text-chalk hover:text-orange-600 dark:hover:text-ember-400 hover:underline transition-colors"
+                                className="text-sm font-semibold text-black dark:text-chalk hover:text-ember-600 dark:hover:text-ember-400 hover:underline transition-colors"
                               >
                                 {memberDisplayName(m)}
                               </Link>
@@ -1774,7 +1790,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                                   <span key={tm.teamId}>
                                     <button
                                       onClick={() => goToTeam(tm.teamId)}
-                                      className="text-orange-600 dark:text-ember-400 hover:text-orange-500 hover:underline transition-colors"
+                                      className="text-ember-600 dark:text-ember-400 hover:text-ember-500 hover:underline transition-colors"
                                     >
                                       {tm.teamName}
                                     </button>
@@ -1792,7 +1808,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                                     score >= 8
                                       ? 'text-green-600 dark:text-green-400'
                                       : score >= 6
-                                        ? 'text-orange-500'
+                                        ? 'text-ember-500'
                                         : 'text-red-500'
                                   }`}
                                 >
@@ -1808,9 +1824,10 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                   {selectedCount > 0 && (
                     <button
                       onClick={() => setEmailDraftTeam('__all__')}
-                      className="text-sm font-bold text-orange-500 hover:text-orange-400 transition-colors"
+                      className="inline-flex items-center gap-1.5 text-sm font-bold text-ember-600 dark:text-ember-400 hover:text-ember-500 transition-colors"
                     >
-                      ✉ Draft outreach email ({selectedCount} selected)
+                      <MailIcon aria-hidden className="w-4 h-4" />
+                      Draft outreach email ({selectedCount} selected)
                     </button>
                   )}
                 </>
@@ -1825,7 +1842,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   return (
     <div className="space-y-6">
       {/* ── Org token balance — always visible above the tabs ─────────── */}
-      <section className="bg-orange-50 dark:bg-ember-500/10 border border-orange-200 rounded-2xl p-5 space-y-3">
+      <section className="bg-ember-50 dark:bg-ember-500/10 border border-ember-200 rounded-2xl p-5 space-y-3">
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-xs font-bold text-gray-500 dark:text-chalk-dim uppercase tracking-wide">Org Token Balance</h2>
@@ -1854,7 +1871,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
 
         {/* Quick send — move balance tokens to a coach or team without
             leaving the banner. */}
-        <div className="border-t border-orange-200 pt-3 space-y-2">
+        <div className="border-t border-ember-200 pt-3 space-y-2">
           <div className="flex items-center gap-1.5">
             <p className="text-xs font-bold text-gray-500 dark:text-chalk-dim uppercase tracking-wide">Quick send</p>
             <InfoTip label="Where do quick-sent credits go?" align="left">
@@ -1869,7 +1886,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
             <select
               value={quickSendTo}
               onChange={e => { setQuickSendTo(e.target.value); setQuickSendMsg('') }}
-              className="flex-1 min-w-[12rem] border border-orange-200 rounded-xl px-3 py-2.5 text-sm text-black dark:text-chalk bg-white dark:bg-ink-900 focus:outline-none focus:border-orange-500"
+              className="flex-1 min-w-[12rem] border border-ember-200 rounded-xl px-3 py-2.5 text-sm text-black dark:text-chalk bg-white dark:bg-ink-900 focus:outline-none focus:border-ember-500"
             >
               <option value="">Choose a coach or team…</option>
               <optgroup label="Coaches — personal credits">
@@ -1895,13 +1912,13 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
               }}
               onBlur={() => { if (quickSendQty < 1) setQuickSendQty(1) }}
               aria-label="Tokens to send"
-              className="w-20 border border-orange-200 rounded-xl px-2 py-2 text-center text-black dark:text-chalk text-sm bg-white dark:bg-ink-900 focus:outline-none focus:border-orange-500"
+              className="w-20 border border-ember-200 rounded-xl px-2 py-2 text-center text-black dark:text-chalk text-sm bg-white dark:bg-ink-900 focus:outline-none focus:border-ember-500"
             />
             <button
               type="button"
               onClick={quickSend}
               disabled={quickSendBusy || !quickSendTo || quickSendQty < 1 || quickSendQty > orgTokenBalance}
-              className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+              className="bg-ember-500 hover:bg-ember-400 disabled:bg-ember-300 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors"
             >
               {quickSendBusy ? 'Sending…' : 'Send'}
             </button>
@@ -1987,7 +2004,7 @@ Please reach out if you have any questions. We look forward to helping you impro
                   </p>
                   <button
                     onClick={() => copyText(emailList, 'emails')}
-                    className="text-xs font-bold text-orange-500 hover:text-orange-400 transition-colors"
+                    className="text-xs font-bold text-ember-500 hover:text-ember-400 transition-colors"
                   >
                     {emailCopied === 'emails' ? 'Copied!' : 'Copy all emails'}
                   </button>
@@ -2004,7 +2021,7 @@ Please reach out if you have any questions. We look forward to helping you impro
                   <p className="text-xs font-semibold text-gray-500 dark:text-chalk-dim uppercase tracking-wide">Email body</p>
                   <button
                     onClick={() => copyText(body, 'body')}
-                    className="text-xs font-bold text-orange-500 hover:text-orange-400 transition-colors"
+                    className="text-xs font-bold text-ember-500 hover:text-ember-400 transition-colors"
                   >
                     {emailCopied === 'body' ? 'Copied!' : 'Copy body'}
                   </button>

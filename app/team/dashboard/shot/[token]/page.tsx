@@ -4,6 +4,9 @@ import { getTeamSession } from '@/lib/team-auth'
 import { db } from '@/lib/db'
 import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
+import DashboardShell from '@/components/backend/DashboardShell'
+import DashboardHeader from '@/components/backend/DashboardHeader'
+import { ArrowRightIcon } from 'lucide-react'
 import CoachNoteEditor from '@/components/CoachNoteEditor'
 import { getOwnNotes } from '@/lib/coach-notes'
 
@@ -67,20 +70,23 @@ export default async function CoachShotPage({ params }: { params: Promise<{ toke
   const ownNotes = await getOwnNotes(analysis.id, session.teamId)
 
   return (
-    <main className="min-h-screen bg-white flex flex-col">
+    <main className="min-h-screen bg-white dark:bg-ink-950 flex flex-col">
       <TopNav />
-      <div className="max-w-3xl mx-auto w-full px-6 py-10 space-y-6">
-        <Link href="/team/dashboard" className="text-sm text-orange-500 hover:underline">
-          ← Back to team dashboard
-        </Link>
+      <DashboardShell>
+        <DashboardHeader
+          eyebrow="Coaching notes"
+          title={<h1 className="text-2xl sm:text-3xl font-black text-black dark:text-chalk">Add your coaching notes</h1>}
+          meta={
+            <>
+              Shot from {new Date(submission.created_at).toLocaleDateString()} · AI overall{' '}
+              {analysis.overall_score !== null ? Number(analysis.overall_score).toFixed(1) : '—'}/10
+            </>
+          }
+          back={{ href: '/team/dashboard', label: 'Back to team dashboard' }}
+        />
 
         <div>
-          <h1 className="text-2xl font-black text-black">Add your coaching notes</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            Shot from {new Date(submission.created_at).toLocaleDateString()} · AI overall{' '}
-            {analysis.overall_score !== null ? Number(analysis.overall_score).toFixed(1) : '—'}/10
-          </p>
-          <p className="text-gray-500 text-sm mt-2 leading-relaxed">
+          <p className="text-gray-500 dark:text-chalk-dim text-sm leading-relaxed">
             Your notes appear on the player&apos;s report underneath each score — the AI&apos;s grade
             is never changed or hidden. Add what you saw in person, especially where the video was
             blurry or the AI couldn&apos;t see. Your notes are also sent to LearnHoops for review.
@@ -88,9 +94,10 @@ export default async function CoachShotPage({ params }: { params: Promise<{ toke
           <Link
             href={`/results/${submission.token}`}
             target="_blank"
-            className="inline-block mt-2 text-sm font-semibold text-orange-500 hover:underline"
+            className="inline-flex items-center gap-1.5 mt-2 text-sm font-semibold text-ember-600 dark:text-ember-400 hover:text-ember-500 transition-colors"
           >
-            View the player&apos;s report →
+            View the player&apos;s report
+            <ArrowRightIcon aria-hidden className="w-4 h-4" />
           </Link>
         </div>
 
@@ -98,21 +105,21 @@ export default async function CoachShotPage({ params }: { params: Promise<{ toke
           {scores.map((s) => {
             const ai = s.ai_score === null ? null : Number(s.ai_score)
             return (
-              <div key={s.id} className="border border-gray-200 rounded-2xl p-5">
+              <div key={s.id} className="border border-gray-200 dark:border-courtline rounded-2xl p-5">
                 <div className="flex items-center justify-between gap-3">
-                  <h2 className="font-semibold text-black text-sm">{s.name}</h2>
+                  <h2 className="font-semibold text-black dark:text-chalk text-sm">{s.name}</h2>
                   {ai === null ? (
-                    <span className="text-xs font-medium text-black bg-gray-200 px-2 py-0.5 rounded-full shrink-0">
+                    <span className="text-xs font-medium text-black dark:text-chalk bg-gray-200 dark:bg-ink-800 px-2 py-0.5 rounded-full shrink-0">
                       Not graded
                     </span>
                   ) : (
-                    <span className="text-2xl font-bold text-black shrink-0">
+                    <span className="text-2xl font-bold text-black dark:text-chalk shrink-0">
                       {ai.toFixed(1)}
                       <span className="text-sm font-normal">/10</span>
                     </span>
                   )}
                 </div>
-                <p className="text-gray-600 text-xs mt-1.5 leading-relaxed">{s.ai_reasoning}</p>
+                <p className="text-gray-600 dark:text-chalk-dim text-xs mt-1.5 leading-relaxed">{s.ai_reasoning}</p>
                 <CoachNoteEditor
                   criterionScoreId={s.id}
                   aiScore={ai}
@@ -123,7 +130,7 @@ export default async function CoachShotPage({ params }: { params: Promise<{ toke
             )
           })}
         </div>
-      </div>
+      </DashboardShell>
       <SiteFooter />
     </main>
   )

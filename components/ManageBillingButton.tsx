@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import { CreditCardIcon } from 'lucide-react'
+import { backendButton } from '@/components/backend/button-styles'
 
 /**
  * Opens the Stripe billing portal for the signed-in organization.
@@ -46,12 +48,8 @@ export default function ManageBillingButton() {
 
   return (
     <div className="space-y-1">
-      <button
-        type="button"
-        onClick={open}
-        disabled={loading}
-        className="text-sm font-semibold text-gray-600 hover:text-black underline underline-offset-2 disabled:opacity-50"
-      >
+      <button type="button" onClick={open} disabled={loading} className={backendButton('quiet')}>
+        <CreditCardIcon aria-hidden />
         {loading ? 'Opening…' : 'Manage billing'}
       </button>
       {error && <p className="text-xs text-red-500">{error}</p>}

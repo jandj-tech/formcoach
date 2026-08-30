@@ -1,7 +1,9 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { LogOutIcon } from 'lucide-react'
 import { useCart } from '@/lib/cart'
+import { backendButton } from '@/components/backend/button-styles'
 
 export default function LogoutButton() {
   const router = useRouter()
@@ -14,10 +16,8 @@ export default function LogoutButton() {
   }
 
   return (
-    <button
-      onClick={handleLogout}
-      className="bg-orange-500 hover:bg-red-500 text-ink-950 font-bold text-sm px-4 py-2 rounded-xl transition-colors"
-    >
+    <button onClick={handleLogout} className={backendButton('quiet')}>
+      <LogOutIcon aria-hidden />
       Log out
     </button>
   )

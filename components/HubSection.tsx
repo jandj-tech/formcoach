@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ComponentType, type ReactNode } from 'react'
 import { ChevronDownIcon } from 'lucide-react'
 
 // Dark-theme accordion row for the /team hub. The body mounts on first open
@@ -8,14 +8,17 @@ import { ChevronDownIcon } from 'lucide-react'
 // form drafts survive open/close — while closed-by-default sections (chat)
 // don't fetch anything until the user actually opens them.
 export default function HubSection({
-  icon,
+  icon: Icon,
   label,
   summary,
   defaultOpen = false,
   scrollOnOpen = false,
   children,
 }: {
-  icon: string
+  // A lucide icon component. Emoji used to sit here; they render as a
+  // different typeface on every platform and read as a toy next to the rest
+  // of the UI, so the hub draws real icons like the app does.
+  icon: ComponentType<{ className?: string; 'aria-hidden'?: boolean }>
   label: string
   // Right-side hint while collapsed, e.g. "12 players", "Talk to your team".
   summary?: string
@@ -47,7 +50,7 @@ export default function HubSection({
         className="w-full bg-ink-900 border border-courtline rounded-2xl px-5 py-4 flex items-center justify-between gap-3 text-left hover:border-chalk-dim/40 transition-colors"
       >
         <span className="flex items-center gap-3 min-w-0">
-          <span aria-hidden className="text-lg leading-none select-none">{icon}</span>
+          <Icon aria-hidden className="w-5 h-5 text-ember-400 shrink-0" />
           <span className="font-display font-bold uppercase text-chalk tracking-wide">{label}</span>
         </span>
         <span className="flex items-center gap-2 min-w-0 shrink-0">

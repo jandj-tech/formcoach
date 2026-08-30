@@ -93,7 +93,7 @@ export default function OrgAddCoach({ teamId }: { teamId: string }) {
     return (
       <button
         onClick={() => { setOpen(true); reset() }}
-        className="text-sm font-semibold text-orange-500 hover:text-orange-400 transition-colors"
+        className="text-sm font-semibold text-ember-500 hover:text-ember-400 transition-colors"
       >
         + Add coach
       </button>
@@ -108,14 +108,14 @@ export default function OrgAddCoach({ teamId }: { teamId: string }) {
         placeholder="Coach email"
         value={email}
         onChange={e => setEmail(e.target.value)}
-        className="w-full bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-lg px-3 py-2 text-black dark:text-chalk text-sm placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
+        className="w-full bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-lg px-3 py-2 text-black dark:text-chalk text-sm placeholder-gray-400 focus:outline-none focus:border-ember-500 transition-colors"
       />
       <div className="flex gap-2">
         <button
           type="button"
           onClick={() => addCoach('email')}
           disabled={loading}
-          className="flex-1 bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold px-3 py-2 rounded-lg text-xs transition-colors"
+          className="flex-1 bg-ember-500 hover:bg-ember-400 disabled:bg-ember-300 text-ink-950 font-bold px-3 py-2 rounded-lg text-xs transition-colors"
         >
           {loading ? 'Working…' : 'Email the invite'}
         </button>
@@ -123,7 +123,7 @@ export default function OrgAddCoach({ teamId }: { teamId: string }) {
           type="button"
           onClick={() => addCoach('link')}
           disabled={loading}
-          className="flex-1 bg-white dark:bg-ink-900 border border-orange-500 text-orange-600 dark:text-ember-400 hover:bg-orange-50 dark:hover:bg-ember-500/10 disabled:opacity-50 font-bold px-3 py-2 rounded-lg text-xs transition-colors"
+          className="flex-1 bg-white dark:bg-ink-900 border border-ember-500 text-ember-600 dark:text-ember-400 hover:bg-ember-50 dark:hover:bg-ember-500/10 disabled:opacity-50 font-bold px-3 py-2 rounded-lg text-xs transition-colors"
         >
           {loading ? 'Working…' : 'Just get the link'}
         </button>
@@ -147,7 +147,7 @@ export default function OrgAddCoach({ teamId }: { teamId: string }) {
         placeholder="Your name"
         value={selfName}
         onChange={e => setSelfName(e.target.value)}
-        className="w-full bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-lg px-3 py-2 text-black dark:text-chalk text-sm placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
+        className="w-full bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-lg px-3 py-2 text-black dark:text-chalk text-sm placeholder-gray-400 focus:outline-none focus:border-ember-500 transition-colors"
       />
       <button
         type="button"
@@ -168,7 +168,7 @@ export default function OrgAddCoach({ teamId }: { teamId: string }) {
             <span className="flex-1 text-xs font-mono text-gray-600 dark:text-chalk-dim truncate">{inviteUrl}</span>
             <button
               onClick={copyInvite}
-              className="shrink-0 text-xs font-semibold text-orange-500 hover:text-orange-400 transition-colors"
+              className="shrink-0 text-xs font-semibold text-ember-500 hover:text-ember-400 transition-colors"
             >
               {copied ? 'Copied!' : 'Copy'}
             </button>

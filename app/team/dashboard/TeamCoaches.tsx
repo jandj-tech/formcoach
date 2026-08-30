@@ -85,7 +85,7 @@ export default function TeamCoaches({
         <h2 className="text-xl font-black text-black dark:text-chalk">Coaches</h2>
         <button
           onClick={() => { setAddOpen(o => !o); reset() }}
-          className="bg-orange-500 hover:bg-orange-400 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+          className="bg-ember-500 hover:bg-ember-400 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors"
         >
           {addOpen ? 'Cancel' : 'Add Coach'}
         </button>
@@ -105,14 +105,14 @@ export default function TeamCoaches({
             placeholder="Coach email"
             value={email}
             onChange={e => setEmail(e.target.value)}
-            className="w-full bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl px-4 py-2.5 text-black dark:text-chalk placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
+            className="w-full bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl px-4 py-2.5 text-black dark:text-chalk placeholder-gray-400 focus:outline-none focus:border-ember-500 transition-colors"
           />
           <div className="flex gap-2">
             <button
               type="button"
               onClick={() => addCoach('email')}
               disabled={loading}
-              className="flex-1 bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold px-4 py-2.5 rounded-xl text-sm transition-colors"
+              className="flex-1 bg-ember-500 hover:bg-ember-400 disabled:bg-ember-300 text-ink-950 font-bold px-4 py-2.5 rounded-xl text-sm transition-colors"
             >
               {loading ? 'Working…' : 'Email the invite'}
             </button>
@@ -120,7 +120,7 @@ export default function TeamCoaches({
               type="button"
               onClick={() => addCoach('link')}
               disabled={loading}
-              className="flex-1 bg-white dark:bg-ink-900 border border-orange-500 text-orange-600 dark:text-ember-400 hover:bg-orange-50 dark:hover:bg-ember-500/10 disabled:opacity-50 font-bold px-4 py-2.5 rounded-xl text-sm transition-colors"
+              className="flex-1 bg-white dark:bg-ink-900 border border-ember-500 text-ember-600 dark:text-ember-400 hover:bg-ember-50 dark:hover:bg-ember-500/10 disabled:opacity-50 font-bold px-4 py-2.5 rounded-xl text-sm transition-colors"
             >
               {loading ? 'Working…' : 'Just get the link'}
             </button>
@@ -139,7 +139,7 @@ export default function TeamCoaches({
                 <span className="flex-1 text-xs font-mono text-gray-600 dark:text-chalk-dim truncate">{inviteUrl}</span>
                 <button
                   onClick={copyInvite}
-                  className="shrink-0 text-sm font-semibold text-orange-500 hover:text-orange-400 transition-colors"
+                  className="shrink-0 text-sm font-semibold text-ember-500 hover:text-ember-400 transition-colors"
                 >
                   {copied ? 'Copied!' : 'Copy'}
                 </button>
@@ -159,7 +159,7 @@ export default function TeamCoaches({
               <p className="text-xs text-gray-400 dark:text-chalk-dim truncate">{foundingCoachEmail}</p>
             )}
           </div>
-          <span className="shrink-0 text-xs bg-orange-100 dark:bg-ember-500/15 text-orange-700 dark:text-ember-400 font-bold px-2 py-0.5 rounded-full">Head coach</span>
+          <span className="shrink-0 text-xs bg-ember-100 dark:bg-ember-500/15 text-ember-700 dark:text-ember-400 font-bold px-2 py-0.5 rounded-full">Head coach</span>
         </div>
         {coaches.map(c => (
           <div key={c.id} className="flex items-center justify-between gap-3 px-4 py-3">

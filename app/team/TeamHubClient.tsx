@@ -2,6 +2,13 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import {
+  ArrowRightIcon,
+  CalendarDaysIcon,
+  MessageSquareIcon,
+  TrophyIcon,
+  UsersIcon,
+} from 'lucide-react'
 import HubSection from '@/components/HubSection'
 import TeamChatPanel from '@/components/TeamChatPanel'
 import TeamSchedulePanel from '@/components/TeamSchedulePanel'
@@ -51,12 +58,12 @@ function TeamHubBody({
       </div>
 
       {/* Schedule — the everyday section, open by default and visually dominant */}
-      <HubSection icon="📅" label="Schedule" defaultOpen>
+      <HubSection icon={CalendarDaysIcon} label="Schedule" defaultOpen>
         <TeamSchedulePanel teamId={team.id} theme="dark" />
       </HubSection>
 
       {/* Roster — coaches first with a COACH mini-badge, then player chips */}
-      <HubSection icon="👥" label="Roster" summary={`${team.memberCount} player${team.memberCount === 1 ? '' : 's'}`}>
+      <HubSection icon={UsersIcon} label="Roster" summary={`${team.memberCount} player${team.memberCount === 1 ? '' : 's'}`}>
         {team.coaches.length === 0 && team.players.length === 0 ? (
           <p className="text-chalk-dim text-sm">No players have joined yet.</p>
         ) : (
@@ -90,16 +97,16 @@ function TeamHubBody({
         className="w-full bg-ink-900 border border-courtline rounded-2xl px-5 py-4 flex items-center justify-between gap-3 hover:border-chalk-dim/40 transition-colors"
       >
         <span className="flex items-center gap-3">
-          <span aria-hidden className="text-lg leading-none select-none">🏆</span>
+          <TrophyIcon aria-hidden className="w-5 h-5 text-ember-400 shrink-0" />
           <span className="font-display font-bold uppercase text-chalk tracking-wide">Leaderboard</span>
         </span>
-        <span aria-hidden className="text-chalk-dim font-bold select-none">→</span>
+        <ArrowRightIcon aria-hidden className="w-5 h-5 text-chalk-dim shrink-0" />
       </Link>
 
       {/* Chat — always last, closed on load; expands large and owns the
           viewport when opened. The white island inside dark is the shipped
           pattern for the light-themed TeamChatPanel. */}
-      <HubSection icon="💬" label="Chat" summary="Talk to your team" scrollOnOpen>
+      <HubSection icon={MessageSquareIcon} label="Chat" summary="Talk to your team" scrollOnOpen>
         <div className="min-h-[70vh] bg-white rounded-xl p-4">
           <TeamChatPanel teamId={team.id} tall />
         </div>

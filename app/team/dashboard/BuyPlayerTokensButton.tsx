@@ -78,8 +78,8 @@ export default function BuyPlayerTokensButton({ players, teamCode }: Props) {
             onClick={() => setQuantity(q)}
             className={`px-3 py-1 rounded-lg text-sm font-bold transition-colors ${
               quantity === q
-                ? 'bg-orange-500 text-ink-950'
-                : 'bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline text-black dark:text-chalk hover:border-orange-400'
+                ? 'bg-ember-500 text-ink-950'
+                : 'bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline text-black dark:text-chalk hover:border-ember-400'
             }`}
           >
             {q}
@@ -96,7 +96,7 @@ export default function BuyPlayerTokensButton({ players, teamCode }: Props) {
           }}
           onBlur={() => { if (quantity < 1) setQuantity(1) }}
           aria-label="Custom token amount"
-          className="w-20 border border-gray-300 dark:border-courtline rounded-lg px-2 py-1 text-center text-black dark:text-chalk text-sm focus:outline-none focus:border-orange-500"
+          className="w-20 border border-gray-300 dark:border-courtline rounded-lg px-2 py-1 text-center text-black dark:text-chalk text-sm focus:outline-none focus:border-ember-500"
         />
       </div>
 
@@ -107,7 +107,7 @@ export default function BuyPlayerTokensButton({ players, teamCode }: Props) {
               type="checkbox"
               checked={!!selected[p.id]}
               onChange={() => toggle(p.id)}
-              className="w-4 h-4 accent-orange-500"
+              className="w-4 h-4 accent-ember-500"
             />
             <span className="flex-1 text-sm text-black dark:text-chalk">{p.email}</span>
             <span className="text-xs text-gray-400 dark:text-chalk-dim">
@@ -122,7 +122,7 @@ export default function BuyPlayerTokensButton({ players, teamCode }: Props) {
       <button
         onClick={buy}
         disabled={buying || selectedIds.length === 0}
-        className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+        className="bg-ember-500 hover:bg-ember-400 disabled:bg-ember-300 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors"
       >
         {buying
           ? 'Redirecting...'

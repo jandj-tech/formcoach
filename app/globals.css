@@ -12,10 +12,22 @@
   --color-ink-700: #232329;
   --color-chalk: #f5f3ee;
   --color-chalk-dim: #9b978f;
+  /* Full ramp, not just the hot end. The coach/org dashboards needed tints
+     for card washes and borders and reached for Tailwind's stock orange,
+     which left the same screen mixing two different oranges (#f97316 next to
+     #ff5c1a). Two shades here were also already being used before they
+     existed — `hover:text-ember-300` compiled to nothing, so those hovers
+     silently did nothing. */
+  --color-ember-50: #fff3ed;
+  --color-ember-100: #ffe3d4;
+  --color-ember-200: #ffc7a8;
+  --color-ember-300: #ff9d71;
   --color-ember-400: #ff7a42;
   --color-ember-500: #ff5c1a;
   --color-ember-600: #e8430a;
   --color-ember-700: #c23708;
+  --color-ember-800: #9a2f0d;
+  --color-ember-900: #7c290f;
   --color-hardwood: #c89b6c;
   --color-courtline: #2a2a31;
 }

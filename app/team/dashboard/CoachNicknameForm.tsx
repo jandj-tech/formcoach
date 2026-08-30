@@ -40,12 +40,12 @@ export default function CoachNicknameForm({ current }: { current: string | null 
           placeholder="e.g. Coach Mike"
           value={nickname}
           onChange={e => setNickname(e.target.value)}
-          className="flex-1 bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl px-4 py-2.5 text-black dark:text-chalk placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors"
+          className="flex-1 bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl px-4 py-2.5 text-black dark:text-chalk placeholder-gray-400 focus:outline-none focus:border-ember-500 transition-colors"
         />
         <button
           type="submit"
           disabled={status === 'saving'}
-          className="shrink-0 bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold px-5 py-2.5 rounded-xl text-sm transition-colors"
+          className="shrink-0 bg-ember-500 hover:bg-ember-400 disabled:bg-ember-300 text-ink-950 font-bold px-5 py-2.5 rounded-xl text-sm transition-colors"
         >
           {status === 'saving' ? 'Saving…' : 'Save'}
         </button>

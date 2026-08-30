@@ -815,12 +815,12 @@ export default function TeamDashboardClient({
           )}
         </div>
         <div className="flex w-full sm:w-auto items-center gap-2 sm:shrink-0">
-          <Link
+          {!inApp && <Link
             href="/team"
             className="flex-1 sm:flex-none text-center border border-orange-300 text-orange-600 dark:text-ember-400 hover:bg-orange-50 dark:hover:bg-ember-500/10 font-bold text-sm px-4 py-2 rounded-xl transition-colors whitespace-nowrap"
           >
             🏢 Organization Hub
-          </Link>
+          </Link>}
           <button
             onClick={logout}
             disabled={loggingOut}
@@ -884,7 +884,9 @@ export default function TeamDashboardClient({
             <p className="text-2xl font-black text-black dark:text-chalk mt-1">{team.tokenPool}</p>
           </div>
 
-          <div>
+          {/* Web credit pricing does not exist inside the iOS app — IAP has its
+              own prices, so quoting $2.49 here reads as a broken discount. */}
+          {!inApp && <div>
             <div className="flex items-center gap-1.5">
               <h2 className="text-xs font-bold text-gray-500 dark:text-chalk-dim uppercase tracking-wide">Credit price</h2>
               <InfoTip label="How is the credit price set?" align="right">
@@ -895,7 +897,7 @@ export default function TeamDashboardClient({
             </div>
             <p className="text-2xl font-black text-black dark:text-chalk mt-1">${creditRate}</p>
             <p className="text-[11px] text-green-600 dark:text-green-400 font-semibold leading-tight">team rate active</p>
-          </div>
+          </div>}
         </div>
       </section>
 

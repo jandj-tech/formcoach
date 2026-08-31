@@ -40,19 +40,21 @@ export async function getOrgSession(): Promise<OrgSessionPayload | null> {
 }
 
 export async function getOrgSessionFromRequest(req: NextRequest): Promise<OrgSessionPayload | null> {
-  const token = req.cookies.get(COOKIE)?.value
-  if (token) return verifyOrgSession(token)
-
-  // Mobile app: org session arrives as a Bearer token. Require kind === 'org'
-  // so a player/team token can't be accepted here. Legacy org tokens (minted
-  // before `kind` existed) are recognised by their `orgId` — a field no player
-  // or team token carries — so an org signed in on an old build keeps working.
+  // Mobile app: org session arrives as a Bearer token, and when the header is
+  // present it is the request's whole identity — cookies are ignored (see
+  // lib/auth.ts for why). Require kind === 'org' so a player/team token can't
+  // be accepted here. Legacy org tokens (minted before `kind` existed) are
+  // recognised by their `orgId` — a field no player or team token carries — so
+  // an org signed in on an old build keeps working.
   const auth = req.headers.get('Authorization')
   if (auth?.startsWith('Bearer ')) {
     const payload = await verifyOrgSession(auth.slice(7))
     if (!payload || typeof payload.orgId !== 'string' || !payload.orgId) return null
     return payload.kind === 'org' || payload.kind === undefined ? payload : null
   }
+
+  const token = req.cookies.get(COOKIE)?.value
+  if (token) return verifyOrgSession(token)
 
   return null
 }

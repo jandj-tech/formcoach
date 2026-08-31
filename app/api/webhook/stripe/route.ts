@@ -395,9 +395,9 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
         // token_pool is kept in sync for legacy displays.
         await db`
           INSERT INTO teams
-            (name, admin_email, password_hash, access_code, organization_id, class_package_id, initiated_at, token_pool, credits, entitlement_grandfathered)
+            (name, admin_email, password_hash, access_code, organization_id, class_package_id, token_pool, credits, entitlement_grandfathered)
           VALUES
-            (${teamName}, ${org.admin_email}, ${null}, ${teamAccessCode}, ${orgId}, ${packageId}, NOW(), ${playerCount * 2}, ${playerCount * 2}, TRUE)
+            (${teamName}, ${org.admin_email}, ${null}, ${teamAccessCode}, ${orgId}, ${packageId}, ${playerCount * 2}, ${playerCount * 2}, TRUE)
         `
       } catch (err) {
         console.error('Failed to auto-create class team:', err)

@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { issueResetToken } from '@/lib/password-reset'
-import { sendPasswordResetEmail } from '@/lib/email'
+import { issueResetToken, resetCodeFromToken } from '@/lib/password-reset'
+import { sendPasswordResetEmail, sendPasswordResetCodeEmail } from '@/lib/email'
 import { rateLimitByIp } from '@/lib/rate-limit'
 
 // Starts a password reset: if the email belongs to any account — player,
-// coach, or organization — emails a reset link. Always returns success so the
-// response can't be used to probe which emails are registered.
+// coach, or organization — emails a reset link. The iOS app passes
+// channel: 'app' to get a 6-digit code email instead, so the reset can be
+// completed inside the app. Always returns success so the response can't be
+// used to probe which emails are registered.
 export async function POST(req: NextRequest) {
   try {
     const limit = await rateLimitByIp(req, 'forgot-password', 6, 3600)
@@ -16,14 +18,18 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const { email } = (await req.json().catch(() => ({}))) as { email?: string }
+    const { email, channel } = (await req.json().catch(() => ({}))) as { email?: string; channel?: string }
     const emailLower = String(email || '').toLowerCase().trim()
     if (!emailLower) return NextResponse.json({ error: 'Email is required' }, { status: 400 })
 
     try {
       const token = await issueResetToken(emailLower)
       if (token) {
-        await sendPasswordResetEmail(emailLower, token)
+        if (channel === 'app') {
+          await sendPasswordResetCodeEmail(emailLower, resetCodeFromToken(token))
+        } else {
+          await sendPasswordResetEmail(emailLower, token)
+        }
       }
     } catch (err) {
       console.error('forgot-password: could not issue reset:', err)

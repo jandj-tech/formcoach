@@ -50,6 +50,53 @@ export async function issueResetToken(email: string): Promise<string | null> {
   return null
 }
 
+/**
+ * The 6-digit code the iOS app flow emails instead of a link. Derived from the
+ * stored token, so no extra column is needed and the emailed link keeps
+ * working too. Brute force is covered by the reset-password route's per-email
+ * and per-IP rate limits.
+ */
+export function resetCodeFromToken(token: string): string {
+  return String(parseInt(token.slice(0, 12), 16) % 1_000_000).padStart(6, '0')
+}
+
+/**
+ * Reads (without consuming) the live reset token for `email`, checking account
+ * types in the same priority order as issueResetToken. Used by the app's
+ * code-entry flow to turn email+code back into the full token.
+ */
+export async function peekResetTokenByEmail(email: string): Promise<string | null> {
+  const [org] = (await db`
+    SELECT reset_token FROM organizations
+    WHERE admin_email = ${email} AND reset_token IS NOT NULL AND reset_token_expires > NOW()
+  `) as unknown as [{ reset_token: string } | undefined]
+  if (org?.reset_token) return org.reset_token
+
+  const [team] = (await db`
+    SELECT reset_token FROM teams
+    WHERE admin_email = ${email} AND password_hash IS NOT NULL
+      AND reset_token IS NOT NULL AND reset_token_expires > NOW()
+    LIMIT 1
+  `) as unknown as [{ reset_token: string } | undefined]
+  if (team?.reset_token) return team.reset_token
+
+  const [coach] = (await db`
+    SELECT reset_token FROM team_coaches
+    WHERE email = ${email} AND password_hash IS NOT NULL
+      AND reset_token IS NOT NULL AND reset_token_expires > NOW()
+    LIMIT 1
+  `) as unknown as [{ reset_token: string } | undefined]
+  if (coach?.reset_token) return coach.reset_token
+
+  const [user] = (await db`
+    SELECT reset_token FROM users
+    WHERE email = ${email} AND reset_token IS NOT NULL AND reset_token_expires > NOW()
+  `) as unknown as [{ reset_token: string } | undefined]
+  if (user?.reset_token) return user.reset_token
+
+  return null
+}
+
 export interface ResetTarget {
   kind: AccountKind
   email: string

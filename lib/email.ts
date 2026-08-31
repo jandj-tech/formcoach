@@ -472,6 +472,62 @@ export async function sendPasswordResetEmail(to: string, token: string) {
   console.log('[email] password reset sent:', data?.id, 'to:', to)
 }
 
+// App variant of the reset email: a 6-digit code typed into the iOS app
+// instead of a link, so the whole reset happens without leaving the app.
+export async function sendPasswordResetCodeEmail(to: string, code: string) {
+  const { data, error } = await getResend().emails.send({
+    from: NOTIFICATION_FROM,
+    to,
+    subject: `${code} is your LearnHoops reset code`,
+    text: [
+      `Someone asked to reset the password for your LearnHoops account from the LearnHoops app.`,
+      ``,
+      `Your reset code (expires in 1 hour):`,
+      code,
+      ``,
+      `Enter it in the app to set a new password.`,
+      ``,
+      `If you didn't request this, you can safely ignore this email — your password won't change.`,
+      ``,
+      `LearnHoops.com`,
+    ].join('\n'),
+    html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"/></head>
+<body style="margin:0;padding:0;background:#F4F4F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table role="presentation" width="100%" style="background:#F4F4F5;"><tr><td align="center" style="padding:32px 16px;">
+    <table role="presentation" width="100%" style="max-width:560px;background:#fff;border-radius:14px;border:1px solid #E4E4E7;">
+      <tr><td style="background:#000;padding:22px 32px;">
+        <div style="color:#F97316;font-size:20px;font-weight:800;">LearnHoops<span style="color:#71717A;">.com</span></div>
+      </td></tr>
+      <tr><td style="padding:36px 32px 8px;">
+        <h1 style="margin:0 0 10px;color:#111;font-size:22px;font-weight:800;">Your reset code</h1>
+        <p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;">
+          Enter this code in the LearnHoops app to set a new password.
+          It expires in 1 hour.
+        </p>
+      </td></tr>
+      <tr><td style="padding:24px 32px 8px;">
+        <div style="display:inline-block;background:#F4F4F5;border:1px solid #E4E4E7;border-radius:10px;padding:14px 26px;font-size:30px;font-weight:800;letter-spacing:8px;color:#111;">${code}</div>
+      </td></tr>
+      <tr><td style="padding:6px 32px 32px;">
+        <p style="margin:0;color:#A1A1AA;font-size:12px;line-height:1.5;">
+          If you didn't request this, ignore this email — your password won't change.
+        </p>
+      </td></tr>
+    </table>
+  </td></tr></table>
+</body>
+</html>`.trim(),
+  })
+  if (error) {
+    console.error('[email] password reset code failed:', error)
+    throw new Error(`Password reset code email failed: ${error.message}`)
+  }
+  console.log('[email] password reset code sent:', data?.id, 'to:', to)
+}
+
 // Biweekly promotional email — pitches the LearnHoops ball and the site.
 export async function sendPromoEmail(to: string) {
   const unsubscribe = `${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}`

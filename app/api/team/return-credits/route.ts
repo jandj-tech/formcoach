@@ -14,7 +14,11 @@ export async function POST(req: NextRequest) {
   try {
     const { source, quantity } = await req.json()
     const from: 'personal' | 'team' = source === 'team' ? 'team' : 'personal'
-    const qty = typeof quantity === 'number' ? Math.floor(quantity) : 0
+    // Number.isFinite, not `typeof === 'number'`: NaN is a number, and
+    // `NaN < 1` is false, so a NaN quantity slipped past the guard below and
+    // only failed later inside the transaction. The balance check makes it
+    // unexploitable, but money code should reject bad input at the door.
+    const qty = Number.isFinite(quantity) ? Math.floor(quantity as number) : 0
     if (qty < 1) {
       return NextResponse.json({ error: 'Invalid quantity' }, { status: 400 })
     }

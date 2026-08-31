@@ -663,13 +663,23 @@ export default function TeamDashboardClient({
   const billingTab = (
     <div className="space-y-4">
       <div>
-        <h2 className="text-xl font-black text-black dark:text-chalk">Billing</h2>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-chalk">Purchase history</h2>
         <p className="text-sm text-gray-500 dark:text-chalk-dim mt-1">
           Your purchases — credits for yourself and for this team. Receipts are
           emailed at checkout.
         </p>
       </div>
-      <BillingHistory endpoint="/api/team/billing" />
+      <BillingHistory
+        endpoint="/api/team/billing"
+        emptyAction={!inApp ? (
+          <button
+            onClick={() => document.querySelector<HTMLButtonElement>('[data-tab="credits"]')?.click()}
+            className="bg-ember-500 hover:bg-ember-400 text-ink-950 font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors"
+          >
+            Buy your first credits
+          </button>
+        ) : undefined}
+      />
     </div>
   )
 
@@ -1008,7 +1018,7 @@ export default function TeamDashboardClient({
           // an enrolled team still wants its progress courtside.
           ...(classProgram || !inApp ? [{ id: 'program', label: 'Program', content: programTab }] : []),
           { id: 'credits', label: 'Tokens & Credits', content: creditsTab },
-          { id: 'billing', label: 'Billing', content: billingTab },
+          { id: 'billing', label: 'Purchases', content: billingTab },
           { id: 'settings', label: 'Settings', content: settingsTab },
         ]}
       />

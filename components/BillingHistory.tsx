@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { ReceiptIcon } from 'lucide-react'
 
 interface Purchase {
@@ -51,7 +51,15 @@ function formatDate(iso: string): string {
  * Purchase history table, fed by /api/org/billing or /api/team/billing.
  * Read-only bookkeeping: what was bought, when, and what it cost.
  */
-export default function BillingHistory({ endpoint }: { endpoint: string }) {
+export default function BillingHistory({
+  endpoint,
+  emptyAction,
+}: {
+  endpoint: string
+  // Optional call-to-action rendered inside the empty state (e.g. a "Buy
+  // tokens" shortcut) so a fresh account's Billing tab isn't a dead end.
+  emptyAction?: ReactNode
+}) {
   const [purchases, setPurchases] = useState<Purchase[] | null>(null)
   const [error, setError] = useState(false)
 
@@ -84,10 +92,15 @@ export default function BillingHistory({ endpoint }: { endpoint: string }) {
 
   if (purchases.length === 0) {
     return (
-      <div className="text-center py-10 border-2 border-dashed border-gray-200 dark:border-courtline rounded-2xl">
+<div className="text-center py-10 px-6 border-2 border-dashed border-gray-200 dark:border-courtline rounded-2xl">
         <ReceiptIcon className="w-6 h-6 text-gray-300 dark:text-chalk-dim mx-auto" aria-hidden />
-        <p className="text-sm font-medium text-gray-500 dark:text-chalk-dim mt-2">No purchases yet</p>
-        <p className="text-xs text-gray-400 dark:text-chalk-dim mt-1">Completed purchases appear here with their receipts.</p>
+        <p className="text-sm font-medium text-gray-600 dark:text-chalk-dim mt-2">No purchases on this account yet</p>
+        <p className="text-xs text-gray-400 dark:text-chalk-dim mt-1 max-w-sm mx-auto">
+          This is where your purchase history lives — every token, credit,
+          class-package, and shop checkout shows up here automatically, with
+          the date, amount, and payment status.
+        </p>
+        {emptyAction && <div className="mt-4">{emptyAction}</div>}
       </div>
     )
   }

@@ -9,6 +9,7 @@ import OrgAddCoach from './OrgAddCoach'
 import AccountTabs from '@/components/account/AccountTabs'
 import ClassManager from '@/components/ClassManager'
 import BillingHistory from '@/components/BillingHistory'
+import GiveTokensForm from '@/components/GiveTokensForm'
 import Section from '@/components/account/Section'
 import InfoTip from '@/components/InfoTip'
 import TokenBalances from '@/components/TokenBalances'
@@ -117,8 +118,11 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   const router = useRouter()
   const inApp = useIsInApp()
   const [expanded, setExpanded] = useState<string | null>(null)
-  // destSelect: 'all' | 'coach' | userId — one dropdown replaces mode+checkboxes
+  // Per-team buy destination: 'all' (whole roster) | 'players' (picked below)
+  // | 'team' (shared team credits), plus the pick/search state for 'players'.
   const [destSelect, setDestSelect] = useState<Record<string, string>>({})
+  const [buyPicks, setBuyPicks] = useState<Record<string, Record<string, boolean>>>({})
+  const [buySearch, setBuySearch] = useState<Record<string, string>>({})
   const [quantity, setQuantity] = useState<Record<string, number>>({})
   const [buyOpen, setBuyOpen] = useState<Record<string, boolean>>({})
   const [buying, setBuying] = useState(false)
@@ -160,19 +164,8 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
 
   // Per-team "assign team credits to players" form state.
   const [teamAssignOpen, setTeamAssignOpen] = useState<Record<string, boolean>>({})
-  const [teamAssignPicks, setTeamAssignPicks] = useState<Record<string, Record<string, boolean>>>({})
-  const [teamAssignEach, setTeamAssignEach] = useState<Record<string, number>>({})
-  const [teamAssignBusy, setTeamAssignBusy] = useState<string | null>(null)
-  const [teamAssignMsg, setTeamAssignMsg] = useState<Record<string, string>>({})
 
-  // Quick send from the always-visible org balance banner. Recipient values
-  // are 'coach:<email>' (personal credits) or 'team:<id>' (shared credits).
-  const [quickSendTo, setQuickSendTo] = useState('')
-  const [quickSendQty, setQuickSendQty] = useState(5)
-  const [quickSendBusy, setQuickSendBusy] = useState(false)
-  const [quickSendMsg, setQuickSendMsg] = useState('')
-
-  const [addOpen, setAddOpen] = useState(false)
+    const [addOpen, setAddOpen] = useState(false)
   const [newName, setNewName] = useState('')
   const [newAgeGroup, setNewAgeGroup] = useState('')
   const [newCoachEmail, setNewCoachEmail] = useState('')
@@ -314,87 +307,6 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
     }
   }
 
-  async function assignTeamCreditsToPlayers(teamId: string, teamCredits: number) {
-    const picks = teamAssignPicks[teamId] || {}
-    const ids = Object.keys(picks).filter(id => picks[id])
-    const each = Math.max(1, teamAssignEach[teamId] ?? 1)
-    if (ids.length === 0) {
-      setTeamAssignMsg(prev => ({ ...prev, [teamId]: 'Pick at least one player.' }))
-      return
-    }
-    const total = ids.length * each
-    if (total > teamCredits) {
-      setTeamAssignMsg(prev => ({ ...prev, [teamId]: `Need ${total}, team has ${teamCredits}.` }))
-      return
-    }
-    setTeamAssignBusy(teamId)
-    setTeamAssignMsg(prev => ({ ...prev, [teamId]: '' }))
-    try {
-      const res = await fetch('/api/org/assign-from-team-credits', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ teamId, playerUserIds: ids, tokensEach: each }),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        setTeamAssignMsg(prev => ({ ...prev, [teamId]: data.error || 'Could not assign credits.' }))
-        setTeamAssignBusy(null)
-        return
-      }
-      setTeamAssignPicks(prev => ({ ...prev, [teamId]: {} }))
-      setTeamAssignMsg(prev => ({ ...prev, [teamId]: `Assigned ${total} credit${total !== 1 ? 's' : ''}.` }))
-      setTeamAssignBusy(null)
-      router.refresh()
-    } catch {
-      setTeamAssignMsg(prev => ({ ...prev, [teamId]: 'Something went wrong.' }))
-      setTeamAssignBusy(null)
-    }
-  }
-
-  async function quickSend() {
-    if (!quickSendTo) {
-      setQuickSendMsg('Choose a coach or team first.')
-      return
-    }
-    const qty = Math.max(1, quickSendQty)
-    if (qty > orgTokenBalance) {
-      setQuickSendMsg(`Not enough tokens — need ${qty}, have ${orgTokenBalance}.`)
-      return
-    }
-    const isCoach = quickSendTo.startsWith('coach:')
-    setQuickSendBusy(true)
-    setQuickSendMsg('')
-    try {
-      const res = await fetch(
-        isCoach ? '/api/org/give-coach-credits' : '/api/org/allocate-team-credits',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(
-            isCoach
-              ? { coachEmail: quickSendTo.slice('coach:'.length), quantity: qty }
-              : { teamId: quickSendTo.slice('team:'.length), quantity: qty },
-          ),
-        },
-      )
-      const data = await res.json()
-      if (!res.ok) {
-        setQuickSendMsg(data.error || 'Could not send credits.')
-        setQuickSendBusy(false)
-        return
-      }
-      setQuickSendMsg(
-        isCoach
-          ? `Sent ${qty} personal credit${qty !== 1 ? 's' : ''} to the coach.`
-          : `Sent ${qty} team credit${qty !== 1 ? 's' : ''} to the team.`,
-      )
-      router.refresh()
-    } catch {
-      setQuickSendMsg('Something went wrong. Please try again.')
-    }
-    setQuickSendBusy(false)
-  }
-
   async function openTeam(teamId: string) {
     try {
       const res = await fetch('/api/org/open-team', {
@@ -441,8 +353,13 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   }
 
   // AccountTabs keys off data-tab buttons, so switching tab is a click.
-  function goToTab(tabId: string) {
+  function goToTab(tabId: string, anchor?: string) {
     document.querySelector<HTMLButtonElement>(`[data-tab="${tabId}"]`)?.click()
+    if (anchor) {
+      setTimeout(() => {
+        document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 60)
+    }
   }
 
   // Expand a team's panel and scroll to it — used from the All Players list.
@@ -481,7 +398,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
     setBuying(true)
     setError(prev => ({ ...prev, [team.id]: '' }))
     try {
-      if (dest === 'coach') {
+      if (dest === 'team') {
         const res = await fetch('/api/org/buy-team-credits', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -495,9 +412,12 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
         }
         window.location.href = data.url
       } else {
-        const playerUserIds = dest === 'all' ? team.members.map(m => m.id) : [dest]
+        const picks = buyPicks[team.id] || {}
+        const playerUserIds = dest === 'all'
+          ? team.members.map(m => m.id)
+          : team.members.filter(m => picks[m.id]).map(m => m.id)
         if (playerUserIds.length === 0) {
-          setError(prev => ({ ...prev, [team.id]: 'No players have joined this team yet' }))
+          setError(prev => ({ ...prev, [team.id]: 'No players selected yet' }))
           setBuying(false)
           return
         }
@@ -1072,110 +992,55 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                     />
                   )}
 
-                  {/* Assign team credits to players — spends teams.credits on
-                      specific players in this team. Same pool the coach uses
-                      via Open team dashboard; lets the org act without
-                      hopping into the team's coach view. */}
+                  {/* Give team credits to players — spends teams.credits on
+                      this team's roster. Same pool the coach uses via Open
+                      team dashboard; lets the org act without hopping into
+                      the team's coach view. */}
                   {(() => {
                     const isAssignOpen = teamAssignOpen[team.id] ?? false
-                    const picks = teamAssignPicks[team.id] || {}
-                    const each = Math.max(1, teamAssignEach[team.id] ?? 1)
-                    const selectedIds = Object.keys(picks).filter(id => picks[id])
-                    const totalNeeded = selectedIds.length * each
-                    const msg = teamAssignMsg[team.id]
-                    const isAssignBusy = teamAssignBusy === team.id
                     return (
-                      <div className="border border-ember-100 rounded-xl overflow-hidden">
+                      <div className="border border-ember-100 dark:border-courtline rounded-xl overflow-hidden">
                         <button
                           onClick={() => setTeamAssignOpen(prev => ({ ...prev, [team.id]: !isAssignOpen }))}
                           className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-ember-50 dark:bg-ember-500/10 hover:bg-ember-100 dark:hover:bg-ember-500/15 transition-colors text-left"
                         >
                           <div className="min-w-0">
-                            <p className="text-sm font-bold text-black dark:text-chalk">Assign team credits to players</p>
+                            <p className="text-sm font-semibold text-black dark:text-chalk">Give team credits to players</p>
                             <p className="text-xs text-gray-500 dark:text-chalk-dim mt-0.5">
-                              Team credits: <span className="font-bold text-ember-600 dark:text-ember-400">{team.credits}</span>
-                              {' '}— spend on specific players in this team.
+                              Team credits: <span className="font-semibold text-ember-600 dark:text-ember-400">{team.credits}</span>
+                              {' '}&mdash; give to the whole roster or specific players.
                             </p>
                           </div>
-                          <span className="text-gray-400 dark:text-chalk-dim text-sm shrink-0">{isAssignOpen ? '−' : '+'}</span>
+                          <span className="text-gray-400 dark:text-chalk-dim text-sm shrink-0">{isAssignOpen ? '\u2212' : '+'}</span>
                         </button>
                         {isAssignOpen && (
-                          <div className="px-4 py-4 space-y-3 bg-white dark:bg-ink-900">
-                            {team.members.length === 0 ? (
-                              <p className="text-sm text-gray-400 dark:text-chalk-dim">No players have joined this team yet.</p>
-                            ) : team.credits === 0 ? (
-                              <p className="text-sm text-gray-500 dark:text-chalk-dim">No credits on this team yet — allocate some from your org balance above.</p>
+                          <div className="px-4 py-4 bg-white dark:bg-ink-900">
+                            {team.credits === 0 ? (
+                              <p className="text-sm text-gray-500 dark:text-chalk-dim">No credits on this team yet &mdash; send some from the Tokens tab first.</p>
                             ) : (
-                              <>
-                                <div className="space-y-1">
-                                  <label className="text-xs font-semibold text-gray-500 dark:text-chalk-dim uppercase tracking-wide">Tokens per player</label>
-                                  <div className="flex items-center gap-2">
-                                    {[1, 2, 5].map(q => (
-                                      <button
-                                        key={q}
-                                        onClick={() => setTeamAssignEach(prev => ({ ...prev, [team.id]: q }))}
-                                        className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-colors ${
-                                          each === q
-                                            ? 'bg-ember-500 text-ink-950'
-                                            : 'bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline text-black dark:text-chalk hover:border-ember-400'
-                                        }`}
-                                      >
-                                        {q}
-                                      </button>
-                                    ))}
-                                    <input
-                                      type="number"
-                                      min={1}
-                                      value={each}
-                                      onChange={e => {
-                                        const n = parseInt(e.target.value)
-                                        setTeamAssignEach(prev => ({ ...prev, [team.id]: Number.isNaN(n) ? 1 : Math.max(1, n) }))
-                                      }}
-                                      className="w-16 border border-gray-300 dark:border-courtline rounded-lg px-2 py-1.5 text-black dark:text-chalk text-sm text-center focus:outline-none focus:border-ember-500"
-                                    />
-                                  </div>
-                                </div>
-
-                                <div className="space-y-1 border border-gray-100 dark:border-courtline rounded-xl divide-y divide-gray-100 max-h-56 overflow-y-auto">
-                                  {team.members.map(m => (
-                                    <label key={m.id} className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-ink-800">
-                                      <input
-                                        type="checkbox"
-                                        checked={!!picks[m.id]}
-                                        onChange={() => setTeamAssignPicks(prev => ({
-                                          ...prev,
-                                          [team.id]: { ...(prev[team.id] || {}), [m.id]: !(prev[team.id]?.[m.id]) },
-                                        }))}
-                                        className="w-4 h-4 accent-ember-500"
-                                      />
-                                      <span className="flex-1 text-sm text-black dark:text-chalk">{memberDisplayName(m)}</span>
-                                      <span className="text-xs text-gray-400 dark:text-chalk-dim">{m.tokens} token{m.tokens !== 1 ? 's' : ''}</span>
-                                    </label>
-                                  ))}
-                                </div>
-
-                                <p className="text-xs text-gray-500 dark:text-chalk-dim">
-                                  {selectedIds.length} player{selectedIds.length !== 1 ? 's' : ''} selected
-                                  {selectedIds.length > 0 && ` · ${totalNeeded} credit${totalNeeded !== 1 ? 's' : ''} total`}
-                                  {totalNeeded > team.credits && (
-                                    <span className="text-red-500 font-semibold"> · not enough credits</span>
-                                  )}
-                                </p>
-
-                                {msg && (
-                                  <p className={`text-sm font-medium ${msg.startsWith('Assigned') ? 'text-green-600 dark:text-green-400' : 'text-red-500'}`}>
-                                    {msg}
-                                  </p>
-                                )}
-
-                                <button
-                                  onClick={() => assignTeamCreditsToPlayers(team.id, team.credits)}
-                                  disabled={isAssignBusy || selectedIds.length === 0 || totalNeeded > team.credits}
-                                  className="bg-ember-500 hover:bg-ember-400 disabled:bg-ember-300 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors"
-                                >
-                                  {isAssignBusy ? 'Assigning…' : `Assign ${totalNeeded} credit${totalNeeded !== 1 ? 's' : ''}`}
-                                </button>
-                              </>
+                              <GiveTokensForm
+                                players={team.members.map(m => ({ id: m.id, label: memberDisplayName(m), tokens: m.tokens }))}
+                                available={team.credits}
+                                availableLabel="team credits"
+                                onGive={async (ids, each) => {
+                                  try {
+                                    const res = await fetch('/api/org/assign-from-team-credits', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ teamId: team.id, playerUserIds: ids, tokensEach: each }),
+                                    })
+                                    const data = await res.json()
+                                    if (!res.ok) return { ok: false, text: data.error || 'Could not give credits.' }
+                                    router.refresh()
+                                    return {
+                                      ok: true,
+                                      text: `Gave ${each} credit${each !== 1 ? 's' : ''} to ${ids.length} player${ids.length !== 1 ? 's' : ''}.`,
+                                    }
+                                  } catch {
+                                    return { ok: false, text: 'Something went wrong. Please try again.' }
+                                  }
+                                }}
+                              />
                             )}
                           </div>
                         )}
@@ -1216,54 +1081,165 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                       onClick={() => setBuyOpen(prev => ({ ...prev, [team.id]: !isBuyOpen }))}
                       className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-gray-50 dark:bg-ink-800 hover:bg-ember-50 dark:hover:bg-ember-500/10 transition-colors text-left"
                     >
-                      <p className="text-sm font-bold text-black dark:text-chalk">Buy Tokens for This Team</p>
-                      <span className="text-gray-400 dark:text-chalk-dim text-sm shrink-0">{isBuyOpen ? '−' : '+'}</span>
+                      <p className="text-sm font-semibold text-black dark:text-chalk">Buy tokens for this team</p>
+                      <span className="text-gray-400 dark:text-chalk-dim text-sm shrink-0">{isBuyOpen ? '\u2212' : '+'}</span>
                     </button>
-                    {isBuyOpen && (
+                    {isBuyOpen && (() => {
+                      const picks = buyPicks[team.id] || {}
+                      const q = (buySearch[team.id] || '').trim().toLowerCase()
+                      const visible = q
+                        ? team.members.filter(m => memberDisplayName(m).toLowerCase().includes(q))
+                        : team.members
+                      const pickedIds = team.members.filter(m => picks[m.id]).map(m => m.id)
+                      const recipients = dest === 'all' ? team.members.length : dest === 'players' ? pickedIds.length : 1
+                      const canBuy = !buying && (dest === 'team' || recipients > 0)
+                      return (
                       <div className="px-4 py-4 space-y-3">
-                        <div className="space-y-1">
-                          <label className="text-xs font-semibold text-gray-500 dark:text-chalk-dim uppercase tracking-wide">Send to</label>
-                          <select
-                            value={dest}
-                            onChange={e => setDestSelect(prev => ({ ...prev, [team.id]: e.target.value }))}
-                            className="w-full border border-gray-300 dark:border-courtline rounded-xl px-3 py-2.5 text-sm text-black dark:text-chalk bg-white dark:bg-ink-900 focus:outline-none focus:border-ember-500"
-                          >
-                            <option value="all">All Players ({team.members.length})</option>
-                            {team.members.map(m => (
-                              <option key={m.id} value={m.id}>
-                                {memberDisplayName(m)} — {m.tokens} token{m.tokens !== 1 ? 's' : ''}
-                              </option>
+                        <p className="text-xs text-gray-500 dark:text-chalk-dim">
+                          Checkout goes straight to the destination you pick &mdash; no need to send afterwards.
+                          Card, Apple Pay, and Google Pay are accepted at checkout.
+                        </p>
+
+                        <div className="space-y-1.5">
+                          <p className="text-xs font-medium text-gray-500 dark:text-chalk-dim">Buy for</p>
+                          <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Buy for">
+                            {([
+                              ['all', `All players (${team.members.length})`],
+                              ['players', 'Specific players'],
+                              ['team', 'Team credits'],
+                            ] as Array<[string, string]>).map(([value, label]) => (
+                              <button
+                                key={value}
+                                type="button"
+                                role="radio"
+                                aria-checked={dest === value}
+                                onClick={() => setDestSelect(prev => ({ ...prev, [team.id]: value }))}
+                                className={`rounded-xl border px-2 py-2.5 text-sm font-semibold transition-colors ${
+                                  dest === value
+                                    ? 'border-ember-500 bg-ember-50 dark:bg-ember-500/15 text-ember-700 dark:text-ember-400'
+                                    : 'border-gray-200 dark:border-courtline bg-white dark:bg-ink-900 text-gray-600 dark:text-chalk-dim hover:border-gray-300'
+                                }`}
+                              >
+                                {label}
+                              </button>
                             ))}
-                            <option value="coach">Team Credits — shared coach balance ({team.credits})</option>
-                          </select>
+                          </div>
+                          <p className="text-xs text-gray-500 dark:text-chalk-dim">
+                            {dest === 'all' && 'Every player on the roster gets the amount below on their own account.'}
+                            {dest === 'players' && 'Pick who gets tokens \u2014 each selected player gets the amount below.'}
+                            {dest === 'team' && `Funds the shared balance coaches spend (${team.credits} there now).`}
+                          </p>
                         </div>
-                        <div className="space-y-1">
-                          <label className="text-xs font-semibold text-gray-500 dark:text-chalk-dim uppercase tracking-wide">
-                            {dest === 'coach' ? 'Credits' : 'Tokens per player'}
-                          </label>
-                          <select
-                            value={qty}
-                            onChange={e => setQuantity(prev => ({ ...prev, [team.id]: Number(e.target.value) }))}
-                            className="w-full border border-gray-300 dark:border-courtline rounded-xl px-3 py-2.5 text-sm text-black dark:text-chalk bg-white dark:bg-ink-900 focus:outline-none focus:border-ember-500"
-                          >
-                            <option value={1}>1</option>
-                            <option value={5}>5</option>
-                            <option value={10}>10</option>
-                          </select>
-                        </div>
-                        {teamError && <p className="text-red-500 text-sm">{teamError}</p>}
-                        {/* Hidden in the iOS app: digital purchases there must use native in-app purchase. */}
-                        {!inApp && (
-                          <button
-                            onClick={() => handleBuy(team)}
-                            disabled={buying}
-                            className="w-full bg-ember-500 hover:bg-ember-400 disabled:bg-ember-300 text-ink-950 font-bold py-2.5 rounded-xl text-sm transition-colors"
-                          >
-                            {buying ? 'Redirecting...' : 'Buy Tokens'}
-                          </button>
+
+                        {dest === 'players' && (
+                          <div className="border border-gray-200 dark:border-courtline rounded-xl overflow-hidden">
+                            <div className="flex items-center justify-between px-4 py-2 bg-gray-50 dark:bg-ink-950/60 border-b border-gray-200 dark:border-courtline">
+                              <span className="text-xs font-medium text-gray-500 dark:text-chalk-dim">{pickedIds.length} of {team.members.length} selected</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const allOn = visible.length > 0 && visible.every(m => picks[m.id])
+                                  setBuyPicks(prev => ({
+                                    ...prev,
+                                    [team.id]: {
+                                      ...(prev[team.id] || {}),
+                                      ...Object.fromEntries(visible.map(m => [m.id, !allOn])),
+                                    },
+                                  }))
+                                }}
+                                className="text-xs font-semibold text-ember-600 hover:text-ember-500 dark:text-ember-400"
+                              >
+                                {visible.length > 0 && visible.every(m => picks[m.id]) ? 'Deselect all' : 'Select all'}
+                              </button>
+                            </div>
+                            {team.members.length > 6 && (
+                              <input
+                                type="search"
+                                value={buySearch[team.id] || ''}
+                                onChange={e => setBuySearch(prev => ({ ...prev, [team.id]: e.target.value }))}
+                                placeholder="Search players…"
+                                className="w-full px-4 py-2 text-sm text-gray-900 dark:text-chalk dark:bg-ink-900 placeholder:text-gray-400 border-b border-gray-100 dark:border-courtline focus:outline-none"
+                              />
+                            )}
+                            <div className="max-h-56 overflow-y-auto divide-y divide-gray-100 dark:divide-courtline">
+                              {visible.length === 0 && (
+                                <p className="text-sm text-gray-400 dark:text-chalk-dim px-4 py-3">No players match.</p>
+                              )}
+                              {visible.map(m => (
+                                <label key={m.id} className="flex items-center gap-3 px-4 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-ink-800">
+                                  <input
+                                    type="checkbox"
+                                    checked={!!picks[m.id]}
+                                    onChange={() => setBuyPicks(prev => ({
+                                      ...prev,
+                                      [team.id]: { ...(prev[team.id] || {}), [m.id]: !(prev[team.id]?.[m.id]) },
+                                    }))}
+                                    className="w-4 h-4 accent-ember-500 shrink-0"
+                                  />
+                                  <span className="flex-1 text-sm text-gray-900 dark:text-chalk truncate">{memberDisplayName(m)}</span>
+                                  <span className="text-xs text-gray-400 dark:text-chalk-dim shrink-0 tabular-nums">{m.tokens} token{m.tokens !== 1 ? 's' : ''}</span>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
                         )}
+
+                        <div className="flex flex-wrap items-center gap-3">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-sm text-gray-600 dark:text-chalk-dim mr-1">
+                              {dest === 'team' ? 'Credits' : 'Tokens each'}
+                            </span>
+                            {[1, 5, 10].map(n => (
+                              <button
+                                key={n}
+                                type="button"
+                                onClick={() => setQuantity(prev => ({ ...prev, [team.id]: n }))}
+                                className={`w-9 h-9 rounded-lg text-sm font-semibold border transition-colors ${
+                                  qty === n
+                                    ? 'bg-ember-500 text-ink-950 border-ember-500'
+                                    : 'bg-white dark:bg-ink-900 text-gray-900 dark:text-chalk border-gray-200 dark:border-courtline hover:border-ember-400'
+                                }`}
+                              >
+                                {n}
+                              </button>
+                            ))}
+                            <input
+                              type="number"
+                              min={1}
+                              value={qty || ''}
+                              onChange={e => {
+                                const n = parseInt(e.target.value)
+                                setQuantity(prev => ({ ...prev, [team.id]: Number.isNaN(n) ? 1 : Math.min(10000, Math.max(1, n)) }))
+                              }}
+                              aria-label="Amount"
+                              className="w-16 h-9 border border-gray-200 dark:border-courtline rounded-lg px-2 text-center text-gray-900 dark:text-chalk dark:bg-ink-900 text-sm focus:outline-none focus:border-ember-500"
+                            />
+                          </div>
+                          {dest !== 'team' && recipients > 0 && (
+                            <span className="text-sm text-gray-500 dark:text-chalk-dim">
+                              {recipients} player{recipients !== 1 ? 's' : ''} × {qty} ={' '}
+                              <span className="font-semibold text-gray-900 dark:text-chalk tabular-nums">{recipients * qty}</span> tokens
+                            </span>
+                          )}
+                        </div>
+
+                        {teamError && <p className="text-red-500 text-sm">{teamError}</p>}
+                        <button
+                          onClick={() => handleBuy(team)}
+                          disabled={!canBuy}
+                          className="w-full bg-ember-500 hover:bg-ember-400 disabled:bg-ember-300 text-ink-950 font-semibold py-2.5 rounded-xl text-sm transition-colors"
+                        >
+                          {buying
+                            ? 'Redirecting to checkout\u2026'
+                            : dest === 'team'
+                              ? `Buy ${qty} team credit${qty !== 1 ? 's' : ''}`
+                              : recipients === 0
+                                ? 'Select players first'
+                                : `Buy ${recipients * qty} token${recipients * qty !== 1 ? 's' : ''}`}
+                        </button>
                       </div>
-                    )}
+                      )
+                    })()}
                   </div>
                   )}
 
@@ -1312,13 +1288,24 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   const billingTab = (
     <div className="space-y-4">
       <div>
-        <h2 className="text-xl font-black text-black dark:text-chalk">Billing</h2>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-chalk">Purchase history</h2>
         <p className="text-sm text-gray-500 dark:text-chalk-dim mt-1">
-          Every purchase on this organization — tokens, team credits, program
-          packages and shop orders. Receipts are emailed at checkout.
+          Every purchase on this organization — tokens, team credits, class
+          packages, and shop orders. Payment happens at checkout (card, Apple
+          Pay, or Google Pay); receipts are emailed automatically.
         </p>
       </div>
-      <BillingHistory endpoint="/api/org/billing" />
+      <BillingHistory
+        endpoint="/api/org/billing"
+        emptyAction={!inApp ? (
+          <button
+            onClick={() => goToTab('tokens', 'buy-tokens')}
+            className="bg-ember-500 hover:bg-ember-400 text-ink-950 font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors"
+          >
+            Buy your first tokens
+          </button>
+        ) : undefined}
+      />
     </div>
   )
 
@@ -1702,70 +1689,28 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
           </div>
         </div>
 
-        {/* Quick send — move balance tokens to a coach or team without
-            leaving the banner. */}
-        <div className="border-t border-ember-200 pt-3 space-y-2">
-          <div className="flex items-center gap-1.5">
-            <p className="text-xs font-bold text-gray-500 dark:text-chalk-dim uppercase tracking-wide">Quick send</p>
-            <InfoTip label="Where do quick-sent credits go?" align="left">
-              Sending to a <strong>coach</strong> funds their personal
-              credits — only they can spend those, on their own uploads or on
-              players. Sending to a <strong>team</strong> funds its shared
-              team credits, which you and that team&apos;s coach can both
-              spend on the team.
-            </InfoTip>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <select
-              value={quickSendTo}
-              onChange={e => { setQuickSendTo(e.target.value); setQuickSendMsg('') }}
-              className="flex-1 min-w-[12rem] border border-ember-200 rounded-xl px-3 py-2.5 text-sm text-black dark:text-chalk bg-white dark:bg-ink-900 focus:outline-none focus:border-ember-500"
-            >
-              <option value="">Choose a coach or team…</option>
-              <optgroup label="Coaches — personal credits">
-                {orgCoaches.map(c => (
-                  <option key={c.email} value={`coach:${c.email}`}>{c.label}</option>
-                ))}
-              </optgroup>
-              <optgroup label="Teams — shared team credits">
-                {teams.map(t => (
-                  <option key={t.id} value={`team:${t.id}`}>
-                    {t.name}{t.ageGroup ? ' · ' + t.ageGroup : ''} ({t.credits} credit{t.credits !== 1 ? 's' : ''})
-                  </option>
-                ))}
-              </optgroup>
-            </select>
-            <input
-              type="number"
-              min={1}
-              value={quickSendQty || ''}
-              onChange={e => {
-                const n = parseInt(e.target.value)
-                setQuickSendQty(Number.isNaN(n) ? 0 : Math.min(10000, Math.max(0, n)))
-              }}
-              onBlur={() => { if (quickSendQty < 1) setQuickSendQty(1) }}
-              aria-label="Tokens to send"
-              className="w-20 border border-ember-200 rounded-xl px-2 py-2 text-center text-black dark:text-chalk text-sm bg-white dark:bg-ink-900 focus:outline-none focus:border-ember-500"
-            />
+        {/* Shortcuts into the Tokens tab — buying and the unified send
+            panel live there; the banner stays a summary. */}
+        <div className="border-t border-ember-200 dark:border-courtline pt-3 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => goToTab('tokens', 'send-tokens')}
+            className="bg-ember-500 hover:bg-ember-400 text-ink-950 font-semibold px-4 py-2 rounded-xl text-sm transition-colors"
+          >
+            Send tokens
+          </button>
+          {!inApp && (
             <button
               type="button"
-              onClick={quickSend}
-              disabled={quickSendBusy || !quickSendTo || quickSendQty < 1 || quickSendQty > orgTokenBalance}
-              className="bg-ember-500 hover:bg-ember-400 disabled:bg-ember-300 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+              onClick={() => goToTab('tokens', 'buy-tokens')}
+              className="border border-ember-300 dark:border-courtline text-ember-700 dark:text-ember-400 hover:bg-ember-100 dark:hover:bg-ember-500/10 font-semibold px-4 py-2 rounded-xl text-sm transition-colors"
             >
-              {quickSendBusy ? 'Sending…' : 'Send'}
+              Buy tokens
             </button>
-          </div>
-          {quickSendQty > orgTokenBalance && (
-            <p className="text-xs font-semibold text-red-500">
-              Not enough tokens — you have {orgTokenBalance}.
-            </p>
           )}
-          {quickSendMsg && (
-            <p className={`text-sm font-semibold ${quickSendMsg.startsWith('Sent') ? 'text-green-600 dark:text-green-400' : 'text-red-500'}`}>
-              {quickSendMsg}
-            </p>
-          )}
+          <span className="text-xs text-gray-500 dark:text-chalk-dim">
+            Send to players directly, a team&apos;s shared credits, or a coach.
+          </span>
         </div>
       </section>
 
@@ -1783,7 +1728,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
           { id: 'tokens', label: 'Tokens', content: tokensTab },
           { id: 'leaderboard', label: 'Leaderboard', count: orgLeaderboard.length, content: leaderboardTab },
           { id: 'players', label: 'Players', count: uniquePlayerCount, content: playersTab },
-          { id: 'billing', label: 'Billing', content: billingTab },
+          { id: 'billing', label: 'Purchases', content: billingTab },
           { id: 'uploads', label: 'My Uploads', count: myUploads.length, content: uploadsTab },
           { id: 'settings', label: 'Settings', content: settingsTab },
         ]}

@@ -16,14 +16,19 @@ export interface LeaderboardRow {
   team_name?: string
 }
 
-type SortMode = 'score-desc' | 'score-asc' | 'avg-desc' | 'name'
+type SortMode = 'score-desc' | 'score-asc' | 'avg-desc' | 'name' | 'team'
 type Theme = 'light' | 'dark'
+
+// The Team filter's "show everyone" choice. No real team name can collide with
+// it: names come from `teams.name`, which is never blank.
+const ALL_TEAMS = ''
 
 const SORT_OPTIONS: { mode: SortMode; label: string }[] = [
   { mode: 'name', label: 'Name (A–Z)' },
   { mode: 'score-desc', label: 'Highest score' },
   { mode: 'score-asc', label: 'Lowest score' },
   { mode: 'avg-desc', label: 'Highest average' },
+  { mode: 'team', label: 'Team (A–Z)' },
 ]
 
 // Every themed class the table uses, per theme. The dark variant carries
@@ -82,6 +87,72 @@ const THEMES = {
   },
 } as const
 
+// Themed dropdown behind both the "Sort by" and "Team" controls. Each instance
+// owns its open state and outside-click listener so the two menus close
+// independently. It can't reuse <SortMenu> because this table themes itself
+// from a lookup table rather than `dark:` classes.
+function Menu<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+  t,
+  isDark,
+}: {
+  label: string
+  value: T
+  options: { value: T; label: string }[]
+  onChange: (value: T) => void
+  t: (typeof THEMES)[Theme]
+  isDark: boolean
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function onDown(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [open])
+
+  const currentLabel = options.find((o) => o.value === value)?.label ?? ''
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className={`flex items-center gap-1.5 text-sm font-semibold border rounded-lg px-3 py-1.5 transition-colors ${t.sortBtn}`}
+      >
+        {label}: <span className={`max-w-[9rem] truncate ${t.sortBtnValue}`}>{currentLabel}</span>
+        <span className={`transition-transform ${open ? 'rotate-180' : ''} ${isDark ? 'text-chalk-dim' : 'text-gray-400'}`}>▾</span>
+      </button>
+      {open && (
+        <div className={`absolute right-0 top-full mt-1 z-40 w-52 max-h-72 overflow-y-auto border rounded-xl shadow-lg py-1 ${t.sortMenu}`}>
+          {options.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => {
+                onChange(opt.value)
+                setOpen(false)
+              }}
+              className={`block w-full text-left px-4 py-2 text-sm truncate transition-colors ${
+                opt.value === value ? t.sortOptionActive : t.sortOption
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function formatPlayerName(firstName: string, lastNameInitial: string | null) {
   if (!lastNameInitial) return firstName
   if (lastNameInitial.length === 1) return `${firstName} ${lastNameInitial}.`
@@ -125,11 +196,75 @@ function detailHref(entry: LeaderboardRow, context: 'team' | 'org' | 'player'): 
   return context === 'org' ? null : `/team/dashboard/player/${entry.id}`
 }
 
+// A player can appear once per team in the org-wide list, so the row key must
+// include the team to stay unique.
+export function leaderboardRowKey(e: LeaderboardRow, showTeam: boolean) {
+  return showTeam ? `${e.id}::${e.team_name ?? ''}` : e.id
+}
+
+/**
+ * Everything the table displays, derived from the raw rows and the two
+ * controls: which team is selected and how the rows are ordered. Pure and
+ * exported so `scripts/test-leaderboard.ts` can drive it without a DOM.
+ *
+ * Ranks come from Best score *within the visible slice* — "All teams" ranks
+ * across the organization, one team ranks 1..n inside it, matching that team's
+ * own board — and never change with the sort order.
+ */
+export function buildView(
+  entries: LeaderboardRow[],
+  { team, sort, showTeam }: { team: string; sort: SortMode; showTeam: boolean },
+): { rows: LeaderboardRow[]; rankByKey: Record<string, number> } {
+  const visible = team === ALL_TEAMS ? entries : entries.filter((e) => e.team_name === team)
+
+  const rankByKey: Record<string, number> = {}
+  ;[...visible]
+    .sort((a, b) => Number(b.best_score) - Number(a.best_score))
+    .forEach((e, i) => {
+      rankByKey[leaderboardRowKey(e, showTeam)] = i + 1
+    })
+
+  const rows = [...visible]
+  if (sort === 'team') {
+    // Group the org-wide list by team, best score first inside each team.
+    rows.sort(
+      (a, b) =>
+        (a.team_name ?? '').localeCompare(b.team_name ?? '') ||
+        Number(b.best_score) - Number(a.best_score),
+    )
+  } else if (sort === 'name') {
+    rows.sort((a, b) =>
+      formatPlayerName(a.first_name, a.last_name_initial).localeCompare(
+        formatPlayerName(b.first_name, b.last_name_initial),
+      ),
+    )
+  } else if (sort === 'score-asc') {
+    rows.sort((a, b) => Number(a.best_score) - Number(b.best_score))
+  } else if (sort === 'avg-desc') {
+    rows.sort((a, b) => Number(b.avg_score ?? -1) - Number(a.avg_score ?? -1))
+  } else {
+    rows.sort((a, b) => Number(b.best_score) - Number(a.best_score))
+  }
+
+  return { rows, rankByKey }
+}
+
+// Which teams a board can be filtered to. Only the org-wide list (showTeam)
+// ever spans more than one, and filtering means nothing below two — so a
+// single-team board gets no Team control at all.
+export function leaderboardTeamNames(entries: LeaderboardRow[], showTeam: boolean): string[] {
+  if (!showTeam) return []
+  const names = new Set(entries.map((e) => e.team_name).filter((n): n is string => !!n))
+  return [...names].sort((a, b) => a.localeCompare(b))
+}
+
 // Team / organization leaderboard table with a "Sort by" control. Each player's
 // Best is the highest score recorded on their account and Avg the mean across
 // all their uploads; their Rank always reflects the Best standing, no matter
 // which sort order is shown. Pass `showTeam` for the org-wide list to add a
-// Team column, and theme="dark" on Broadcast Court (ink/chalk/ember) pages.
+// Team column plus a "Team" filter (once two or more teams are present) that
+// narrows the table to one team and re-ranks 1..n inside it, and theme="dark"
+// on Broadcast Court (ink/chalk/ember) pages.
 export default function LeaderboardTable({
   entries,
   context = 'team',
@@ -147,102 +282,86 @@ export default function LeaderboardTable({
   theme?: Theme | 'auto'
 }) {
   const [sortMode, setSortMode] = useState<SortMode>('score-desc')
-  const [menuOpen, setMenuOpen] = useState(false)
-  const menuRef = useRef<HTMLDivElement>(null)
+  const [teamFilter, setTeamFilter] = useState<string>(ALL_TEAMS)
   // resolvedTheme collapses "system" to the light/dark actually on screen. It
   // is undefined until mount, so 'auto' falls back to light for the server
   // render and the first client pass, which keeps the two matching.
   const { resolvedTheme } = useTheme()
-  const t = THEMES[theme === 'auto' ? (resolvedTheme === 'dark' ? 'dark' : 'light') : theme]
+  const isDark = theme === 'auto' ? resolvedTheme === 'dark' : theme === 'dark'
+  const t = THEMES[isDark ? 'dark' : 'light']
 
   // Older callers may not send avg_score yet — drop the column (and its sort
   // option) instead of rendering a dash for everyone.
   const hasAvg = entries.some((e) => e.avg_score != null)
-  const sortOptions = hasAvg ? SORT_OPTIONS : SORT_OPTIONS.filter((o) => o.mode !== 'avg-desc')
 
-  // Close the dropdown on any click outside it.
-  useEffect(() => {
-    if (!menuOpen) return
-    function onDown(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', onDown)
-    return () => document.removeEventListener('mousedown', onDown)
-  }, [menuOpen])
+  const teamNames = useMemo(() => leaderboardTeamNames(entries, showTeam), [entries, showTeam])
+  const canFilterByTeam = teamNames.length > 1
 
-  // A player can appear once per team in the org-wide list, so the row key
-  // (and rank lookup) must include the team to stay unique.
-  function rowKey(e: LeaderboardRow) {
-    return showTeam ? `${e.id}::${e.team_name ?? ''}` : e.id
+  // The chosen team can disappear when `entries` changes (a team is removed, or
+  // its last analyzed shot is deleted). Resolve the filter during render rather
+  // than correcting it in an effect, so the table can never sit empty under a
+  // team name that no longer exists.
+  const activeTeam = teamNames.includes(teamFilter) ? teamFilter : ALL_TEAMS
+
+  // "Team (A–Z)" only groups something while every team is on screen.
+  const sortOptions = SORT_OPTIONS.filter(
+    (o) =>
+      (o.mode !== 'avg-desc' || hasAvg) &&
+      (o.mode !== 'team' || (canFilterByTeam && activeTeam === ALL_TEAMS)),
+  )
+
+  const teamOptions = useMemo(
+    () => [{ value: ALL_TEAMS, label: 'All teams' }, ...teamNames.map((n) => ({ value: n, label: n }))],
+    [teamNames],
+  )
+
+  const { rows: sortedEntries, rankByKey } = useMemo(
+    () => buildView(entries, { team: activeTeam, sort: sortMode, showTeam }),
+    [entries, activeTeam, sortMode, showTeam],
+  )
+
+  // Once the board is narrowed to one team the Team column repeats that name on
+  // every row, so it drops out and the line above the table carries it instead.
+  const showTeamColumn = showTeam && activeTeam === ALL_TEAMS
+
+  // Narrowing to one team retires the "Team (A–Z)" sort, so fall back to the
+  // default rather than leaving the control labelled for a mode that's gone.
+  function changeTeamFilter(next: string) {
+    setTeamFilter(next)
+    if (next !== ALL_TEAMS && sortMode === 'team') setSortMode('score-desc')
   }
-
-  // Each row's rank by best score — fixed regardless of the display order.
-  const rankByKey = useMemo(() => {
-    const map: Record<string, number> = {}
-    ;[...entries]
-      .sort((a, b) => Number(b.best_score) - Number(a.best_score))
-      .forEach((e, i) => {
-        map[showTeam ? `${e.id}::${e.team_name ?? ''}` : e.id] = i + 1
-      })
-    return map
-  }, [entries, showTeam])
-
-  const sortedEntries = useMemo(() => {
-    const copy = [...entries]
-    if (sortMode === 'name') {
-      copy.sort((a, b) =>
-        formatPlayerName(a.first_name, a.last_name_initial).localeCompare(
-          formatPlayerName(b.first_name, b.last_name_initial),
-        ),
-      )
-    } else if (sortMode === 'score-asc') {
-      copy.sort((a, b) => Number(a.best_score) - Number(b.best_score))
-    } else if (sortMode === 'avg-desc') {
-      copy.sort((a, b) => Number(b.avg_score ?? -1) - Number(a.avg_score ?? -1))
-    } else {
-      copy.sort((a, b) => Number(b.best_score) - Number(a.best_score))
-    }
-    return copy
-  }, [entries, sortMode])
-
-  const currentLabel = sortOptions.find((o) => o.mode === sortMode)?.label ?? SORT_OPTIONS[1].label
 
   return (
     <div className="space-y-2">
-      {/* Sort control */}
-      <div className="flex justify-end print:hidden">
-        <div className="relative" ref={menuRef}>
-          <button
-            type="button"
-            onClick={() => setMenuOpen((o) => !o)}
-            className={`flex items-center gap-1.5 text-sm font-semibold border rounded-lg px-3 py-1.5 transition-colors ${t.sortBtn}`}
-          >
-            Sort by: <span className={t.sortBtnValue}>{currentLabel}</span>
-            <span className={`transition-transform ${menuOpen ? 'rotate-180' : ''} ${theme === 'dark' ? 'text-chalk-dim' : 'text-gray-400'}`}>▾</span>
-          </button>
-          {menuOpen && (
-            <div className={`absolute right-0 top-full mt-1 z-40 w-44 border rounded-xl shadow-lg overflow-hidden py-1 ${t.sortMenu}`}>
-              {sortOptions.map((opt) => (
-                <button
-                  key={opt.mode}
-                  type="button"
-                  onClick={() => {
-                    setSortMode(opt.mode)
-                    setMenuOpen(false)
-                  }}
-                  className={`block w-full text-left px-4 py-2 text-sm transition-colors ${
-                    opt.mode === sortMode ? t.sortOptionActive : t.sortOption
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+      {/* Team filter (org-wide board only) + sort control */}
+      <div className="flex flex-wrap items-center justify-end gap-2 print:hidden">
+        {canFilterByTeam && (
+          <Menu
+            label="Team"
+            value={activeTeam}
+            options={teamOptions}
+            onChange={changeTeamFilter}
+            t={t}
+            isDark={isDark}
+          />
+        )}
+        <Menu
+          label="Sort by"
+          value={sortMode}
+          options={sortOptions.map((o) => ({ value: o.mode, label: o.label }))}
+          onChange={setSortMode}
+          t={t}
+          isDark={isDark}
+        />
       </div>
+
+      {/* Which slice is on screen. Also the only team label on a printout,
+          since the filter control itself is print:hidden. */}
+      {canFilterByTeam && activeTeam !== ALL_TEAMS && (
+        <p className={`text-xs font-semibold ${t.team}`}>
+          Showing {sortedEntries.length} player{sortedEntries.length !== 1 ? 's' : ''} on {activeTeam}
+        </p>
+      )}
 
       <div className={`border rounded-2xl overflow-hidden ${t.card}`}>
         <div className="overflow-x-auto">
@@ -251,7 +370,7 @@ export default function LeaderboardTable({
               <tr>
                 <th className={`pl-4 pr-2 py-3 text-left text-xs font-semibold uppercase tracking-wide w-12 ${t.th}`}>Rank</th>
                 <th className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide ${t.th}`}>Player</th>
-                {showTeam && (
+                {showTeamColumn && (
                   <th className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide ${t.th}`}>Team</th>
                 )}
                 <th className={`px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide ${t.th}`}>Best</th>
@@ -267,7 +386,7 @@ export default function LeaderboardTable({
                 const avg = entry.avg_score != null ? Number(entry.avg_score) : null
                 const name = formatPlayerName(entry.first_name, entry.last_name_initial)
                 const href = detailHref(entry, context)
-                const key = rowKey(entry)
+                const key = leaderboardRowKey(entry, showTeam)
                 const rank = rankByKey[key]
                 return (
                   <tr key={key} className={`transition-colors ${rank === 1 ? t.rowTop : t.row}`}>
@@ -283,7 +402,7 @@ export default function LeaderboardTable({
                         <span className={t.name}>{name}</span>
                       )}
                     </td>
-                    {showTeam && (
+                    {showTeamColumn && (
                       <td className={`px-4 py-2.5 text-sm whitespace-nowrap ${t.team}`}>{entry.team_name ?? '—'}</td>
                     )}
                     <td className={`px-4 py-2.5 text-right font-black tabular-nums ${scoreColor(score, t)}`}>

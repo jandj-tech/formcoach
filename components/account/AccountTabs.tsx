@@ -54,12 +54,17 @@ export default function AccountTabs({ tabs, defaultTab }: { tabs: AccountTab[]; 
 
   return (
     <div>
+      {/* touch-action pan-x: on phones (the app's webview especially) this strip
+          must only ever scroll sideways — without it, vertical pans that start
+          on a tab fight the page scroll and the whole row judders diagonally.
+          overscroll-x-contain stops a sideways fling rubber-banding the page,
+          and the scrollbar is hidden since the tabs themselves show position. */}
       <div
         ref={listRef}
         role="tablist"
         aria-label="Account sections"
         onKeyDown={onKeyDown}
-        className="flex gap-1 overflow-x-auto border-b border-gray-200 -mx-1 px-1"
+        className="flex gap-1 overflow-x-auto border-b border-gray-200 -mx-1 px-1 [touch-action:pan-x] overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {tabs.map(t => {
           const isActive = t.id === active

@@ -1,13 +1,16 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { deleteObjects } from '@/lib/storage'
-import { getSession } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { clearAllSessions } from '@/lib/sessions'
 import { sendAccountDeletedEmail } from '@/lib/email'
 import { appleRevoke, appleAppClientId, appleWebClientId } from '@/lib/oauth'
 
-export async function DELETE() {
-  const session = await getSession()
+// getSessionFromRequest instead of the cookie-only getSession: the app's
+// native Settings screen deletes over Bearer auth (Apple 5.1.1(v) requires
+// in-app deletion); the web dashboard's cookie path is unchanged.
+export async function DELETE(req: NextRequest) {
+  const session = await getSessionFromRequest(req)
   if (!session) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 
   const { userId } = session

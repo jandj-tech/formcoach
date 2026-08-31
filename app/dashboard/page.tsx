@@ -387,9 +387,17 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <div className="flex items-center gap-2">
             <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wide">Shot Tokens</h2>
             <InfoTip label="What are shot tokens?" align="left">
-              1 token = 1 AI shot analysis. Every training ball from the shop
-              includes 5 free tokens, or you can buy single tokens here for
-              ${tokenPrice} each.
+              {isInApp ? (
+                // In-app purchases have their own (App Store) pricing — quoting
+                // the web price here would show a number the buy button doesn't
+                // charge.
+                <>1 token = 1 AI shot analysis. Every training ball from the shop
+                includes 5 free tokens, or you can buy single tokens right here.</>
+              ) : (
+                <>1 token = 1 AI shot analysis. Every training ball from the shop
+                includes 5 free tokens, or you can buy single tokens here for
+                ${tokenPrice} each.</>
+              )}
             </InfoTip>
           </div>
           <div className="mt-2 flex flex-wrap items-center justify-between gap-4">

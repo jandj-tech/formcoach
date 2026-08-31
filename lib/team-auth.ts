@@ -40,16 +40,21 @@ export async function getTeamSession(): Promise<TeamSessionPayload | null> {
 }
 
 export async function getTeamSessionFromRequest(req: NextRequest): Promise<TeamSessionPayload | null> {
-  const token = req.cookies.get(COOKIE)?.value
-  if (token) return verifyTeamSession(token)
-
-  // Mobile app: team session arrives as a Bearer token. Require kind === 'team'
-  // so a player/org token can't be accepted here.
+  // Mobile app: team session arrives as a Bearer token, and when the header is
+  // present it is the request's whole identity — cookies are ignored (see
+  // lib/auth.ts for why). Require kind === 'team' so a player/org token can't
+  // be accepted here. Legacy team tokens (minted before `kind` existed) are
+  // recognised by their `teamId` — a field no player or org token carries — so
+  // a coach who logged in on an old build isn't silently logged out.
   const auth = req.headers.get('Authorization')
   if (auth?.startsWith('Bearer ')) {
     const payload = await verifyTeamSession(auth.slice(7))
-    return payload?.kind === 'team' ? payload : null
+    if (!payload || typeof payload.teamId !== 'string' || !payload.teamId) return null
+    return payload.kind === 'team' || payload.kind === undefined ? payload : null
   }
+
+  const token = req.cookies.get(COOKIE)?.value
+  if (token) return verifyTeamSession(token)
 
   return null
 }

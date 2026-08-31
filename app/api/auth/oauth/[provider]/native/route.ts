@@ -3,6 +3,7 @@ import {
   appleAppClientId,
   appleProfileFromCode,
   verifyAppleIdToken,
+  verifyGoogleIdToken,
   type OAuthProfile,
 } from '@/lib/oauth'
 import { OAuthSignInError, signInWithOAuthProfile } from '@/lib/oauth-account'
@@ -25,15 +26,16 @@ interface NativeBody {
  * app a signed identity token. Everything that matters is verified here against
  * Apple's public keys — the app is not trusted to have checked anything.
  *
- * Google on mobile deliberately does NOT go through here: it runs the same web
- * flow in a system browser, which is what Google requires of native apps and
- * what keeps one implementation instead of two.
+ * Google also verifies here when the app uses the native Google SDK (which
+ * shows the device's own Google accounts). The app configures that SDK with our
+ * web client id, so the id token it returns carries that audience and is checked
+ * by the same verifier the browser flow uses.
  */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ provider: string }> }) {
   const { provider } = await ctx.params
-  if (provider !== 'apple') {
+  if (provider !== 'apple' && provider !== 'google') {
     return NextResponse.json(
-      { error: 'Native sign-in is only available for Apple. Use the browser flow.' },
+      { error: 'Native sign-in is only available for Apple and Google.' },
       { status: 404 }
     )
   }
@@ -51,32 +53,42 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ provider: 
     return NextResponse.json({ error: 'Missing identity token' }, { status: 400 })
   }
 
-  const clientId = appleAppClientId()
-
   let profile: OAuthProfile
-  try {
-    profile = await verifyAppleIdToken(body.identityToken, { audience: clientId, nonce: body.nonce })
-  } catch (err) {
-    console.error('Apple native token verification failed:', err)
-    return NextResponse.json({ error: 'Could not verify that Apple sign-in.' }, { status: 401 })
-  }
 
-  // Best effort: exchanging the authorization code yields the refresh token
-  // Apple's revoke endpoint needs at account deletion. A failure here must not
-  // block the sign-in — the person in front of us did nothing wrong.
-  if (body.authorizationCode) {
+  if (provider === 'google') {
     try {
-      const exchanged = await appleProfileFromCode(body.authorizationCode, { clientId })
-      if (exchanged.subject === profile.subject) {
-        profile = { ...profile, refreshToken: exchanged.refreshToken ?? null }
-      }
+      profile = await verifyGoogleIdToken(body.identityToken)
     } catch (err) {
-      console.warn('Apple code exchange failed (revocation token unavailable):', err instanceof Error ? err.message : err)
+      console.error('Google native token verification failed:', err)
+      return NextResponse.json({ error: 'Could not verify that Google sign-in.' }, { status: 401 })
     }
-  }
+    if (body.fullName?.trim()) profile = { ...profile, name: body.fullName.trim() }
+  } else {
+    const clientId = appleAppClientId()
+    try {
+      profile = await verifyAppleIdToken(body.identityToken, { audience: clientId, nonce: body.nonce })
+    } catch (err) {
+      console.error('Apple native token verification failed:', err)
+      return NextResponse.json({ error: 'Could not verify that Apple sign-in.' }, { status: 401 })
+    }
 
-  // Apple sends the name only on the first authorization, and only to the app.
-  if (body.fullName?.trim()) profile = { ...profile, name: body.fullName.trim() }
+    // Best effort: exchanging the authorization code yields the refresh token
+    // Apple's revoke endpoint needs at account deletion. A failure here must not
+    // block the sign-in — the person in front of us did nothing wrong.
+    if (body.authorizationCode) {
+      try {
+        const exchanged = await appleProfileFromCode(body.authorizationCode, { clientId })
+        if (exchanged.subject === profile.subject) {
+          profile = { ...profile, refreshToken: exchanged.refreshToken ?? null }
+        }
+      } catch (err) {
+        console.warn('Apple code exchange failed (revocation token unavailable):', err instanceof Error ? err.message : err)
+      }
+    }
+
+    // Apple sends the name only on the first authorization, and only to the app.
+    if (body.fullName?.trim()) profile = { ...profile, name: body.fullName.trim() }
+  }
 
   try {
     const result = await signInWithOAuthProfile(profile)

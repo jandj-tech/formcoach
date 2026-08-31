@@ -48,8 +48,8 @@ export async function GET(req: NextRequest) {
     }
 
     const [team] = (await db`
-      SELECT id, name FROM teams WHERE id = ${teamId}
-    `) as unknown as [{ id: string; name: string } | undefined]
+      SELECT id, name, access_code FROM teams WHERE id = ${teamId}
+    `) as unknown as [{ id: string; name: string; access_code: string | null } | undefined]
     if (!team) return NextResponse.json({ error: 'Team not found' }, { status: 404 })
 
     // Spendable pool. For a coach: personal coach_credits (default source) plus
@@ -183,7 +183,7 @@ export async function GET(req: NextRequest) {
     }>
 
     return NextResponse.json({
-      team: { id: team.id, name: team.name, role: 'coach' },
+      team: { id: team.id, name: team.name, accessCode: team.access_code, role: 'coach' },
       pool: {
         type: teamSession ? 'coach' : 'org',
         coachCredits,

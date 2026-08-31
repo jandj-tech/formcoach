@@ -2,20 +2,37 @@ import { NextRequest, NextResponse } from 'next/server'
 import { deleteObjects } from '@/lib/storage'
 import { db } from '@/lib/db'
 import { getSessionFromRequest } from '@/lib/auth'
+import { getTeamSessionFromRequest } from '@/lib/team-auth'
+import { getOrgSessionFromRequest } from '@/lib/org-auth'
 
-// Lets a signed-in user delete one of their own submissions from their history.
+// Lets a signed-in account delete one of its own submissions from its history.
+// Players own submissions linked by user_id/email; a coach or org login owns
+// the coach-self shots stored with its admin email and no user_id.
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSessionFromRequest(req)
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const teamSession = session ? null : await getTeamSessionFromRequest(req)
+  const orgSession = session || teamSession ? null : await getOrgSessionFromRequest(req)
+  if (!session && !teamSession && !orgSession) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
   const { id } = await params
 
   // Only allow deleting a submission that belongs to this account —
   // linked either by user_id or by the account email.
-  const [submission] = (await db`
-    SELECT id FROM submissions
-    WHERE id = ${id} AND (user_id = ${session.userId} OR email = ${session.email})
-  `) as unknown as [{ id: string } | undefined]
+  let submission: { id: string } | undefined
+  if (session) {
+    ;[submission] = (await db`
+      SELECT id FROM submissions
+      WHERE id = ${id} AND (user_id = ${session.userId} OR email = ${session.email})
+    `) as unknown as [{ id: string } | undefined]
+  } else {
+    const adminEmail = (teamSession?.adminEmail ?? orgSession!.adminEmail).toLowerCase()
+    ;[submission] = (await db`
+      SELECT id FROM submissions
+      WHERE id = ${id} AND user_id IS NULL AND team_player_id IS NULL AND LOWER(email) = ${adminEmail}
+    `) as unknown as [{ id: string } | undefined]
+  }
 
   if (!submission) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 

@@ -917,7 +917,9 @@ export default function TeamDashboardClient({
                     fetch('/api/team/select', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ teamId: t.id, email: adminEmail }),
+                      // No email in the body: /api/team/select reads the
+                      // coach's identity from this session, not from us.
+                      body: JSON.stringify({ teamId: t.id }),
                     }).then(() => router.refresh())
                   }
                 }}

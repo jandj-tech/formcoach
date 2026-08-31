@@ -25,8 +25,56 @@ export async function signTeamSession(payload: TeamSessionPayload): Promise<stri
 
 export async function verifyTeamSession(token: string): Promise<TeamSessionPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, jwtSecret())
-    return payload as unknown as TeamSessionPayload
+    const { payload } = await jwtVerify(token, jwtSecret(), { algorithms: ['HS256'] })
+    const claims = payload as unknown as TeamSessionPayload & { kind?: string }
+    // Every token this app signs shares one HMAC key, so verifying the
+    // signature only proves we minted it — not that we minted it for THIS
+    // purpose. A team-choice token (below) carries `teamIds`, not `teamId`;
+    // without this guard it would verify here and yield a session whose
+    // teamId is undefined, which every downstream query would silently treat
+    // as "no rows" rather than as the forgery it is.
+    if (typeof claims.teamId !== 'string' || !claims.teamId) return null
+    if (claims.kind !== undefined && claims.kind !== 'team') return null
+    return claims
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Short-lived proof that a password check just succeeded for a coach who owns
+ * more than one team, naming exactly the teams they may choose between.
+ *
+ * Login cannot issue a team session yet — it does not know which team the coach
+ * wants — but the choice endpoint still has to know the password was checked.
+ * Before this existed, /api/team/select minted a full session from a teamId and
+ * an email alone, so anyone holding those two values had permanent passwordless
+ * access to that team's roster, chat and credits.
+ */
+export interface TeamChoicePayload {
+  teamIds: string[]
+  adminEmail: string
+  kind: 'team-choice'
+}
+
+const CHOICE_TTL = 60 * 10 // 10 minutes — long enough to pick from a list
+
+export async function signTeamChoice(adminEmail: string, teamIds: string[]): Promise<string> {
+  return new SignJWT({ teamIds, adminEmail, kind: 'team-choice' } as unknown as Record<string, unknown>)
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime(`${CHOICE_TTL}s`)
+    .sign(jwtSecret())
+}
+
+export async function verifyTeamChoice(token: string): Promise<TeamChoicePayload | null> {
+  try {
+    const { payload } = await jwtVerify(token, jwtSecret(), { algorithms: ['HS256'] })
+    const claims = payload as unknown as TeamChoicePayload
+    if (claims.kind !== 'team-choice') return null
+    if (!Array.isArray(claims.teamIds) || claims.teamIds.length === 0) return null
+    if (typeof claims.adminEmail !== 'string' || !claims.adminEmail) return null
+    return claims
   } catch {
     return null
   }

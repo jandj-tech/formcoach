@@ -3,9 +3,21 @@ import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
 import { signTeamSession, teamSessionCookieOptions } from '@/lib/team-auth'
 import { BCRYPT_COST } from '@/lib/password'
+import { rateLimitByIp } from '@/lib/rate-limit'
 
 export async function POST(req: NextRequest) {
   try {
+    // This trades a bare token for a team password and a session, so an
+    // unlimited endpoint is a token-guessing oracle. Every other credential
+    // route is capped; this one was not.
+    const limit = await rateLimitByIp(req, 'team-setup', 10, 900)
+    if (!limit.ok) {
+      return NextResponse.json(
+        { error: 'Too many attempts — try again later' },
+        { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } }
+      )
+    }
+
     const { token, password } = await req.json()
     if (!token || typeof token !== 'string') {
       return NextResponse.json({ error: 'Setup token is required' }, { status: 400 })

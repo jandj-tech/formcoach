@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
-import { signTeamSession, teamSessionCookieOptions } from '@/lib/team-auth'
+import { signTeamSession, signTeamChoice, teamSessionCookieOptions } from '@/lib/team-auth'
 import { rateLimitByIp } from '@/lib/rate-limit'
 
 export async function POST(req: NextRequest) {
@@ -54,9 +54,11 @@ export async function POST(req: NextRequest) {
     }
 
     if (teams.length > 1) {
+      // See app/api/auth/login/route.ts — the choice is proven, not trusted.
       return NextResponse.json({
         multipleTeams: true,
         teams: teams.map(t => ({ id: t.id, name: t.name })),
+        choiceToken: await signTeamChoice(teams[0].admin_email, teams.map(t => t.id)),
       })
     }
 

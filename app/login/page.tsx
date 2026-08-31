@@ -31,6 +31,10 @@ function LoginForm() {
   const [error, setError] = useState(OAUTH_ERRORS[searchParams.get('error') ?? ''] ?? '')
   // Set when a coach has several teams and must pick one before logging in.
   const [teams, setTeams] = useState<Array<{ id: string; name: string }> | null>(null)
+  // Proof from the login call that the password was accepted, naming the teams
+  // this coach may choose between. Kept in memory only — /api/team/select will
+  // not issue a session without it.
+  const [choiceToken, setChoiceToken] = useState('')
 
   useEffect(() => {
     fetch('/api/auth/session')
@@ -65,6 +69,7 @@ function LoginForm() {
       // A coach with multiple teams picks one before the session is issued.
       if (data.multipleTeams === true) {
         setTeams(data.teams)
+        setChoiceToken(data.choiceToken ?? '')
         setStatus('idle')
         return
       }
@@ -85,7 +90,7 @@ function LoginForm() {
       const res = await fetch('/api/team/select', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ teamId, email: email.toLowerCase().trim() }),
+        body: JSON.stringify({ teamId, choiceToken }),
       })
       const data = await res.json()
 

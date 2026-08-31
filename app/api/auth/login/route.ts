@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
 import { signSession, sessionCookieOptions } from '@/lib/auth'
-import { signTeamSession, teamSessionCookieOptions } from '@/lib/team-auth'
+import { signTeamSession, signTeamChoice, teamSessionCookieOptions } from '@/lib/team-auth'
 import { signOrgSession, orgSessionCookieOptions } from '@/lib/org-auth'
 import { clearOtherSessions, PLAYER_COOKIE, TEAM_COOKIE, ORG_COOKIE } from '@/lib/sessions'
 import { rateLimitByIp } from '@/lib/rate-limit'
@@ -69,9 +69,13 @@ export async function POST(req: NextRequest) {
     `) as unknown as Array<{ id: string; admin_email: string; password_hash: string; name: string }>
     if (teams.length > 0 && (await bcrypt.compare(password, teams[0].password_hash))) {
       if (teams.length > 1) {
+        // The password checked out, but we don't know which team yet. Hand
+        // back a short-lived token naming the teams this coach may pick from —
+        // /api/team/select requires it, so the choice cannot be forged.
         return NextResponse.json({
           multipleTeams: true,
           teams: teams.map(t => ({ id: t.id, name: t.name })),
+          choiceToken: await signTeamChoice(teams[0].admin_email, teams.map(t => t.id)),
         })
       }
       const team = teams[0]

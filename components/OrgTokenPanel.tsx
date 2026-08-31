@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useIsInApp } from '@/lib/useIsInApp'
-import { SearchIcon, UsersIcon, WalletIcon, UserIcon } from 'lucide-react'
+import { ChevronRightIcon, SearchIcon, UsersIcon, UserIcon } from 'lucide-react'
 import VolumeSavings, { VolumeTierList } from '@/components/VolumeSavings'
 import {
   orderPricing,
@@ -30,21 +30,15 @@ export interface OrgTeamOpt {
   coachName: string
   ageGroup: string | null
   memberCount: number
-  credits: number
 }
 
-type SendMode = 'players' | 'team' | 'coach'
+type SendMode = 'players' | 'coach'
 
 const SEND_MODES: Array<{ id: SendMode; label: string; blurb: string }> = [
   {
     id: 'players',
     label: 'Players',
-    blurb: 'Tokens land on each player’s own account — they use them to analyze their own shots.',
-  },
-  {
-    id: 'team',
-    label: 'A team',
-    blurb: 'Credits go into the team’s shared balance. Its coaches spend them on player uploads or hand them out — you keep full access.',
+    blurb: 'Pick a team, then choose players — tokens land on each player’s own account.',
   },
   {
     id: 'coach',
@@ -54,26 +48,22 @@ const SEND_MODES: Array<{ id: SendMode; label: string; blurb: string }> = [
 ]
 
 /**
- * The organization's token hub: balance overview, buying (tier-rate pricing),
- * and one unified send flow that reaches players directly, a team's shared
- * balance, or a coach — searchable and built to stay usable with many teams
- * and players.
+ * The organization's token hub: buying (tier-rate pricing) and one unified
+ * send flow that reaches players (team-first: pick the team, then the
+ * players on it) or a coach — built to stay usable with many teams. The
+ * "where are my tokens?" breakdown lives in <OrgTokenDistribution> beside it.
  */
 export default function OrgTokenPanel({
   balance,
   players,
   coaches,
   teams,
-  totalPlayerTokens,
-  totalTeamCredits,
   tier,
 }: {
   balance: number
   players: OrgPlayerOpt[]
   coaches: OrgCoachOpt[]
   teams: OrgTeamOpt[]
-  totalPlayerTokens: number
-  totalTeamCredits: number
   /** The organization plan, which sets both the rate and the ladder. */
   tier: OrgTier
 }) {
@@ -89,35 +79,27 @@ export default function OrgTokenPanel({
   // ── Send ─────────────────────────────────────────────────────────
   const [mode, setMode] = useState<SendMode>('players')
   const [search, setSearch] = useState('')
+  const [playerTeamId, setPlayerTeamId] = useState(teams.length === 1 ? teams[0].id : '')
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(new Set())
   const [tokensEach, setTokensEach] = useState(1)
-  const [sendTeamId, setSendTeamId] = useState(teams[0]?.id ?? '')
   const [sendCoachEmail, setSendCoachEmail] = useState(coaches[0]?.email ?? '')
   const [sendQty, setSendQty] = useState(1)
 
   // Every organization gets the team rate — no roster minimum, nothing to unlock.
   const buyTotal = usd(orderPricing(tier, buyQty).totalCents)
 
-  // Players grouped by team, filtered by the search box. Matches on the
-  // player's name or their team name so "U15" narrows to one squad.
-  const playerGroups = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    const filtered = q
-      ? players.filter(p => p.label.toLowerCase().includes(q) || p.team.toLowerCase().includes(q))
-      : players
-    const groups = new Map<string, { teamId: string; team: string; players: OrgPlayerOpt[] }>()
-    for (const p of filtered) {
-      const g = groups.get(p.teamId)
-      if (g) g.players.push(p)
-      else groups.set(p.teamId, { teamId: p.teamId, team: p.team, players: [p] })
-    }
-    return [...groups.values()]
-  }, [players, search])
-
-  const visiblePlayerIds = useMemo(
-    () => playerGroups.flatMap(g => g.players.map(p => p.id)),
-    [playerGroups],
+  // Team-first player flow: pick the team, then choose players on it.
+  const pickedTeam = teams.find(t => t.id === playerTeamId) ?? null
+  const teamPlayersAll = useMemo(
+    () => players.filter(p => p.teamId === playerTeamId),
+    [players, playerTeamId],
   )
+  const teamPlayers = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return q ? teamPlayersAll.filter(p => p.label.toLowerCase().includes(q)) : teamPlayersAll
+  }, [teamPlayersAll, search])
+
+  const visiblePlayerIds = useMemo(() => teamPlayers.map(p => p.id), [teamPlayers])
 
   const filteredTeams = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -128,6 +110,13 @@ export default function OrgTokenPanel({
     const q = search.trim().toLowerCase()
     return q ? coaches.filter(c => c.label.toLowerCase().includes(q)) : coaches
   }, [coaches, search])
+
+  function pickTeam(id: string) {
+    setPlayerTeamId(id)
+    setSelectedPlayerIds(new Set())
+    setSearch('')
+    setMsg(null)
+  }
 
   function togglePlayer(id: string) {
     setSelectedPlayerIds(prev => {
@@ -156,7 +145,7 @@ export default function OrgTokenPanel({
     !busy &&
     !notEnough &&
     balance > 0 &&
-    (mode === 'players' ? selectedPlayerIds.size > 0 : mode === 'team' ? !!sendTeamId : !!sendCoachEmail)
+    (mode === 'players' ? selectedPlayerIds.size > 0 : !!sendCoachEmail)
 
   async function buyTokens() {
     setBusy(true)
@@ -198,16 +187,9 @@ export default function OrgTokenPanel({
       post(
         '/api/org/assign-balance-tokens',
         { playerUserIds: ids, tokensEach: each },
-        `Sent ${each} token${each !== 1 ? 's' : ''} to ${ids.length} player${ids.length !== 1 ? 's' : ''}.`,
+        `Sent ${each} token${each !== 1 ? 's' : ''} to ${ids.length} player${ids.length !== 1 ? 's' : ''}${pickedTeam ? ` on ${pickedTeam.name}` : ''}.`,
       )
       setSelectedPlayerIds(new Set())
-    } else if (mode === 'team') {
-      const team = teams.find(t => t.id === sendTeamId)
-      post(
-        '/api/org/allocate-team-credits',
-        { teamId: sendTeamId, quantity: Math.max(1, sendQty) },
-        `Sent ${Math.max(1, sendQty)} credits to ${team?.name ?? 'the team'}’s shared balance.`,
-      )
     } else {
       const coach = coaches.find(c => c.email === sendCoachEmail)
       post(
@@ -222,20 +204,6 @@ export default function OrgTokenPanel({
 
   return (
     <div className="space-y-4">
-      {/* ── Balance overview ─────────────────────────────────────── */}
-      <div className="grid grid-cols-3 gap-3">
-        {[
-          { label: 'Unassigned balance', value: balance, hint: 'Tokens you’ve bought but not sent anywhere yet' },
-          { label: 'With players', value: totalPlayerTokens, hint: 'Tokens sitting on player accounts' },
-          { label: 'With teams', value: totalTeamCredits, hint: 'Shared credits across your teams' },
-        ].map(s => (
-          <div key={s.label} className="bg-ember-50 dark:bg-ember-500/10 border border-ember-200 dark:border-courtline rounded-2xl px-4 py-3" title={s.hint}>
-            <p className="text-xs font-medium text-gray-500 dark:text-chalk-dim">{s.label}</p>
-            <p className="text-2xl font-bold text-gray-900 dark:text-chalk tabular-nums mt-0.5">{s.value}</p>
-          </div>
-        ))}
-      </div>
-
       {/* ── Send tokens ──────────────────────────────────────────── */}
       <div id="send-tokens" className="bg-white dark:bg-ink-900 border border-gray-200 dark:border-courtline rounded-2xl p-5 space-y-4 scroll-mt-24">
         <div>
@@ -246,10 +214,10 @@ export default function OrgTokenPanel({
         </div>
 
         {/* Destination segmented control */}
-        <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Send to">
+        <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Send to">
           {SEND_MODES.map(m => {
             const active = mode === m.id
-            const Icon = m.id === 'players' ? UsersIcon : m.id === 'team' ? WalletIcon : UserIcon
+            const Icon = m.id === 'players' ? UsersIcon : UserIcon
             return (
               <button
                 key={m.id}
@@ -272,8 +240,7 @@ export default function OrgTokenPanel({
         <p className="text-xs text-gray-500 dark:text-chalk-dim -mt-1">{activeBlurb}</p>
 
         {/* Search — shown whenever the list can grow long */}
-        {((mode === 'players' && players.length > 6) ||
-          (mode === 'team' && teams.length > 6) ||
+        {((mode === 'players' && (playerTeamId ? teamPlayersAll.length > 6 : teams.length > 6)) ||
           (mode === 'coach' && coaches.length > 6)) && (
           <div className="relative">
             <SearchIcon className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" aria-hidden />
@@ -281,7 +248,7 @@ export default function OrgTokenPanel({
               type="search"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder={mode === 'players' ? 'Search players or teams…' : mode === 'team' ? 'Search teams…' : 'Search coaches…'}
+              placeholder={mode === 'coach' ? 'Search coaches…' : playerTeamId ? 'Search players…' : 'Search teams…'}
               className="w-full border border-gray-200 dark:border-courtline rounded-xl pl-9 pr-3 py-2.5 text-sm text-gray-900 dark:text-chalk dark:bg-ink-900 placeholder:text-gray-400 focus:outline-none focus:border-ember-500"
             />
           </div>
@@ -289,79 +256,21 @@ export default function OrgTokenPanel({
 
         {/* Recipient list */}
         {mode === 'players' && (
-          players.length === 0 ? (
-            <p className="text-sm text-gray-400 dark:text-chalk-dim">No players have joined your teams yet.</p>
-          ) : (
-            <div className="border border-gray-200 dark:border-courtline rounded-xl overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-2 bg-gray-50 dark:bg-ink-950/60 border-b border-gray-200 dark:border-courtline">
-                <span className="text-xs font-medium text-gray-500 dark:text-chalk-dim">
-                  {selectedPlayerIds.size} of {players.length} selected
-                </span>
-                <button
-                  type="button"
-                  onClick={() => toggleGroup(visiblePlayerIds)}
-                  className="text-xs font-semibold text-ember-600 hover:text-ember-500 dark:text-ember-400"
-                >
-                  {visiblePlayerIds.length > 0 && visiblePlayerIds.every(id => selectedPlayerIds.has(id))
-                    ? 'Deselect all'
-                    : 'Select all'}
-                </button>
-              </div>
-              <div className="max-h-72 overflow-y-auto divide-y divide-gray-100 dark:divide-courtline">
-                {playerGroups.length === 0 && (
-                  <p className="text-sm text-gray-400 dark:text-chalk-dim px-4 py-4">No players match &ldquo;{search}&rdquo;.</p>
-                )}
-                {playerGroups.map(g => {
-                  const ids = g.players.map(p => p.id)
-                  const allOn = ids.every(id => selectedPlayerIds.has(id))
-                  return (
-                    <div key={g.teamId}>
-                      <div className="flex items-center justify-between px-4 py-1.5 bg-gray-50/60 dark:bg-ink-950/40">
-                        <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-chalk-dim">{g.team}</span>
-                        <button
-                          type="button"
-                          onClick={() => toggleGroup(ids)}
-                          className="text-[11px] font-semibold text-ember-600 hover:text-ember-500 dark:text-ember-400"
-                        >
-                          {allOn ? 'Deselect team' : 'Select team'}
-                        </button>
-                      </div>
-                      {g.players.map(p => (
-                        <label key={p.id} className="flex items-center gap-3 px-4 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-ink-800">
-                          <input
-                            type="checkbox"
-                            checked={selectedPlayerIds.has(p.id)}
-                            onChange={() => togglePlayer(p.id)}
-                            className="w-4 h-4 accent-ember-500 shrink-0"
-                          />
-                          <span className="text-sm text-gray-900 dark:text-chalk">{p.label}</span>
-                        </label>
-                      ))}
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )
-        )}
-
-        {mode === 'team' && (
           teams.length === 0 ? (
             <p className="text-sm text-gray-400 dark:text-chalk-dim">No teams yet — add one in the Teams tab.</p>
-          ) : (
+          ) : !playerTeamId ? (
+            /* Step 1 — pick the team */
             <div className="border border-gray-200 dark:border-courtline rounded-xl max-h-72 overflow-y-auto divide-y divide-gray-100 dark:divide-courtline">
               {filteredTeams.length === 0 && (
                 <p className="text-sm text-gray-400 dark:text-chalk-dim px-4 py-4">No teams match &ldquo;{search}&rdquo;.</p>
               )}
               {filteredTeams.map(t => (
-                <label key={t.id} className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-ink-800">
-                  <input
-                    type="radio"
-                    name="send-team"
-                    checked={sendTeamId === t.id}
-                    onChange={() => setSendTeamId(t.id)}
-                    className="w-4 h-4 accent-ember-500 shrink-0"
-                  />
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => pickTeam(t.id)}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-ink-800 transition-colors"
+                >
                   <span className="flex-1 min-w-0">
                     <span className="block text-sm font-medium text-gray-900 dark:text-chalk truncate">
                       {t.name}{t.ageGroup ? ` · ${t.ageGroup}` : ''}
@@ -370,9 +279,59 @@ export default function OrgTokenPanel({
                       {t.memberCount} player{t.memberCount !== 1 ? 's' : ''} · coach {t.coachName}
                     </span>
                   </span>
-                  <span className="shrink-0 text-xs text-gray-500 dark:text-chalk-dim tabular-nums">{t.credits} credit{t.credits !== 1 ? 's' : ''}</span>
-                </label>
+                  <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" aria-hidden />
+                </button>
               ))}
+            </div>
+          ) : (
+            /* Step 2 — pick players on that team */
+            <div className="border border-gray-200 dark:border-courtline rounded-xl overflow-hidden">
+              <div className="flex items-center justify-between gap-3 px-4 py-2 bg-gray-50 dark:bg-ink-950/60 border-b border-gray-200 dark:border-courtline">
+                <span className="text-xs font-medium text-gray-500 dark:text-chalk-dim truncate">
+                  {pickedTeam?.name ?? 'Team'} · {selectedPlayerIds.size} of {teamPlayersAll.length} selected
+                </span>
+                <div className="flex items-center gap-3 shrink-0">
+                  {teamPlayersAll.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => toggleGroup(visiblePlayerIds)}
+                      className="text-xs font-semibold text-ember-600 hover:text-ember-500 dark:text-ember-400"
+                    >
+                      {visiblePlayerIds.length > 0 && visiblePlayerIds.every(id => selectedPlayerIds.has(id))
+                        ? 'Deselect all'
+                        : 'Select all'}
+                    </button>
+                  )}
+                  {teams.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => pickTeam('')}
+                      className="text-xs font-semibold text-gray-500 hover:text-gray-700 dark:text-chalk-dim dark:hover:text-chalk"
+                    >
+                      Change team
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="max-h-72 overflow-y-auto divide-y divide-gray-100 dark:divide-courtline">
+                {teamPlayersAll.length === 0 && (
+                  <p className="text-sm text-gray-400 dark:text-chalk-dim px-4 py-4">No players have joined this team yet.</p>
+                )}
+                {teamPlayersAll.length > 0 && teamPlayers.length === 0 && (
+                  <p className="text-sm text-gray-400 dark:text-chalk-dim px-4 py-4">No players match &ldquo;{search}&rdquo;.</p>
+                )}
+                {teamPlayers.map(p => (
+                  <label key={p.id} className="flex items-center gap-3 px-4 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-ink-800">
+                    <input
+                      type="checkbox"
+                      checked={selectedPlayerIds.has(p.id)}
+                      onChange={() => togglePlayer(p.id)}
+                      className="w-4 h-4 accent-ember-500 shrink-0"
+                    />
+                    <span className="text-sm text-gray-900 dark:text-chalk">{p.label}</span>
+                  </label>
+                ))}
+              </div>
             </div>
           )
         )}

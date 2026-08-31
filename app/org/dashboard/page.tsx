@@ -241,6 +241,26 @@ export default async function OrgDashboardPage() {
     console.error('[org/dashboard] load error:', err)
   }
 
+  // Personal credit balances held by this org's coaches — feeds the
+  // "where are my tokens?" distribution breakdown.
+  let coachCreditBalances: Array<{ email: string; credits: number }> = []
+  try {
+    coachCreditBalances = (await db`
+      SELECT LOWER(cc.email) AS email, cc.credits::int AS credits
+      FROM coach_credits cc
+      WHERE cc.credits > 0 AND LOWER(cc.email) IN (
+        SELECT LOWER(admin_email) FROM teams WHERE organization_id = ${org.id}
+        UNION
+        SELECT LOWER(tc.email)
+        FROM team_coaches tc
+        JOIN teams t ON t.id = tc.team_id
+        WHERE t.organization_id = ${org.id}
+      )
+    `) as unknown as Array<{ email: string; credits: number }>
+  } catch {
+    // coach_credits / team_coaches tables may not exist yet
+  }
+
   // The org owner's own shot uploads, shown as a list in "My Uploads".
   let myUploads: Array<{ id: string; token: string; created_at: string; overall_score: string | number | null }> = []
   try {
@@ -348,13 +368,13 @@ export default async function OrgDashboardPage() {
           </div>
         )}
 
-        {!orgEntitled && (
+{!orgEntitled && (
           <div className="mb-6">
             <ReactivatePanel />
           </div>
         )}
 
-        <OrgDashboardClient orgTier={orgTier} teams={teams} orgName={org.name} classPackages={classPackages} myUploads={myUploads} orgTokenBalance={orgTokenBalance} />
+        <OrgDashboardClient orgTier={orgTier} teams={teams} orgName={org.name} classPackages={classPackages} myUploads={myUploads} orgTokenBalance={orgTokenBalance} coachCreditBalances={coachCreditBalances} />
       </DashboardShell>
       <SiteFooter />
     </main>

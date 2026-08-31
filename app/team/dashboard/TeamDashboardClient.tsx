@@ -9,6 +9,7 @@ import CoachUploadForm from './CoachUploadForm'
 import TeamCoaches from './TeamCoaches'
 import CoachAssignPanel from '@/components/CoachAssignPanel'
 import TokenBalances from '@/components/TokenBalances'
+import ReturnCreditsPanel from '@/components/ReturnCreditsPanel'
 import LeaderboardTable from '@/components/LeaderboardTable'
 import PrintButton from '@/components/PrintButton'
 import InlineEdit from '@/components/InlineEdit'
@@ -97,6 +98,8 @@ interface Props {
   currentTeamId: string
   adminEmail: string
   fromOrg: boolean
+  /** Name of the organization this team belongs to, or null. */
+  orgName: string | null
   myUploads: Shot[]
   coachCredits: number
   /** The 10-Week Shooting Class this team is running, or null if it isn't. */
@@ -117,6 +120,7 @@ export default function TeamDashboardClient({
   currentTeamId,
   adminEmail,
   fromOrg,
+  orgName,
   myUploads,
   coachCredits,
   classProgram,
@@ -847,6 +851,24 @@ export default function TeamDashboardClient({
           />
         </div>
       </Section>
+
+      {/* Only teams that belong to an organization have somewhere to return to. */}
+      {orgName && (
+        <Section
+          title="Return credits to your organization"
+          tipLabel="How does returning credits work?"
+          tip={`Sends credits from your personal balance or the team's shared balance back to ${orgName}'s balance so the organization can redistribute them. Tokens already handed to players stay with those players.`}
+          summary={`to ${orgName}`}
+        >
+          <div className="pt-2">
+            <ReturnCreditsPanel
+              orgName={orgName}
+              personalCredits={coachCredits}
+              teamCredits={team.credits}
+            />
+          </div>
+        </Section>
+      )}
     </div>
   )
 

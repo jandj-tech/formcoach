@@ -49,17 +49,21 @@ export default function TopNav() {
     pathname.startsWith('/team/dashboard') ||
     pathname.startsWith('/org/dashboard')
 
-  // The "/team" page is the organization information & signup page — a sales
-  // pitch. Signed-in orgs and coaches already own the product, so the item
-  // is dropped from their nav entirely; their dashboards link to the info
-  // page with a small "learn more" line instead.
+  // The "/team" page is the organization information & signup page. For a
+  // signed-in org or coach the dashboard already has its own chip above, so
+  // this item is relabelled to say exactly what it is — info, not their hub.
   const isAdminAccount = account?.type === 'org' || account?.type === 'team'
-  const orgTab = isAdminAccount ? null : { href: '/team', label: 'Organizations' }
-  const orgTabActive = pathname.startsWith('/team') && !pathname.startsWith('/team/dashboard')
+  const orgTab = {
+    href: '/team',
+    label: isAdminAccount ? 'Organization Info' : 'Organizations',
+  }
+  // For admins the dashboard lives under /team/dashboard — only light the
+  // info item on the info page itself, not on their dashboard.
+  const orgTabActive = isAdminAccount ? pathname === '/team' : pathname.startsWith('/team')
 
   const mobileTabs = [
     ...tabs,
-    ...(orgTab ? [orgTab] : []),
+    orgTab,
     { href: accountHref, label: accountLabel },
   ]
 
@@ -122,17 +126,15 @@ export default function TopNav() {
                 </Link>
               )
             })}
-            {orgTab && (
-              <Link
-                href={orgTab.href}
-                data-active={orgTabActive}
-                className={`nav-underline px-3 py-2.5 text-sm font-semibold transition-colors ${
-                  orgTabActive ? 'text-chalk' : 'text-chalk-dim hover:text-chalk'
-                }`}
-              >
-                {orgTab.label}
-              </Link>
-            )}
+            <Link
+              href={orgTab.href}
+              data-active={orgTabActive}
+              className={`nav-underline px-3 py-2.5 text-sm font-semibold transition-colors ${
+                orgTabActive ? 'text-chalk' : 'text-chalk-dim hover:text-chalk'
+              }`}
+            >
+              {orgTab.label}
+            </Link>
             <Link
               href={accountHref}
               className={`ml-2 px-4 py-2 rounded-full text-sm font-bold transition-colors ${

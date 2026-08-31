@@ -894,14 +894,15 @@ export default function TeamDashboardClient({
           { id: 'credits', label: 'Tokens & Credits', content: creditsTab },
           {
             id: 'billing',
-            label: 'Billing',
+            label: 'Purchases',
             content: (
               <div className="space-y-4">
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900">Billing</h2>
+                  <h2 className="text-xl font-bold text-gray-900">Purchase history</h2>
                   <p className="text-sm text-gray-500 mt-1">
                     Your purchases — credits for yourself and this team.
-                    Receipts are emailed at checkout.
+                    Payment happens at checkout (card, Apple Pay, or Google
+                    Pay); receipts are emailed automatically.
                   </p>
                 </div>
                 <BillingHistory

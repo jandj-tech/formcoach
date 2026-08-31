@@ -115,8 +115,11 @@ export default function OrgDashboardClient({ teams, orgName, orgCode, classPacka
   const router = useRouter()
   const inApp = useIsInApp()
   const [expanded, setExpanded] = useState<string | null>(null)
-  // destSelect: 'all' | 'coach' | userId — one dropdown replaces mode+checkboxes
+  // Per-team buy destination: 'all' (whole roster) | 'players' (picked below)
+  // | 'team' (shared team credits), plus the pick/search state for 'players'.
   const [destSelect, setDestSelect] = useState<Record<string, string>>({})
+  const [buyPicks, setBuyPicks] = useState<Record<string, Record<string, boolean>>>({})
+  const [buySearch, setBuySearch] = useState<Record<string, string>>({})
   const [quantity, setQuantity] = useState<Record<string, number>>({})
   const [buyOpen, setBuyOpen] = useState<Record<string, boolean>>({})
   const [buying, setBuying] = useState(false)
@@ -388,7 +391,7 @@ export default function OrgDashboardClient({ teams, orgName, orgCode, classPacka
     setBuying(true)
     setError(prev => ({ ...prev, [team.id]: '' }))
     try {
-      if (dest === 'coach') {
+      if (dest === 'team') {
         const res = await fetch('/api/org/buy-team-credits', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -402,7 +405,10 @@ export default function OrgDashboardClient({ teams, orgName, orgCode, classPacka
         }
         window.location.href = data.url
       } else {
-        const playerUserIds = dest === 'all' ? team.members.map(m => m.id) : [dest]
+        const picks = buyPicks[team.id] || {}
+        const playerUserIds = dest === 'all'
+          ? team.members.map(m => m.id)
+          : team.members.filter(m => picks[m.id]).map(m => m.id)
         if (playerUserIds.length === 0) {
           setError(prev => ({ ...prev, [team.id]: 'No players have joined this team yet' }))
           setBuying(false)
@@ -1133,57 +1139,165 @@ export default function OrgDashboardClient({ teams, orgName, orgCode, classPacka
                       <p className="text-sm font-semibold text-gray-900">Buy tokens for this team</p>
                       <span className="text-gray-400 text-sm shrink-0">{isBuyOpen ? '−' : '+'}</span>
                     </button>
-                    {isBuyOpen && (
+                    {isBuyOpen && (() => {
+                      const picks = buyPicks[team.id] || {}
+                      const q = (buySearch[team.id] || '').trim().toLowerCase()
+                      const visible = q
+                        ? team.members.filter(m => memberDisplayName(m).toLowerCase().includes(q))
+                        : team.members
+                      const pickedIds = team.members.filter(m => picks[m.id]).map(m => m.id)
+                      const recipients = dest === 'all' ? team.members.length : dest === 'players' ? pickedIds.length : 1
+                      const canBuy = !buying && (dest === 'team' || recipients > 0)
+                      return (
                       <div className="px-4 py-4 space-y-3">
                         <p className="text-xs text-gray-500">
                           Checkout goes straight to the destination you pick — no need to send afterwards.
+                          Card, Apple Pay, and Google Pay are accepted at checkout.
                         </p>
                         {!team.initiated && !teams.some(t => t.initiated) && (
                           <p className="text-xs text-orange-600 font-semibold">Team not yet active — tokens are $3.49 each until any of your teams reaches 8 players.</p>
                         )}
-                        <div className="space-y-1">
-                          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Buy for</label>
-                          <select
-                            value={dest}
-                            onChange={e => setDestSelect(prev => ({ ...prev, [team.id]: e.target.value }))}
-                            className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-black bg-white focus:outline-none focus:border-orange-500"
-                          >
-                            <option value="all">All Players ({team.members.length})</option>
-                            {team.members.map(m => (
-                              <option key={m.id} value={m.id}>
-                                {memberDisplayName(m)} — {m.tokens} token{m.tokens !== 1 ? 's' : ''}
-                              </option>
+
+                        <div className="space-y-1.5">
+                          <p className="text-xs font-medium text-gray-500">Buy for</p>
+                          <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Buy for">
+                            {([
+                              ['all', `All players (${team.members.length})`],
+                              ['players', 'Specific players'],
+                              ['team', 'Team credits'],
+                            ] as Array<[string, string]>).map(([value, label]) => (
+                              <button
+                                key={value}
+                                type="button"
+                                role="radio"
+                                aria-checked={dest === value}
+                                onClick={() => setDestSelect(prev => ({ ...prev, [team.id]: value }))}
+                                className={`rounded-xl border px-2 py-2.5 text-sm font-semibold transition-colors ${
+                                  dest === value
+                                    ? 'border-orange-500 bg-orange-50 text-orange-700'
+                                    : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                                }`}
+                              >
+                                {label}
+                              </button>
                             ))}
-                            <option value="coach">Team credits — shared balance coaches spend ({team.credits} now)</option>
-                          </select>
+                          </div>
+                          <p className="text-xs text-gray-500">
+                            {dest === 'all' && 'Every player on the roster gets the amount below on their own account.'}
+                            {dest === 'players' && 'Pick who gets tokens — each selected player gets the amount below.'}
+                            {dest === 'team' && `Funds the shared balance coaches spend (${team.credits} there now).`}
+                          </p>
                         </div>
-                        <div className="space-y-1">
-                          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                            {dest === 'coach' ? 'Credits' : 'Tokens per player'}
-                          </label>
-                          <select
-                            value={qty}
-                            onChange={e => setQuantity(prev => ({ ...prev, [team.id]: Number(e.target.value) }))}
-                            className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-black bg-white focus:outline-none focus:border-orange-500"
-                          >
-                            <option value={1}>1</option>
-                            <option value={5}>5</option>
-                            <option value={10}>10</option>
-                          </select>
-                        </div>
-                        {teamError && <p className="text-red-500 text-sm">{teamError}</p>}
-                        {/* Hidden in the iOS app: digital purchases there must use native in-app purchase. */}
-                        {!inApp && (
-                          <button
-                            onClick={() => handleBuy(team)}
-                            disabled={buying}
-                            className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-bold py-2.5 rounded-xl text-sm transition-colors"
-                          >
-                            {buying ? 'Redirecting...' : 'Buy Tokens'}
-                          </button>
+
+                        {dest === 'players' && (
+                          <div className="border border-gray-200 rounded-xl overflow-hidden">
+                            <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b border-gray-200">
+                              <span className="text-xs font-medium text-gray-500">{pickedIds.length} of {team.members.length} selected</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const allOn = visible.length > 0 && visible.every(m => picks[m.id])
+                                  setBuyPicks(prev => ({
+                                    ...prev,
+                                    [team.id]: {
+                                      ...(prev[team.id] || {}),
+                                      ...Object.fromEntries(visible.map(m => [m.id, !allOn])),
+                                    },
+                                  }))
+                                }}
+                                className="text-xs font-semibold text-orange-600 hover:text-orange-500"
+                              >
+                                {visible.length > 0 && visible.every(m => picks[m.id]) ? 'Deselect all' : 'Select all'}
+                              </button>
+                            </div>
+                            {team.members.length > 6 && (
+                              <input
+                                type="search"
+                                value={buySearch[team.id] || ''}
+                                onChange={e => setBuySearch(prev => ({ ...prev, [team.id]: e.target.value }))}
+                                placeholder="Search players…"
+                                className="w-full px-4 py-2 text-sm text-gray-900 placeholder:text-gray-400 border-b border-gray-100 focus:outline-none"
+                              />
+                            )}
+                            <div className="max-h-56 overflow-y-auto divide-y divide-gray-100">
+                              {visible.length === 0 && (
+                                <p className="text-sm text-gray-400 px-4 py-3">No players match.</p>
+                              )}
+                              {visible.map(m => (
+                                <label key={m.id} className="flex items-center gap-3 px-4 py-2 cursor-pointer hover:bg-gray-50">
+                                  <input
+                                    type="checkbox"
+                                    checked={!!picks[m.id]}
+                                    onChange={() => setBuyPicks(prev => ({
+                                      ...prev,
+                                      [team.id]: { ...(prev[team.id] || {}), [m.id]: !(prev[team.id]?.[m.id]) },
+                                    }))}
+                                    className="w-4 h-4 accent-orange-500 shrink-0"
+                                  />
+                                  <span className="flex-1 text-sm text-gray-900 truncate">{memberDisplayName(m)}</span>
+                                  <span className="text-xs text-gray-400 shrink-0 tabular-nums">{m.tokens} token{m.tokens !== 1 ? 's' : ''}</span>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
                         )}
+
+                        <div className="flex flex-wrap items-center gap-3">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-sm text-gray-600 mr-1">
+                              {dest === 'team' ? 'Credits' : 'Tokens each'}
+                            </span>
+                            {[1, 5, 10].map(n => (
+                              <button
+                                key={n}
+                                type="button"
+                                onClick={() => setQuantity(prev => ({ ...prev, [team.id]: n }))}
+                                className={`w-9 h-9 rounded-lg text-sm font-semibold border transition-colors ${
+                                  qty === n
+                                    ? 'bg-orange-500 text-white border-orange-500'
+                                    : 'bg-white text-gray-900 border-gray-200 hover:border-orange-400'
+                                }`}
+                              >
+                                {n}
+                              </button>
+                            ))}
+                            <input
+                              type="number"
+                              min={1}
+                              value={qty || ''}
+                              onChange={e => {
+                                const n = parseInt(e.target.value)
+                                setQuantity(prev => ({ ...prev, [team.id]: Number.isNaN(n) ? 1 : Math.min(10000, Math.max(1, n)) }))
+                              }}
+                              aria-label="Amount"
+                              className="w-16 h-9 border border-gray-200 rounded-lg px-2 text-center text-gray-900 text-sm focus:outline-none focus:border-orange-500"
+                            />
+                          </div>
+                          {dest !== 'team' && recipients > 0 && (
+                            <span className="text-sm text-gray-500">
+                              {recipients} player{recipients !== 1 ? 's' : ''} × {qty} ={' '}
+                              <span className="font-semibold text-gray-900 tabular-nums">{recipients * qty}</span> tokens
+                            </span>
+                          )}
+                        </div>
+
+                        {teamError && <p className="text-red-500 text-sm">{teamError}</p>}
+                        <button
+                          onClick={() => handleBuy(team)}
+                          disabled={!canBuy}
+                          className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors"
+                        >
+                          {buying
+                            ? 'Redirecting to checkout…'
+                            : dest === 'team'
+                              ? `Buy ${qty} team credit${qty !== 1 ? 's' : ''}`
+                              : recipients === 0
+                                ? 'Select players first'
+                                : `Buy ${recipients * qty} token${recipients * qty !== 1 ? 's' : ''}`}
+                        </button>
                       </div>
-                    )}
+                      )
+                    })()}
                   </div>
                   )}
 
@@ -1315,10 +1429,11 @@ export default function OrgDashboardClient({ teams, orgName, orgCode, classPacka
   const billingTab = (
     <div className="space-y-4">
       <div>
-        <h2 className="text-xl font-bold text-gray-900">Billing</h2>
+        <h2 className="text-xl font-bold text-gray-900">Purchase history</h2>
         <p className="text-sm text-gray-500 mt-1">
           Every purchase on this organization — tokens, team credits, class
-          packages, and shop orders. Receipts are emailed at checkout.
+          packages, and shop orders. Payment happens at checkout (card, Apple
+          Pay, or Google Pay); receipts are emailed automatically.
         </p>
       </div>
       <BillingHistory
@@ -1613,7 +1728,7 @@ export default function OrgDashboardClient({ teams, orgName, orgCode, classPacka
           { id: 'leaderboard', label: 'Leaderboard', count: orgLeaderboard.length, content: leaderboardTab },
           { id: 'tokens', label: 'Tokens', content: tokensTab },
           { id: 'players', label: 'Players', count: uniquePlayerCount, content: playersTab },
-          { id: 'billing', label: 'Billing', content: billingTab },
+          { id: 'billing', label: 'Purchases', content: billingTab },
           { id: 'uploads', label: 'My Uploads', count: myUploads.length, content: uploadsTab },
         ]}
         defaultTab="teams"

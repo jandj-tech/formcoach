@@ -5,21 +5,21 @@ import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { useIsInApp } from '@/lib/useIsInApp'
 import Link from 'next/link'
-import OrgAddCoach from './OrgAddCoach'
+import OrgTeamCard from './OrgTeamCard'
+import {
+  memberDisplayName,
+  type ClassPackage,
+  type PlayerSortMode,
+  type TeamData,
+} from './org-team'
 import AccountTabs from '@/components/account/AccountTabs'
 import ClassManager from '@/components/ClassManager'
 import BillingHistory from '@/components/BillingHistory'
-import GiveTokensForm from '@/components/GiveTokensForm'
-import Section from '@/components/account/Section'
 import InfoTip from '@/components/InfoTip'
-import TokenBalances from '@/components/TokenBalances'
-import InlineEdit from '@/components/InlineEdit'
 import LeaderboardTable, { type LeaderboardRow } from '@/components/LeaderboardTable'
 import SortMenu, { type SortOption } from '@/components/SortMenu'
 import type { OrgTier } from '@/lib/team-pricing'
 import OrgTokenPanel from '@/components/OrgTokenPanel'
-import TeamChatPanel from '@/components/TeamChatPanel'
-import EmailTeamPanel from '@/components/EmailTeamPanel'
 import PlayerShotList, { type Shot } from '@/components/PlayerShotList'
 import PrintButton from '@/components/PrintButton'
 import TeamSchedulePanel from '@/components/TeamSchedulePanel'
@@ -30,70 +30,10 @@ import { backendButton } from '@/components/backend/button-styles'
 import {
   ArrowRightIcon,
   MailIcon,
-  MessageSquareIcon,
   TargetIcon,
   TrophyIcon,
 } from 'lucide-react'
 import { BasketballIcon } from '@/components/backend/BasketballIcon'
-
-interface Member {
-  id: string
-  email: string
-  first_name: string | null
-  last_name_initial: string | null
-  tokens: number
-}
-
-interface Coach {
-  id: string
-  email: string
-  pending: boolean
-  nickname: string | null
-}
-
-interface TeamData {
-  id: string
-  name: string
-  ageGroup: string | null
-  accessCode: string
-  adminEmail: string
-  credits: number
-  classPackageId: string | null
-  members: Member[]
-  coaches: Coach[]
-  coachNickname: string | null
-  tokenPool: number
-  leaderboard: LeaderboardRow[]
-}
-
-export interface ClassEnrollment {
-  id: string
-  user_id: string | null
-  first_name: string | null
-  last_name_initial: string | null
-  first_score: number | null
-  final_score: number | null
-  display_final_score: number | null
-  is_first_class: boolean
-  certificate_issued_at: string | null
-  has_first: boolean
-  has_final: boolean
-  tokens: number
-}
-
-export interface ClassPackage {
-  id: string
-  player_count: number
-  price_per_player_cents: number
-  total_cents: number
-  token_pool: number
-  status: string
-  created_at: string
-  enrolled_count: number
-  completed_count: number
-  team_access_code: string | null
-  enrollments: ClassEnrollment[]
-}
 
 interface Props {
   teams: TeamData[]
@@ -106,8 +46,6 @@ interface Props {
 }
 
 
-type PlayerSortMode = 'name' | 'score-desc' | 'score-asc'
-
 const PLAYER_SORT_OPTIONS: SortOption<PlayerSortMode>[] = [
   { value: 'name', label: 'Name (A–Z)' },
   { value: 'score-desc', label: 'Highest score' },
@@ -118,16 +56,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   const router = useRouter()
   const inApp = useIsInApp()
   const [expanded, setExpanded] = useState<string | null>(null)
-  // Per-team buy destination: 'all' (whole roster) | 'players' (picked below)
-  // | 'team' (shared team credits), plus the pick/search state for 'players'.
-  const [destSelect, setDestSelect] = useState<Record<string, string>>({})
-  const [buyPicks, setBuyPicks] = useState<Record<string, Record<string, boolean>>>({})
-  const [buySearch, setBuySearch] = useState<Record<string, string>>({})
-  const [quantity, setQuantity] = useState<Record<string, number>>({})
-  const [buyOpen, setBuyOpen] = useState<Record<string, boolean>>({})
   const [buying, setBuying] = useState(false)
-  const [error, setError] = useState<Record<string, string>>({})
-  const [copiedLink, setCopiedLink] = useState<Record<string, boolean>>({})
   const [removingCoach, setRemovingCoach] = useState<string | null>(null)
   const [removingPlayer, setRemovingPlayer] = useState<string | null>(null)
   const [deletingTeam, setDeletingTeam] = useState<string | null>(null)
@@ -135,7 +64,6 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   // itself is the collapse; the toggle stays for minimizing within the tab.
   const [showMyUploads, setShowMyUploads] = useState(false)
   const [showAllPlayers, setShowAllPlayers] = useState(false)
-  const [playerSort, setPlayerSort] = useState<Record<string, PlayerSortMode>>({})
   const [allPlayersSort, setAllPlayersSort] = useState<PlayerSortMode>('name')
   const [teamLbModal, setTeamLbModal] = useState<string | null>(null)
   // Team id whose full month schedule is open in a modal.
@@ -162,10 +90,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   // Roster enrollment, standings and progress resets now live in
   // <ClassManager> (the Class Manager tab), which owns that state.
 
-  // Per-team "assign team credits to players" form state.
-  const [teamAssignOpen, setTeamAssignOpen] = useState<Record<string, boolean>>({})
-
-    const [addOpen, setAddOpen] = useState(false)
+  const [addOpen, setAddOpen] = useState(false)
   const [newName, setNewName] = useState('')
   const [newAgeGroup, setNewAgeGroup] = useState('')
   const [newCoachEmail, setNewCoachEmail] = useState('')
@@ -173,21 +98,6 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   const [addStatus, setAddStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [addError, setAddError] = useState('')
   const [addSuccessEmail, setAddSuccessEmail] = useState('')
-
-  function getDestSelect(teamId: string): string {
-    return destSelect[teamId] ?? 'all'
-  }
-
-  function getQty(teamId: string): number {
-    return quantity[teamId] ?? 1
-  }
-
-  function copyLink(teamId: string, accessCode: string) {
-    copyToClipboard(`${BASE_URL}/signup?teamCode=${accessCode}`, 'Signup link copied!').then(() => {
-      setCopiedLink(prev => ({ ...prev, [teamId]: true }))
-      setTimeout(() => setCopiedLink(prev => ({ ...prev, [teamId]: false })), 2000)
-    })
-  }
 
   function toggleEmailMember(userId: string) {
     setEmailSelected(prev => ({ ...prev, [userId]: !prev[userId] }))
@@ -325,33 +235,6 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   }
 
 
-  function memberDisplayName(m: Member) {
-    if (m.first_name) {
-      return `${m.first_name}${m.last_name_initial ? ' ' + m.last_name_initial + '.' : ''}`
-    }
-    return m.email
-  }
-
-  // Returns the team's members in the chosen sort order. A member's score is
-  // their best score from the team leaderboard; members who haven't uploaded a
-  // shot have no score and always sort to the bottom.
-  function sortedMembers(team: TeamData): Member[] {
-    const mode = playerSort[team.id] ?? 'name'
-    const scoreOf = (m: Member): number | null => {
-      const row = team.leaderboard.find(r => r.kind === 'member' && r.id === m.id)
-      return row ? Number(row.best_score) : null
-    }
-    return [...team.members].sort((a, b) => {
-      if (mode === 'name') return memberDisplayName(a).localeCompare(memberDisplayName(b))
-      const sa = scoreOf(a)
-      const sb = scoreOf(b)
-      if (sa === null && sb === null) return memberDisplayName(a).localeCompare(memberDisplayName(b))
-      if (sa === null) return 1
-      if (sb === null) return -1
-      return mode === 'score-desc' ? sb - sa : sa - sb
-    })
-  }
-
   // AccountTabs keys off data-tab buttons, so switching tab is a click.
   function goToTab(tabId: string, anchor?: string) {
     document.querySelector<HTMLButtonElement>(`[data-tab="${tabId}"]`)?.click()
@@ -392,11 +275,43 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   }
   const orgCoaches = [...orgCoachMap.entries()].map(([email, label]) => ({ email, label }))
 
-  async function handleBuy(team: TeamData) {
-    const dest = getDestSelect(team.id)
-    const qty = getQty(team.id)
+  // Gives a team's shared credits to players its card has picked. The shape is
+  // GiveTokensForm's contract, which owns the busy state and the message.
+  async function giveTeamCreditsToPlayers(
+    teamId: string,
+    playerUserIds: string[],
+    tokensEach: number,
+  ): Promise<{ ok: boolean; text: string }> {
+    try {
+      const res = await fetch('/api/org/assign-from-team-credits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teamId, playerUserIds, tokensEach }),
+      })
+      const data = await res.json()
+      if (!res.ok) return { ok: false, text: data.error || 'Could not give credits.' }
+      router.refresh()
+      return {
+        ok: true,
+        text: `Gave ${tokensEach} credit${tokensEach !== 1 ? 's' : ''} to ${playerUserIds.length} player${playerUserIds.length !== 1 ? 's' : ''}.`,
+      }
+    } catch {
+      return { ok: false, text: 'Something went wrong. Please try again.' }
+    }
+  }
+
+  // Sends the org to Stripe for this team. dest is 'team' (the shared coach
+  // balance) or 'all' / 'players' (per-player tokens, the ids resolved by the
+  // card). Resolves to the error to show, or '' once the browser is on its way
+  // to checkout — `buying` stays true through that navigation so the button
+  // can't be pressed twice.
+  async function handleBuy(
+    team: TeamData,
+    dest: string,
+    qty: number,
+    playerUserIds: string[],
+  ): Promise<string> {
     setBuying(true)
-    setError(prev => ({ ...prev, [team.id]: '' }))
     try {
       if (dest === 'team') {
         const res = await fetch('/api/org/buy-team-credits', {
@@ -406,37 +321,31 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
         })
         const data = await res.json()
         if (!res.ok || !data.url) {
-          setError(prev => ({ ...prev, [team.id]: data.error || 'Checkout failed' }))
           setBuying(false)
-          return
+          return data.error || 'Checkout failed'
         }
-        window.location.href = data.url
-      } else {
-        const picks = buyPicks[team.id] || {}
-        const playerUserIds = dest === 'all'
-          ? team.members.map(m => m.id)
-          : team.members.filter(m => picks[m.id]).map(m => m.id)
-        if (playerUserIds.length === 0) {
-          setError(prev => ({ ...prev, [team.id]: 'No players selected yet' }))
-          setBuying(false)
-          return
-        }
-        const res = await fetch('/api/org/buy-player-tokens', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ playerUserIds, quantity: qty, teamId: team.id }),
-        })
-        const data = await res.json()
-        if (!res.ok || !data.url) {
-          setError(prev => ({ ...prev, [team.id]: data.error || 'Checkout failed' }))
-          setBuying(false)
-          return
-        }
-        window.location.href = data.url
+        window.location.assign(data.url)
+        return ''
       }
+      if (playerUserIds.length === 0) {
+        setBuying(false)
+        return 'No players selected yet'
+      }
+      const res = await fetch('/api/org/buy-player-tokens', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playerUserIds, quantity: qty, teamId: team.id }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.url) {
+        setBuying(false)
+        return data.error || 'Checkout failed'
+      }
+      window.location.assign(data.url)
+      return ''
     } catch {
-      setError(prev => ({ ...prev, [team.id]: 'Something went wrong. Please try again.' }))
       setBuying(false)
+      return 'Something went wrong. Please try again.'
     }
   }
 
@@ -750,534 +659,34 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
       <h2 className="text-xl font-black text-black dark:text-chalk">Your Teams</h2>
 
       <div className="space-y-3">
-        {teams.map(team => {
-          const isOpen = expanded === team.id
-          const dest = getDestSelect(team.id)
-          const qty = getQty(team.id)
-          const teamError = error[team.id]
-          const isBuyOpen = buyOpen[team.id] ?? false
-
-          return (
-            <div key={team.id} id={`team-panel-${team.id}`} className="scroll-mt-24 border border-gray-200 dark:border-courtline rounded-2xl overflow-hidden">
-              <button
-                onClick={() => setExpanded(isOpen ? null : team.id)}
-                className="w-full flex items-center justify-between gap-4 px-5 py-4 bg-gray-50 dark:bg-ink-800 hover:bg-ember-50 dark:hover:bg-ember-500/10 transition-colors text-left"
-              >
-                <div>
-                  <p className="font-bold text-black dark:text-chalk">{team.name}</p>
-                  <p className="text-xs text-gray-500 dark:text-chalk-dim mt-0.5">
-                    {team.ageGroup ? `${team.ageGroup} · ` : ''}
-                    {team.members.length} player{team.members.length !== 1 ? 's' : ''}
-                    {team.credits > 0 ? ` · ${team.credits} team credit${team.credits !== 1 ? 's' : ''}` : ''}
-                  </p>
-                </div>
-                <span className="text-gray-400 dark:text-chalk-dim text-sm">{isOpen ? '−' : '+'}</span>
-              </button>
-
-              {isOpen && (
-                <div className="px-5 py-4 space-y-4">
-                  {/* Open this team's coach dashboard */}
-                  <button
-                    onClick={() => openTeam(team.id)}
-                    className="inline-flex items-center gap-1.5 text-sm font-bold text-ember-600 dark:text-ember-400 hover:text-ember-500 transition-colors"
-                  >
-                    Open team dashboard
-                    <ArrowRightIcon aria-hidden className="w-4 h-4" />
-                  </button>
-
-                  {/* This team's week at a glance. "Open full schedule" opens
-                      the month in a modal rather than navigating away, so the
-                      org owner never leaves this page to check a date. The
-                      panel 402s and offers the upgrade on its own when the
-                      plan doesn't include scheduling — the tier isn't guessed
-                      here, because an individually grandfathered team keeps
-                      scheduling even under a Basic org. */}
-                  <div className="border border-gray-200 dark:border-courtline rounded-2xl p-4 space-y-3">
-                    <p className="text-xs font-semibold text-gray-500 dark:text-chalk-dim uppercase tracking-wide">Schedule</p>
-                    <TeamSchedulePanel
-                      teamId={team.id}
-                      theme="light"
-                      compact
-                      onOpenFull={() => setScheduleModal(team.id)}
-                      upgradeCta={{ href: '#org-billing', label: 'Change your plan' }}
-                    />
-                  </div>
-
-                  {/* This team runs a class package. The full manager — roster,
-                      progress, session plan, certificates — is the Class Manager
-                      tab; this is the signpost to it, not a second copy. */}
-                  {(() => {
-                    const pkg = team.classPackageId
-                      ? classPackages.find(p => p.id === team.classPackageId)
-                      : null
-                    if (!pkg) return null
-                    const finished = pkg.enrollments.filter(en => en.has_final).length
-                    return (
-                      <button
-                        onClick={() => goToTab('class')}
-                        className="w-full text-left border border-ember-500/30 bg-ember-500/5 hover:bg-ember-500/10 rounded-2xl px-4 py-3 flex items-center justify-between gap-4 transition-colors"
-                      >
-                        <div className="min-w-0">
-                          <p className="text-sm font-black text-black dark:text-chalk">10-Week Shooting Development Program</p>
-                          <p className="text-xs text-gray-500 dark:text-chalk-dim mt-0.5">
-                            {pkg.enrollments.length}/{pkg.player_count} enrolled &middot; {finished} finished &middot; {team.credits} credit{team.credits !== 1 ? 's' : ''} left
-                          </p>
-                        </div>
-                        <span className="shrink-0 text-xs font-bold text-ember-600 dark:text-ember-400">Open Class Manager &rarr;</span>
-                      </button>
-                    )
-                  })()}
-
-                  {/* Age group — editable by the org */}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs font-semibold text-gray-500 dark:text-chalk-dim uppercase tracking-wide">Age group</span>
-                    <InlineEdit
-                      value={team.ageGroup ?? ''}
-                      endpoint="/api/org/update-team"
-                      bodyKey="ageGroup"
-                      extra={{ teamId: team.id }}
-                      placeholder="e.g. U15, Varsity"
-                      textClassName="text-sm font-semibold text-black dark:text-chalk"
-                      emptyLabel="Not set"
-                    />
-                  </div>
-
-                  {/* Roster — coach, players, and the player signup link */}
-                  <div className="space-y-3">
-                    <Section
-                      title="Coaches"
-                      tipLabel="What can coaches do?"
-                      tip="Coaches manage this team from their own coach dashboard: they upload shots for players and can spend the team's credits. Invited coaches show as pending until they finish setting up their account."
-                      summary={`${team.coaches.length + 1} coach${team.coaches.length > 0 ? 'es' : ''}`}
-                    >
-                      <div className="mt-1 border border-gray-100 dark:border-courtline rounded-xl divide-y divide-gray-100">
-                        <div className="flex items-center justify-between gap-3 px-3 py-2">
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-black dark:text-chalk truncate">{team.coachNickname || team.adminEmail}</p>
-                            {team.coachNickname && <p className="text-xs text-gray-400 dark:text-chalk-dim truncate">{team.adminEmail}</p>}
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <span className="text-xs bg-ember-100 dark:bg-ember-500/15 text-ember-700 dark:text-ember-400 font-bold px-2 py-0.5 rounded-full">Head coach</span>
-                            <button
-                              onClick={() => removeHeadCoach(team.id)}
-                              disabled={removingCoach === `head-${team.id}`}
-                              className="text-xs font-semibold text-gray-400 dark:text-chalk-dim hover:text-red-500 disabled:opacity-50 transition-colors"
-                            >
-                              {removingCoach === `head-${team.id}` ? '…' : 'Remove'}
-                            </button>
-                          </div>
-                        </div>
-                        {team.coaches.map(c => (
-                          <div key={c.id} className="flex items-center justify-between gap-3 px-3 py-2">
-                            <div className="min-w-0">
-                              <p className="text-sm font-semibold text-black dark:text-chalk truncate">{c.nickname || c.email}</p>
-                              {c.nickname && <p className="text-xs text-gray-400 dark:text-chalk-dim truncate">{c.email}</p>}
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${c.pending ? 'bg-gray-100 dark:bg-ink-800 text-gray-500 dark:text-chalk-dim' : 'bg-green-100 text-green-700 dark:text-green-400'}`}>
-                                {c.pending ? 'Invite pending' : 'Coach'}
-                              </span>
-                              <button
-                                onClick={() => removeCoach(c.id, c.pending)}
-                                disabled={removingCoach === c.id}
-                                className="text-xs font-semibold text-gray-400 dark:text-chalk-dim hover:text-red-500 disabled:opacity-50 transition-colors"
-                              >
-                                {removingCoach === c.id ? '…' : c.pending ? 'Cancel' : 'Remove'}
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="mt-2">
-                        <OrgAddCoach teamId={team.id} />
-                      </div>
-                    </Section>
-                    <Section
-                      title="Players"
-                      tipLabel="How do players join?"
-                      tip="Players join with the signup link or team code below. Tick the boxes next to players to draft an outreach email to just those players."
-                      summary={`${team.members.length} player${team.members.length !== 1 ? 's' : ''}`}
-                    >
-                      {team.members.length > 1 && (
-                        <div className="flex items-center justify-end gap-3">
-                          <SortMenu
-                            value={playerSort[team.id] ?? 'name'}
-                            options={PLAYER_SORT_OPTIONS}
-                            onChange={v => setPlayerSort(s => ({ ...s, [team.id]: v }))}
-                          />
-                        </div>
-                      )}
-                      {team.members.length === 0 ? (
-                        <p className="text-sm text-gray-400 dark:text-chalk-dim mt-0.5">No players have joined yet.</p>
-                      ) : (
-                        <>
-                          <div className="mt-1 border border-gray-100 dark:border-courtline rounded-xl divide-y divide-gray-100">
-                            {sortedMembers(team).map(m => (
-                              <div key={m.id} className="flex items-center justify-between gap-3 px-3 py-2">
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <input
-                                    type="checkbox"
-                                    checked={!!emailSelected[m.id]}
-                                    onChange={() => toggleEmailMember(m.id)}
-                                    className="w-4 h-4 accent-ember-500 shrink-0"
-                                  />
-                                  <Link
-                                    href={`/org/dashboard/member/${m.id}`}
-                                    className="text-sm font-semibold text-black dark:text-chalk truncate hover:text-ember-600 dark:hover:text-ember-400 hover:underline transition-colors"
-                                  >
-                                    {memberDisplayName(m)}
-                                  </Link>
-                                </div>
-                                <div className="flex items-center gap-2 shrink-0">
-                                  <span className="text-xs text-gray-400 dark:text-chalk-dim truncate max-w-[9rem]">{m.email}</span>
-                                  <button
-                                    onClick={() => removePlayer(team.id, m.id)}
-                                    disabled={removingPlayer === m.id}
-                                    className="text-xs font-semibold text-gray-400 dark:text-chalk-dim hover:text-red-500 disabled:opacity-50 transition-colors"
-                                  >
-                                    {removingPlayer === m.id ? '…' : 'Remove'}
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                          {team.members.some(m => emailSelected[m.id]) && (
-                            <button
-                              onClick={() => setEmailDraftTeam(team.id)}
-                              className="mt-2 inline-flex items-center gap-1.5 text-sm font-bold text-ember-600 dark:text-ember-400 hover:text-ember-500 transition-colors"
-                            >
-                              <MailIcon aria-hidden className="w-4 h-4" />
-                              Draft outreach email ({team.members.filter(m => emailSelected[m.id]).length} selected)
-                            </button>
-                          )}
-                        </>
-                      )}
-                    </Section>
-                    <div>
-                      <p className="text-xs font-semibold text-gray-500 dark:text-chalk-dim uppercase tracking-wide mb-1 flex items-center gap-1.5">
-                        Player signup link
-                        <InfoTip label="What is the player signup link?" align="left">
-                          Send this to players (or their parents). It opens the
-                          signup page with this team&rsquo;s code pre-filled, so
-                          they land on the roster automatically.
-                        </InfoTip>
-                      </p>
-                      <div className="flex items-center gap-2 bg-gray-50 dark:bg-ink-800 border border-gray-300 dark:border-courtline rounded-xl p-2.5">
-                        <span className="flex-1 text-xs font-mono text-gray-600 dark:text-chalk-dim truncate">
-                          {BASE_URL}/signup?teamCode={team.accessCode}
-                        </span>
-                        <button
-                          onClick={() => copyLink(team.id, team.accessCode)}
-                          className="shrink-0 text-sm font-semibold text-ember-500 hover:text-ember-400 transition-colors"
-                        >
-                          {copiedLink[team.id] ? 'Copied!' : 'Copy'}
-                        </button>
-                      </div>
-                      <p className="text-xs text-gray-400 dark:text-chalk-dim mt-1">
-                        Players open this link, sign up with the code pre-filled, then enter their name to join.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Token balances — only on non-class teams. Class teams
-                      already show their stats (Players / Enrolled / Completed /
-                      Credits left) in the class panel above, so this duplicate
-                      block is redundant and the "PLAYERS — N TOKENS TOTAL"
-                      line is misleading in a coach-uploads-for-players model. */}
-                  {!team.classPackageId && (
-                    <TokenBalances
-                      players={team.members.map(m => ({ id: m.id, label: memberDisplayName(m), tokens: m.tokens }))}
-                      teamCredits={team.credits}
-                      tokenPool={team.tokenPool}
-                    />
-                  )}
-
-                  {/* Give team credits to players — spends teams.credits on
-                      this team's roster. Same pool the coach uses via Open
-                      team dashboard; lets the org act without hopping into
-                      the team's coach view. */}
-                  {(() => {
-                    const isAssignOpen = teamAssignOpen[team.id] ?? false
-                    return (
-                      <div className="border border-ember-100 dark:border-courtline rounded-xl overflow-hidden">
-                        <button
-                          onClick={() => setTeamAssignOpen(prev => ({ ...prev, [team.id]: !isAssignOpen }))}
-                          className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-ember-50 dark:bg-ember-500/10 hover:bg-ember-100 dark:hover:bg-ember-500/15 transition-colors text-left"
-                        >
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-black dark:text-chalk">Give team credits to players</p>
-                            <p className="text-xs text-gray-500 dark:text-chalk-dim mt-0.5">
-                              Team credits: <span className="font-semibold text-ember-600 dark:text-ember-400">{team.credits}</span>
-                              {' '}&mdash; give to the whole roster or specific players.
-                            </p>
-                          </div>
-                          <span className="text-gray-400 dark:text-chalk-dim text-sm shrink-0">{isAssignOpen ? '\u2212' : '+'}</span>
-                        </button>
-                        {isAssignOpen && (
-                          <div className="px-4 py-4 bg-white dark:bg-ink-900">
-                            {team.credits === 0 ? (
-                              <p className="text-sm text-gray-500 dark:text-chalk-dim">No credits on this team yet &mdash; send some from the Tokens tab first.</p>
-                            ) : (
-                              <GiveTokensForm
-                                players={team.members.map(m => ({ id: m.id, label: memberDisplayName(m), tokens: m.tokens }))}
-                                available={team.credits}
-                                availableLabel="team credits"
-                                onGive={async (ids, each) => {
-                                  try {
-                                    const res = await fetch('/api/org/assign-from-team-credits', {
-                                      method: 'POST',
-                                      headers: { 'Content-Type': 'application/json' },
-                                      body: JSON.stringify({ teamId: team.id, playerUserIds: ids, tokensEach: each }),
-                                    })
-                                    const data = await res.json()
-                                    if (!res.ok) return { ok: false, text: data.error || 'Could not give credits.' }
-                                    router.refresh()
-                                    return {
-                                      ok: true,
-                                      text: `Gave ${each} credit${each !== 1 ? 's' : ''} to ${ids.length} player${ids.length !== 1 ? 's' : ''}.`,
-                                    }
-                                  } catch {
-                                    return { ok: false, text: 'Something went wrong. Please try again.' }
-                                  }
-                                }}
-                              />
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })()}
-
-                  {/* Team leaderboard */}
-                  <Section
-                    title="Team leaderboard"
-                    summary={team.leaderboard.length === 0
-                      ? 'No shots yet'
-                      : `${team.leaderboard.length} player${team.leaderboard.length !== 1 ? 's' : ''}`}
-                  >
-                    <div className="space-y-2 pt-1">
-                      {team.leaderboard.length > 0 && (
-                        <div className="flex justify-end">
-                          <button
-                            onClick={() => setTeamLbModal(team.id)}
-                            className="shrink-0 text-xs font-bold text-ember-500 hover:text-ember-400 transition-colors"
-                          >
-                            View full &amp; print
-                          </button>
-                        </div>
-                      )}
-                      {team.leaderboard.length === 0 ? (
-                        <p className="text-sm text-gray-400 dark:text-chalk-dim">No shots analyzed yet.</p>
-                      ) : (
-                        <LeaderboardTable entries={team.leaderboard} context="org" theme="auto" />
-                      )}
-                    </div>
-                  </Section>
-
-                  {/* Buy tokens — collapsible. Hidden in the iOS app (guideline 3.1.1). */}
-                  {!inApp && (
-                  <div className="border border-gray-200 dark:border-courtline rounded-xl overflow-hidden">
-                    <button
-                      onClick={() => setBuyOpen(prev => ({ ...prev, [team.id]: !isBuyOpen }))}
-                      className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-gray-50 dark:bg-ink-800 hover:bg-ember-50 dark:hover:bg-ember-500/10 transition-colors text-left"
-                    >
-                      <p className="text-sm font-semibold text-black dark:text-chalk">Buy tokens for this team</p>
-                      <span className="text-gray-400 dark:text-chalk-dim text-sm shrink-0">{isBuyOpen ? '\u2212' : '+'}</span>
-                    </button>
-                    {isBuyOpen && (() => {
-                      const picks = buyPicks[team.id] || {}
-                      const q = (buySearch[team.id] || '').trim().toLowerCase()
-                      const visible = q
-                        ? team.members.filter(m => memberDisplayName(m).toLowerCase().includes(q))
-                        : team.members
-                      const pickedIds = team.members.filter(m => picks[m.id]).map(m => m.id)
-                      const recipients = dest === 'all' ? team.members.length : dest === 'players' ? pickedIds.length : 1
-                      const canBuy = !buying && (dest === 'team' || recipients > 0)
-                      return (
-                      <div className="px-4 py-4 space-y-3">
-                        <p className="text-xs text-gray-500 dark:text-chalk-dim">
-                          Checkout goes straight to the destination you pick &mdash; no need to send afterwards.
-                          Card, Apple Pay, and Google Pay are accepted at checkout.
-                        </p>
-
-                        <div className="space-y-1.5">
-                          <p className="text-xs font-medium text-gray-500 dark:text-chalk-dim">Buy for</p>
-                          <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Buy for">
-                            {([
-                              ['all', `All players (${team.members.length})`],
-                              ['players', 'Specific players'],
-                              ['team', 'Team credits'],
-                            ] as Array<[string, string]>).map(([value, label]) => (
-                              <button
-                                key={value}
-                                type="button"
-                                role="radio"
-                                aria-checked={dest === value}
-                                onClick={() => setDestSelect(prev => ({ ...prev, [team.id]: value }))}
-                                className={`rounded-xl border px-2 py-2.5 text-sm font-semibold transition-colors ${
-                                  dest === value
-                                    ? 'border-ember-500 bg-ember-50 dark:bg-ember-500/15 text-ember-700 dark:text-ember-400'
-                                    : 'border-gray-200 dark:border-courtline bg-white dark:bg-ink-900 text-gray-600 dark:text-chalk-dim hover:border-gray-300'
-                                }`}
-                              >
-                                {label}
-                              </button>
-                            ))}
-                          </div>
-                          <p className="text-xs text-gray-500 dark:text-chalk-dim">
-                            {dest === 'all' && 'Every player on the roster gets the amount below on their own account.'}
-                            {dest === 'players' && 'Pick who gets tokens \u2014 each selected player gets the amount below.'}
-                            {dest === 'team' && `Funds the shared balance coaches spend (${team.credits} there now).`}
-                          </p>
-                        </div>
-
-                        {dest === 'players' && (
-                          <div className="border border-gray-200 dark:border-courtline rounded-xl overflow-hidden">
-                            <div className="flex items-center justify-between px-4 py-2 bg-gray-50 dark:bg-ink-950/60 border-b border-gray-200 dark:border-courtline">
-                              <span className="text-xs font-medium text-gray-500 dark:text-chalk-dim">{pickedIds.length} of {team.members.length} selected</span>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const allOn = visible.length > 0 && visible.every(m => picks[m.id])
-                                  setBuyPicks(prev => ({
-                                    ...prev,
-                                    [team.id]: {
-                                      ...(prev[team.id] || {}),
-                                      ...Object.fromEntries(visible.map(m => [m.id, !allOn])),
-                                    },
-                                  }))
-                                }}
-                                className="text-xs font-semibold text-ember-600 hover:text-ember-500 dark:text-ember-400"
-                              >
-                                {visible.length > 0 && visible.every(m => picks[m.id]) ? 'Deselect all' : 'Select all'}
-                              </button>
-                            </div>
-                            {team.members.length > 6 && (
-                              <input
-                                type="search"
-                                value={buySearch[team.id] || ''}
-                                onChange={e => setBuySearch(prev => ({ ...prev, [team.id]: e.target.value }))}
-                                placeholder="Search players…"
-                                className="w-full px-4 py-2 text-sm text-gray-900 dark:text-chalk dark:bg-ink-900 placeholder:text-gray-400 border-b border-gray-100 dark:border-courtline focus:outline-none"
-                              />
-                            )}
-                            <div className="max-h-56 overflow-y-auto divide-y divide-gray-100 dark:divide-courtline">
-                              {visible.length === 0 && (
-                                <p className="text-sm text-gray-400 dark:text-chalk-dim px-4 py-3">No players match.</p>
-                              )}
-                              {visible.map(m => (
-                                <label key={m.id} className="flex items-center gap-3 px-4 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-ink-800">
-                                  <input
-                                    type="checkbox"
-                                    checked={!!picks[m.id]}
-                                    onChange={() => setBuyPicks(prev => ({
-                                      ...prev,
-                                      [team.id]: { ...(prev[team.id] || {}), [m.id]: !(prev[team.id]?.[m.id]) },
-                                    }))}
-                                    className="w-4 h-4 accent-ember-500 shrink-0"
-                                  />
-                                  <span className="flex-1 text-sm text-gray-900 dark:text-chalk truncate">{memberDisplayName(m)}</span>
-                                  <span className="text-xs text-gray-400 dark:text-chalk-dim shrink-0 tabular-nums">{m.tokens} token{m.tokens !== 1 ? 's' : ''}</span>
-                                </label>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        <div className="flex flex-wrap items-center gap-3">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-sm text-gray-600 dark:text-chalk-dim mr-1">
-                              {dest === 'team' ? 'Credits' : 'Tokens each'}
-                            </span>
-                            {[1, 5, 10].map(n => (
-                              <button
-                                key={n}
-                                type="button"
-                                onClick={() => setQuantity(prev => ({ ...prev, [team.id]: n }))}
-                                className={`w-9 h-9 rounded-lg text-sm font-semibold border transition-colors ${
-                                  qty === n
-                                    ? 'bg-ember-500 text-ink-950 border-ember-500'
-                                    : 'bg-white dark:bg-ink-900 text-gray-900 dark:text-chalk border-gray-200 dark:border-courtline hover:border-ember-400'
-                                }`}
-                              >
-                                {n}
-                              </button>
-                            ))}
-                            <input
-                              type="number"
-                              min={1}
-                              value={qty || ''}
-                              onChange={e => {
-                                const n = parseInt(e.target.value)
-                                setQuantity(prev => ({ ...prev, [team.id]: Number.isNaN(n) ? 1 : Math.min(10000, Math.max(1, n)) }))
-                              }}
-                              aria-label="Amount"
-                              className="w-16 h-9 border border-gray-200 dark:border-courtline rounded-lg px-2 text-center text-gray-900 dark:text-chalk dark:bg-ink-900 text-sm focus:outline-none focus:border-ember-500"
-                            />
-                          </div>
-                          {dest !== 'team' && recipients > 0 && (
-                            <span className="text-sm text-gray-500 dark:text-chalk-dim">
-                              {recipients} player{recipients !== 1 ? 's' : ''} × {qty} ={' '}
-                              <span className="font-semibold text-gray-900 dark:text-chalk tabular-nums">{recipients * qty}</span> tokens
-                            </span>
-                          )}
-                        </div>
-
-                        {teamError && <p className="text-red-500 text-sm">{teamError}</p>}
-                        <button
-                          onClick={() => handleBuy(team)}
-                          disabled={!canBuy}
-                          className="w-full bg-ember-500 hover:bg-ember-400 disabled:bg-ember-300 text-ink-950 font-semibold py-2.5 rounded-xl text-sm transition-colors"
-                        >
-                          {buying
-                            ? 'Redirecting to checkout\u2026'
-                            : dest === 'team'
-                              ? `Buy ${qty} team credit${qty !== 1 ? 's' : ''}`
-                              : recipients === 0
-                                ? 'Select players first'
-                                : `Buy ${recipients * qty} token${recipients * qty !== 1 ? 's' : ''}`}
-                        </button>
-                      </div>
-                      )
-                    })()}
-                  </div>
-                  )}
-
-                  {/* Team chat — org has coach powers over its teams' chats */}
-                  <div className="border-t border-gray-100 dark:border-courtline pt-4">
-                    <p className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 dark:text-chalk-dim uppercase tracking-wide mb-2">
-                      <MessageSquareIcon aria-hidden className="w-3.5 h-3.5" />
-                      Team Chat
-                    </p>
-                    <TeamChatPanel teamId={team.id} />
-                  </div>
-
-                  {/* Email blast to this team's registered players */}
-                  <div className="border-t border-gray-100 dark:border-courtline pt-4">
-                    <EmailTeamPanel teamId={team.id} playerCount={team.members.length} />
-                  </div>
-
-                  {/* Danger zone — delete this team */}
-                  <Section title="Danger zone" summary="Delete team">
-                    <div className="mt-2 flex items-center justify-between gap-3 flex-wrap">
-                      <p className="text-xs text-gray-400 dark:text-chalk-dim max-w-sm">
-                        Permanently delete this team, its roster, and its coaches.
-                        Players keep their own shot history. This can&apos;t be undone.
-                      </p>
-                      <button
-                        onClick={() => deleteTeam(team)}
-                        disabled={deletingTeam === team.id}
-                        className="shrink-0 bg-white dark:bg-ink-900 border border-red-300 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 disabled:opacity-50 font-bold px-3 py-1.5 rounded-xl text-sm transition-colors"
-                      >
-                        {deletingTeam === team.id ? 'Deleting…' : 'Delete team'}
-                      </button>
-                    </div>
-                  </Section>
-                </div>
-              )}
-            </div>
-          )
-        })}
+        {teams.map(team => (
+          <OrgTeamCard
+            key={team.id}
+            team={team}
+            isOpen={expanded === team.id}
+            onToggle={() => setExpanded(expanded === team.id ? null : team.id)}
+            inApp={inApp}
+            baseUrl={BASE_URL}
+            classPackage={classPackages.find(p => p.id === team.classPackageId) ?? null}
+            emailSelected={emailSelected}
+            onToggleEmailMember={toggleEmailMember}
+            onDraftEmail={() => setEmailDraftTeam(team.id)}
+            onOpenTeam={() => openTeam(team.id)}
+            onGoToClassTab={() => goToTab('class')}
+            onOpenScheduleModal={() => setScheduleModal(team.id)}
+            onOpenLeaderboardModal={() => setTeamLbModal(team.id)}
+            onRemoveHeadCoach={() => removeHeadCoach(team.id)}
+            onRemoveCoach={removeCoach}
+            onRemovePlayer={userId => removePlayer(team.id, userId)}
+            onDeleteTeam={() => deleteTeam(team)}
+            removingCoach={removingCoach}
+            removingPlayer={removingPlayer}
+            deletingTeam={deletingTeam === team.id}
+            onGiveCredits={(ids, each) => giveTeamCreditsToPlayers(team.id, ids, each)}
+            onBuy={(dest, quantity, ids) => handleBuy(team, dest, quantity, ids)}
+            buying={buying}
+          />
+        ))}
       </div>
     </div>
   )

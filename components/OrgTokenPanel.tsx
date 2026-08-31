@@ -6,9 +6,10 @@ import { useIsInApp } from '@/lib/useIsInApp'
 import { SearchIcon, UsersIcon, WalletIcon, UserIcon } from 'lucide-react'
 import VolumeSavings, { VolumeTierList } from '@/components/VolumeSavings'
 import {
-  analysisUnitCents,
   orderPricing,
   usd,
+  MAX_TOKENS_PER_ORDER,
+  type OrgTier,
 } from '@/lib/team-pricing'
 
 export interface OrgPlayerOpt {
@@ -28,7 +29,6 @@ export interface OrgTeamOpt {
   name: string
   coachName: string
   ageGroup: string | null
-  initiated: boolean
   memberCount: number
   credits: number
 }
@@ -54,9 +54,10 @@ const SEND_MODES: Array<{ id: SendMode; label: string; blurb: string }> = [
 ]
 
 /**
- * The organization's token hub: balance overview, buying, and one unified
- * send flow that reaches players directly, a team's shared balance, or a
- * coach — searchable and built to stay usable with many teams and players.
+ * The organization's token hub: balance overview, buying (tier-rate pricing),
+ * and one unified send flow that reaches players directly, a team's shared
+ * balance, or a coach — searchable and built to stay usable with many teams
+ * and players.
  */
 export default function OrgTokenPanel({
   balance,
@@ -65,6 +66,7 @@ export default function OrgTokenPanel({
   teams,
   totalPlayerTokens,
   totalTeamCredits,
+  tier,
 }: {
   balance: number
   players: OrgPlayerOpt[]
@@ -72,6 +74,8 @@ export default function OrgTokenPanel({
   teams: OrgTeamOpt[]
   totalPlayerTokens: number
   totalTeamCredits: number
+  /** The organization plan, which sets both the rate and the ladder. */
+  tier: OrgTier
 }) {
   const router = useRouter()
   const inApp = useIsInApp()
@@ -91,9 +95,8 @@ export default function OrgTokenPanel({
   const [sendCoachEmail, setSendCoachEmail] = useState(coaches[0]?.email ?? '')
   const [sendQty, setSendQty] = useState(1)
 
-  const anyInitiated = teams.some(t => t.initiated)
-  const buyBaseCents = analysisUnitCents(anyInitiated)
-  const buyTotal = usd(orderPricing(buyBaseCents, buyQty).totalCents)
+  // Every organization gets the team rate — no roster minimum, nothing to unlock.
+  const buyTotal = usd(orderPricing(tier, buyQty).totalCents)
 
   // Players grouped by team, filtered by the search box. Matches on the
   // player's name or their team name so "U15" narrows to one squad.
@@ -226,18 +229,18 @@ export default function OrgTokenPanel({
           { label: 'With players', value: totalPlayerTokens, hint: 'Tokens sitting on player accounts' },
           { label: 'With teams', value: totalTeamCredits, hint: 'Shared credits across your teams' },
         ].map(s => (
-          <div key={s.label} className="bg-white border border-gray-200 rounded-2xl px-4 py-3" title={s.hint}>
-            <p className="text-xs font-medium text-gray-500">{s.label}</p>
-            <p className="text-2xl font-bold text-gray-900 tabular-nums mt-0.5">{s.value}</p>
+          <div key={s.label} className="bg-ember-50 dark:bg-ember-500/10 border border-ember-200 dark:border-courtline rounded-2xl px-4 py-3" title={s.hint}>
+            <p className="text-xs font-medium text-gray-500 dark:text-chalk-dim">{s.label}</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-chalk tabular-nums mt-0.5">{s.value}</p>
           </div>
         ))}
       </div>
 
       {/* ── Send tokens ──────────────────────────────────────────── */}
-      <div id="send-tokens" className="bg-white border border-gray-200 rounded-2xl p-5 space-y-4 scroll-mt-24">
+      <div id="send-tokens" className="bg-white dark:bg-ink-900 border border-gray-200 dark:border-courtline rounded-2xl p-5 space-y-4 scroll-mt-24">
         <div>
-          <h3 className="text-base font-semibold text-gray-900">Send tokens</h3>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <h3 className="text-base font-semibold text-gray-900 dark:text-chalk">Send tokens</h3>
+          <p className="text-sm text-gray-500 dark:text-chalk-dim mt-0.5">
             Move tokens from your balance to the people who&apos;ll use them.
           </p>
         </div>
@@ -256,8 +259,8 @@ export default function OrgTokenPanel({
                 onClick={() => { setMode(m.id); setSearch(''); setMsg(null) }}
                 className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-colors ${
                   active
-                    ? 'border-orange-500 bg-orange-50 text-orange-700'
-                    : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                    ? 'border-ember-500 bg-ember-50 dark:bg-ember-500/15 text-ember-700 dark:text-ember-400'
+                    : 'border-gray-200 dark:border-courtline bg-white dark:bg-ink-900 text-gray-600 dark:text-chalk-dim hover:border-gray-300'
                 }`}
               >
                 <Icon className="w-4 h-4" aria-hidden />
@@ -266,7 +269,7 @@ export default function OrgTokenPanel({
             )
           })}
         </div>
-        <p className="text-xs text-gray-500 -mt-1">{activeBlurb}</p>
+        <p className="text-xs text-gray-500 dark:text-chalk-dim -mt-1">{activeBlurb}</p>
 
         {/* Search — shown whenever the list can grow long */}
         {((mode === 'players' && players.length > 6) ||
@@ -279,7 +282,7 @@ export default function OrgTokenPanel({
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder={mode === 'players' ? 'Search players or teams…' : mode === 'team' ? 'Search teams…' : 'Search coaches…'}
-              className="w-full border border-gray-200 rounded-xl pl-9 pr-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-orange-500"
+              className="w-full border border-gray-200 dark:border-courtline rounded-xl pl-9 pr-3 py-2.5 text-sm text-gray-900 dark:text-chalk dark:bg-ink-900 placeholder:text-gray-400 focus:outline-none focus:border-ember-500"
             />
           </div>
         )}
@@ -287,51 +290,51 @@ export default function OrgTokenPanel({
         {/* Recipient list */}
         {mode === 'players' && (
           players.length === 0 ? (
-            <p className="text-sm text-gray-400">No players have joined your teams yet.</p>
+            <p className="text-sm text-gray-400 dark:text-chalk-dim">No players have joined your teams yet.</p>
           ) : (
-            <div className="border border-gray-200 rounded-xl overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b border-gray-200">
-                <span className="text-xs font-medium text-gray-500">
+            <div className="border border-gray-200 dark:border-courtline rounded-xl overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-2 bg-gray-50 dark:bg-ink-950/60 border-b border-gray-200 dark:border-courtline">
+                <span className="text-xs font-medium text-gray-500 dark:text-chalk-dim">
                   {selectedPlayerIds.size} of {players.length} selected
                 </span>
                 <button
                   type="button"
                   onClick={() => toggleGroup(visiblePlayerIds)}
-                  className="text-xs font-semibold text-orange-600 hover:text-orange-500"
+                  className="text-xs font-semibold text-ember-600 hover:text-ember-500 dark:text-ember-400"
                 >
                   {visiblePlayerIds.length > 0 && visiblePlayerIds.every(id => selectedPlayerIds.has(id))
                     ? 'Deselect all'
                     : 'Select all'}
                 </button>
               </div>
-              <div className="max-h-72 overflow-y-auto divide-y divide-gray-100">
+              <div className="max-h-72 overflow-y-auto divide-y divide-gray-100 dark:divide-courtline">
                 {playerGroups.length === 0 && (
-                  <p className="text-sm text-gray-400 px-4 py-4">No players match &ldquo;{search}&rdquo;.</p>
+                  <p className="text-sm text-gray-400 dark:text-chalk-dim px-4 py-4">No players match &ldquo;{search}&rdquo;.</p>
                 )}
                 {playerGroups.map(g => {
                   const ids = g.players.map(p => p.id)
                   const allOn = ids.every(id => selectedPlayerIds.has(id))
                   return (
                     <div key={g.teamId}>
-                      <div className="flex items-center justify-between px-4 py-1.5 bg-gray-50/60">
-                        <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">{g.team}</span>
+                      <div className="flex items-center justify-between px-4 py-1.5 bg-gray-50/60 dark:bg-ink-950/40">
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-chalk-dim">{g.team}</span>
                         <button
                           type="button"
                           onClick={() => toggleGroup(ids)}
-                          className="text-[11px] font-semibold text-orange-600 hover:text-orange-500"
+                          className="text-[11px] font-semibold text-ember-600 hover:text-ember-500 dark:text-ember-400"
                         >
                           {allOn ? 'Deselect team' : 'Select team'}
                         </button>
                       </div>
                       {g.players.map(p => (
-                        <label key={p.id} className="flex items-center gap-3 px-4 py-2 cursor-pointer hover:bg-gray-50">
+                        <label key={p.id} className="flex items-center gap-3 px-4 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-ink-800">
                           <input
                             type="checkbox"
                             checked={selectedPlayerIds.has(p.id)}
                             onChange={() => togglePlayer(p.id)}
-                            className="w-4 h-4 accent-orange-500 shrink-0"
+                            className="w-4 h-4 accent-ember-500 shrink-0"
                           />
-                          <span className="text-sm text-gray-900">{p.label}</span>
+                          <span className="text-sm text-gray-900 dark:text-chalk">{p.label}</span>
                         </label>
                       ))}
                     </div>
@@ -344,30 +347,30 @@ export default function OrgTokenPanel({
 
         {mode === 'team' && (
           teams.length === 0 ? (
-            <p className="text-sm text-gray-400">No teams yet — add one in the Teams tab.</p>
+            <p className="text-sm text-gray-400 dark:text-chalk-dim">No teams yet — add one in the Teams tab.</p>
           ) : (
-            <div className="border border-gray-200 rounded-xl max-h-72 overflow-y-auto divide-y divide-gray-100">
+            <div className="border border-gray-200 dark:border-courtline rounded-xl max-h-72 overflow-y-auto divide-y divide-gray-100 dark:divide-courtline">
               {filteredTeams.length === 0 && (
-                <p className="text-sm text-gray-400 px-4 py-4">No teams match &ldquo;{search}&rdquo;.</p>
+                <p className="text-sm text-gray-400 dark:text-chalk-dim px-4 py-4">No teams match &ldquo;{search}&rdquo;.</p>
               )}
               {filteredTeams.map(t => (
-                <label key={t.id} className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-gray-50">
+                <label key={t.id} className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-ink-800">
                   <input
                     type="radio"
                     name="send-team"
                     checked={sendTeamId === t.id}
                     onChange={() => setSendTeamId(t.id)}
-                    className="w-4 h-4 accent-orange-500 shrink-0"
+                    className="w-4 h-4 accent-ember-500 shrink-0"
                   />
                   <span className="flex-1 min-w-0">
-                    <span className="block text-sm font-medium text-gray-900 truncate">
+                    <span className="block text-sm font-medium text-gray-900 dark:text-chalk truncate">
                       {t.name}{t.ageGroup ? ` · ${t.ageGroup}` : ''}
                     </span>
-                    <span className="block text-xs text-gray-400 truncate">
+                    <span className="block text-xs text-gray-400 dark:text-chalk-dim truncate">
                       {t.memberCount} player{t.memberCount !== 1 ? 's' : ''} · coach {t.coachName}
                     </span>
                   </span>
-                  <span className="shrink-0 text-xs text-gray-500 tabular-nums">{t.credits} credit{t.credits !== 1 ? 's' : ''}</span>
+                  <span className="shrink-0 text-xs text-gray-500 dark:text-chalk-dim tabular-nums">{t.credits} credit{t.credits !== 1 ? 's' : ''}</span>
                 </label>
               ))}
             </div>
@@ -376,22 +379,22 @@ export default function OrgTokenPanel({
 
         {mode === 'coach' && (
           coaches.length === 0 ? (
-            <p className="text-sm text-gray-400">No coaches yet — add a team with a coach in the Teams tab.</p>
+            <p className="text-sm text-gray-400 dark:text-chalk-dim">No coaches yet — add a team with a coach in the Teams tab.</p>
           ) : (
-            <div className="border border-gray-200 rounded-xl max-h-72 overflow-y-auto divide-y divide-gray-100">
+            <div className="border border-gray-200 dark:border-courtline rounded-xl max-h-72 overflow-y-auto divide-y divide-gray-100 dark:divide-courtline">
               {filteredCoaches.length === 0 && (
-                <p className="text-sm text-gray-400 px-4 py-4">No coaches match &ldquo;{search}&rdquo;.</p>
+                <p className="text-sm text-gray-400 dark:text-chalk-dim px-4 py-4">No coaches match &ldquo;{search}&rdquo;.</p>
               )}
               {filteredCoaches.map(c => (
-                <label key={c.email} className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-gray-50">
+                <label key={c.email} className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-ink-800">
                   <input
                     type="radio"
                     name="send-coach"
                     checked={sendCoachEmail === c.email}
                     onChange={() => setSendCoachEmail(c.email)}
-                    className="w-4 h-4 accent-orange-500 shrink-0"
+                    className="w-4 h-4 accent-ember-500 shrink-0"
                   />
-                  <span className="text-sm text-gray-900 truncate">{c.label}</span>
+                  <span className="text-sm text-gray-900 dark:text-chalk truncate">{c.label}</span>
                 </label>
               ))}
             </div>
@@ -400,7 +403,7 @@ export default function OrgTokenPanel({
 
         {/* Amount + summary + send */}
         <div className="flex flex-wrap items-center gap-3 pt-1">
-          <label className="flex items-center gap-2 text-sm text-gray-600">
+          <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-chalk-dim">
             {mode === 'players' ? 'Tokens per player' : 'Amount'}
             <input
               type="number"
@@ -416,79 +419,52 @@ export default function OrgTokenPanel({
                 if (mode === 'players' && tokensEach < 1) setTokensEach(1)
                 if (mode !== 'players' && sendQty < 1) setSendQty(1)
               }}
-              className="w-20 border border-gray-200 rounded-xl px-2 py-2 text-center text-gray-900 text-sm focus:outline-none focus:border-orange-500"
+              className="w-20 border border-gray-200 dark:border-courtline rounded-xl px-2 py-2 text-center text-gray-900 dark:text-chalk dark:bg-ink-900 text-sm focus:outline-none focus:border-ember-500"
             />
           </label>
-          <span className="text-sm text-gray-500 flex-1 min-w-0">
+          <span className="text-sm text-gray-500 dark:text-chalk-dim flex-1 min-w-0">
             {mode === 'players' && selectedPlayerIds.size > 0 && (
-              <>Total <span className="font-semibold text-gray-900 tabular-nums">{sendTotal}</span> of your {balance}</>
+              <>Total <span className="font-semibold text-gray-900 dark:text-chalk tabular-nums">{sendTotal}</span> of your {balance}</>
             )}
             {mode !== 'players' && (
-              <>From your balance of <span className="font-semibold text-gray-900 tabular-nums">{balance}</span></>
+              <>From your balance of <span className="font-semibold text-gray-900 dark:text-chalk tabular-nums">{balance}</span></>
             )}
           </span>
           <button
             type="button"
             onClick={send}
             disabled={!canSend}
-            className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors"
+            className="bg-ember-500 hover:bg-ember-400 disabled:bg-ember-300 text-ink-950 font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors"
           >
             {busy ? 'Sending…' : 'Send'}
           </button>
         </div>
 
         {notEnough && (
-          <p className="text-sm font-medium text-red-600">
+          <p className="text-sm font-medium text-red-600 dark:text-red-400">
             Not enough tokens — this send needs {sendTotal}, you have {balance}.
           </p>
         )}
         {balance === 0 && !notEnough && (
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 dark:text-chalk-dim">
             Your balance is empty{inApp ? '.' : ' — buy tokens below first.'}
           </p>
         )}
         {msg && (
-          <p className={`text-sm font-medium ${msg.ok ? 'text-green-700' : 'text-red-600'}`}>{msg.text}</p>
+          <p className={`text-sm font-medium ${msg.ok ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{msg.text}</p>
         )}
       </div>
 
       {/* ── Buy tokens — hidden in the iOS app (guideline 3.1.1) ─── */}
       {!inApp && (
-        <div id="buy-tokens" className="bg-white border border-gray-200 rounded-2xl p-5 space-y-4 scroll-mt-24">
+        <div id="buy-tokens" className="bg-white dark:bg-ink-900 border border-gray-200 dark:border-courtline rounded-2xl p-5 space-y-4 scroll-mt-24">
           <div>
-            <h3 className="text-base font-semibold text-gray-900">Buy tokens</h3>
-            <p className="text-sm text-gray-500 mt-0.5">
+            <h3 className="text-base font-semibold text-gray-900 dark:text-chalk">Buy tokens</h3>
+            <p className="text-sm text-gray-500 dark:text-chalk-dim mt-0.5">
               Purchases land in your unassigned balance — send them out whenever you&apos;re ready.
+              Card, Apple Pay, and Google Pay are accepted at checkout.
             </p>
           </div>
-
-          {/* Pricing notice when no team has reached 8 players */}
-          {!anyInitiated && teams.length > 0 && (
-            <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-4 space-y-3">
-              <p className="text-sm font-semibold text-orange-900">Tokens drop to $1.49 once a team reaches 8 players</p>
-              <p className="text-xs text-orange-700">Currently $3.49 each — get more players to unlock the lower price.</p>
-              <div className="space-y-2 pt-1">
-                {teams.map(t => {
-                  const pct = Math.min(100, (t.memberCount / 8) * 100)
-                  const left = Math.max(0, 8 - t.memberCount)
-                  return (
-                    <div key={t.id} className="space-y-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-xs font-medium text-orange-800">{t.name}</p>
-                        <p className="text-xs text-orange-700 shrink-0 tabular-nums">{t.memberCount}/8</p>
-                      </div>
-                      <div className="w-full bg-orange-200 rounded-full h-1.5">
-                        <div className="bg-orange-500 h-1.5 rounded-full transition-all" style={{ width: `${pct}%` }} />
-                      </div>
-                      {left > 0 && (
-                        <p className="text-xs text-orange-600">{left} more player{left !== 1 ? 's' : ''} to unlock $1.49</p>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
 
           {/* Quantity selector — quick picks, then a clearly-labelled custom box */}
           <div className="space-y-2">
@@ -500,8 +476,8 @@ export default function OrgTokenPanel({
                   onClick={() => { setBuyQty(q); setCustomQty('') }}
                   className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-colors ${
                     buyQty === q && !customQty
-                      ? 'bg-orange-500 text-white border-orange-500'
-                      : 'bg-white text-gray-900 border-gray-200 hover:border-orange-400'
+                      ? 'bg-ember-500 text-ink-950 border-ember-500'
+                      : 'bg-white dark:bg-ink-900 text-gray-900 dark:text-chalk border-gray-200 dark:border-courtline hover:border-ember-400'
                   }`}
                 >
                   {q}
@@ -511,29 +487,27 @@ export default function OrgTokenPanel({
             <input
               type="number"
               min={1}
-              max={10000}
+              max={MAX_TOKENS_PER_ORDER}
               value={customQty}
               onChange={e => {
                 const v = e.target.value
                 setCustomQty(v)
                 const n = parseInt(v)
-                if (!Number.isNaN(n)) setBuyQty(Math.min(10000, Math.max(1, n)))
+                if (!Number.isNaN(n)) setBuyQty(Math.min(MAX_TOKENS_PER_ORDER, Math.max(1, n)))
               }}
               onFocus={e => e.target.select()}
               placeholder="Or enter a custom amount…"
               aria-label="Custom token amount"
-              className="w-full py-2.5 px-3 border border-gray-200 rounded-xl text-gray-900 text-sm placeholder:text-gray-400 focus:outline-none focus:border-orange-500"
+              className="w-full py-2.5 px-3 border border-gray-200 dark:border-courtline rounded-xl text-gray-900 dark:text-chalk dark:bg-ink-900 text-sm placeholder:text-gray-400 placeholder:font-normal focus:outline-none focus:border-ember-500"
             />
           </div>
 
-          {anyInitiated && (
-            <p className="text-xs text-green-700 font-medium px-1">$1.49 team rate unlocked</p>
-          )}
+          <p className="text-xs text-green-600 dark:text-green-400 font-semibold px-1">Team rate — $2.49 each, $1.49 when you buy 5+</p>
 
-          <VolumeTierList baseUnitCents={buyBaseCents} className="px-1" />
+          <VolumeTierList tier={tier} className="px-1" />
 
           <VolumeSavings
-            baseUnitCents={buyBaseCents}
+            tier={tier}
             quantity={buyQty}
             label="token"
             onJump={setBuyQty}
@@ -543,7 +517,7 @@ export default function OrgTokenPanel({
             type="button"
             onClick={buyTokens}
             disabled={busy}
-            className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-semibold py-3 rounded-xl transition-colors"
+            className="w-full bg-ember-500 hover:bg-ember-400 disabled:bg-ember-300 text-ink-950 font-semibold py-3 rounded-xl transition-colors"
           >
             {busy ? 'Redirecting to checkout…' : `Buy ${buyQty} token${buyQty !== 1 ? 's' : ''} — ${buyTotal}`}
           </button>

@@ -81,7 +81,7 @@ export default function GiveTokensForm({
           onClick={() => { setMode('team'); setMsg(null) }}
           className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-colors ${
             mode === 'team'
-              ? 'border-orange-500 bg-orange-50 text-orange-700'
+              ? 'border-ember-500 bg-ember-50 text-ember-700'
               : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
           }`}
         >
@@ -95,7 +95,7 @@ export default function GiveTokensForm({
           onClick={() => { setMode('players'); setMsg(null) }}
           className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-colors ${
             mode === 'players'
-              ? 'border-orange-500 bg-orange-50 text-orange-700'
+              ? 'border-ember-500 bg-ember-50 text-ember-700'
               : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
           }`}
         >
@@ -116,7 +116,7 @@ export default function GiveTokensForm({
             <button
               type="button"
               onClick={toggleAllVisible}
-              className="text-xs font-semibold text-orange-600 hover:text-orange-500"
+              className="text-xs font-semibold text-ember-600 hover:text-ember-500"
             >
               {filteredPlayers.length > 0 && filteredPlayers.every(p => sel[p.id]) ? 'Deselect all' : 'Select all'}
             </button>
@@ -143,7 +143,7 @@ export default function GiveTokensForm({
                   type="checkbox"
                   checked={!!sel[p.id]}
                   onChange={() => setSel(s => ({ ...s, [p.id]: !s[p.id] }))}
-                  className="w-4 h-4 accent-orange-500 shrink-0"
+                  className="w-4 h-4 accent-ember-500 shrink-0"
                 />
                 <span className="flex-1 text-sm text-gray-900 truncate">{p.label}</span>
                 {typeof p.tokens === 'number' && (
@@ -166,8 +166,8 @@ export default function GiveTokensForm({
               onClick={() => setEach(n)}
               className={`w-9 h-9 rounded-lg text-sm font-semibold border transition-colors ${
                 each === n
-                  ? 'bg-orange-500 text-white border-orange-500'
-                  : 'bg-white text-gray-900 border-gray-200 hover:border-orange-400'
+                  ? 'bg-ember-500 text-white border-ember-500'
+                  : 'bg-white text-gray-900 border-gray-200 hover:border-ember-400'
               }`}
             >
               {n}
@@ -183,7 +183,7 @@ export default function GiveTokensForm({
             }}
             onBlur={() => { if (each < 1) setEach(1) }}
             aria-label="Tokens per player"
-            className="w-16 h-9 border border-gray-200 rounded-lg px-2 text-center text-gray-900 text-sm focus:outline-none focus:border-orange-500"
+            className="w-16 h-9 border border-gray-200 rounded-lg px-2 text-center text-gray-900 text-sm focus:outline-none focus:border-ember-500"
           />
         </div>
         <span className="text-sm text-gray-500 flex-1 min-w-0">
@@ -198,7 +198,7 @@ export default function GiveTokensForm({
           type="button"
           onClick={give}
           disabled={busy || selectedIds.length === 0 || tooLow}
-          className="bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors"
+          className="bg-ember-500 hover:bg-ember-400 disabled:bg-ember-300 text-ink-950 font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors"
         >
           {busy
             ? 'Giving…'

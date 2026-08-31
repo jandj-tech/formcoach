@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { trackInitiateCheckout } from '@/lib/meta-pixel'
 import { useIsInApp } from '@/lib/useIsInApp'
 import { useAnalysisPrice } from '@/lib/useAnalysisPrice'
-import { orderPricing, usd, MAX_TOKENS_PER_ORDER } from '@/lib/team-pricing'
+import { orderPricing, percentLabel, usd, MAX_TOKENS_PER_ORDER } from '@/lib/team-pricing'
 import QuantityStepper from '@/components/QuantityStepper'
 import VolumeNudge from '@/components/VolumeNudge'
 import Link from 'next/link'
@@ -108,7 +108,7 @@ export default function PremiumCTA({ dark = false, initiated = false }: { dark?:
             </p>
             {percentOff > 0 && (
               <p className="text-xs text-green-500 font-semibold mt-0.5">
-                {Math.round(percentOff)}% volume discount — you save {usd(savingsCents)}
+                {percentLabel(percentOff)}% volume discount — you save {usd(savingsCents)}
               </p>
             )}
           </div>

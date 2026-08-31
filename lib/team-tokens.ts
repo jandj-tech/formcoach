@@ -46,7 +46,7 @@ export async function getTeamTokenState(teamId: string): Promise<TeamTokenState 
   `) as unknown as [{ count: number }]
 
   // A team is "live" (initiated) once it either reaches the minimum player
-  // count or a class package was bought for it. Either path unlocks $1.49.
+  // count or a class package was bought for it. Either path unlocks the team rate.
   const initiated = hasClassPackage || row.count >= INITIATION_MIN_PLAYERS
 
   return { teamId, name, initiated, playerCount: row.count, tokenPool }
@@ -89,7 +89,7 @@ export async function userHasInitiatedTeam(userId: string): Promise<boolean> {
 /**
  * True if the organization has at least one team that is initiated — either
  * by reaching INITIATION_MIN_PLAYERS players or by having a class package
- * bought for it. Org leaders get $1.49 across every buy flow once this is true.
+ * bought for it. Org leaders get the team rate across every buy flow once this is true.
  */
 export async function orgHasInitiatedTeam(orgId: string): Promise<boolean> {
   try {

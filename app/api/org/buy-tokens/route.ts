@@ -10,7 +10,7 @@ const BASE_URL = resolveBaseUrl()
 
 // An organization buys analysis tokens into its own balance. From there the
 // org can assign them to players, give them to a coach, or use them itself.
-// $1.49 each once the org has a team with 8+ players, $3.49 before.
+// The team rate ($2.49, or $1.49 each at 5+) once the org has a team with 8+ players, $3.49 before.
 export async function POST(req: NextRequest) {
   // Digital goods cannot be sold via Stripe inside the iOS app (guideline 3.1.1).
   const inAppBlock = rejectInAppPurchase(req)

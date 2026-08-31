@@ -1,6 +1,6 @@
 'use client'
 
-import { orderPricing, usd } from '@/lib/team-pricing'
+import { orderPricing, percentLabel, usd } from '@/lib/team-pricing'
 
 /**
  * "Add 2 more and save 5%" — the offer to buy up a tier.
@@ -36,7 +36,7 @@ export default function VolumeNudge({
 
   // Tiers may carry fractional percentages (tuned to land exact bundle
   // totals); the offer reads as a round number.
-  const pct = Math.round(nextTier.percentOff)
+  const pct = percentLabel(nextTier.percentOff)
 
   const body = (
     <>

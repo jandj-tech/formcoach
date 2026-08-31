@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid quantity' }, { status: 400 })
     }
 
-    // Coach credits: $1.49 once the team is initiated, $3.49 before.
+    // Coach credits: the team rate ($2.49, or $1.49 each at 5+) once the team is initiated, $3.49 before.
     const state = await getTeamTokenState(session.teamId)
     const baseAmount = state?.initiated ? TEAM_TOKEN_PRICE_CENTS : REGULAR_ANALYSIS_PRICE_CENTS
     // Volume discount comes off whichever base rate applies to this buyer.

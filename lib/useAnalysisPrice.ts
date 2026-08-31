@@ -11,7 +11,7 @@ import { analysisUnitCents } from './team-pricing'
  * know the answer pass it as `initialInitiated` so the correct price is on
  * screen at first paint; the session fetch then confirms it for pages that
  * render without it (the shop, for one, used to fall back to $1.79 for a
- * player whose team had already unlocked $1.49).
+ * player whose team had already unlocked the team rate).
  */
 export function useAnalysisPrice(initialInitiated = false) {
   const [initiated, setInitiated] = useState(initialInitiated)

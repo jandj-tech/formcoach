@@ -2,12 +2,12 @@
 
 import { useState } from 'react'
 import { useIsInApp } from '@/lib/useIsInApp'
-import { analysisUnitCents, orderPricing, usd, MAX_COACH_CREDITS_PER_ORDER } from '@/lib/team-pricing'
+import { analysisUnitCents, orderPricing, percentLabel, usd, MAX_COACH_CREDITS_PER_ORDER } from '@/lib/team-pricing'
 import QuantityStepper from '@/components/QuantityStepper'
 
-// Buys analysis credits for a coach / org owner's own uploads —
-// $1.49 each if their team is initiated, $3.49 otherwise, with the same
-// volume tiers every other buy flow uses.
+// Buys analysis credits for a coach / org owner's own uploads — the team rate
+// ($2.49, or $1.49 each at 5+) if their team is initiated, $3.49 otherwise,
+// with the same volume tiers every other buy flow uses.
 export default function BuySelfCreditsButton({ initiated }: { initiated: boolean }) {
   const inApp = useIsInApp()
   const [loading, setLoading] = useState(false)
@@ -49,7 +49,7 @@ export default function BuySelfCreditsButton({ initiated }: { initiated: boolean
         </button>
       </span>
       {percentOff > 0 && (
-        <span className="text-green-600 text-xs font-semibold">{percentOff}% volume discount applied</span>
+        <span className="text-green-600 text-xs font-semibold">{percentLabel(percentOff)}% volume discount applied</span>
       )}
     </span>
   )

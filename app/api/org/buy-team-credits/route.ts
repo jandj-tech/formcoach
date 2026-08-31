@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     ` as unknown as [{ id: string; name: string } | undefined]
     if (!team) return NextResponse.json({ error: 'Team not found' }, { status: 404 })
 
-    // Org owners unlock the $1.49 rate org-wide once ANY of their teams
+    // Org owners unlock the team rate ($2.49, or $1.49 at 5+) org-wide once ANY of their teams
     // is initiated — applies to every buy flow, including coach credits
     // for a team that hasn't reached 8 players on its own yet.
     const orgInitiated = await orgHasInitiatedTeam(session.orgId)

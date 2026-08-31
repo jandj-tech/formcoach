@@ -82,7 +82,7 @@ export async function GET(req: NextRequest) {
       }
 
       // If any of their teams has reached the initiated player count, the
-      // per-analysis price is $1.49 instead of $3.49.
+      // per-analysis price is the team rate ($2.49, or $1.49 at 5+) instead of $3.49.
       const onInitiatedTeam = onTeam && (await userHasInitiatedTeam(user.id))
 
       // The free signup analysis has been discontinued — no account gets a

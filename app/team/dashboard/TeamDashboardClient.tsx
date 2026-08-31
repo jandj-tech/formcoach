@@ -612,8 +612,8 @@ export default function TeamDashboardClient({
             <p className="text-sm text-gray-600">
               ${creditRate} per credit
               {team.initiated
-                ? <span className="ml-1.5 text-xs text-green-600 font-semibold">discounted $1.49 rate active</span>
-                : <span className="ml-1.5 text-xs text-gray-500">drops to $1.49 once your team reaches 8 players</span>}
+                ? <span className="ml-1.5 text-xs text-green-600 font-semibold">discounted rate active — $1.49 each when you buy 5+</span>
+                : <span className="ml-1.5 text-xs text-gray-500">drops to $2.49 — $1.49 each at 5+ — once your team reaches 8 players</span>}
             </p>
             <div className="space-y-2">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Quantity</p>
@@ -697,7 +697,7 @@ export default function TeamDashboardClient({
                   ? `${8 - members.length} more player${8 - members.length !== 1 ? 's' : ''} needed to activate this team.`
                   : 'Almost there!'
                 }
-                {' '}Once you reach 8 players, every player on the team automatically gets <strong>1 free analysis token</strong>{inApp ? '' : ', and the team unlocks the ability to purchase additional tokens at $1.49 each'}.
+                {' '}Once you reach 8 players, every player on the team automatically gets <strong>1 free analysis token</strong>{inApp ? '' : ', and the team unlocks discounted tokens at $2.49 each — $1.49 each when you buy 5 or more'}.
               </p>
               <p className="text-xs text-gray-400">Share your team signup link (in the Players tab) to invite players.</p>
             </div>
@@ -817,7 +817,7 @@ export default function TeamDashboardClient({
           <p className="text-xs text-gray-500 mt-1">
             {team.initiated
               ? `$${creditRate} each · discounted rate active`
-              : `$${creditRate} each · ${members.length}/8 players to unlock $1.49`}
+              : `$${creditRate} each · ${members.length}/8 players to unlock team pricing`}
           </p>
         </div>
 

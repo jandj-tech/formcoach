@@ -222,7 +222,7 @@ export default async function TeamDashboardPage() {
     }
   }
   // A team is initiated if a class was bought for it OR the player count
-  // reached the threshold. Either path unlocks $1.49 for this team's coach.
+  // reached the threshold. Either path unlocks the team rate for this team's coach.
   teamInitiated = hasClassPackage || members.length >= 8
 
   // The coach's own shot uploads, shown as a list in "My Uploads".

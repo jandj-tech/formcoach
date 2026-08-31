@@ -10,7 +10,7 @@ import { resolveBaseUrl } from '@/lib/base-url'
 const BASE_URL = resolveBaseUrl()
 
 // A coach or org owner buys analysis credits for their own shot uploads.
-// $1.49 each once their team has 8+ players, $3.49 before.
+// The team rate ($2.49, or $1.49 each at 5+) once their team has 8+ players, $3.49 before.
 export async function POST(req: NextRequest) {
   // Digital goods cannot be sold via Stripe inside the iOS app (guideline 3.1.1).
   const inAppBlock = rejectInAppPurchase(req)
@@ -28,8 +28,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid quantity' }, { status: 400 })
     }
 
-    // A team coach (no org) only gets $1.49 if their own team is initiated.
-    // An org owner gets $1.49 once any team in their org is initiated.
+    // A team coach (no org) only gets the team rate if their own team is initiated.
+    // An org owner gets the team rate once any team in their org is initiated.
     let liveTeam = false
     if (teamSession) {
       const state = await getTeamTokenState(teamSession.teamId)

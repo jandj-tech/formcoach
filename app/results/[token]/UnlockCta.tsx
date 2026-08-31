@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useIsInApp } from '@/lib/useIsInApp'
 import { trackInitiateCheckout } from '@/lib/meta-pixel'
 import { useAnalysisPrice } from '@/lib/useAnalysisPrice'
-import { orderPricing, usd } from '@/lib/team-pricing'
+import { orderPricing, percentLabel, usd } from '@/lib/team-pricing'
 
 // Three one-tap choices rather than a stepper: this is the moment someone
 // decides whether to buy at all, and asking them to operate a control first is
@@ -137,7 +137,7 @@ export default function UnlockCta({ resultsPath, justPurchased }: { resultsPath:
                     </span>
                     {pack.percentOff > 0 && (
                       <span className="rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-bold text-green-700">
-                        save {pack.percentOff}%
+                        save {percentLabel(pack.percentOff)}%
                       </span>
                     )}
                   </span>

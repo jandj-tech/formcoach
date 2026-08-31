@@ -25,7 +25,7 @@ const FAQS: Array<{ id?: string; q: string; a: string[] }> = [
   {
     q: 'How much does a shot analysis cost?',
     a: [
-      'Each analysis is $3.49 — or $1.49 for players on an initiated team. Every LearnHoops Training Basketball from the shop includes 5 free analyses, and bulk orders get volume discounts automatically.',
+      'Each analysis is $3.49 — or $2.49 for players on an initiated team, dropping to $1.49 each when you buy 5 or more at once. Every LearnHoops Training Basketball from the shop includes 5 free analyses, and bulk orders get volume discounts automatically.',
     ],
   },
   {
@@ -39,7 +39,7 @@ const FAQS: Array<{ id?: string; q: string; a: string[] }> = [
   {
     q: 'Can basketball teams and organizations use LearnHoops?',
     a: [
-      'Yes. Coaches get a team dashboard with a roster, shared credits, schedules, and team chat — players join with a team code, and the coach can upload shots for any player on the roster. Organizations can run multiple teams and 10-week training classes with progress certificates. Team players pay the discounted $1.49 rate per analysis.',
+      'Yes. Coaches get a team dashboard with a roster, shared credits, schedules, and team chat — players join with a team code, and the coach can upload shots for any player on the roster. Organizations can run multiple teams and 10-week training classes with progress certificates. Team players pay a discounted $2.49 per analysis, dropping to $1.49 each when you buy 5 or more at once.',
     ],
   },
 ]

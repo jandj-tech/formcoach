@@ -18,19 +18,23 @@ export async function GET(req: NextRequest) {
       subscription_expires_at: string | null
       analysis_tokens?: number
       free_analysis_used?: boolean | null
+      first_name?: string | null
+      last_initial?: string | null
+      nickname?: string | null
     }
 
     // The analysis_tokens column may not exist yet if the DB migration
-    // hasn't been applied — fall back to the legacy column set.
+    // hasn't been applied — fall back to the legacy column set. The name
+    // columns ride along for the app's native Settings screen.
     let user: UserRow | undefined
     try {
       ;[user] = (await db`
-        SELECT id, email, subscription_type, subscription_expires_at, analysis_tokens, free_analysis_used
+        SELECT id, email, subscription_type, subscription_expires_at, analysis_tokens, free_analysis_used, first_name, last_initial, nickname
         FROM users WHERE id = ${session.userId}
       `) as unknown as [UserRow | undefined]
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
-      if (!/(analysis_tokens|free_analysis_used).*does not exist/i.test(msg)) throw err
+      if (!/(analysis_tokens|free_analysis_used|first_name|last_initial|nickname).*does not exist/i.test(msg)) throw err
       console.warn('users.analysis_tokens column missing — run `npm run migrate`.')
       ;[user] = (await db`
         SELECT id, email, subscription_type, subscription_expires_at
@@ -107,7 +111,19 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({
         // orgTier is the web client's field; onInitiatedTeam stays a boolean
         // for already-shipped iOS builds that read it.
-        user: { id: user.id, email: user.email, subscribed, tokens: appTokens, onTeam, onInitiatedTeam, orgTier: tier, freeUpload },
+        user: {
+          id: user.id,
+          email: user.email,
+          subscribed,
+          tokens: appTokens,
+          onTeam,
+          onInitiatedTeam,
+          orgTier: tier,
+          freeUpload,
+          firstName: user.first_name ?? null,
+          lastInitial: user.last_initial ?? null,
+          nickname: user.nickname ?? null,
+        },
         account: { type: 'player', dashboard: '/dashboard' },
       })
     }

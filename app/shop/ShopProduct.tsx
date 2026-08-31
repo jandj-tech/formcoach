@@ -304,7 +304,7 @@ export default function ShopProduct({
                 <span className="text-gradient-ember">Eighteen criteria.</span>
               </h2>
               <p className="text-ink-950/60 leading-relaxed">
-                Upload a video of your shot and our AI studies 12 frames of it,
+                Upload a video of your shot and our AI studies 28 frames of it,
                 scoring the same 18 fundamentals real coaches teach — then tells
                 you exactly what to fix.
               </p>

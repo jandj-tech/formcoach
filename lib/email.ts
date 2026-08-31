@@ -30,7 +30,7 @@ export async function sendResultsEmail(to: string, token: string) {
     text: [
       `Your shot analysis is ready.`,
       ``,
-      `We studied 12 frames across 18 coaching criteria. View your full breakdown here:`,
+      `We studied 28 frames across 18 coaching criteria. View your full breakdown here:`,
       link,
       ``,
       `This link is private to you — bookmark it, it'll always work.`,
@@ -57,7 +57,7 @@ export async function sendResultsEmail(to: string, token: string) {
         <tr><td style="padding:36px 32px 8px;">
           <h1 style="margin:0 0 10px;color:#111111;font-size:24px;line-height:1.25;font-weight:800;">Your shot analysis is ready.</h1>
           <p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;">
-            We studied 12 frames of your shot across 18 coaching criteria.
+            We studied 28 frames of your shot across 18 coaching criteria.
             Your full breakdown — overall score, what you're doing well, and exactly what to fix — is one tap away.
           </p>
         </td></tr>

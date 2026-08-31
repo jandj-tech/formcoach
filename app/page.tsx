@@ -29,7 +29,7 @@ const STEPS = [
   {
     num: '02',
     title: 'AI analyzes your form',
-    desc: '12 frames studied across 18 coaching criteria, the same fundamentals real coaches teach.',
+    desc: '28 frames studied across 18 coaching criteria, the same fundamentals real coaches teach.',
   },
   {
     num: '03',
@@ -85,7 +85,7 @@ export default async function HomePage() {
           <span className="text-gradient-ember">professionally analyzed</span>
         </h1>
         <p className="text-chalk-dim text-base sm:text-xl mt-6 max-w-xl leading-relaxed px-2">
-          Upload a video of your shot. Our AI studies 12 frames and scores 18 key form criteria —
+          Upload a video of your shot. Our AI studies 28 frames and scores 18 key form criteria —
           instantly.
         </p>
 
@@ -115,7 +115,7 @@ export default async function HomePage() {
         <div className="flex items-center justify-center gap-8 sm:gap-14 mt-14 select-none">
           {[
             { value: '18', label: 'coaching criteria' },
-            { value: '12', label: 'frames per shot' },
+            { value: '28', label: 'frames per shot' },
             { value: '100%', label: 'private results' },
           ].map((stat) => (
             <div key={stat.label} className="text-center">

@@ -140,29 +140,52 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   // Coaches for each team, shown by nickname (falling back to email): the
   // founding coach plus any added coaches.
+  // Two batched reads rather than two per team. This was 2N+1 sequential
+  // round-trips — and the per-team nickname lookup re-read a `teams` row the
+  // query above had already returned. A player on five teams paid eleven
+  // round-trips to render one page; now it is three, whatever the count.
+  //
+  // Each read keeps its own try/catch: coach_nickname and team_coaches may be
+  // absent on older databases, and the page must still show the founding coach
+  // rather than failing, exactly as before.
   const coachesByTeam: Record<string, string[]> = {}
-  for (const t of teams) {
-    let headCoachNickname: string | null = null
+  const teamIds = teams.map(t => t.id)
+
+  const nicknameById = new Map<string, string | null>()
+  if (teamIds.length > 0) {
     try {
-      const [r] = (await db`
-        SELECT coach_nickname FROM teams WHERE id = ${t.id}
-      `) as unknown as [{ coach_nickname: string | null } | undefined]
-      headCoachNickname = r?.coach_nickname ?? null
+      const rows = (await db`
+        SELECT id, coach_nickname FROM teams WHERE id = ANY(${teamIds})
+      `) as unknown as Array<{ id: string; coach_nickname: string | null }>
+      for (const r of rows) nicknameById.set(r.id, r.coach_nickname)
     } catch (err) {
-      // coach_nickname column may not exist on older DBs.
       console.error('[dashboard] head coach nickname query failed:', err)
     }
-    const list = [headCoachNickname || t.admin_email]
+  }
+
+  const extrasByTeam = new Map<string, string[]>()
+  if (teamIds.length > 0) {
     try {
-      const extra = (await db`
-        SELECT email, nickname FROM team_coaches WHERE team_id = ${t.id} ORDER BY created_at ASC
-      `) as unknown as Array<{ email: string; nickname: string | null }>
-      list.push(...extra.map(c => c.nickname || c.email))
+      const rows = (await db`
+        SELECT team_id, email, nickname FROM team_coaches
+        WHERE team_id = ANY(${teamIds})
+        ORDER BY created_at ASC
+      `) as unknown as Array<{ team_id: string; email: string; nickname: string | null }>
+      for (const c of rows) {
+        const list = extrasByTeam.get(c.team_id) ?? []
+        list.push(c.nickname || c.email)
+        extrasByTeam.set(c.team_id, list)
+      }
     } catch (err) {
-      // team_coaches may not exist on older DBs — just show the founding coach.
       console.error('[dashboard] team coaches query failed:', err)
     }
-    coachesByTeam[t.id] = list
+  }
+
+  for (const t of teams) {
+    coachesByTeam[t.id] = [
+      nicknameById.get(t.id) || t.admin_email,
+      ...(extrasByTeam.get(t.id) ?? []),
+    ]
   }
 
   const isSubscribed =

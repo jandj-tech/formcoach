@@ -20,6 +20,7 @@ import LeaderboardTable, { type LeaderboardRow } from '@/components/LeaderboardT
 import SortMenu, { type SortOption } from '@/components/SortMenu'
 import type { OrgTier } from '@/lib/team-pricing'
 import OrgTokenPanel from '@/components/OrgTokenPanel'
+import OrgTokenDistribution from '@/components/OrgTokenDistribution'
 import PlayerShotList, { type Shot } from '@/components/PlayerShotList'
 import PrintButton from '@/components/PrintButton'
 import TeamSchedulePanel from '@/components/TeamSchedulePanel'
@@ -29,7 +30,9 @@ import AppearanceSection from '@/components/account/AppearanceSection'
 import { backendButton } from '@/components/backend/button-styles'
 import {
   ArrowRightIcon,
+  CoinsIcon,
   MailIcon,
+  SendIcon,
   TargetIcon,
   TrophyIcon,
 } from 'lucide-react'
@@ -43,6 +46,8 @@ interface Props {
   orgTokenBalance: number
   /** The organization plan — sets the token rate and which features are open. */
   orgTier: OrgTier
+  /** Personal credit balances held by this org's coaches (credits > 0 only). */
+  coachCreditBalances: Array<{ email: string; credits: number }>
 }
 
 
@@ -52,10 +57,12 @@ const PLAYER_SORT_OPTIONS: SortOption<PlayerSortMode>[] = [
   { value: 'score-asc', label: 'Lowest score' },
 ]
 
-export default function OrgDashboardClient({ teams, orgName, classPackages, myUploads, orgTokenBalance, orgTier }: Props) {
+export default function OrgDashboardClient({ teams, orgName, classPackages, myUploads, orgTokenBalance, orgTier, coachCreditBalances }: Props) {
   const router = useRouter()
   const inApp = useIsInApp()
   const [expanded, setExpanded] = useState<string | null>(null)
+  // "In your organization" breakdown — collapsed until the user asks for it.
+  const [distOpen, setDistOpen] = useState(false)
   const [buying, setBuying] = useState(false)
   const [removingCoach, setRemovingCoach] = useState<string | null>(null)
   const [removingPlayer, setRemovingPlayer] = useState<string | null>(null)
@@ -637,6 +644,9 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
 
   const totalPlayerTokens = teams.reduce((s, t) => s + t.members.reduce((ps, m) => ps + m.tokens, 0), 0)
   const totalTeamCredits = teams.reduce((s, t) => s + t.credits, 0)
+  const totalTokenPool = teams.reduce((s, t) => s + t.tokenPool, 0)
+  const totalCoachCredits = coachCreditBalances.reduce((s, c) => s + c.credits, 0)
+  const totalDistributed = totalPlayerTokens + totalTeamCredits + totalTokenPool + totalCoachCredits
   const uniquePlayerCount = new Set(teams.flatMap(t => t.members.map(m => m.id))).size
 
   // Org-wide standings: every team's leaderboard merged, with a Team column.
@@ -857,13 +867,42 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
           you&rsquo;ve bought but not yet handed out.
         </InfoTip>
       </div>
+      {/* The org's own, undistributed tokens — always front and center. */}
+      <div className="bg-ember-50 dark:bg-ember-500/10 border border-ember-200 dark:border-courtline rounded-2xl px-5 py-4 flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold text-gray-600 dark:text-chalk-dim uppercase tracking-wide">Your balance</p>
+          <p className="text-sm text-gray-500 dark:text-chalk-dim mt-0.5">
+            Tokens you&apos;ve bought but not sent anywhere yet &mdash; 1 token = 1 shot analysis.
+          </p>
+        </div>
+        <p className="shrink-0 text-3xl font-bold text-gray-900 dark:text-chalk tabular-nums">{orgTokenBalance}</p>
+      </div>
+
+      {/* Where distributed tokens live — collapsed until asked for, and kept
+          visually separate from the org's own balance above. */}
+      <OrgTokenDistribution
+        id="token-distribution"
+        teams={teams.map(t => ({
+          id: t.id,
+          name: t.name,
+          ageGroup: t.ageGroup,
+          credits: t.credits,
+          tokenPool: t.tokenPool,
+          players: t.members.map(m => ({ id: m.id, label: memberDisplayName(m), tokens: m.tokens })),
+        }))}
+        coaches={coachCreditBalances.map(c => ({
+          email: c.email,
+          label: orgCoachMap.get(c.email) ?? c.email,
+          credits: c.credits,
+        }))}
+        open={distOpen}
+        onOpenChange={setDistOpen}
+      />
       <OrgTokenPanel
         balance={orgTokenBalance}
         players={orgPlayers}
         coaches={orgCoaches}
-        teams={teams.map(t => ({ id: t.id, name: t.name, coachName: t.coachNickname || t.adminEmail, ageGroup: t.ageGroup, memberCount: t.members.length, credits: t.credits }))}
-        totalPlayerTokens={totalPlayerTokens}
-        totalTeamCredits={totalTeamCredits}
+        teams={teams.map(t => ({ id: t.id, name: t.name, coachName: t.coachNickname || t.adminEmail, ageGroup: t.ageGroup, memberCount: t.members.length }))}
         tier={orgTier}
       />
     </div>
@@ -1070,56 +1109,61 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
 
   return (
     <div className="space-y-6">
-      {/* ── Org token balance — always visible above the tabs ─────────── */}
-      <section className="bg-ember-50 dark:bg-ember-500/10 border border-ember-200 rounded-2xl p-5 space-y-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-xs font-bold text-gray-500 dark:text-chalk-dim uppercase tracking-wide">Org Token Balance</h2>
-            <InfoTip label="How do org tokens work?" align="left">
-              Tokens you buy land in this org balance first. Use Quick send
-              below to move them to a coach or team, or open the Tokens tab to
-              assign them straight to players or spend them on your own
-              uploads. 1 token = 1 AI shot analysis.
+      {/* ── Balance vs. distributed — always visible above the tabs. The
+          page-level StatGrid holds the org code and headline numbers; this
+          pair separates "yours" from "already handed out" and offers the
+          send/buy shortcuts. ── */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="bg-ember-50 dark:bg-ember-500/10 border border-ember-200 dark:border-courtline rounded-2xl px-4 py-3">
+          <div className="flex items-center gap-1.5">
+            <p className="text-xs font-medium text-gray-600 dark:text-chalk-dim">Your balance</p>
+            <InfoTip label="How does my balance work?" align="left">
+              Credits you&apos;ve bought that haven&apos;t been sent anywhere
+              yet &mdash; these are yours alone. 1 credit = 1 AI shot analysis. Send
+              them straight to players or to a coach from the Tokens tab.
             </InfoTip>
           </div>
-          <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
-            <div className="flex items-baseline gap-2">
-              <span className="text-4xl font-black text-black dark:text-chalk">{orgTokenBalance}</span>
-              <span className="text-gray-500 dark:text-chalk-dim text-sm">token{orgTokenBalance !== 1 ? 's' : ''} unassigned</span>
-            </div>
-            <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-chalk-dim">
-              <span>
-                <span className="font-black text-black dark:text-chalk">{totalPlayerTokens}</span> player token{totalPlayerTokens !== 1 ? 's' : ''}
-              </span>
-              <span>
-                <span className="font-black text-black dark:text-chalk">{totalTeamCredits}</span> team credit{totalTeamCredits !== 1 ? 's' : ''}
-              </span>
-            </div>
+          <p className="text-xl font-bold text-gray-900 dark:text-chalk tabular-nums mt-0.5">{orgTokenBalance}</p>
+          <div className="flex items-center gap-3 mt-1">
+            <button
+              type="button"
+              onClick={() => goToTab('tokens', 'send-tokens')}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-ember-600 hover:text-ember-500 dark:text-ember-400 transition-colors"
+            >
+              <SendIcon className="w-3 h-3" aria-hidden /> Send
+            </button>
+            {!inApp && (
+              <button
+                type="button"
+                onClick={() => goToTab('tokens', 'buy-tokens')}
+                className="inline-flex items-center gap-1 text-xs font-semibold text-ember-600 hover:text-ember-500 dark:text-ember-400 transition-colors"
+              >
+                <CoinsIcon className="w-3 h-3" aria-hidden /> Buy
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Shortcuts into the Tokens tab — buying and the unified send
-            panel live there; the banner stays a summary. */}
-        <div className="border-t border-ember-200 dark:border-courtline pt-3 flex flex-wrap items-center gap-2">
+        <div className="bg-white dark:bg-ink-900 border border-gray-200 dark:border-courtline rounded-2xl px-4 py-3">
+          <div className="flex items-center gap-1.5">
+            <p className="text-xs font-medium text-gray-500 dark:text-chalk-dim">In your organization</p>
+            <InfoTip label="What does 'in your organization' mean?" align="right">
+              Credits you&apos;ve already distributed &mdash; held by your teams,
+              players, and coaches. They&apos;re counted separately so they
+              never blur into your own balance.
+            </InfoTip>
+          </div>
+          <p className="text-xl font-bold text-gray-900 dark:text-chalk tabular-nums mt-0.5">{totalDistributed}</p>
           <button
             type="button"
-            onClick={() => goToTab('tokens', 'send-tokens')}
-            className="bg-ember-500 hover:bg-ember-400 text-ink-950 font-semibold px-4 py-2 rounded-xl text-sm transition-colors"
+            onClick={() => {
+              setDistOpen(true)
+              goToTab('tokens', 'token-distribution')
+            }}
+            className="inline-flex items-center gap-1 text-xs font-semibold text-ember-600 hover:text-ember-500 dark:text-ember-400 transition-colors mt-1"
           >
-            Send tokens
+            See exactly where →
           </button>
-          {!inApp && (
-            <button
-              type="button"
-              onClick={() => goToTab('tokens', 'buy-tokens')}
-              className="border border-ember-300 dark:border-courtline text-ember-700 dark:text-ember-400 hover:bg-ember-100 dark:hover:bg-ember-500/10 font-semibold px-4 py-2 rounded-xl text-sm transition-colors"
-            >
-              Buy tokens
-            </button>
-          )}
-          <span className="text-xs text-gray-500 dark:text-chalk-dim">
-            Send to players directly, a team&apos;s shared credits, or a coach.
-          </span>
         </div>
       </section>
 

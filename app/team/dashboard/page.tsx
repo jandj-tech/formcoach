@@ -247,6 +247,20 @@ export default async function TeamDashboardPage() {
     console.error('[team/dashboard] my uploads query failed:', err)
   }
 
+  // The organization this team belongs to (if any) — enables the coach's
+  // "return credits to organization" flow.
+  let orgName: string | null = null
+  if (team.organization_id) {
+    try {
+      const [o] = (await db`
+        SELECT name FROM organizations WHERE id = ${team.organization_id}
+      `) as unknown as [{ name: string } | undefined]
+      orgName = o?.name ?? null
+    } catch (err) {
+      console.error('[team/dashboard] org name query failed:', err)
+    }
+  }
+
   // The logged-in coach's own credit balance.
   let coachCredits = 0
   try {
@@ -281,6 +295,7 @@ export default async function TeamDashboardPage() {
         currentTeamId={team.id}
         adminEmail={session.adminEmail}
         fromOrg={fromOrg}
+        orgName={orgName}
         myUploads={myUploads}
         coachCredits={coachCredits}
         classProgram={classProgram}

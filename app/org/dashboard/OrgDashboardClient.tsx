@@ -136,6 +136,9 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   const [teamLbModal, setTeamLbModal] = useState<string | null>(null)
   // Team id whose full month schedule is open in a modal.
   const [scheduleModal, setScheduleModal] = useState<string | null>(null)
+  // Which team the Schedule tab is showing. Null until a team is picked, so it
+  // falls back to the first team rather than pinning an id that may vanish.
+  const [scheduleTeam, setScheduleTeam] = useState<string | null>(null)
   const [emailSelected, setEmailSelected] = useState<Record<string, boolean>>({})
   const [emailDraftTeam, setEmailDraftTeam] = useState<string | null>(null)
   const [emailCopied, setEmailCopied] = useState<'emails' | 'body' | null>(null)
@@ -1319,6 +1322,68 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
     </div>
   )
 
+  // One team's whole schedule, front and centre. The Teams tab keeps the
+  // week-at-a-glance inside each team's panel; this tab exists so a coach
+  // running several teams can reach a schedule without expanding anything.
+  // Not compact, so the panel brings its own Week/Month switch, event CRUD
+  // and the subscribe links — no modal needed here, the tab IS the full view.
+  const scheduleTeamId = scheduleTeam && teams.some(t => t.id === scheduleTeam) ? scheduleTeam : teams[0]?.id
+  const scheduleTab = (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-xl font-black text-black dark:text-chalk">Schedule</h2>
+        <p className="text-sm text-gray-500 dark:text-chalk-dim mt-1">
+          Practices and games for your teams. Switch between the week and the
+          month, and subscribe the schedule to Apple Calendar or Google so it
+          keeps itself up to date.
+        </p>
+      </div>
+
+      {teams.length === 0 ? (
+        <div className="text-center py-12 text-gray-400 dark:text-chalk-dim border-2 border-dashed border-gray-200 dark:border-courtline rounded-2xl">
+          <p className="font-bold">No teams yet</p>
+          <p className="text-sm mt-1">Create a team first and its schedule appears here.</p>
+        </div>
+      ) : (
+        <>
+          {/* One team needs no picker — the heading already names it. */}
+          {teams.length > 1 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <label htmlFor="schedule-team" className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-chalk-dim">
+                Team
+              </label>
+              <select
+                id="schedule-team"
+                value={scheduleTeamId ?? ''}
+                onChange={e => setScheduleTeam(e.target.value)}
+                className="rounded-xl border border-gray-300 dark:border-courtline bg-white dark:bg-ink-900 text-black dark:text-chalk text-sm font-semibold px-3 py-2"
+              >
+                {teams.map(t => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {scheduleTeamId && (
+            <div className="border border-gray-200 dark:border-courtline rounded-2xl p-4">
+              {/* Keyed by team so switching teams remounts rather than showing
+                  the previous team's events while the new ones load. */}
+              <TeamSchedulePanel
+                key={scheduleTeamId}
+                teamId={scheduleTeamId}
+                theme="auto"
+                upgradeCta={{ href: '#org-billing', label: 'Change your plan' }}
+              />
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+
   const leaderboardTab = (
     <div className="space-y-4">
       <div>
@@ -1708,6 +1773,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
       <AccountTabs
         tabs={[
           { id: 'teams', label: 'Teams', count: teams.length, content: teamsTab },
+          { id: 'schedule', label: 'Schedule', content: scheduleTab },
           // The class purchase pitch is hidden in the iOS app (guideline 3.1.1).
           // The purchase pitch is hidden in the iOS app (guideline 3.1.1), but an
           // org that already runs a program still gets its manager there.

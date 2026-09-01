@@ -9,7 +9,7 @@ import type { Variant, Size } from '@/lib/cart'
 import QuantityStepper from '@/components/QuantityStepper'
 import TokenPacks from './TokenPacks'
 import SectionBreak from '@/components/SectionBreak'
-import { BUNDLE_PRICE, FREE_ANALYSES_PER_BALL, PRICE, SIZES } from './product'
+import { BUNDLE_PRICE, BUNDLE_SAVINGS, FREE_ANALYSES_PER_BALL, PRICE, SIZES } from './product'
 import { ANALYSIS_FAQ, BALL_FAQ } from './faq'
 
 // Price, sizes and the SKU list now live in ./product.ts, because the Product
@@ -562,7 +562,7 @@ function BundleSection({ isInApp = false }: { isInApp?: boolean }) {
               2-Ball Bundle
             </h2>
             <p className="text-chalk-dim text-sm max-w-md">
-              Get 2 training balls + 10 free AI shot analyses. Second ball 50% off.
+              Get 2 training balls + 10 free AI shot analyses. Save {formatPrice(BUNDLE_SAVINGS)} on the pair.
             </p>
           </div>
           <div className="text-right">
@@ -588,7 +588,7 @@ function BundleSection({ isInApp = false }: { isInApp?: boolean }) {
           />
           <BallPicker
             label="Ball 2"
-            badge="50% off"
+            badge="discounted"
             variant={v2}
             size={s2}
             onVariant={setV2}

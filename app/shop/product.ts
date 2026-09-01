@@ -13,9 +13,11 @@ import type { Size, Variant } from '@/lib/cart'
  * is a structured-data violation. One module, three consumers, no sync step.
  */
 
-export const PRICE = 39.99
-/** Ball 1 at full price + ball 2 at 50% off = $39.99 + $20.00. */
-export const BUNDLE_PRICE = PRICE + Math.round(PRICE * 50) / 100
+export const PRICE = 48.95
+/** Ball 1 at full price + ball 2 at $35.90 = $84.85 for the pair. */
+export const BUNDLE_PRICE = 84.85
+/** What the bundle saves vs two singles: $97.90 − $84.85 = $13.05. */
+export const BUNDLE_SAVINGS = Math.round((PRICE * 2 - BUNDLE_PRICE) * 100) / 100
 /** Free shot analyses granted per single training ball. */
 export const FREE_ANALYSES_PER_BALL = 5
 

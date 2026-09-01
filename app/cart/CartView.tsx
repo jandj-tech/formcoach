@@ -8,9 +8,11 @@ import type { CartBallItem, CartBundleItem, Variant, Size } from '@/lib/cart'
 import QuantityStepper from '@/components/QuantityStepper'
 import { useIsInApp } from '@/lib/useIsInApp'
 
-const PRICE = 39.99
-// Bundle: ball 1 full price + ball 2 at 50% off = $39.99 + $20.00 = $59.99
-const BUNDLE_PRICE = PRICE + Math.round(PRICE * 50) / 100
+const PRICE = 48.95
+// Bundle: ball 1 full price + ball 2 at $35.90 = $84.85 — saves $13.05.
+// Mirrors app/shop/product.ts (this file deliberately duplicates the shop
+// constants; keep the two in sync).
+const BUNDLE_PRICE = 84.85
 // Free shot analyses granted per single training ball.
 const FREE_ANALYSES_PER_BALL = 5
 
@@ -421,7 +423,7 @@ function BundleCartLine({
         </div>
         <div className="text-zinc-400 text-sm">
           Ball 2: {variantLabel(item.variant2)} · Size {item.size2} ({SIZE_INCHES[item.size2]}){' '}
-          <span className="text-green-400">50% off</span>
+          <span className="text-green-400">discounted</span>
         </div>
       </div>
       <div className="flex items-center justify-between gap-3 sm:gap-4 sm:self-center">

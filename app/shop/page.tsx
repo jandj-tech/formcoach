@@ -22,7 +22,7 @@ import { SHOP_FAQ } from './faq'
 export const metadata = {
   title: 'Basketball Shooting Training Ball with Finger Placement Guides | LearnHoops',
   description:
-    'The LearnHoops Training Basketball teaches correct shooting form with printed finger-placement guides. Left and right-handed editions, three sizes, 5 free AI shot analyses included. $39.99.',
+    'The LearnHoops Training Basketball teaches correct shooting form with printed finger-placement guides. Left and right-handed editions, three sizes, 5 free AI shot analyses included. $48.95.',
   alternates: { canonical: '/shop' },
   keywords: [
     'basketball shooting training ball',

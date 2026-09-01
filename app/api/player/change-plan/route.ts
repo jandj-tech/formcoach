@@ -42,6 +42,13 @@ export async function POST(req: NextRequest) {
     }
 
     const current = await getPlayerSubscription(session.userId)
+    if (current && playerStatusEntitled(current.status) && !current.stripeSubscriptionId) {
+      // Apple-billed membership: Stripe can't touch it.
+      return NextResponse.json(
+        { error: 'Your plan is billed through the App Store — change it in your iPhone’s Settings → Subscriptions.', appleBilled: true },
+        { status: 409 },
+      )
+    }
     if (!current?.stripeSubscriptionId || !playerStatusEntitled(current.status)) {
       return NextResponse.json(
         { error: 'No active plan to change — start one from the pricing page.', noPlan: true },

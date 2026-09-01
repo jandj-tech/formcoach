@@ -253,7 +253,7 @@ for (const tier of ['basic', 'plus'] as const) {
 }
 
 // --- launch offer lands on exact cents -------------------------------------
-for (const [tier, want] of [['basic', 649], ['plus', 1299]] as Array<[PaidTier, number]>) {
+for (const [tier, want] of [['basic', 949], ['plus', 1949]] as Array<[PaidTier, number]>) {
   const got = launchOfferMonthlyCents(tier)
   check(`launch offer: ${tier} first-3-months price is ${want}`, got === want, `got ${got}`)
   check(

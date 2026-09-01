@@ -158,9 +158,9 @@ export async function getPendingFromRequest(req: NextRequest): Promise<PendingOr
  * Whether the offer is genuinely live for this signup right now.
  *
  * The only place that decides this. Note the plan check: on a yearly interval
- * a `duration_in_months: 3` coupon covers the whole first invoice — 50% off an
- * entire year — so the offer is monthly-only and that is enforced here rather
- * than trusted from the client.
+ * a `duration_in_months: 3` coupon covers the whole first invoice — the launch
+ * discount off an entire year — so the offer is monthly-only and that is
+ * enforced here rather than trusted from the client.
  */
 export function offerIsLive(pending: PendingOrgSignup, interval: BillingInterval): boolean {
   if (interval !== 'monthly') return false

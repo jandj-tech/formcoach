@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import CookieSettingsButton from '@/components/CookieSettingsButton'
 
 const columns = [
   {
@@ -99,6 +100,11 @@ export default function SiteFooter() {
                       </Link>
                     </li>
                   ))}
+                  {col.title === 'Help' && (
+                    <li>
+                      <CookieSettingsButton />
+                    </li>
+                  )}
                 </ul>
               </div>
             ))}

@@ -45,7 +45,13 @@ export default function PrivacyPage() {
       <section className="mb-8">
         <h2 className="text-xl font-semibold mb-3">Cookies and advertising</h2>
         <p className="text-gray-300 leading-relaxed">
-          We use a session cookie to keep you logged in. On our website, we use the Meta Pixel and Meta Conversions API to measure our advertising — these set advertising cookies and share limited information (such as pages visited and, for signups, a hashed email address) with Meta. These advertising tools are <strong>not used inside our iOS app</strong>: the app does not track you across other companies&apos; apps or websites.
+          We use strictly necessary cookies to keep you logged in, hold your cart and remember your light/dark preference. These are required for the site to work and are always on.
+        </p>
+        <p className="text-gray-300 leading-relaxed mt-4">
+          On our website we also use the Meta Pixel and Meta Conversions API to measure our advertising — these set advertising cookies (<code>_fbp</code>, <code>_fbc</code>) and share limited information (such as pages visited and, for signups, a hashed email address) with Meta. <strong>We do not load these until you agree.</strong> The first time you visit, we ask, and nothing advertising-related runs unless you choose &ldquo;Accept all&rdquo; or switch Advertising on. You can change or withdraw that choice at any time using <strong>Cookie settings</strong> at the bottom of any page; withdrawing it deletes those cookies from your browser.
+        </p>
+        <p className="text-gray-300 leading-relaxed mt-4">
+          These advertising tools are <strong>not used inside our iOS app</strong>: the app does not track you across other companies&apos; apps or websites.
         </p>
       </section>
 

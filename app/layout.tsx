@@ -5,6 +5,8 @@ import './globals.css'
 import { ThemeProvider } from 'next-themes'
 import { CartProvider } from '@/lib/cart'
 import MetaPixel from '@/components/MetaPixel'
+import CookieConsent from '@/components/CookieConsent'
+import { CookieConsentProvider } from '@/lib/cookie-consent'
 import CopyToast from '@/components/CopyToast'
 import BackToTop from '@/components/BackToTop'
 
@@ -147,12 +149,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           enableSystem
           disableTransitionOnChange
         >
-          <CartProvider>
-            <MetaPixel />
-            <CopyToast />
-            <ViewTransition default="page-fade">{children}</ViewTransition>
-            <BackToTop />
-          </CartProvider>
+          {/* Wraps everything so MetaPixel and the footer's "Cookie settings"
+              button read the same consent state. */}
+          <CookieConsentProvider>
+            <CartProvider>
+              <MetaPixel />
+              <CopyToast />
+              <ViewTransition default="page-fade">{children}</ViewTransition>
+              <BackToTop />
+              <CookieConsent />
+            </CartProvider>
+          </CookieConsentProvider>
         </ThemeProvider>
       </body>
     </html>

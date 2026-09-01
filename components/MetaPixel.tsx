@@ -4,6 +4,7 @@ import Script from 'next/script'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { useEffect, Suspense } from 'react'
 import { fbq } from '@/lib/meta-pixel'
+import { useCookieConsent } from '@/lib/cookie-consent'
 
 const PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID
 
@@ -20,7 +21,14 @@ function PageViewTracker() {
 }
 
 export default function MetaPixel() {
+  const { prefs } = useCookieConsent()
+
   if (!PIXEL_ID) return null
+  // `prefs` is null until localStorage has been read, so this also covers the
+  // server render and the first paint: the pixel never loads before a stored
+  // "yes" exists. The <noscript> tracking image that used to sit here was
+  // removed — it fires on render and cannot be gated on a choice.
+  if (!prefs?.marketing) return null
 
   return (
     <>
@@ -40,15 +48,6 @@ export default function MetaPixel() {
           }
         `}
       </Script>
-      <noscript>
-        <img
-          height="1"
-          width="1"
-          style={{ display: 'none' }}
-          src={`https://www.facebook.com/tr?id=${PIXEL_ID}&ev=PageView&noscript=1`}
-          alt=""
-        />
-      </noscript>
       <Suspense>
         <PageViewTracker />
       </Suspense>

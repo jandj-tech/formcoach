@@ -347,6 +347,40 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* What LearnHoops is, in the words people search for it.
+          This is the copy Google was actually quoting in the brand result's
+          snippet — verbatim, headline and all. It briefly moved off the page
+          when the mission took this slot, which would have cost the snippet
+          and the on-page keyword coverage for "AI shooting coach" and
+          "basketball shooting form". It belongs on the page; it just doesn't
+          belong ABOVE the mission. Secondary type, last thing before the CTA. */}
+      <section className="px-4 py-12 sm:py-16 border-t border-courtline">
+        <div className="max-w-3xl mx-auto space-y-4">
+          <h2 className="font-display font-black uppercase text-[clamp(1.2rem,2.6vw,1.7rem)] leading-tight text-chalk-dim">
+            AI basketball shot analysis for real players
+          </h2>
+          <p className="text-chalk-dim text-sm leading-relaxed">
+            LearnHoops is an AI basketball coach that analyzes your shooting form from a single
+            video. Film one jump shot on your phone, upload it, and in minutes the AI grades your
+            shot against 18 coaching criteria — stance, elbow alignment, shot pocket, release,
+            follow-through, arc, and more — then tells you exactly what to fix and the drill that
+            fixes it. It&apos;s the feedback of a private shooting coach, on demand, for a fraction
+            of the cost of a private lesson.
+          </p>
+          <p className="text-chalk-dim text-sm leading-relaxed">
+            It works for everyone who wants a better jump shot: youth players building form from
+            scratch, high-school shooters breaking bad habits, and coaches running whole teams —
+            with rosters, shared credits, and team pricing built in. Pair it with the LearnHoops
+            Training Basketball, whose printed finger-placement guides groove correct hand position
+            on every rep between analyses.{' '}
+            <Link href="/learn" className="text-ember-400 hover:text-ember-500 font-semibold transition-colors">
+              See how the analysis works
+            </Link>
+            .
+          </p>
+        </div>
+      </section>
+
       {/* Closing CTA — solid ember band for a hard color break before the footer */}
       <section className="grain relative text-center px-4 py-20 sm:py-28 bg-ember-500 text-ink-950">
         <p className="eyebrow text-ink-950 mb-4 select-none">06 — Your move</p>

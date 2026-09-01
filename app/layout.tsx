@@ -86,9 +86,38 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 },
                 {
                   '@type': 'WebSite',
+                  '@id': 'https://www.learnhoops.com/#website',
                   name: 'LearnHoops',
+                  alternateName: ['LearnHoops.com', 'Learn Hoops'],
                   url: 'https://www.learnhoops.com',
                   publisher: { '@id': 'https://www.learnhoops.com/#org' },
+                },
+                // The pages we want Google to consider as sitelinks under the
+                // brand result. Sitelinks cannot be forced — Google picks them
+                // from site structure, internal links and click behaviour —
+                // but SiteNavigationElement is the supported way to say which
+                // pages are the primary ones, and it costs nothing to be
+                // explicit. Keep this list matched to the real top nav; a
+                // navigation schema that disagrees with the visible menu is
+                // worse than none.
+                {
+                  '@type': 'ItemList',
+                  '@id': 'https://www.learnhoops.com/#nav',
+                  name: 'LearnHoops main navigation',
+                  itemListElement: [
+                    ['Analyze your shot', '/analyze'],
+                    ['Our mission', '/mission'],
+                    ['Shop the training ball', '/shop'],
+                    ['How it works', '/learn'],
+                    ['For teams and organizations', '/team'],
+                    ['Support', '/support'],
+                    ['Log in', '/login'],
+                  ].map(([name, path], i) => ({
+                    '@type': 'SiteNavigationElement',
+                    position: i + 1,
+                    name,
+                    url: `https://www.learnhoops.com${path}`,
+                  })),
                 },
                 {
                   '@type': 'SoftwareApplication',

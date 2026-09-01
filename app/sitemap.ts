@@ -15,5 +15,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // deliberately absent — it needs a signup cookie and redirects without one.
     { url: `${BASE}/team`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE}/org/signup`, lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
+    // Indexable pages that carry canonical metadata and were simply never
+    // listed. /learn is the deepest content on the site and the best answer
+    // to "how does AI shot analysis work" — leaving it out of the sitemap was
+    // costing the exact queries the homepage competes for.
+    { url: `${BASE}/learn`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${BASE}/support`, lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
+    { url: `${BASE}/login`, lastModified: now, changeFrequency: 'yearly', priority: 0.4 },
+    { url: `${BASE}/privacy`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
+    { url: `${BASE}/accessibility`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
   ]
 }

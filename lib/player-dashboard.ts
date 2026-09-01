@@ -55,6 +55,9 @@ export interface UsageSummary {
   purchasedTokens: number
   /** Pre-2026 subscribers grandfathered on unlimited analyses. */
   legacyUnlimited: boolean
+  /** True when the plan was bought in the iOS app (Apple billing): managed in
+   * App Store settings, not the Stripe portal. */
+  billedViaApple: boolean
   /** What the next analysis would be funded by, so the UI can warn BEFORE a
    * purchased token is consumed ("This analysis will use 1 purchased token"). */
   nextAnalysisSource: 'legacy' | 'subscription' | 'token' | 'none'
@@ -143,6 +146,7 @@ async function buildUsageSummary(
     monthlyResetInDays,
     purchasedTokens,
     legacyUnlimited,
+    billedViaApple: !!sub && !sub.stripeSubscriptionId,
     nextAnalysisSource: legacyUnlimited
       ? 'legacy'
       : includedAvailable

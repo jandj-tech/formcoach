@@ -84,30 +84,30 @@ export function annualPercentOff(tier: PaidTier): number {
 
 // --- launch offer ----------------------------------------------------------
 
-/** Launch offer: half off the first three months of a MONTHLY plan. */
-export const LAUNCH_OFFER_PERCENT_OFF = 50
+/** Launch offer: a quarter off the first three months of a MONTHLY plan. */
+export const LAUNCH_OFFER_PERCENT_OFF = 25
 export const LAUNCH_OFFER_MONTHS = 3
 
 /**
  * The discount as a fixed AMOUNT per tier, not a percentage.
  *
- * A percentage lands on a half cent on both tiers — 1299 × 50% = 649.5 — which
- * would leave Stripe's rounding to decide what the invoice says while the page
- * had already committed to a number. A fixed amount lands exactly, and keeps
- * the offer prices clean:
+ * A percentage lands on fractional cents — 1299 × 25% = 324.75 — which would
+ * leave Stripe's rounding to decide what the invoice says while the page had
+ * already committed to a number. A fixed amount lands exactly, and keeps the
+ * offer prices clean:
  *
- *   Basic  $12.99 − $6.50  = $6.49
- *   Plus   $26.49 − $13.50 = $12.99
+ *   Basic  $12.99 − $3.50 = $9.49
+ *   Plus   $26.49 − $7.00 = $19.49
  *
- * Both are a hair over half off (50.0% / 51.0%), so advertising "half price"
+ * Both are a hair over a quarter off (26.9% / 26.4%), so advertising "25% off"
  * gives slightly MORE than promised rather than less — the safe direction to
  * err. Changing these amounts mints NEW Stripe coupons automatically, because
- * the amount is baked into the coupon id (launchCouponId below); the old
- * $5.00/$10.00 coupons stay attached to whoever already redeemed them.
+ * the amount is baked into the coupon id (launchCouponId below); older coupons
+ * stay attached to whoever already redeemed them.
  */
 export const LAUNCH_OFFER_AMOUNT_OFF_CENTS: Readonly<Record<PaidTier, number>> = {
-  basic: 650,
-  plus: 1350,
+  basic: 350,
+  plus: 700,
 }
 
 /** How long the launch offer stays open once the pricing page is loaded. */

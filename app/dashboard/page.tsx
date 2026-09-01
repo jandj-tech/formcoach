@@ -458,7 +458,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                   Analyze a Shot
                 </Link>
               </div>
-              {!isInApp && <PlanControls plan={usage.plan} interval={usage.billingFrequency ?? 'monthly'} />}
+              {usage.billedViaApple ? (
+                <p className="text-xs text-gray-500 dark:text-chalk-dim">
+                  Your plan is billed through the App Store — manage or cancel it in your iPhone&apos;s
+                  Settings → Subscriptions.
+                </p>
+              ) : (
+                !isInApp && <PlanControls plan={usage.plan} interval={usage.billingFrequency ?? 'monthly'} />
+              )}
             </section>
 
             {/* Included usage — BOTH limits, tracked separately from tokens */}

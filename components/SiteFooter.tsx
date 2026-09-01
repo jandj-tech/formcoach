@@ -7,6 +7,7 @@ const columns = [
       { href: '/analyze', label: 'Analyze your shot' },
       { href: '/shop', label: 'Training ball' },
       { href: '/cart', label: 'Cart' },
+      { href: '/mission', label: 'Our mission' },
     ],
   },
   {

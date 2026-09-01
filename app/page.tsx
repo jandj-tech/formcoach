@@ -303,35 +303,53 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* What LearnHoops is, in the words people search for it. Real copy for
-          visitors who scrolled this far — and the keyword coverage search
-          engines index the page by. */}
+      {/* Why LearnHoops exists, for visitors who scrolled this far. The long
+          keyword block that used to sit here moved aside for it; the full
+          mission lives at /mission and this is the door to it. */}
       <section className="px-4 py-16 sm:py-20 border-t border-courtline">
-        <div className="max-w-3xl mx-auto space-y-5">
-          <h2 className="font-display font-black uppercase text-[clamp(1.6rem,4vw,2.5rem)] leading-tight">
-            AI basketball shot analysis for real players
-          </h2>
-          <p className="text-chalk-dim text-sm sm:text-base leading-relaxed">
-            LearnHoops is an AI basketball coach that analyzes your shooting form from a single
-            video. Film one jump shot on your phone, upload it, and in minutes the AI grades your
-            shot against 18 coaching criteria — stance, elbow alignment, shot pocket, release,
-            follow-through, arc, and more — then tells you exactly what to fix and the drill that
-            fixes it. It&apos;s the feedback of a private shooting coach, on demand, for a fraction
-            of the cost of a private lesson.
-          </p>
-          <p className="text-chalk-dim text-sm sm:text-base leading-relaxed">
-            It works for everyone who wants a better jump shot: youth players building form from
-            scratch, high-school shooters breaking bad habits, and coaches running whole teams —
-            with rosters, shared credits, and team pricing built in. Pair it with the LearnHoops
-            Training Basketball, whose printed finger-placement guides groove correct hand position
-            on every rep between analyses.
-          </p>
+        <div className="max-w-6xl mx-auto grid lg:grid-cols-[1fr_0.8fr] gap-10 lg:gap-14 items-center">
+          <div>
+            <p className="eyebrow text-ember-400 mb-3 select-none">05 — Our mission</p>
+            <h2 className="font-display font-black uppercase text-[clamp(1.6rem,4vw,2.5rem)] leading-tight">
+              Building better shooters.
+              <br />
+              <span className="text-gradient-ember">Developing smarter players.</span>
+            </h2>
+            <p className="text-chalk-dim text-sm sm:text-base leading-relaxed mt-5">
+              We built LearnHoops because young players are often told to &ldquo;shoot
+              more,&rdquo; but rarely shown exactly what they need to improve and why. Our goal is
+              to change that &mdash; meaningful feedback players can actually use, so they
+              understand the small details in their form and can adjust with purpose.
+            </p>
+            <p className="text-chalk text-base sm:text-lg font-bold leading-relaxed mt-4">
+              We don&rsquo;t just learn to hoop. We hoop to learn.
+            </p>
+            <Link
+              href="/mission"
+              className="inline-block mt-6 text-ember-400 hover:text-ember-500 font-bold text-sm transition-colors"
+            >
+              Read our full mission &rarr;
+            </Link>
+          </div>
+
+          {/* Whole photo, capped by width — see the note on /mission: a height
+              cap with object-cover crops the two people out of their own shot. */}
+          <div className="mx-auto w-full max-w-[18rem] sm:max-w-[20rem]">
+            <Image
+              src="/mission/coach-and-player.jpg"
+              alt="A LearnHoops coach on the court with a young player holding a LearnHoops training basketball"
+              width={1322}
+              height={2048}
+              sizes="(max-width: 640px) 18rem, 20rem"
+              className="w-full h-auto rounded-3xl border border-courtline"
+            />
+          </div>
         </div>
       </section>
 
       {/* Closing CTA — solid ember band for a hard color break before the footer */}
       <section className="grain relative text-center px-4 py-20 sm:py-28 bg-ember-500 text-ink-950">
-        <p className="eyebrow text-ink-950 mb-4 select-none">05 — Your move</p>
+        <p className="eyebrow text-ink-950 mb-4 select-none">06 — Your move</p>
         <h2 className="font-display font-black uppercase text-[clamp(2.2rem,6vw,5rem)] leading-[0.95] max-w-3xl mx-auto">
           Ready to fix
           <br />

@@ -38,6 +38,9 @@ export default function CookieConsent() {
   return (
     <ConsentPanel
       surface={surface}
+      // Already signed in and using the site — shrink to a slim bar rather than
+      // a card that covers half the screen. It still opens out for Customize.
+      compact={isSignedIn}
       // Reopened from the footer: land straight on the checkboxes, since they came
       // to change something specific rather than to make a first choice.
       initialCustomizing={hasDecided}
@@ -51,6 +54,7 @@ export default function CookieConsent() {
 
 function ConsentPanel({
   surface,
+  compact,
   initialCustomizing,
   initialMarketing,
   dismissable,
@@ -58,6 +62,8 @@ function ConsentPanel({
   onDismiss,
 }: {
   surface: Exclude<ConsentSurface, 'none'>
+  /** Slim one-line bar instead of the full card. Opens out when customizing. */
+  compact: boolean
   initialCustomizing: boolean
   initialMarketing: boolean
   /** False on a first visit: there is no prior choice to fall back to. */
@@ -70,10 +76,13 @@ function ConsentPanel({
   const panelRef = useRef<HTMLDivElement>(null)
   const isModal = surface === 'modal'
 
-  // Move focus into the dialog so keyboard and screen reader users land on it.
+  // Move focus into the modal, since it blocks the page and is the only thing a
+  // keyboard or screen reader user can act on. The sheet and bar deliberately
+  // do NOT take focus: they sit beside a page the visitor is still using, and
+  // yanking the caret out of whatever they were doing is its own rudeness.
   useEffect(() => {
-    panelRef.current?.focus()
-  }, [])
+    if (isModal) panelRef.current?.focus()
+  }, [isModal])
 
   // The modal locks the page behind it; the sheet deliberately does not.
   useEffect(() => {
@@ -115,17 +124,34 @@ function ConsentPanel({
   const btn =
     'flex-1 rounded-xl px-5 py-3 text-sm font-bold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ember-400 focus-visible:ring-offset-2 focus-visible:ring-offset-ink-900'
 
+  // Same three choices, just sized for a bar. Reject stays first and identically
+  // weighted to Accept — compact is not a licence to bury the refusal.
+  // No background here: a `bg-*` in the base would fight the accept button's own
+  // colour, and which one wins is stylesheet order, not class order.
+  const barBtn =
+    'rounded-lg border border-courtline px-3 py-1.5 text-xs font-bold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ember-400 focus-visible:ring-offset-2 focus-visible:ring-offset-ink-900'
+  const barBtnQuiet = `${barBtn} bg-ink-800 text-chalk hover:bg-ink-700`
+
+  // The slim bar only stays slim while it has nothing to show; opening Customize
+  // gives it the checkboxes, so it widens back out to the normal sheet.
+  const isBar = compact && !customizing
+
   const shell = isModal
     ? `fixed z-[91] inset-x-4 top-1/2 -translate-y-1/2 mx-auto w-auto sm:max-w-lg
        max-h-[90dvh] overflow-y-auto overscroll-contain
        rounded-3xl border border-courtline bg-ink-900 text-chalk
        shadow-2xl shadow-black/60 focus:outline-none
        animate-in zoom-in-95 fade-in duration-300`
-    : `fixed z-[91] inset-x-0 bottom-0 sm:inset-x-4 sm:bottom-4 mx-auto w-full sm:max-w-2xl
-       max-h-[85dvh] overflow-y-auto overscroll-contain
-       rounded-t-3xl sm:rounded-3xl border border-courtline bg-ink-900 text-chalk
-       shadow-2xl shadow-black/60 focus:outline-none
-       animate-in slide-in-from-bottom-6 fade-in duration-300`
+    : isBar
+      ? `fixed z-[91] inset-x-2 bottom-2 sm:inset-x-4 sm:bottom-4 mx-auto w-auto sm:max-w-xl
+         rounded-2xl border border-courtline bg-ink-900/95 backdrop-blur text-chalk
+         shadow-xl shadow-black/50 focus:outline-none
+         animate-in slide-in-from-bottom-4 fade-in duration-300`
+      : `fixed z-[91] inset-x-0 bottom-0 sm:inset-x-4 sm:bottom-4 mx-auto w-full sm:max-w-2xl
+         max-h-[85dvh] overflow-y-auto overscroll-contain
+         rounded-t-3xl sm:rounded-3xl border border-courtline bg-ink-900 text-chalk
+         shadow-2xl shadow-black/60 focus:outline-none
+         animate-in slide-in-from-bottom-6 fade-in duration-300`
 
   return (
     <>
@@ -149,6 +175,42 @@ function ConsentPanel({
         className={shell}
         style={{ paddingBottom: 'max(0px, env(safe-area-inset-bottom))' }}
       >
+        {isBar ? (
+          <div className="px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3">
+            <p
+              id="cookie-consent-body"
+              className="flex-1 text-xs text-chalk-dim leading-snug"
+            >
+              <span id="cookie-consent-title" className="font-bold text-chalk">
+                Cookies.
+              </span>{' '}
+              Essential ones keep you signed in. Allow advertising cookies too?
+            </p>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => onSave(DENY_ALL)}
+                className={barBtnQuiet}
+              >
+                Reject
+              </button>
+              <button
+                type="button"
+                onClick={() => setCustomizing(true)}
+                className={barBtnQuiet}
+              >
+                Customize
+              </button>
+              <button
+                type="button"
+                onClick={() => onSave(ALLOW_ALL)}
+                className={`${barBtn} bg-ember-500 text-ink-950 hover:bg-ember-400 border-transparent`}
+              >
+                Accept
+              </button>
+            </div>
+          </div>
+        ) : (
         <div className="p-6 sm:p-7">
           <p className="eyebrow text-ember-400 mb-2 select-none">Your privacy</p>
           <h2
@@ -223,6 +285,7 @@ function ConsentPanel({
             </button>
           </div>
         </div>
+        )}
       </div>
     </>
   )

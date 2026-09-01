@@ -8,11 +8,9 @@
  *   basic — the entry plan
  *   plus  — the full plan; also what every grandfathered team and org resolves to
  *
- * This is an enum rather than a boolean because Basic and Plus share the same
- * $2.49 base and differ only in how far the volume ladder goes. The ladder used
- * to be inferred from the base rate, which cannot tell those two apart, so the
- * tier is now passed explicitly and the base is derived from it rather than the
- * other way round.
+ * Since the 2026-09 repricing Basic and Plus earn the SAME token pricing (the
+ * org bulk rate); the tier still matters for features (lib/team-features.ts)
+ * and is kept here so a lapsed org ('none') prices as an individual.
  */
 export type OrgTier = 'none' | 'basic' | 'plus'
 
@@ -21,23 +19,39 @@ export function isOrgTier(value: unknown): value is OrgTier {
   return value === 'none' || value === 'basic' || value === 'plus'
 }
 
-/** Regular per-analysis price (cents) — individuals, and lapsed organizations. */
-export const REGULAR_ANALYSIS_PRICE_CENTS = 349
+/**
+ * The public per-analysis price (cents) for a SMALL order: 1–4 tokens.
+ * Everyone pays this — individuals, org members buying a few, everyone.
+ */
+export const REGULAR_ANALYSIS_PRICE_CENTS = 999
 
 /**
- * The subscriber per-token price for a SMALL order (1–4 tokens), in cents.
- *
- * Basic and Plus both start here; they diverge from 5 tokens on. Small orders
- * sit at $2.49 because the payment-processor fee eats most of the margin on a
- * single-token purchase, so buyers are nudged to buy in fives.
+ * The public volume rate (cents): from REGULAR_VOLUME_MIN_QTY tokens up,
+ * EVERY token in the order is priced here — not just the ones past the
+ * threshold. 5 tokens is $25.00 flat, never $9.99×4 + $5.
  */
-export const TEAM_TOKEN_PRICE_CENTS = 249
+export const REGULAR_VOLUME_PRICE_CENTS = 500
+export const REGULAR_VOLUME_MIN_QTY = 5
 
-/** The cheapest rate anywhere (cents) — the Plus floor, from 10 tokens up. */
-export const TEAM_FULL_RATE_CENTS = 129
+/**
+ * The organization bulk rate (cents), for members of an organization with an
+ * entitled plan (Basic or Plus): $2.49 per token, but ONLY on orders of
+ * ORG_BULK_MIN_QTY or more, and ONLY on the website — there is deliberately
+ * no in-app purchase at this rate (lib/in-app.ts already 403s every Stripe
+ * checkout inside the iOS app). Below the minimum, org members simply pay the
+ * regular public pricing; they are never forced up to 10.
+ */
+export const ORG_BULK_PRICE_CENTS = 249
+export const ORG_BULK_MIN_QTY = 10
 
-/** Tokens a subscriber must buy in one order to reach their first discount. */
-export const TEAM_FULL_RATE_MIN_QTY = 5
+/**
+ * Legacy aliases, kept so long-lived call sites keep compiling and keep
+ * meaning something true: the "team rate" IS the org bulk rate now, and its
+ * minimum quantity is the bulk minimum.
+ */
+export const TEAM_TOKEN_PRICE_CENTS = ORG_BULK_PRICE_CENTS
+export const TEAM_FULL_RATE_CENTS = ORG_BULK_PRICE_CENTS
+export const TEAM_FULL_RATE_MIN_QTY = ORG_BULK_MIN_QTY
 
 /**
  * Per-order quantity ceilings, shared by the buy UI and the routes that
@@ -46,58 +60,65 @@ export const TEAM_FULL_RATE_MIN_QTY = 5
 export const MAX_TOKENS_PER_ORDER = 1000
 export const MAX_COACH_CREDITS_PER_ORDER = 500
 
-export type VolumeTier = { minQty: number; percentOff: number }
+/**
+ * A volume tier: at `minQty` and up, every token in the order costs
+ * `unitCents`. `percentOff` is DERIVED from the cents (never hand-tuned) and
+ * exists for display — the nudge chips render "5+ save 50%".
+ */
+export type VolumeTier = { minQty: number; unitCents: number; percentOff: number }
+
+function tierOf(minQty: number, unitCents: number): VolumeTier {
+  return {
+    minQty,
+    unitCents,
+    percentOff: ((REGULAR_ANALYSIS_PRICE_CENTS - unitCents) / REGULAR_ANALYSIS_PRICE_CENTS) * 100,
+  }
+}
 
 /**
- * Volume discount tiers, applied to a SINGLE order.
- *
- * The percentage comes off every token in the order, not just the ones above
- * the threshold. That matters: it means a larger order is never more expensive
- * per token than a smaller one, so crossing a tier always rewards the buyer
- * instead of punishing them.
- *
- * Ordered highest-first — `find` returns the best tier the quantity qualifies
- * for. The percentages are odd numbers because they are derived from the
- * advertised prices rather than chosen, which is why scripts/test-pricing.ts
- * pins the resulting cents and not the percentages.
+ * Ladders are ordered highest-minQty first — `find` returns the best tier the
+ * quantity qualifies for. The discount prices the WHOLE order, so a larger
+ * order is never dearer per token than a smaller one.
  */
 
-/** No plan: 3 for $6.99, 5 for $8.95, floors at $1.65 from 10 up. */
+/** No plan: $9.99 each, $5.00 each from 5 up. */
 export const REGULAR_VOLUME_TIERS: ReadonlyArray<VolumeTier> = [
-  { minQty: 10, percentOff: 52.7 }, // → 165
-  { minQty: 5, percentOff: 48.7 }, //  → 179
-  { minQty: 3, percentOff: 33.2 }, //  → 233
+  tierOf(REGULAR_VOLUME_MIN_QTY, REGULAR_VOLUME_PRICE_CENTS),
 ]
 
 /**
- * Basic: $2.49, then $1.65 at 5+, floors at $1.49 from 10 up.
- *
- * Every step must stay at or below the no-plan ladder from 5 tokens on, or the
- * plan costs more than not subscribing. scripts/test-pricing.ts asserts exactly
- * that; the only place Basic is dearer is the 3–4 window, which is pinned there
- * too so it cannot widen unnoticed.
+ * Entitled org members (Basic and Plus alike): the public ladder, plus the
+ * $2.49 bulk rate from 10 up. An org buying 5–9 pays the public $5.00 rate;
+ * buying 1–4 pays $9.99 — exactly what a regular customer would.
  */
-export const BASIC_VOLUME_TIERS: ReadonlyArray<VolumeTier> = [
-  { minQty: 10, percentOff: 40.16 }, // → 149
-  { minQty: 5, percentOff: 33.73 }, //  → 165
+export const ORG_VOLUME_TIERS: ReadonlyArray<VolumeTier> = [
+  tierOf(ORG_BULK_MIN_QTY, ORG_BULK_PRICE_CENTS),
+  tierOf(REGULAR_VOLUME_MIN_QTY, REGULAR_VOLUME_PRICE_CENTS),
 ]
 
-/** Plus: $2.49, then $1.49 at 5+, floors at $1.29 from 10 up — cheapest anywhere. */
-export const PLUS_VOLUME_TIERS: ReadonlyArray<VolumeTier> = [
-  { minQty: 10, percentOff: 48.19 }, // → 129
-  { minQty: 5, percentOff: 40.16 }, //  → 149
-]
+/** Basic and Plus intentionally share one ladder since the 2026-09 repricing. */
+export const BASIC_VOLUME_TIERS: ReadonlyArray<VolumeTier> = ORG_VOLUME_TIERS
+export const PLUS_VOLUME_TIERS: ReadonlyArray<VolumeTier> = ORG_VOLUME_TIERS
 
-/** The base rate a tier pays before any volume discount. */
-export function analysisBaseCents(tier: OrgTier): number {
-  return tier === 'none' ? REGULAR_ANALYSIS_PRICE_CENTS : TEAM_TOKEN_PRICE_CENTS
+/**
+ * The base rate before any volume discount — the same $9.99 for every tier
+ * now. Kept tier-parameterized so call sites don't churn and a future split
+ * has somewhere to live.
+ */
+export function analysisBaseCents(_tier: OrgTier): number {
+  return REGULAR_ANALYSIS_PRICE_CENTS
 }
 
 /** Which ladder a tier earns. */
 export function tiersFor(tier: OrgTier): ReadonlyArray<VolumeTier> {
-  if (tier === 'plus') return PLUS_VOLUME_TIERS
-  if (tier === 'basic') return BASIC_VOLUME_TIERS
-  return REGULAR_VOLUME_TIERS
+  return tier === 'none' ? REGULAR_VOLUME_TIERS : ORG_VOLUME_TIERS
+}
+
+function tierMatch(tier: OrgTier, quantity: number): VolumeTier | null {
+  if (!Number.isFinite(quantity)) return null
+  const qty = Math.floor(quantity)
+  if (qty < 1) return null
+  return tiersFor(tier).find((t) => qty >= t.minQty) ?? null
 }
 
 /**
@@ -106,21 +127,18 @@ export function tiersFor(tier: OrgTier): ReadonlyArray<VolumeTier> {
  * actually buy.
  */
 export function volumeDiscountPercent(tier: OrgTier, quantity: number): number {
-  if (!Number.isFinite(quantity)) return 0
-  const qty = Math.floor(quantity)
-  if (qty < 1) return 0
-  return tiersFor(tier).find((t) => qty >= t.minQty)?.percentOff ?? 0
+  return tierMatch(tier, quantity)?.percentOff ?? 0
 }
 
 /**
- * Per-token price (cents) after the volume discount. Rounded to whole cents
- * because Stripe bills unit_amount × quantity and will not take a fraction.
+ * Per-token price (cents) after the volume discount — whole cents by
+ * construction now that tiers carry cents directly, which is also why the
+ * eligibility rules cannot round themselves into a new price: the org bulk
+ * minimum is enforced HERE, in the one function every checkout route calls,
+ * not in each route's own quantity check.
  */
 export function discountedUnitCents(tier: OrgTier, quantity: number): number {
-  const base = analysisBaseCents(tier)
-  const percentOff = volumeDiscountPercent(tier, quantity)
-  if (percentOff === 0) return base
-  return Math.round((base * (100 - percentOff)) / 100)
+  return tierMatch(tier, quantity)?.unitCents ?? analysisBaseCents(tier)
 }
 
 /**
@@ -147,18 +165,15 @@ export function orderPricing(tier: OrgTier, quantity: number) {
   }
 }
 
-/** Format cents for display: 179 -> "$1.79". */
+/** Format cents for display: 500 -> "$5.00". */
 export function usd(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`
 }
 
 /**
- * A tier percentage as it should be shown: a whole number.
- *
- * The tiers themselves carry decimals on purpose — 52.7% off 349¢ is what
- * lands on the advertised $1.65, and rounding the tier would move the price
- * itself. So only the label rounds: "save 53%" sits beside the exact cent
- * figure it came from.
+ * A tier percentage as it should be shown: a whole number. The exact
+ * percentages are derived from the cent prices ($9.99 → $5.00 is 49.95%), so
+ * only the label rounds — "save 50%" sits beside the exact figure it came from.
  */
 export function percentLabel(percentOff: number): number {
   return Math.round(percentOff)

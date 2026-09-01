@@ -7,6 +7,12 @@ import { getTeamSessionFromRequest } from '@/lib/team-auth'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { maybeSendFilmingTips } from '@/lib/filming-tips'
 import { rateLimit, rateLimitByIp } from '@/lib/rate-limit'
+import {
+  getPlayerSubscription,
+  markSubmissionFailed,
+  reserveSubscriptionAnalysis,
+  subscriptionEntitled,
+} from '@/lib/player-subscription'
 import crypto from 'crypto'
 
 export const maxDuration = 300
@@ -23,6 +29,11 @@ export async function POST(req: NextRequest) {
   // if the analysis yields no shot or throws, so nothing is billed for a
   // non-result.
   let refundCharge: (() => Promise<void>) | null = null
+  // Set once the submission row exists, so the failure path can mark it
+  // 'failed' instead of stranding it at 'processing' forever (a stranded row
+  // would also keep counting against a subscriber's allowance for 15 minutes —
+  // see lib/player-subscription.ts countUsage).
+  let submissionIdForFailure: string | null = null
   try {
     const formData = await req.formData()
     const files = formData.getAll('frames') as File[]
@@ -117,28 +128,42 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Every analysis requires a token or an active subscription — the free
-    // signup analysis has been discontinued, so an account with neither is
-    // turned away here before any work happens. `isFreePreview` is retained
-    // (always false) so historical free-preview submissions still read
-    // correctly. NOTE: the balance is only RESERVED (atomically) just before
-    // the Claude call below — this early check is a fast fail for good UX.
+    // Every analysis requires an entitlement — the free signup analysis has
+    // been discontinued, so an account with none is turned away here before
+    // any work happens. Three ways a player can be entitled, in the order
+    // they are consumed:
+    //   1. legacy unlimited — pre-2026 subscription_type/expires_at holders,
+    //      grandfathered exactly as before (never debited, no caps)
+    //   2. the Player/Pro included allowance (weekly AND monthly caps both
+    //      apply; enforced atomically at reservation below)
+    //   3. purchased tokens
+    // `isFreePreview` is retained (always false) so historical free-preview
+    // submissions still read correctly. NOTE: balances are only RESERVED
+    // (atomically) just before the Claude call below — this early check is a
+    // fast fail for good UX.
     const isFreePreview = false
-    let userIsSubscribed = false
+    let legacyUnlimited = false
+    let hasEntitledPlan = false
     if (!isTeamUpload && userId) {
       const [user] = await db`
         SELECT analysis_tokens, subscription_type, subscription_expires_at, free_analysis_used
         FROM users WHERE id = ${userId}
       ` as unknown as [{ analysis_tokens: number; subscription_type: string | null; subscription_expires_at: string | null; free_analysis_used: boolean | null } | undefined]
 
-      userIsSubscribed =
+      legacyUnlimited =
         !!user?.subscription_type &&
         !!user?.subscription_expires_at &&
         new Date(user.subscription_expires_at) > new Date()
 
+      const playerSub = legacyUnlimited ? null : await getPlayerSubscription(userId)
+      hasEntitledPlan = subscriptionEntitled(playerSub)
+
       const tokens = user?.analysis_tokens ?? 0
 
-      if (!userIsSubscribed && tokens <= 0) {
+      // A subscriber at their cap with no tokens is caught at reservation
+      // (which returns the reset dates); here we only turn away accounts with
+      // no entitlement of any kind.
+      if (!legacyUnlimited && !hasEntitledPlan && tokens <= 0) {
         return NextResponse.json({ error: 'No analysis tokens' }, { status: 402 })
       }
     }
@@ -210,6 +235,7 @@ export async function POST(req: NextRequest) {
       VALUES (${submissionToken}, 'processing', ${submissionUserId}, ${teamId}, ${teamPlayerId}, ${coachEmail}, ${isFreePreview})
       RETURNING id
     `
+    submissionIdForFailure = submission.id
 
     // Upload frames to Vercel Blob + convert to base64 for Claude
     const frameBase64Array: string[] = []
@@ -302,6 +328,11 @@ export async function POST(req: NextRequest) {
     // check and all ran the full ~$0.50 pipeline. Reserving atomically means
     // only one wins; the rest get 402. `refundCharge` undoes it on a no-shot
     // verdict or any failure, so nothing is billed for a non-result.
+    // What funded this analysis, stamped onto the submission after the chain
+    // ('subscription' is stamped inside its reservation transaction instead —
+    // the stamp IS the usage record there, so it must commit atomically).
+    let fundingSource: 'legacy' | 'token' | 'coach_credit' | 'team_credit' | 'org_balance' | null =
+      null
     if (isTeamUpload && teamId) {
       const coachRows = teamCoachEmail
         ? ((await db`
@@ -310,6 +341,7 @@ export async function POST(req: NextRequest) {
           `) as unknown as unknown[])
         : []
       if (coachRows.length > 0) {
+        fundingSource = 'coach_credit'
         refundCharge = async () => {
           await db`UPDATE coach_credits SET credits = credits + 1 WHERE LOWER(email) = ${teamCoachEmail}`
         }
@@ -321,6 +353,7 @@ export async function POST(req: NextRequest) {
           await db`DELETE FROM submissions WHERE id = ${submission.id}`
           return NextResponse.json({ error: 'Insufficient credits' }, { status: 402 })
         }
+        fundingSource = 'team_credit'
         refundCharge = async () => {
           await db`UPDATE teams SET credits = credits + 1 WHERE id = ${teamId}`
         }
@@ -333,6 +366,7 @@ export async function POST(req: NextRequest) {
         await db`DELETE FROM submissions WHERE id = ${submission.id}`
         return NextResponse.json({ error: 'No analysis tokens' }, { status: 402 })
       }
+      fundingSource = 'org_balance'
       refundCharge = async () => {
         await db`UPDATE organizations SET token_balance = token_balance + 1 WHERE id = ${orgSelfId}`
       }
@@ -344,19 +378,78 @@ export async function POST(req: NextRequest) {
         await db`DELETE FROM submissions WHERE id = ${submission.id}`
         return NextResponse.json({ error: 'No analysis credits' }, { status: 402 })
       }
+      fundingSource = 'coach_credit'
       refundCharge = async () => {
         await db`UPDATE coach_credits SET credits = credits + 1 WHERE email = ${coachEmail}`
       }
-    } else if (!isTeamUpload && userId && !isFreePreview && !userIsSubscribed) {
-      const rows = (await db`
-        UPDATE users SET analysis_tokens = analysis_tokens - 1 WHERE id = ${userId} AND analysis_tokens > 0 RETURNING id
-      `) as unknown as unknown[]
-      if (rows.length === 0) {
-        await db`DELETE FROM submissions WHERE id = ${submission.id}`
-        return NextResponse.json({ error: 'No analysis tokens' }, { status: 402 })
+    } else if (!isTeamUpload && userId && !isFreePreview && legacyUnlimited) {
+      // Grandfathered pre-2026 subscriber: unlimited, never debited — exactly
+      // the behavior their subscription was sold with.
+      fundingSource = 'legacy'
+    } else if (!isTeamUpload && userId && !isFreePreview) {
+      // Included subscription analyses are consumed BEFORE purchased tokens —
+      // never the other way around, and never silently: the analyze UI reads
+      // /api/my/usage first and tells the user when a purchased token is about
+      // to be used.
+      let limitInfo: { blockedBy: 'weekly' | 'monthly'; weeklyResetAt: string; monthlyResetAt: string } | null = null
+      if (hasEntitledPlan) {
+        const reserved = await reserveSubscriptionAnalysis(userId, submission.id)
+        if (reserved.ok) {
+          fundingSource = null // stamped 'subscription' inside the transaction
+          // For an included analysis the "refund" is exclusion from the usage
+          // count: mark the row failed and the window count no longer sees it.
+          refundCharge = async () => {
+            await markSubmissionFailed(submission.id)
+          }
+        } else if (reserved.reason === 'weekly' || reserved.reason === 'monthly') {
+          limitInfo = {
+            blockedBy: reserved.reason,
+            weeklyResetAt: reserved.usage.weeklyResetAt.toISOString(),
+            monthlyResetAt: reserved.usage.monthlyResetAt.toISOString(),
+          }
+        }
+        // 'not_subscribed' (lapsed between the pre-check and now) falls
+        // through to purchased tokens like any non-subscriber.
       }
-      refundCharge = async () => {
-        await db`UPDATE users SET analysis_tokens = analysis_tokens + 1 WHERE id = ${userId}`
+      if (!refundCharge || limitInfo) {
+        const rows = (await db`
+          UPDATE users SET analysis_tokens = analysis_tokens - 1 WHERE id = ${userId} AND analysis_tokens > 0 RETURNING id
+        `) as unknown as unknown[]
+        if (rows.length === 0) {
+          await db`DELETE FROM submissions WHERE id = ${submission.id}`
+          if (limitInfo) {
+            // Structured so the client can render the real reset dates
+            // ("Your weekly allowance resets in 2 days") instead of a dead end.
+            return NextResponse.json(
+              {
+                error: 'limit_reached',
+                ...limitInfo,
+                message:
+                  limitInfo.blockedBy === 'weekly'
+                    ? 'You’ve used your included analyses for this week.'
+                    : 'You’ve used all your included analyses for this billing month.',
+              },
+              { status: 402 },
+            )
+          }
+          return NextResponse.json({ error: 'No analysis tokens' }, { status: 402 })
+        }
+        fundingSource = 'token'
+        refundCharge = async () => {
+          await db`UPDATE users SET analysis_tokens = analysis_tokens + 1 WHERE id = ${userId}`
+        }
+      }
+    }
+
+    // Record what funded it (audit + keeps purchased-token analyses out of the
+    // subscription usage count). Degrades silently on a database that hasn't
+    // run the migration adding entitlement_source yet.
+    if (fundingSource) {
+      try {
+        await db`UPDATE submissions SET entitlement_source = ${fundingSource} WHERE id = ${submission.id}`
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        if (!/column .* does not exist/i.test(msg)) throw err
       }
     }
 
@@ -527,6 +620,9 @@ export async function POST(req: NextRequest) {
         console.error('[analyze] refund after failure failed:', refundErr instanceof Error ? refundErr.message : refundErr)
       }
     }
+    // Terminal state, not a stranded 'processing' row (markSubmissionFailed
+    // never throws). Idempotent with the subscription refund above.
+    if (submissionIdForFailure) await markSubmissionFailed(submissionIdForFailure)
     console.error('Analysis error:', err instanceof Error ? err.message : err)
     return NextResponse.json({ error: 'Analysis failed', detail: err instanceof Error ? err.message : String(err) }, { status: 500 })
   }

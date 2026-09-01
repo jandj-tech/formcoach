@@ -4,6 +4,7 @@ import { getTeamSessionFromRequest } from '@/lib/team-auth'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { db } from '@/lib/db'
 import { userTier } from '@/lib/team-features'
+import { getPlayerSubscription, subscriptionEntitled } from '@/lib/player-subscription'
 
 export async function GET(req: NextRequest) {
   // 1. Player session — also returns token/subscription info used elsewhere.
@@ -71,8 +72,16 @@ export async function GET(req: NextRequest) {
         }
       }
 
+      // The Player/Pro plan (2026 pricing) — legacy subscription_type holders
+      // above stay grandfathered-unlimited and never carry a plan.
+      const playerSub = await getPlayerSubscription(user.id)
+      const planEntitled = subscriptionEntitled(playerSub)
+
       const tokens = user.analysis_tokens ?? 0
-      const subscribed = isSubscribed || tokens > 0
+      // `subscribed` is a shipped wire field older app builds gate Analyze on:
+      // "this account can reach the analyze flow". An entitled plan counts —
+      // if they're at their cap the analyze POST returns the structured 402.
+      const subscribed = isSubscribed || planEntitled || tokens > 0
 
       // Whether the player is on a team — drives the "ask your coach" option.
       let onTeam = false
@@ -123,6 +132,10 @@ export async function GET(req: NextRequest) {
           firstName: user.first_name ?? null,
           lastInitial: user.last_initial ?? null,
           nickname: user.nickname ?? null,
+          // New fields (additive — old builds ignore them): the Player/Pro
+          // plan when one is entitled, for the app's Home/Settings surfaces.
+          plan: planEntitled ? playerSub.plan : null,
+          planStatus: playerSub?.status ?? null,
         },
         account: { type: 'player', dashboard: '/dashboard' },
       })

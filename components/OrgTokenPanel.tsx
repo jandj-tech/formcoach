@@ -9,6 +9,11 @@ import {
   orderPricing,
   usd,
   MAX_TOKENS_PER_ORDER,
+  ORG_BULK_PRICE_CENTS,
+  ORG_BULK_MIN_QTY,
+  REGULAR_ANALYSIS_PRICE_CENTS,
+  REGULAR_VOLUME_PRICE_CENTS,
+  REGULAR_VOLUME_MIN_QTY,
   type OrgTier,
 } from '@/lib/team-pricing'
 
@@ -461,7 +466,10 @@ export default function OrgTokenPanel({
             />
           </div>
 
-          <p className="text-xs text-green-600 dark:text-green-400 font-semibold px-1">Team rate — $2.49 each, $1.49 when you buy 5+</p>
+          <p className="text-xs text-green-600 dark:text-green-400 font-semibold px-1">
+            Org bulk rate — {usd(ORG_BULK_PRICE_CENTS)} each on {ORG_BULK_MIN_QTY}+ tokens (website only).
+            Smaller orders use regular pricing: {usd(REGULAR_ANALYSIS_PRICE_CENTS)} each, {usd(REGULAR_VOLUME_PRICE_CENTS)} each at {REGULAR_VOLUME_MIN_QTY}+.
+          </p>
 
           <VolumeTierList tier={tier} className="px-1" />
 

@@ -4,6 +4,8 @@ import SiteFooter from '@/components/SiteFooter'
 import VideoUploader from '@/components/VideoUploader'
 import CoachSelfUploader from '@/components/CoachSelfUploader'
 import PremiumCTA from '@/components/PremiumCTA'
+import UsageNotice from '@/components/UsageNotice'
+import { getUsageSummary, type UsageSummary } from '@/lib/player-dashboard'
 import { getSession } from '@/lib/auth'
 import { getTeamSession } from '@/lib/team-auth'
 import { getOrgSession } from '@/lib/org-auth'
@@ -28,6 +30,16 @@ export default async function AnalyzePage() {
   const coachEmail = teamSession?.adminEmail ?? orgSession?.adminEmail ?? null
   let coachSelf: { credits: number; tier: OrgTier } | null = null
   const playerTier = playerSession ? await userTier(playerSession.userId) : 'none'
+  // Subscribers see their allowance state before uploading — including the
+  // explicit "this will use a purchased token" warning. Null for everyone else.
+  let usage: UsageSummary | null = null
+  if (playerSession) {
+    try {
+      usage = await getUsageSummary(playerSession.userId)
+    } catch (err) {
+      console.error('[analyze] usage summary failed:', err)
+    }
+  }
 
   if (coachEmail) {
     let credits = 0
@@ -79,6 +91,7 @@ export default async function AnalyzePage() {
       </section>
 
       <section className="flex-1 flex flex-col items-center px-4 pb-20">
+        {usage && <UsageNotice usage={usage} />}
         {/* The upload flow keeps its light panel so every state stays readable. */}
         <div className="w-full max-w-xl bg-white rounded-3xl p-3 sm:p-5 shadow-[0_0_60px_-20px_rgba(255,92,26,0.35)]">
           {coachSelf ? (

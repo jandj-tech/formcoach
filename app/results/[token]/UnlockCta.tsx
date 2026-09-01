@@ -10,7 +10,9 @@ import { orderPricing, percentLabel, usd } from '@/lib/team-pricing'
 // Three one-tap choices rather than a stepper: this is the moment someone
 // decides whether to buy at all, and asking them to operate a control first is
 // how you end up selling exactly one every time.
-const PACKS = [1, 3, 5] as const
+// No pack between the single and the 5-token volume step: under the
+// $9.99/$5.00 ladder a 3-pack ($29.97) costs more than a 5-pack ($25.00).
+const PACKS = [1, 5, 10] as const
 
 // CTA card shown on top of the blurred criteria breakdown of a free-preview
 // report. Buying sends the player through the normal token checkout and back
@@ -24,7 +26,7 @@ export default function UnlockCta({ resultsPath, justPurchased }: { resultsPath:
   // showing the buy button again.
   const [waiting, setWaiting] = useState(justPurchased)
   const triesRef = useRef(0)
-  const [qty, setQty] = useState<number>(3)
+  const [qty, setQty] = useState<number>(1)
   // Labelled, not chosen: the server decides the currency from the request. This
   // only tells the buyer which one they're about to see on the Stripe page.
   const [currency, setCurrency] = useState<string | null>(null)

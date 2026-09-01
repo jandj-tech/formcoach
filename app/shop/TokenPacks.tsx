@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { trackInitiateCheckout } from '@/lib/meta-pixel'
 import { useIsInApp } from '@/lib/useIsInApp'
-import { orderPricing, percentLabel, usd, MAX_TOKENS_PER_ORDER } from '@/lib/team-pricing'
+import { orderPricing, percentLabel, usd, MAX_TOKENS_PER_ORDER, REGULAR_VOLUME_MIN_QTY } from '@/lib/team-pricing'
 import QuantityStepper from '@/components/QuantityStepper'
 import VolumeNudge from '@/components/VolumeNudge'
 
@@ -11,21 +11,33 @@ import VolumeNudge from '@/components/VolumeNudge'
 // highlighted, per-token anchoring against the single price, and a custom
 // amount for bulk buyers. Prices come from lib/team-pricing so this can never
 // disagree with checkout. `dark` matches the store's ink theme.
-const PACKS: Array<{ qty: number; badge?: string; highlight?: boolean }> = [
+//
+// Web packs jump straight from 1 to the 5+ volume rate: under the $9.99/$5.00
+// ladder a 3-pack ($29.97) would cost more than a 5-pack ($25.00), which reads
+// as a trap, so no pack sits between the single and the discount step.
+const WEB_PACKS: Array<{ qty: number; badge?: string; highlight?: boolean }> = [
   { qty: 1 },
-  { qty: 3, badge: 'MOST POPULAR' },
   { qty: 5, badge: 'BEST VALUE', highlight: true },
+  { qty: 10, badge: 'STOCK UP' },
 ]
 
 // Inside the iOS app the packs render as part of this same page (so the shop
 // reads as one continuous store), but tapping one hands off to the native
 // Apple in-app purchase — no web checkout ever runs in-app (guideline 3.1.1).
-// The app injects its localized StoreKit prices before the page loads.
+// The pack sizes MUST stay 1/3/5: they map to the App Store products
+// com.learnhoops.app.token / .token3 / .token5. The app injects its localized
+// StoreKit prices before the page loads; the fallbacks mirror the App Store
+// Connect price points ($9.99 / $29.99 / $24.99).
+const APP_PACKS: Array<{ qty: number; badge?: string; highlight?: boolean }> = [
+  { qty: 1 },
+  { qty: 3 },
+  { qty: 5, badge: 'BEST VALUE', highlight: true },
+]
 type AppPackPrices = Partial<Record<1 | 3 | 5, { label: string; amount: number }>>
 const APP_FALLBACK_PRICES: AppPackPrices = {
-  1: { label: '$3.99', amount: 3.99 },
-  3: { label: '$7.99', amount: 7.99 },
-  5: { label: '$9.99', amount: 9.99 },
+  1: { label: '$9.99', amount: 9.99 },
+  3: { label: '$29.99', amount: 29.99 },
+  5: { label: '$24.99', amount: 24.99 },
 }
 
 function appPackPrices(): AppPackPrices {
@@ -77,7 +89,7 @@ export default function TokenPacks({ dark = false }: { dark?: boolean }) {
     const single = appPrices[1]
     return (
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {PACKS.map(({ qty, badge, highlight }) => {
+        {APP_PACKS.map(({ qty, badge, highlight }) => {
           const price = appPrices[qty as 1 | 3 | 5]
           if (!price) return null
           const save = single && qty > 1
@@ -152,12 +164,12 @@ export default function TokenPacks({ dark = false }: { dark?: boolean }) {
 
   const cur = currency ? ` ${currency}` : ''
   const custom = orderPricing('none', customQty)
-  const floorUnit = orderPricing('none', 10).unitCents
+  const floorUnit = orderPricing('none', REGULAR_VOLUME_MIN_QTY).unitCents
 
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-      {PACKS.map(({ qty, badge, highlight }) => {
+      {WEB_PACKS.map(({ qty, badge, highlight }) => {
         const p = orderPricing('none', qty)
         return (
           <div
@@ -205,7 +217,7 @@ export default function TokenPacks({ dark = false }: { dark?: boolean }) {
                 {custom.savingsCents > 0 ? (
                   <span className={`font-bold ${s.save}`}> · save {usd(custom.savingsCents)} ({percentLabel(custom.percentOff)}%)</span>
                 ) : (
-                  <span> — down to {usd(floorUnit)} each at 10+</span>
+                  <span> — down to {usd(floorUnit)} each at {REGULAR_VOLUME_MIN_QTY}+</span>
                 )}
               </p>
             </div>
@@ -234,7 +246,7 @@ export default function TokenPacks({ dark = false }: { dark?: boolean }) {
           <span className="min-w-0">
             <span className={`block font-black text-base ${s.title}`}>Custom amount</span>
             <span className={`block text-xs mt-0.5 ${s.sub}`}>
-              Pick any number — as low as {usd(floorUnit)} per analysis at 10+
+              Pick any number — every analysis is {usd(floorUnit)} on orders of {REGULAR_VOLUME_MIN_QTY} or more
             </span>
           </span>
           <span className="shrink-0 text-ember-500 font-black text-xl" aria-hidden>＋</span>

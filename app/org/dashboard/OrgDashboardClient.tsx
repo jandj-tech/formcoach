@@ -823,8 +823,8 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
             $40 per player ($36.99 each for 30+). Every player gets a training
             ball, 2 AI shot analyses (start and end of the program), and a
             personalized completion certificate. Buying a package also creates a
-            class team and unlocks the discounted org token rate ($2.49 each, or
-            $1.49 each when you buy 5+) for your organization.
+            class team and unlocks the org bulk token rate ($2.49 each when you
+            buy 10 or more on the website) for your organization.
           </InfoTip>
         </div>
         <p className="text-sm text-gray-500 dark:text-chalk-dim mt-1">

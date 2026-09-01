@@ -5,6 +5,7 @@ import { trackInitiateCheckout } from '@/lib/meta-pixel'
 import { useIsInApp } from '@/lib/useIsInApp'
 import { useAnalysisPrice } from '@/lib/useAnalysisPrice'
 import { orderPricing, percentLabel, usd, MAX_TOKENS_PER_ORDER } from '@/lib/team-pricing'
+import { PLAYER_PLANS } from '@/lib/player-plans'
 import QuantityStepper from '@/components/QuantityStepper'
 import VolumeNudge from '@/components/VolumeNudge'
 import Link from 'next/link'
@@ -130,9 +131,17 @@ export default function PremiumCTA({ dark = false, initialTier = 'none' }: { dar
         {error && <p className="text-red-500 text-xs mt-2">{error}</p>}
       </div>
 
-      <div className={`text-xs ${subColor} border-t ${borderColor} pt-3`}>
-        <span className="font-semibold text-orange-500">Save money:</span>{' '}
-        <Link href="/shop" className="underline hover:opacity-80">Buy the training ball</Link> and get 5 free analyses included — or 10 with the 2-ball bundle.
+      <div className={`text-xs ${subColor} border-t ${borderColor} pt-3 space-y-1`}>
+        <p>
+          <span className="font-semibold text-orange-500">Analyze every week?</span>{' '}
+          <Link href="/pricing" className="underline hover:opacity-80">Plans</Link> start at{' '}
+          {usd(PLAYER_PLANS.player.monthlyCents)}/month for {PLAYER_PLANS.player.weeklyLimit} analyses
+          a week (up to {PLAYER_PLANS.player.monthlyLimit}/month).
+        </p>
+        <p>
+          <span className="font-semibold text-orange-500">Save money:</span>{' '}
+          <Link href="/shop" className="underline hover:opacity-80">Buy the training ball</Link> and get 5 free analyses included — or 10 with the 2-ball bundle.
+        </p>
       </div>
     </div>
   )

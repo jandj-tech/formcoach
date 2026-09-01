@@ -5,12 +5,45 @@ import GearWeLike from './GearWeLike'
 import { isInAppRequest } from '@/lib/in-app'
 import { regionFromServerHeaders } from '@/lib/region'
 import { readyGear } from './gear'
+import {
+  BALL_SKUS,
+  BASE_URL,
+  BUNDLE_PRICE,
+  BUNDLE_SKU,
+  CURRENCY,
+  PRICE,
+  PRODUCT_DESCRIPTION,
+  PRODUCT_IMAGES,
+  PRODUCT_NAME,
+  priceValidUntil,
+} from './product'
+import { SHOP_FAQ } from './faq'
 
 export const metadata = {
   title: 'Basketball Shooting Training Ball with Finger Placement Guides | LearnHoops',
   description:
     'The LearnHoops Training Basketball teaches correct shooting form with printed finger-placement guides. Left and right-handed editions, three sizes, 5 free AI shot analyses included. $39.99.',
   alternates: { canonical: '/shop' },
+  keywords: [
+    'basketball shooting training ball',
+    'training basketball finger placement',
+    'basketball to improve shooting form',
+    'shooting form trainer ball',
+    'basketball hand placement guide',
+    'youth basketball training ball',
+  ],
+  // Next merges metadata shallowly, so without its own openGraph this page was
+  // serving the ROOT one — homepage title, homepage url — on every share and
+  // every link preview of the product.
+  openGraph: {
+    title: 'LearnHoops Training Basketball — finger-placement guides that fix your form',
+    description:
+      'Printed grip lines show exactly where every finger belongs, so correct hand placement grooves itself on every rep. Left and right-handed editions, three sizes, 5 free AI shot analyses.',
+    url: `${BASE_URL}/shop`,
+    siteName: 'LearnHoops',
+    type: 'website',
+    images: PRODUCT_IMAGES,
+  },
 }
 
 export default async function ShopPage({ searchParams }: { searchParams: Promise<{ app?: string }> }) {
@@ -23,26 +56,95 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
   const hasGear = readyGear(await regionFromServerHeaders()).length > 0
   return (
     <main className="flex flex-col min-h-screen bg-ink-950 text-chalk">
-      {/* Product structured data — feeds Google Shopping / rich results. Keep
-          the price in sync with PRICE in ShopProduct.tsx. */}
+      {/* Product structured data — feeds Google Shopping and the Product rich
+          result. Every value comes from ./product.ts, which the buy box and the
+          Merchant Center feed also read, so the three cannot disagree. A feed
+          price that contradicts the page price is a Merchant Center suspension.
+
+          Modelled as ProductGroup + hasVariant because there are six real SKUs
+          (2 handedness editions x 3 sizes), not one product. A single Product
+          node made the other five invisible to Shopping.
+
+          No aggregateRating / review: there are no real reviews yet, and
+          inventing them is a manual-action risk. Add them here when genuine
+          ones exist — that is what puts stars under the result. */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
           __html: JSON.stringify({
             '@context': 'https://schema.org',
-            '@type': 'Product',
-            name: 'LearnHoops Training Basketball',
-            image: 'https://www.learnhoops.com/training-ball.png',
-            description:
-              'Basketball with printed finger-placement guides that teach correct shooting form on every rep. Left and right-handed editions in three sizes. Includes 5 free AI shot analyses.',
-            brand: { '@type': 'Brand', name: 'LearnHoops' },
-            offers: {
-              '@type': 'Offer',
-              url: 'https://www.learnhoops.com/shop',
-              price: '39.99',
-              priceCurrency: 'USD',
-              availability: 'https://schema.org/InStock',
+            '@type': 'ProductGroup',
+            '@id': `${BASE_URL}/shop#product`,
+            name: PRODUCT_NAME,
+            description: PRODUCT_DESCRIPTION,
+            image: PRODUCT_IMAGES,
+            // Reference the Organization already declared in the root @graph
+            // rather than minting a loose Brand node Google has to guess at.
+            brand: { '@id': `${BASE_URL}/#org` },
+            productGroupID: 'LH-BALL',
+            variesBy: ['https://schema.org/size', 'Handedness'],
+            hasVariant: BALL_SKUS.map(v => ({
+              '@type': 'Product',
+              sku: v.sku,
+              mpn: v.sku,
+              name: v.title,
+              description: v.description,
+              image: PRODUCT_IMAGES,
+              size: `${v.size} (${v.inches})`,
+              additionalProperty: {
+                '@type': 'PropertyValue',
+                name: 'Handedness',
+                value: v.variant === 'right' ? 'Right-handed' : 'Left-handed',
+              },
+              offers: {
+                '@type': 'Offer',
+                url: `${BASE_URL}/shop#training-ball`,
+                price: PRICE.toFixed(2),
+                priceCurrency: CURRENCY,
+                priceValidUntil: priceValidUntil(),
+                availability: 'https://schema.org/InStock',
+                itemCondition: 'https://schema.org/NewCondition',
+                seller: { '@id': `${BASE_URL}/#org` },
+              },
+            })),
+            // The 2-ball bundle is a real thing you can buy and was absent from
+            // structured data entirely.
+            isRelatedTo: {
+              '@type': 'Product',
+              sku: BUNDLE_SKU,
+              name: 'LearnHoops Training Basketball — 2-Ball Bundle',
+              description:
+                'Two LearnHoops Training Basketballs — the second at half price. Mix editions and sizes.',
+              image: PRODUCT_IMAGES,
+              brand: { '@id': `${BASE_URL}/#org` },
+              offers: {
+                '@type': 'Offer',
+                url: `${BASE_URL}/shop#bundle`,
+                price: BUNDLE_PRICE.toFixed(2),
+                priceCurrency: CURRENCY,
+                priceValidUntil: priceValidUntil(),
+                availability: 'https://schema.org/InStock',
+                itemCondition: 'https://schema.org/NewCondition',
+                seller: { '@id': `${BASE_URL}/#org` },
+              },
             },
+          }),
+        }}
+      />
+      {/* FAQPage from the same array the accordions render (./faq.ts), so the
+          two cannot disagree. Six real questions were already sitting on this
+          page unmarked — the cheapest structured data available here. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'FAQPage',
+            mainEntity: SHOP_FAQ.map(f => ({
+              '@type': 'Question',
+              name: f.q,
+              acceptedAnswer: { '@type': 'Answer', text: f.a.join(' ') },
+            })),
           }),
         }}
       />

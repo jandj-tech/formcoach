@@ -9,18 +9,12 @@ import type { Variant, Size } from '@/lib/cart'
 import QuantityStepper from '@/components/QuantityStepper'
 import TokenPacks from './TokenPacks'
 import SectionBreak from '@/components/SectionBreak'
+import { BUNDLE_PRICE, FREE_ANALYSES_PER_BALL, PRICE, SIZES } from './product'
+import { ANALYSIS_FAQ, BALL_FAQ } from './faq'
 
-const SIZES: { value: Size; inches: string; label: string }[] = [
-  { value: '5', inches: '27.5"', label: 'Youth' },
-  { value: '6', inches: '28.5"', label: "Women's" },
-  { value: '7', inches: '29.5"', label: "Men's" },
-]
-
-const PRICE = 39.99
-// Bundle: ball 1 full price + ball 2 at 50% off = $39.99 + $20.00 = $59.99
-const BUNDLE_PRICE = PRICE + Math.round(PRICE * 50) / 100
-// Free shot analyses granted per single training ball.
-const FREE_ANALYSES_PER_BALL = 5
+// Price, sizes and the SKU list now live in ./product.ts, because the Product
+// structured data and the Merchant Center feed have to agree with this page
+// exactly and a hand-kept copy drifts.
 
 // The product description reformatted as feature tiles — same facts as the
 // paragraph and the selectors in the buy box, no new claims.
@@ -73,9 +67,18 @@ export default function ShopProduct({
       <section className="px-4 pt-10 pb-12 sm:pt-14 sm:pb-14">
         <div className="max-w-6xl mx-auto">
           <p className="eyebrow text-ember-400 mb-3 select-none">The LearnHoops shop</p>
-          <h1 className="font-display font-black uppercase text-[clamp(2rem,5vw,3.5rem)] text-chalk leading-[0.95]">
-            Gear that fixes your shot
+          {/* The h1 is the single strongest on-page ranking signal, and it used
+              to read "Gear that fixes your shot" — no product name, no term
+              anyone searches. The product name only appeared in an h2 further
+              down. The old line survives as the tagline beneath. */}
+          <h1 className="font-display font-black uppercase text-[clamp(1.7rem,4.2vw,3rem)] text-chalk leading-[0.95]">
+            Basketball training ball with{' '}
+            <span className="text-gradient-ember">finger-placement guides</span>
           </h1>
+          <p className="text-chalk-dim text-base sm:text-lg mt-4 max-w-2xl leading-relaxed">
+            Gear that fixes your shot — printed grip lines show exactly where every finger
+            belongs, so correct hand placement grooves itself on every rep.
+          </p>
           <nav aria-label="Shop sections" className="flex gap-2 mt-6 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0">
             <a
               href="#training-ball"
@@ -247,22 +250,17 @@ export default function ShopProduct({
 
             {/* Product details — collapsible so the buy box stays compact */}
             <div className="space-y-2 pt-1">
-              <ShopAccordion title="What's included" dark>
-                One training ball in your chosen size and edition, plus{' '}
-                <strong className="text-chalk">{FREE_ANALYSES_PER_BALL} free AI shot analyses</strong> added
-                to your account after purchase. The printed grip lines mark exactly where your fingers belong.
-              </ShopAccordion>
-              <ShopAccordion title="Sizing guide" dark>
-                Size 5 (27.5&quot;) fits youth players, size 6 (28.5&quot;) is the
-                women&apos;s standard, and size 7 (29.5&quot;) is the men&apos;s
-                standard. When in doubt, pick the size used in your league.
-              </ShopAccordion>
-              <ShopAccordion title="Shipping" dark>
-                Enter your state or postal code in the cart to see your shipping
-                cost before you pay — orders ship Canada Post within Canada and
-                USPS within the US. You&apos;ll get a receipt by email right
-                away and another email when your order ships.
-              </ShopAccordion>
+              {/* Rendered from ./faq.ts, which app/shop/page.tsx also turns
+                  into the FAQPage schema — one array, so the markup can never
+                  claim something the page does not say. Titles are now full
+                  questions ("What size basketball should I get?" rather than
+                  "Sizing guide") because that is both what people search and
+                  what a Question node needs. */}
+              {BALL_FAQ.map(f => (
+                <ShopAccordion key={f.q} title={f.q} dark>
+                  {f.a.join(' ')}
+                </ShopAccordion>
+              ))}
             </div>
           </div>
         </div>
@@ -309,23 +307,11 @@ export default function ShopProduct({
                 you exactly what to fix.
               </p>
               <div className="space-y-2">
-                <ShopAccordion title="What do I get?">
-                  A full private breakdown: your overall score, a score and
-                  coaching tip for each of the 18 criteria, and the frames the
-                  AI studied. Your results link is emailed to you and stays
-                  private — bookmark it, it always works.
-                </ShopAccordion>
-                <ShopAccordion title="How does it work?">
-                  Film your shot from the front, standing near the basket so the
-                  elbow, hands and feet are visible, upload the clip on the
-                  Analyze page, and your results arrive by email within minutes.
-                  Any phone camera works — MP4 or MOV.
-                </ShopAccordion>
-                <ShopAccordion title="Can I get analyses for free?">
-                  Yes — the training ball includes 5 free analyses and the
-                  2-ball bundle includes 10. Players on team or organization
-                  rosters can also receive analysis tokens from their coach.
-                </ShopAccordion>
+                {ANALYSIS_FAQ.map(f => (
+                  <ShopAccordion key={f.q} title={f.q}>
+                    {f.a.join(' ')}
+                  </ShopAccordion>
+                ))}
               </div>
             </div>
 

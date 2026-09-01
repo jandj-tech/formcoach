@@ -161,7 +161,7 @@ export async function POST(req: NextRequest) {
             currency,
             unit_amount: ball2Amount,
             product_data: {
-              name: `${PRODUCT.name} — ${variantLabel(bundleItem.variant2)}, ${sizeLabel(bundleItem.size2)} (Bundle Ball 2 — 50% off)`,
+              name: `${PRODUCT.name} — ${variantLabel(bundleItem.variant2)}, ${sizeLabel(bundleItem.size2)} (Bundle Ball 2 — discounted)`,
               description: BALL_DESCRIPTION,
             },
           },

@@ -26,7 +26,7 @@ const MODAL_ROUTES = new Set([
 /** Internal staff only — the pixel is irrelevant there, so don't nag. */
 const SUPPRESSED_PREFIXES = ['/admin']
 
-export function consentSurfaceFor(pathname: string): ConsentSurface {
+export function consentSurfaceFor(pathname: string, isSignedIn = false): ConsentSurface {
   // usePathname() omits the trailing slash except at the root, but normalise so a
   // stray '/shop/' can't silently downgrade to a sheet.
   const path =
@@ -35,5 +35,9 @@ export function consentSurfaceFor(pathname: string): ConsentSurface {
   if (SUPPRESSED_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`))) {
     return 'none'
   }
+  // Never wall someone who is already signed in. The modal is aimed at cold ad
+  // traffic deciding whether to trust us; a logged-in player mid-session just
+  // gets the small sheet and carries on using the site.
+  if (isSignedIn) return 'sheet'
   return MODAL_ROUTES.has(path) ? 'modal' : 'sheet'
 }

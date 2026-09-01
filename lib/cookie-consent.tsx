@@ -8,6 +8,7 @@ import {
   useMemo,
   useState,
 } from 'react'
+import { UI_AUTH_HINT_COOKIE } from '@/lib/sessions'
 
 /**
  * Cookie consent. Two categories, because two is what we actually set:
@@ -55,6 +56,12 @@ type ConsentContext = {
   hasDecided: boolean
   /** True when the banner or the settings panel should be on screen. */
   isOpen: boolean
+  /**
+   * Whether a session looks to be in progress, from the proxy-maintained
+   * `fc_ui_auth` hint. Used ONLY to soften the banner for someone already
+   * signed in — never as an access check. See UI_AUTH_HINT_COOKIE.
+   */
+  isSignedIn: boolean
   save: (prefs: CookiePrefs) => void
   openSettings: () => void
   closeSettings: () => void
@@ -94,10 +101,18 @@ function clearMarketingCookies() {
   }
 }
 
+/** Reads the proxy-maintained hint. Presence only — never trusted for access. */
+function readSignedInHint(): boolean {
+  return document.cookie
+    .split('; ')
+    .some((c) => c === `${UI_AUTH_HINT_COOKIE}=1`)
+}
+
 export function CookieConsentProvider({ children }: { children: React.ReactNode }) {
   const [prefs, setPrefs] = useState<CookiePrefs | null>(null)
   const [hasDecided, setHasDecided] = useState(false)
   const [manuallyOpened, setManuallyOpened] = useState(false)
+  const [isSignedIn, setIsSignedIn] = useState(false)
   // Gates the banner on having mounted: the server cannot know what is in
   // localStorage, so rendering it during SSR would be a hydration mismatch.
   const [mounted, setMounted] = useState(false)
@@ -113,6 +128,7 @@ export function CookieConsentProvider({ children }: { children: React.ReactNode 
       setPrefs(stored)
       setHasDecided(true)
     }
+    setIsSignedIn(readSignedInHint())
     setMounted(true)
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [])
@@ -146,11 +162,12 @@ export function CookieConsentProvider({ children }: { children: React.ReactNode 
       prefs,
       hasDecided,
       isOpen: mounted && (!hasDecided || manuallyOpened),
+      isSignedIn,
       save,
       openSettings: () => setManuallyOpened(true),
       closeSettings: () => setManuallyOpened(false),
     }),
-    [prefs, hasDecided, manuallyOpened, mounted, save],
+    [prefs, hasDecided, manuallyOpened, mounted, isSignedIn, save],
   )
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

@@ -10,7 +10,19 @@ export const ORG_COOKIE = 'fc_org_session'
 // "you're viewing this as a coach" long after signing out.
 export const ADMIN_COOKIE = 'admin_auth'
 
-const ALL_SESSION_COOKIES = [PLAYER_COOKIE, TEAM_COOKIE, ORG_COOKIE, ADMIN_COOKIE]
+export const ALL_SESSION_COOKIES = [PLAYER_COOKIE, TEAM_COOKIE, ORG_COOKIE, ADMIN_COOKIE]
+
+/**
+ * A readable mirror of "is any session cookie present", kept in sync by the
+ * proxy. The real session cookies are httpOnly, so the browser cannot tell a
+ * signed-in visitor from a signed-out one — and the cookie banner needs to
+ * know, so it never walls someone who is already using the site.
+ *
+ * Deliberately NOT httpOnly, and deliberately not trusted for anything:
+ * forging it only changes how big your own cookie banner is. Never read it to
+ * make an access decision.
+ */
+export const UI_AUTH_HINT_COOKIE = 'fc_ui_auth'
 
 function expire(res: NextResponse, name: string) {
   res.cookies.set({ name, value: '', httpOnly: true, path: '/', maxAge: 0 })

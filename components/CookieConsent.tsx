@@ -16,7 +16,7 @@ const FOCUSABLE =
  * is what `react-hooks/set-state-in-effect` guards against.
  */
 export default function CookieConsent() {
-  const { isOpen, hasDecided, prefs, save, closeSettings } = useCookieConsent()
+  const { isOpen, hasDecided, prefs, isSignedIn, save, closeSettings } = useCookieConsent()
   const pathname = usePathname()
 
   if (!isOpen) return null
@@ -29,8 +29,10 @@ export default function CookieConsent() {
 
   // Reopening from the footer is always the soft sheet, whatever page they are on —
   // someone who came to change a setting should never be walled in. Only the
-  // first-visit banner escalates by route.
-  const surface: ConsentSurface = hasDecided ? 'sheet' : consentSurfaceFor(pathname)
+  // first-visit banner escalates by route, and only for signed-out visitors.
+  const surface: ConsentSurface = hasDecided
+    ? 'sheet'
+    : consentSurfaceFor(pathname, isSignedIn)
   if (surface === 'none') return null
 
   return (
@@ -127,12 +129,16 @@ function ConsentPanel({
 
   return (
     <>
-      <div
-        aria-hidden
-        className={`fixed inset-0 z-[90] animate-in fade-in duration-300 ${
-          isModal ? 'bg-black/70 backdrop-blur-sm' : 'bg-black/50 backdrop-blur-[2px]'
-        }`}
-      />
+      {/* Only the modal gets a backdrop. A full-screen scrim over the sheet
+          would swallow every click on the page behind it — the visitor could
+          scroll but not press anything — which is exactly what the sheet is
+          meant to avoid. */}
+      {isModal && (
+        <div
+          aria-hidden
+          className="fixed inset-0 z-[90] bg-black/70 backdrop-blur-sm animate-in fade-in duration-300"
+        />
+      )}
       <div
         ref={panelRef}
         role="dialog"
@@ -170,14 +176,12 @@ function ConsentPanel({
                 required
                 checked
                 description="Keeps you signed in, remembers your cart and your light/dark choice, and protects sign-in from tampering."
-                detail="fc_session · fc_team_session · fc_org_session · admin_auth · fc_oauth_state · fc_org_pending — up to 30 days"
               />
               <CategoryRow
                 title="Advertising"
                 checked={marketing}
                 onChange={setMarketing}
-                description="Lets the Meta Pixel tell us which ads led to a signup or a purchase. Shares pages visited and, on signup, a hashed email with Meta."
-                detail="_fbp · _fbc — up to 90 days · set by Meta Platforms"
+                description="Lets us see which ads led to a signup or a purchase. Shares pages visited and, on signup, a scrambled version of your email with Meta."
               />
             </div>
           )}
@@ -227,14 +231,12 @@ function ConsentPanel({
 function CategoryRow({
   title,
   description,
-  detail,
   checked,
   onChange,
   required = false,
 }: {
   title: string
   description: string
-  detail: string
   checked: boolean
   onChange?: (next: boolean) => void
   required?: boolean
@@ -263,9 +265,6 @@ function CategoryRow({
         </span>
         <span className="mt-1 block text-xs text-chalk-dim leading-relaxed">
           {description}
-        </span>
-        <span className="mt-1.5 block font-mono text-[0.65rem] text-chalk-dim/70 break-words">
-          {detail}
         </span>
       </span>
     </label>

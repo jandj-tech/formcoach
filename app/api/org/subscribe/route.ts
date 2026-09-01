@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
     // The server decides whether the launch offer applies — never the client.
     // `offerIsLive` re-reads the deadline stored on the pending row and also
     // enforces monthly-only: on a yearly interval a 3-month repeating coupon
-    // covers the entire first invoice, i.e. 50% off a whole year.
+    // covers the entire first invoice, i.e. the launch discount off a whole year.
     const offerApplies = offerIsLive(pending, interval)
 
     // If the client asked for the offer and the server disagrees, say so

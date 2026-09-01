@@ -24,20 +24,20 @@ const WEB_PACKS: Array<{ qty: number; badge?: string; highlight?: boolean }> = [
 // Inside the iOS app the packs render as part of this same page (so the shop
 // reads as one continuous store), but tapping one hands off to the native
 // Apple in-app purchase — no web checkout ever runs in-app (guideline 3.1.1).
-// The pack sizes MUST stay 1/3/5: they map to the App Store products
-// com.learnhoops.app.token / .token3 / .token5. The app injects its localized
-// StoreKit prices before the page loads; the fallbacks mirror the App Store
-// Connect price points ($9.99 / $29.99 / $24.99).
+// The app sells exactly two packs, matching the native Shop tab: 1 and 5
+// (products com.learnhoops.app.token / .token5; the 3-pack is retired from
+// sale but still credits if restored). The app injects its localized StoreKit
+// prices before the page loads; the fallbacks mirror the App Store Connect
+// price points ($9.99 / $29.99 — the 5-pack is the ONE price that differs
+// from the web's $25, covering the App Store's cut).
 const APP_PACKS: Array<{ qty: number; badge?: string; highlight?: boolean }> = [
   { qty: 1 },
-  { qty: 3 },
   { qty: 5, badge: 'BEST VALUE', highlight: true },
 ]
 type AppPackPrices = Partial<Record<1 | 3 | 5, { label: string; amount: number }>>
 const APP_FALLBACK_PRICES: AppPackPrices = {
   1: { label: '$9.99', amount: 9.99 },
-  3: { label: '$29.99', amount: 29.99 },
-  5: { label: '$24.99', amount: 24.99 },
+  5: { label: '$29.99', amount: 29.99 },
 }
 
 function appPackPrices(): AppPackPrices {

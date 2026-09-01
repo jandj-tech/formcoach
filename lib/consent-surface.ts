@@ -20,6 +20,7 @@ const MODAL_ROUTES = new Set([
   '/shop',
   '/partners',
   '/team',
+  '/pricing',
   '/org/pricing',
 ])
 

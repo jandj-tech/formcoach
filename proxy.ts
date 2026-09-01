@@ -88,6 +88,7 @@ export const config = {
     '/shop',
     '/partners',
     '/team',
+    '/pricing',
     '/org/pricing',
   ],
 }

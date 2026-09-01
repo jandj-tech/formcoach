@@ -11,7 +11,8 @@ import { resolveBaseUrl } from '@/lib/base-url'
 const BASE_URL = resolveBaseUrl()
 
 // A coach or org owner buys analysis credits for their own shot uploads.
-// $2.49 each, dropping to $1.49 at 5+ in one order — no roster minimum.
+// Entitled orgs pay the bulk rate ($2.49 each) on orders of 10+; smaller
+// orders price like the public ladder ($9.99, or $5 each at 5+).
 export async function POST(req: NextRequest) {
   // Digital goods cannot be sold via Stripe inside the iOS app (guideline 3.1.1).
   const inAppBlock = rejectInAppPurchase(req)

@@ -11,7 +11,10 @@ const BASE_URL = resolveBaseUrl()
 
 // An organization buys analysis tokens into its own balance. From there the
 // org can assign them to players, give them to a coach, or use them itself.
-// $2.49 each, dropping to $1.49 at 5+ in one order. Every org gets this rate.
+// Entitled orgs pay the bulk rate ($2.49 each) on orders of 10+; smaller
+// orders price like the public ladder ($9.99, or $5 each at 5+). The minimum
+// is enforced inside discountedUnitCents, and this route is web-only (the
+// in-app rejection below), so the bulk rate cannot be reached from the app.
 export async function POST(req: NextRequest) {
   // Digital goods cannot be sold via Stripe inside the iOS app (guideline 3.1.1).
   const inAppBlock = rejectInAppPurchase(req)

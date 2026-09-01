@@ -9,6 +9,8 @@ import { recordPurchase } from '@/lib/record-purchase'
 import { resolveBaseUrl } from '@/lib/base-url'
 import { createOrgFromCheckout } from '@/lib/create-org-from-checkout'
 import { applyOrgReactivation, syncSubscriptionToOrg } from '@/lib/org-subscription'
+import { applyPlayerSubscriptionCheckout, syncSubscriptionToUser } from '@/lib/player-subscription'
+import { isPlayerPlan, PLAYER_PLANS } from '@/lib/player-plans'
 
 export async function POST(req: NextRequest) {
   try {
@@ -107,6 +109,30 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
         })
       }
       console.log('[stripe webhook] org_reactivate', { orgId, applied })
+      return NextResponse.json({ received: true })
+    }
+
+    // --- Player subscription (LearnHoops Player / Pro) ---
+    // The user row already exists; this attaches the paid subscription to it.
+    // Idempotent and shared with /api/subscribe/complete — whichever of the
+    // two arrives first wins and the other no-ops.
+    if (metaType === 'player_subscription') {
+      const applied = await applyPlayerSubscriptionCheckout(session)
+      const playerPlan = session.metadata?.playerPlan
+      if (applied && isPlayerPlan(playerPlan)) {
+        await recordPurchase(session, {
+          kind: 'player_subscription',
+          description: `${PLAYER_PLANS[playerPlan].name} — ${session.metadata?.playerInterval === 'annual' ? 'Annual' : 'Monthly'}`,
+          quantity: 1,
+          buyerKind: 'user',
+          buyerRef: session.metadata?.userId,
+        })
+      }
+      console.log('[stripe webhook] player_subscription', {
+        sessionId: session.id,
+        userId: session.metadata?.userId ?? null,
+        applied,
+      })
       return NextResponse.json({ received: true })
     }
 
@@ -710,8 +736,19 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
     event.type === 'customer.subscription.deleted'
   ) {
     const sub = event.data.object as Stripe.Subscription
-    await syncSubscriptionToOrg(sub)
-    console.log('[stripe webhook]', event.type, { subscriptionId: sub.id, status: sub.status })
+    // Two kinds of subscription flow through this endpoint. The metadata
+    // stamped at checkout (subscription_data.metadata) says which — org
+    // subscriptions predate the type stamp, so anything unmarked syncs as org.
+    if (sub.metadata?.type === 'player_subscription') {
+      await syncSubscriptionToUser(sub)
+    } else {
+      await syncSubscriptionToOrg(sub)
+    }
+    console.log('[stripe webhook]', event.type, {
+      subscriptionId: sub.id,
+      status: sub.status,
+      kind: sub.metadata?.type === 'player_subscription' ? 'player' : 'org',
+    })
     return NextResponse.json({ received: true })
   }
 

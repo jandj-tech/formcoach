@@ -25,7 +25,7 @@ const FAQS: Array<{ id?: string; q: string; a: string[] }> = [
   {
     q: 'How much does a shot analysis cost?',
     a: [
-      'Each analysis is $3.49 — or $2.49 for players on any team, dropping to $1.49 each when you buy 5 or more at once. Every LearnHoops Training Basketball from the shop includes 5 free analyses, and bulk orders get volume discounts automatically.',
+      'Most players subscribe: LearnHoops Player is $18.95/month for 2 analyses per week (up to 6 per month), and LearnHoops Pro is $28.95/month for 5 per week (up to 15 per month). One-time analyses are $9.99 each, or $5 each when you buy 5 or more at once. Organization members can buy bulk tokens at $2.49 each on the website with a 10-token minimum. Every LearnHoops Training Basketball from the shop includes 5 free analyses.',
     ],
   },
   {
@@ -39,7 +39,7 @@ const FAQS: Array<{ id?: string; q: string; a: string[] }> = [
   {
     q: 'Can basketball teams and organizations use LearnHoops?',
     a: [
-      'Yes. Coaches get a team dashboard with a roster, shared credits, schedules, and team chat — players join with a team code, and the coach can upload shots for any player on the roster. Organizations can run multiple teams and 10-week training classes with progress certificates. Team players pay a discounted $2.49 per analysis, dropping to $1.49 each when you buy 5 or more at once.',
+      'Yes. Coaches get a team dashboard with a roster, shared credits, schedules, and team chat — players join with a team code, and the coach can upload shots for any player on the roster. Organizations can run multiple teams and 10-week training classes with progress certificates. Organization members get bulk analysis tokens at $2.49 each when buying 10 or more on the LearnHoops website; smaller orders use the regular pricing ($9.99 each, or $5 each for 5+).',
     ],
   },
 ]

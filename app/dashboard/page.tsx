@@ -3,7 +3,10 @@ import { getSession } from '@/lib/auth'
 import { isInAppRequest } from '@/lib/in-app'
 import { db } from '@/lib/db'
 import { userTier } from '@/lib/team-features'
-import { analysisBaseCents } from '@/lib/team-pricing'
+import { analysisBaseCents, REGULAR_VOLUME_MIN_QTY, REGULAR_VOLUME_PRICE_CENTS, usd } from '@/lib/team-pricing'
+import { getUsageSummary } from '@/lib/player-dashboard'
+import { PLAYER_PLANS } from '@/lib/player-plans'
+import PlanControls from './PlanControls'
 import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
 import InfoTip from '@/components/InfoTip'
@@ -42,7 +45,7 @@ type SubmissionRow = {
   frame_urls: string[] | null
 }
 
-export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ app?: string; tab?: string }> }) {
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ app?: string; tab?: string; subscribed?: string }> }) {
   const session = await getSession()
   if (!session) redirect('/login')
 
@@ -188,6 +191,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     ]
   }
 
+  // Grandfathered pre-2026 unlimited subscribers (legacy columns).
   const isSubscribed =
     !!user.subscription_type &&
     !!user.subscription_expires_at &&
@@ -195,6 +199,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   const tokens = user.analysis_tokens ?? 0
   const tier = await userTier(user.id)
+  // The Player/Pro plan + this week/month allowance, from the same service the
+  // API and the iOS app read — one source of truth for what's left.
+  const usage = await getUsageSummary(user.id)
 
   function scoreColor(score: number) {
     if (score >= 8) return 'text-green-600 dark:text-green-400'
@@ -408,42 +415,179 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <LogoutButton />
         </header>
 
-        {/* ── Shot tokens — always visible above the tabs ────────── */}
-        <section className="bg-orange-50 dark:bg-ember-500/10 border border-orange-200 rounded-2xl p-5">
-          <div className="flex items-center gap-2">
-            <h2 className="text-xs font-bold text-gray-500 dark:text-chalk-dim uppercase tracking-wide">Shot Tokens</h2>
-            <InfoTip label="What are shot tokens?" align="left">
-              {isInApp ? (
-                // In-app purchases carry their own App Store pricing — quoting
-                // the web price here shows a number the buy button won't charge.
-                <>1 token = 1 AI shot analysis. Every training ball from the shop
-                includes 5 free tokens, or you can buy single tokens right here.</>
-              ) : (
-                <>1 token = 1 AI shot analysis. Every training ball from the shop
-                includes 5 free tokens, or you can buy single tokens here for
-                ${tokenPrice} each.</>
-              )}
-            </InfoTip>
+        {/* ── Plan & usage — always visible above the tabs ───────── */}
+        {params.subscribed === '1' && usage.entitled && (
+          <div className="bg-green-50 dark:bg-green-500/10 border border-green-300 dark:border-green-500/40 rounded-2xl px-5 py-4 text-sm font-semibold text-green-800 dark:text-green-300">
+            Your {usage.planName} plan is active. Included analyses reset on your own billing
+            schedule — they&apos;re tracked below.
           </div>
-          <div className="mt-2 flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-baseline gap-2">
-              {isSubscribed ? (
-                <span className="text-3xl font-black text-orange-600 dark:text-ember-400">Unlimited</span>
-              ) : (
-                <>
-                  <span className="text-4xl font-black text-black dark:text-chalk">{tokens}</span>
-                  <span className="text-gray-500 dark:text-chalk-dim text-sm">token{tokens !== 1 ? 's' : ''} left</span>
-                </>
+        )}
+
+        {usage.entitled && usage.plan ? (
+          <>
+            {/* Current plan */}
+            <section className="bg-orange-50 dark:bg-ember-500/10 border border-orange-200 rounded-2xl p-5 space-y-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-xs font-bold text-gray-500 dark:text-chalk-dim uppercase tracking-wide">Your Plan</h2>
+                  <p className="text-2xl font-black text-black dark:text-chalk mt-1">{usage.planName}</p>
+                  <p className="text-sm text-gray-600 dark:text-chalk-dim mt-0.5">
+                    {usage.billingFrequency === 'annual'
+                      ? `${usd(PLAYER_PLANS[usage.plan].annualTotalCents)}/year`
+                      : `${usd(PLAYER_PLANS[usage.plan].monthlyCents)}/month`}
+                    {' · '}
+                    {usage.allowanceLabel}
+                  </p>
+                  {usage.nextBillingAt && (
+                    <p className="text-xs text-gray-500 dark:text-chalk-dim mt-1">
+                      {usage.cancelAtPeriodEnd ? 'Plan ends' : usage.subscriptionStatus === 'past_due' ? 'Payment retry — access until' : 'Next billing date'}
+                      {': '}
+                      {new Date(usage.nextBillingAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                    </p>
+                  )}
+                  {usage.subscriptionStatus === 'past_due' && (
+                    <p className="text-xs font-bold text-red-600 dark:text-red-400 mt-1">
+                      Your last payment failed — update your card in Manage subscription to keep your plan.
+                    </p>
+                  )}
+                </div>
+                <Link
+                  href="/analyze"
+                  className="bg-orange-500 hover:bg-orange-400 text-ink-950 font-bold text-sm px-5 py-2.5 rounded-xl transition-colors"
+                >
+                  Analyze a Shot
+                </Link>
+              </div>
+              {!isInApp && <PlanControls plan={usage.plan} interval={usage.billingFrequency ?? 'monthly'} />}
+            </section>
+
+            {/* Included usage — BOTH limits, tracked separately from tokens */}
+            <section className="border border-gray-200 dark:border-courtline rounded-2xl p-5 space-y-4">
+              <div className="flex items-center gap-2">
+                <h2 className="text-xs font-bold text-gray-500 dark:text-chalk-dim uppercase tracking-wide">Shot Analysis</h2>
+                <InfoTip label="How do included analyses work?" align="left">
+                  Your plan includes {usage.allowanceLabel} — both limits apply, and unused
+                  analyses don&apos;t roll over. When your included analyses are used up, any
+                  purchased analysis tokens are used instead (we&apos;ll tell you first).
+                </InfoTip>
+              </div>
+              {(
+                [
+                  { label: 'This Week', used: usage.weeklyUsed, limit: usage.weeklyLimit, remaining: usage.weeklyRemaining, days: usage.weeklyResetInDays, resetLabel: 'Next weekly reset' },
+                  { label: 'This Month', used: usage.monthlyUsed, limit: usage.monthlyLimit, remaining: usage.monthlyRemaining, days: usage.monthlyResetInDays, resetLabel: 'Next monthly reset' },
+                ] as const
+              ).map((row) => {
+                const pct = row.limit > 0 ? Math.min(100, Math.round((row.used / row.limit) * 100)) : 0
+                const days = row.days
+                return (
+                  <div key={row.label}>
+                    <div className="flex items-baseline justify-between gap-3">
+                      <p className="text-sm font-bold text-black dark:text-chalk">{row.label}</p>
+                      <p className="text-sm font-black text-black dark:text-chalk">
+                        {row.used} <span className="text-gray-400 dark:text-chalk-dim font-semibold">/ {row.limit}</span>
+                      </p>
+                    </div>
+                    <div
+                      className="mt-1.5 h-2 rounded-full bg-gray-200 dark:bg-ink-700 overflow-hidden"
+                      role="progressbar"
+                      aria-valuenow={row.used}
+                      aria-valuemin={0}
+                      aria-valuemax={row.limit}
+                      aria-label={`${row.label}: ${row.used} of ${row.limit} included analyses used`}
+                    >
+                      <div
+                        className={`h-full rounded-full transition-all ${row.remaining === 0 ? 'bg-gray-400 dark:bg-chalk-dim' : 'bg-orange-500'}`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-chalk-dim mt-1">
+                      {row.remaining === 0
+                        ? `Used up — ${row.resetLabel.toLowerCase()}${days ? ` in ${days} day${days === 1 ? '' : 's'}` : ''}`
+                        : `${row.remaining} ${row.remaining === 1 ? 'analysis' : 'analyses'} remaining`}
+                      {row.remaining > 0 && days ? ` · ${row.resetLabel.toLowerCase()} in ${days} day${days === 1 ? '' : 's'}` : ''}
+                    </p>
+                  </div>
+                )
+              })}
+              {usage.weeklyRemaining === 0 && usage.monthlyRemaining > 0 && usage.plan === 'player' && !isInApp && (
+                <p className="text-xs text-gray-600 dark:text-chalk-dim border-t border-gray-200 dark:border-courtline pt-3">
+                  Hitting the weekly limit often? Pro includes up to {PLAYER_PLANS.pro.weeklyLimit} per
+                  week and {PLAYER_PLANS.pro.monthlyLimit} per month.
+                </p>
               )}
-            </div>
-            <div className="flex items-center gap-3 flex-wrap">
-              {!isSubscribed && <BuyTokenButton isInApp={isInApp} initialTier={tier} />}
+            </section>
+          </>
+        ) : isSubscribed ? (
+          /* Grandfathered legacy subscriber — unlimited, exactly as sold. */
+          <section className="bg-orange-50 dark:bg-ember-500/10 border border-orange-200 rounded-2xl p-5">
+            <h2 className="text-xs font-bold text-gray-500 dark:text-chalk-dim uppercase tracking-wide">Shot Analyses</h2>
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-4">
+              <span className="text-3xl font-black text-orange-600 dark:text-ember-400">Unlimited</span>
               <Link
                 href="/analyze"
                 className="bg-orange-500 hover:bg-orange-400 text-ink-950 font-bold text-sm px-5 py-2.5 rounded-xl transition-colors"
               >
                 Analyze a Shot
               </Link>
+            </div>
+          </section>
+        ) : (
+          !isInApp && (
+            /* No plan: subscriptions are the primary option. */
+            <section className="bg-orange-50 dark:bg-ember-500/10 border border-orange-200 rounded-2xl p-5 flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xs font-bold text-gray-500 dark:text-chalk-dim uppercase tracking-wide">Train Consistently</h2>
+                <p className="text-black dark:text-chalk font-bold mt-1">
+                  Get {PLAYER_PLANS.player.weeklyLimit} analyses every week, up to {PLAYER_PLANS.player.monthlyLimit} a month
+                </p>
+                <p className="text-sm text-gray-600 dark:text-chalk-dim mt-0.5">
+                  Plans from {usd(PLAYER_PLANS.player.monthlyCents)}/month.
+                </p>
+              </div>
+              <Link
+                href="/pricing"
+                className="bg-orange-500 hover:bg-orange-400 text-ink-950 font-bold text-sm px-5 py-2.5 rounded-xl transition-colors"
+              >
+                See Plans
+              </Link>
+            </section>
+          )
+        )}
+
+        {/* ── Purchased analyses — separate from any plan allowance ── */}
+        <section className="border border-gray-200 dark:border-courtline rounded-2xl p-5">
+          <div className="flex items-center gap-2">
+            <h2 className="text-xs font-bold text-gray-500 dark:text-chalk-dim uppercase tracking-wide">Purchased Analyses</h2>
+            <InfoTip label="What are purchased analyses?" align="left">
+              {isInApp ? (
+                // In-app purchases carry their own App Store pricing — quoting
+                // the web price here shows a number the buy button won't charge.
+                <>One-time analysis tokens you own outright — separate from any plan&apos;s included
+                analyses, and they don&apos;t expire. Every training ball from the shop includes 5
+                free analyses.</>
+              ) : (
+                <>One-time analysis tokens you own outright — separate from any plan&apos;s included
+                analyses, and they don&apos;t expire. ${tokenPrice} each, or {usd(REGULAR_VOLUME_PRICE_CENTS)} each
+                when you buy {REGULAR_VOLUME_MIN_QTY} or more. Every training ball from the shop
+                includes 5 free analyses.</>
+              )}
+            </InfoTip>
+          </div>
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-baseline gap-2">
+              <span className="text-4xl font-black text-black dark:text-chalk">{tokens}</span>
+              <span className="text-gray-500 dark:text-chalk-dim text-sm">available</span>
+            </div>
+            <div className="flex items-center gap-3 flex-wrap">
+              {!isSubscribed && <BuyTokenButton isInApp={isInApp} initialTier={tier} />}
+              {!usage.entitled && !isSubscribed && (
+                <Link
+                  href="/analyze"
+                  className="bg-orange-500 hover:bg-orange-400 text-ink-950 font-bold text-sm px-5 py-2.5 rounded-xl transition-colors"
+                >
+                  Analyze a Shot
+                </Link>
+              )}
             </div>
           </div>
           {!isSubscribed && !isInApp && (

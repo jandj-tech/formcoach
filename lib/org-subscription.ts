@@ -46,10 +46,10 @@ export function subscriptionPeriodEnd(sub: Stripe.Subscription): Date | null {
  * Idempotent by id, the same lazy pattern lib/comp.ts uses for the 100%-off
  * comp coupon.
  *
- * `amount_off` rather than `percent_off`: half of 999¢ is 499.5¢, so a
- * percentage would leave Stripe's rounding to decide whether the first invoice
- * says $4.99 or $5.00 after the page had already promised one of them. A fixed
- * $5.00 off $9.99 is exactly $4.99, every time.
+ * `amount_off` rather than `percent_off`: half of 1299¢ is 649.5¢, so a
+ * percentage would leave Stripe's rounding to decide what the first invoice
+ * says after the page had already promised a number. A fixed $6.50 off $12.99
+ * is exactly $6.49, every time.
  *
  * An amount coupon needs a currency, and this app bills the same numeric price
  * in USD and CAD (lib/region.ts). `currency_options` carries both on ONE

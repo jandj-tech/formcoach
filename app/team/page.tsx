@@ -9,7 +9,7 @@ import { getOrgSession } from '@/lib/org-auth'
 import { db } from '@/lib/db'
 import TeamHubClient, { type HubTeam } from './TeamHubClient'
 import { ArrowRightIcon, GraduationCapIcon, TargetIcon, TrendingUpIcon, TrophyIcon } from 'lucide-react'
-import { TEAM_TOKEN_PRICE_CENTS, PLUS_VOLUME_TIERS, percentLabel, usd, type VolumeTier } from '@/lib/team-pricing'
+import { TEAM_TOKEN_PRICE_CENTS, ORG_BULK_MIN_QTY, REGULAR_ANALYSIS_PRICE_CENTS, PLUS_VOLUME_TIERS, percentLabel, usd, type VolumeTier } from '@/lib/team-pricing'
 
 // The deepest tier a team can reach, read off the ladder rather than typed.
 const bestTeamDiscount = PLUS_VOLUME_TIERS.reduce(
@@ -20,7 +20,7 @@ const bestTeamDiscount = PLUS_VOLUME_TIERS.reduce(
 export const metadata: Metadata = {
   title: 'Basketball Team & Organization Shot Analysis | LearnHoops',
   description:
-    'AI basketball shot analysis for teams and organizations — coach dashboards, rosters, player rankings, improvement tracking, and team pricing of $2.49 per analysis, dropping to $1.49 each at 5+.',
+    'AI basketball shot analysis for teams and organizations — coach dashboards, rosters, player rankings, improvement tracking, and bulk analysis tokens at $2.49 each when buying 10 or more on the website.',
   alternates: { canonical: '/team' },
 }
 
@@ -156,18 +156,20 @@ export default async function TeamLandingPage() {
             ) : (
               <>
                 <div className="font-numeric text-3xl text-ember-500">{usd(TEAM_TOKEN_PRICE_CENTS)}</div>
-                <div className="font-display font-bold uppercase text-chalk">Per upload</div>
-                <div className="text-chalk-dim text-sm">Buy credits and use them when you need them.</div>
-                {/* The team rate was the only number here, which read as the
-                    whole offer — bulk tiers stack on top of it. Stated as one
-                    percentage rather than a grid of per-analysis prices, and
-                    read off TEAM_VOLUME_TIERS so it cannot outlive a change to
-                    the ladder. */}
+                <div className="font-display font-bold uppercase text-chalk">Per upload in bulk</div>
+                {/* The bulk rate has a hard minimum and is website-only — say
+                    both here, where the number is, so the price can never read
+                    as the single-token price. All figures derive from
+                    lib/team-pricing so they cannot outlive a ladder change. */}
+                <div className="text-chalk-dim text-sm">
+                  Organization rate when buying {ORG_BULK_MIN_QTY}+ analysis tokens on the website.
+                  Smaller orders use standard pricing.
+                </div>
                 <div className="pt-3 mt-1 border-t border-courtline">
                   <div className="font-display font-black uppercase text-ember-500 text-xl leading-none">
                     Up to {percentLabel(bestTeamDiscount)}% off
                   </div>
-                  <div className="text-chalk-dim text-sm mt-1">when you buy credits in bulk.</div>
+                  <div className="text-chalk-dim text-sm mt-1">the {usd(REGULAR_ANALYSIS_PRICE_CENTS)} single-analysis price.</div>
                 </div>
               </>
             )}

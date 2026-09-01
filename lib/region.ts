@@ -7,8 +7,8 @@ import { Reader } from 'maxmind'
  * Where the buyer is, and what to bill them in.
  *
  * Canada is billed in CAD. Everywhere else — the United States and the rest of
- * the world — is billed in USD. A price is the same NUMBER in both ($1.49 USD ↔
- * $1.49 CAD), so this only chooses the currency label Stripe charges in.
+ * the world — is billed in USD. A price is the same NUMBER in both ($2.49 USD ↔
+ * $2.49 CAD), so this only chooses the currency label Stripe charges in.
  *
  * Country is resolved in two steps, best signal first:
  *   1. A platform geolocation header, if the host sets one (Vercel, Cloudflare,

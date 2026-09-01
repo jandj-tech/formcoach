@@ -12,6 +12,7 @@ import { useIsInApp } from '@/lib/useIsInApp'
 const tabs = [
   { href: '/', label: 'Home' },
   { href: '/analyze', label: 'Analyze' },
+  { href: '/pricing', label: 'Pricing' },
   { href: '/shop', label: 'Shop' },
   { href: '/learn', label: 'Learn' },
   { href: '/support', label: 'Support' },

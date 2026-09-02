@@ -1,4 +1,5 @@
 import { put, del } from '@vercel/blob'
+import { resolveBaseUrl } from '@/lib/base-url'
 
 // Single seam for object storage (uploaded videos + extracted frames).
 //
@@ -64,7 +65,20 @@ export function s3Bucket(): string {
 
 // Public base is the /api/media proxy origin, with no trailing slash.
 export function s3PublicBase(): string {
-  return requireEnv('S3_PUBLIC_BASE_URL').replace(/\/+$/, '')
+  const configured = requireEnv('S3_PUBLIC_BASE_URL').replace(/\/+$/, '')
+  // Same stale-origin guard as lib/base-url.ts, because this value gets BAKED
+  // INTO STORED ROWS: on 2026-09-02 a localhost value on production wrote
+  // http://localhost:3000/api/media/... into analyses.frame_urls/video_url,
+  // giving app users blank frames (see migrate-repair-localhost-media.sql).
+  // A dev/test runtime keeps its localhost value; production never does.
+  const stale =
+    configured.includes('localhost') ||
+    configured.includes('127.0.0.1') ||
+    configured.includes('.vercel.app')
+  if (stale && process.env.NODE_ENV !== 'development' && process.env.NODE_ENV !== 'test') {
+    return `${resolveBaseUrl()}/api/media`
+  }
+  return configured
 }
 
 // Map a stored URL back to its object key. Only URLs under our own public base

@@ -12,6 +12,14 @@ import { getCriteriaVideoMap } from '@/lib/youtube'
 import FrameViewer from './FrameViewer'
 import ShareResultButton from './ShareResultButton'
 import UnlockCta from './UnlockCta'
+import OfferCta, { type OfferCtaOffer } from './OfferCta'
+import CategoryScores from '@/components/CategoryScores'
+import { resolveResultAccess, splitOffersForDisplay } from '@/lib/result-access'
+import { categoryScores } from '@/lib/criteria-categories'
+import { effectivePriceCents, hasAnchorPrice, type OrgOffer } from '@/lib/org-offers'
+import { TIER_ORDER, TIER_LABELS, type VisibilityTier } from '@/lib/result-visibility'
+import { getStripe } from '@/lib/stripe'
+import { fulfillOfferSession } from '@/lib/org-offer-fulfillment'
 import { getSession } from '@/lib/auth'
 import { shouldShowInboxNotice } from '@/lib/filming-tips'
 import CoachNoteEditor from '@/components/CoachNoteEditor'
@@ -66,7 +74,13 @@ export default async function ResultsPage({
   searchParams,
 }: {
   params: Promise<{ token: string }>
-  searchParams: Promise<{ token_purchased?: string; as?: string }>
+  searchParams: Promise<{
+    token_purchased?: string
+    offer_purchased?: string
+    offer_session?: string
+    as?: string
+    tier?: string
+  }>
 }) {
   const { token } = await params
   const sp = await searchParams
@@ -87,11 +101,47 @@ export default async function ResultsPage({
 
   if (!analysis) return notFound()
 
-  // Free-preview gate: the one free signup analysis shows only the overall
-  // score. The moment the owner's account holds a token (or an active
-  // subscription/comp), the report unlocks permanently — unlocking does NOT
-  // consume the token, buying it is enough.
-  let locked = !!submission.is_free_preview
+  // Landing back from an offer checkout: fulfill here too, in case the
+  // webhook hasn't arrived (or failed). Idempotent — whichever runs first does
+  // the work. Never blocks the render on a failure.
+  if (sp.offer_purchased === '1' && typeof sp.offer_session === 'string' && /^cs_[A-Za-z0-9_]+$/.test(sp.offer_session)) {
+    try {
+      const stripeSession = await getStripe().checkout.sessions.retrieve(sp.offer_session)
+      if (stripeSession.metadata?.submissionToken === token) {
+        await fulfillOfferSession(stripeSession, 'success')
+      }
+    } catch (err) {
+      console.error('[results] offer success safety net failed:', err)
+    }
+  }
+
+  // ?as=player drops every coach affordance so a coach can see the page as
+  // their player will. It's a view of one's own screen, not an access grant:
+  // it only ever removes things, and it takes the viewer key away too, so
+  // private notes stay hidden in the preview exactly as they would be.
+  const previewAsPlayer = sp.as === 'player'
+
+  // Who is looking? Resolved once, up front: it feeds both the note editors
+  // and the org-release visibility gate below.
+  const coachAuthor = await resolveNoteAuthorForAnalysis(analysis.id as number)
+
+  // Org-release visibility: when an organization sent this result to a player,
+  // a release row decides how much of the report a non-staff viewer sees —
+  // and ?tier= lets staff preview any level without granting anything.
+  const access = await resolveResultAccess({
+    submissionId: submission.id as string,
+    isStaff: coachAuthor !== null,
+    previewAsPlayer,
+    requestedTier: sp.tier ?? null,
+  })
+
+  // Legacy free-preview gate, only when no release governs: the one free
+  // signup analysis shows only the overall score. The moment the owner's
+  // account holds a token (or an active subscription/comp), the report
+  // unlocks permanently — unlocking does NOT consume the token, buying it is
+  // enough. Deliberately NOT applied to org releases: an org's paywall is the
+  // org's, and a player's personal token balance doesn't override it.
+  let locked = !access && !!submission.is_free_preview
   if (locked && submission.user_id) {
     const [owner] = (await db`
       SELECT analysis_tokens, subscription_type, subscription_expires_at
@@ -108,54 +158,79 @@ export default async function ResultsPage({
     }
   }
 
-  // For a locked preview the real scores and reasoning never leave the
-  // server — only the criterion names render, under blurred placeholder cards.
-  const scores = locked
-    ? []
-    : ((await db`
-        SELECT cs.id, cs.ai_score, cs.ai_reasoning, c.name, c.order_index
-        FROM criterion_scores cs
-        JOIN criteria c ON cs.criterion_id = c.id
-        WHERE cs.analysis_id = ${analysis.id}
-        ORDER BY c.order_index
-      `) as unknown as Array<{
-        id: number
-        ai_score: number | null
-        ai_reasoning: string
-        name: string
-        order_index: number
-      }>)
+  // The effective tier for this render. Legacy pages map onto the same scale:
+  // a locked free preview is 'score', everything else is 'full'.
+  const tier: VisibilityTier = access ? access.tier : locked ? 'score' : 'full'
 
-  const lockedNames = locked
-    ? ((await db`
-        SELECT c.name
-        FROM criterion_scores cs
-        JOIN criteria c ON cs.criterion_id = c.id
-        WHERE cs.analysis_id = ${analysis.id}
-        ORDER BY c.order_index
-      `) as unknown as Array<{ name: string }>)
-    : []
+  // What each tier may fetch. Anything a tier hides must never leave the
+  // server — reasoning text is only ever SELECTed at 'full'.
+  const scores =
+    tier === 'full'
+      ? ((await db`
+          SELECT cs.id, cs.ai_score, cs.ai_reasoning, c.name, c.order_index
+          FROM criterion_scores cs
+          JOIN criteria c ON cs.criterion_id = c.id
+          WHERE cs.analysis_id = ${analysis.id}
+          ORDER BY c.order_index
+        `) as unknown as Array<{
+          id: number
+          ai_score: number | null
+          ai_reasoning: string
+          name: string
+          order_index: number
+        }>)
+      : tier === 'breakdown' || tier === 'categories'
+        ? ((await db`
+            SELECT cs.id, cs.ai_score, '' AS ai_reasoning, c.name, c.order_index
+            FROM criterion_scores cs
+            JOIN criteria c ON cs.criterion_id = c.id
+            WHERE cs.analysis_id = ${analysis.id}
+            ORDER BY c.order_index
+          `) as unknown as Array<{
+            id: number
+            ai_score: number | null
+            ai_reasoning: string
+            name: string
+            order_index: number
+          }>)
+        : []
 
-  // Coach's Notes, shown beneath each individual score. Gated on `locked` the
-  // same way the scores are: a locked free-preview report must not leak note
-  // text or a coach's name into the served HTML.
-  const notesByScore: Map<number, PublicCoachNote[]> = locked
-    ? new Map()
-    : await getPublicCoachNotes(analysis.id as number)
+  // Category rollup for the 'categories' tier — computed server-side; the
+  // individual criterion scores it came from are never rendered.
+  const categories =
+    tier === 'categories'
+      ? categoryScores(
+          scores.map((s) => ({
+            name: s.name,
+            score: s.ai_score !== null ? Number(s.ai_score) : null,
+          }))
+        )
+      : []
+
+  // Gated tiers render criterion NAMES only, under blurred placeholder cards.
+  const lockedNames =
+    tier === 'score' || tier === 'categories'
+      ? ((await db`
+          SELECT c.name
+          FROM criterion_scores cs
+          JOIN criteria c ON cs.criterion_id = c.id
+          WHERE cs.analysis_id = ${analysis.id}
+          ORDER BY c.order_index
+        `) as unknown as Array<{ name: string }>)
+      : []
+
+  // Coach's Notes, shown beneath each individual score. Comments are 'full'
+  // tier content: a gated report must not leak note text or a coach's name
+  // into the served HTML.
+  const notesByScore: Map<number, PublicCoachNote[]> =
+    tier === 'full' ? await getPublicCoachNotes(analysis.id as number) : new Map()
 
   // Inline note editing for whoever is entitled to it — the owner (admin
   // cookie or his own player account), a team coach, or an org admin over one
   // of its teams. Everyone else, including the player and anyone holding a
   // share link, gets null and sees a read-only report exactly as before.
-  // Suppressed on a locked preview, where no scores are loaded to annotate.
-  //
-  // ?as=player drops every coach affordance so a coach can see the page as
-  // their player will. It's a view of one's own screen, not an access grant:
-  // it only ever removes things, and it takes the viewer key away too, so
-  // private notes stay hidden in the preview exactly as they would be.
-  const previewAsPlayer = sp.as === 'player'
-  const coachAuthor = locked ? null : await resolveNoteAuthorForAnalysis(analysis.id as number)
-  const noteAuthor = previewAsPlayer ? null : coachAuthor
+  // Suppressed on a locked preview and in the player preview.
+  const noteAuthor = previewAsPlayer || locked ? null : coachAuthor
   const ownNotes = noteAuthor
     ? await getOwnNotes(analysis.id as number, noteAuthor.teamId)
     : new Map<number, { suggestedScore: number | null; note: string | null }>()
@@ -184,14 +259,48 @@ export default async function ResultsPage({
 
   // Load tutorial-video map for the criteria the player needs help with (< 7.5).
   // The video map function handles manual overrides and YouTube auto-matching.
-  const needsHelp = scores
-    .filter((s) => s.ai_score !== null && Number(s.ai_score) < 7.5)
-    .map((s) => s.name)
+  // Tips and videos are 'full' tier content.
+  const needsHelp =
+    tier === 'full'
+      ? scores
+          .filter((s) => s.ai_score !== null && Number(s.ai_score) < 7.5)
+          .map((s) => s.name)
+      : []
   const videoMap = needsHelp.length > 0 ? await getCriteriaVideoMap(needsHelp) : {}
 
+  // The org's offers, serialized for the purchase UI with prices resolved
+  // server-side. Split by placement: everything sells in the unlock card while
+  // content is gated; ball/class offers keep selling under a full report.
+  const toCtaOffer = (o: OrgOffer): OfferCtaOffer => ({
+    id: o.id,
+    kind: o.kind,
+    title: o.title,
+    description: o.description,
+    priceCents: effectivePriceCents(o),
+    regularPriceCents: o.regularPriceCents,
+    hasAnchor: hasAnchorPrice(o),
+    includesBall: o.includesBall,
+    includesBreakdown: o.includesBreakdown,
+    unlockScope: o.unlockScope,
+    shippingCents: o.includesBall ? o.shippingCents : 0,
+  })
+  // Gated = something is still hidden AND a purchase would reveal it.
+  const gated = !!access && access.unlockPathAvailable
+  const { unlockOffers, productOffers } = access
+    ? splitOffersForDisplay(access.offers, { gated })
+    : { unlockOffers: [], productOffers: [] }
+  const offerPreviewNote = access?.previewTier
+    ? 'Preview — this is exactly what your player sees.'
+    : undefined
+  const offerJustPurchased = sp.offer_purchased === '1'
+
+  // Frames and video are 'full' tier content on org releases; legacy pages
+  // keep their existing behavior (media has always shown there).
+  const showMedia = access ? tier === 'full' : true
+
   const frameUrls = (analysis.frame_urls as string[] | null) ?? []
-  const hasFrames = frameUrls.length > 0
-  const hasVideo = !!analysis.video_url
+  const hasFrames = showMedia && frameUrls.length > 0
+  const hasVideo = showMedia && !!analysis.video_url
   // A frame image used as the video's poster, so the player shows a real
   // preview instead of a blank black box before it's played.
   const videoPoster = hasFrames
@@ -239,6 +348,11 @@ export default async function ResultsPage({
             <p className="text-xs text-indigo-900/70">
               Only you see this bar and the editors — your player sees the notes you save.
             </p>
+            {access && (
+              <p className="text-xs font-semibold text-indigo-900/80">
+                Players see: {TIER_LABELS[access.playerTier]}
+              </p>
+            )}
             <Link
               href={`/results/${token}?as=player`}
               className="text-xs font-bold text-indigo-700 hover:text-indigo-900 underline underline-offset-2 ml-auto"
@@ -262,21 +376,57 @@ export default async function ResultsPage({
         )}
 
         {/* Overall score */}
-        <section className="bg-gradient-to-b from-orange-50/70 to-white border border-orange-100 rounded-2xl py-7 flex justify-center">
+        <section className="bg-gradient-to-b from-orange-50/70 to-white border border-orange-100 rounded-2xl py-7 flex flex-col items-center gap-3">
           <OverallBadge score={Number(analysis.overall_score)} />
+          {access && (
+            <p className="text-xs text-gray-400">Shared with you by {access.release.orgName}</p>
+          )}
         </section>
+
+        {/* Staff preview toolbar: step through every visibility level. */}
+        {access && previewAsPlayer && coachAuthor && (
+          <div className="flex flex-wrap items-center gap-2 bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-2.5">
+            <p className="text-xs font-bold text-indigo-900 mr-1">Preview a level:</p>
+            {TIER_ORDER.map((t) => (
+              <Link
+                key={t}
+                href={`/results/${token}?as=player&tier=${t}`}
+                className={`text-xs font-semibold rounded-full px-2.5 py-1 border transition-colors ${
+                  tier === t
+                    ? 'bg-indigo-600 text-white border-indigo-600'
+                    : 'bg-white text-indigo-800 border-indigo-200 hover:border-indigo-400'
+                }`}
+              >
+                {TIER_LABELS[t]}
+              </Link>
+            ))}
+            <p className="text-[11px] text-indigo-900/70 basis-full">
+              {access.release.synthetic
+                ? 'Not sent yet — this preview uses your organization’s current visibility settings.'
+                : `Right now this player sees: ${TIER_LABELS[access.playerTier]}.`}
+            </p>
+          </div>
+        )}
+
+        {/* Category rollup — the 'categories' tier */}
+        {tier === 'categories' && (
+          <section className="space-y-3">
+            <h2 className="text-black font-black text-lg sm:text-xl">Your shot by area</h2>
+            <CategoryScores categories={categories} />
+          </section>
+        )}
 
         {/* Criteria breakdown, with a compact shop ad slotted between cards */}
         <section className="space-y-3">
           <div className="flex items-baseline justify-between">
             <h2 className="text-black font-black text-lg sm:text-xl">Criteria breakdown</h2>
-            {!locked && (
+            {tier === 'full' && (
               <span className="text-xs text-gray-400">
                 {scores.filter((s) => s.ai_score !== null).length} of {scores.length} criteria graded
               </span>
             )}
           </div>
-          {locked && (
+          {(locked || tier === 'score' || tier === 'categories') && (
             <div className="relative max-h-[560px] overflow-hidden rounded-2xl">
               {/* Decoy cards: the numbers and text here are placeholders — the
                   real scores were never sent to the browser. */}
@@ -302,11 +452,58 @@ export default async function ResultsPage({
               </div>
               <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-white to-transparent" />
               <div className="absolute inset-0 flex items-center justify-center px-6">
-                <UnlockCta resultsPath={`/results/${token}`} justPurchased={sp.token_purchased === '1'} />
+                {locked ? (
+                  <UnlockCta resultsPath={`/results/${token}`} justPurchased={sp.token_purchased === '1'} />
+                ) : access && gated && unlockOffers.length > 0 ? (
+                  <OfferCta
+                    token={token}
+                    offers={unlockOffers.map(toCtaOffer)}
+                    orgName={access.release.orgName}
+                    mode="unlock"
+                    justPurchased={offerJustPurchased}
+                    previewNote={offerPreviewNote}
+                  />
+                ) : (
+                  // Gated with nothing to buy: the org chose this level and
+                  // isn't selling an unlock. No dead-end buy button.
+                  <div className="flex flex-col items-center gap-2 bg-white border border-gray-200 shadow-xl rounded-2xl px-6 py-5 max-w-xs text-center">
+                    <div className="text-3xl" aria-hidden>🔒</div>
+                    <p className="text-black font-black text-base leading-snug">
+                      The full breakdown isn&apos;t included
+                    </p>
+                    <p className="text-gray-500 text-xs leading-relaxed">
+                      {access?.release.orgName ?? 'Your organization'} shared your{' '}
+                      {TIER_LABELS[tier].toLowerCase()}. Ask your coach about seeing the complete
+                      report.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           )}
-          {!locked && scores.map((s, i) => (
+          {tier === 'breakdown' &&
+            scores.map((s) => (
+              <ScoreCard
+                key={s.id}
+                name={s.name}
+                score={s.ai_score !== null ? Number(s.ai_score) : null}
+                reasoning=""
+                numbersOnly
+              />
+            ))}
+          {tier === 'breakdown' && access && gated && unlockOffers.length > 0 && (
+            <div className="flex justify-center pt-3">
+              <OfferCta
+                token={token}
+                offers={unlockOffers.map(toCtaOffer)}
+                orgName={access.release.orgName}
+                mode="unlock"
+                justPurchased={offerJustPurchased}
+                previewNote={offerPreviewNote}
+              />
+            </div>
+          )}
+          {tier === 'full' && scores.map((s, i) => (
             <Fragment key={s.id}>
               <ScoreCard
                 name={s.name}
@@ -337,7 +534,7 @@ export default async function ResultsPage({
                   ) : undefined
                 }
               />
-              {i === 1 && (
+              {i === 1 && !access && (
                 <aside className="relative flex items-center gap-4 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-xl p-4 pr-5">
                   <span className="absolute top-2 right-3 text-[9px] font-bold uppercase tracking-widest text-orange-300 select-none">
                     From our shop
@@ -369,6 +566,19 @@ export default async function ResultsPage({
             </Fragment>
           ))}
         </section>
+
+        {/* Ball / class offers keep selling under a report — the org's own
+            products, at the org's own prices. */}
+        {access && productOffers.length > 0 && (
+          <OfferCta
+            token={token}
+            offers={productOffers.map(toCtaOffer)}
+            orgName={access.release.orgName}
+            mode="strip"
+            justPurchased={offerJustPurchased}
+            previewNote={offerPreviewNote}
+          />
+        )}
 
         {(hasFrames || hasVideo) && (
           <section className="space-y-3">

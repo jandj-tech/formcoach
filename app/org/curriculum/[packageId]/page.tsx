@@ -92,7 +92,7 @@ export default async function CurriculumPage({ params }: Props) {
           {/* ── Cover ─────────────────────────────────────────────── */}
           <div className="doc-header bg-ink-950 rounded-2xl p-8 mb-8 text-white">
             <div className="brandmark text-ember-500 font-display font-black text-2xl tracking-tight mb-1">LearnHoops.com</div>
-            <h1 className="font-display font-black text-3xl leading-tight mb-2">10-Week Shooting Development Program</h1>
+            <h1 className="font-display font-black text-3xl leading-tight mb-2">Coach-Led Development Program</h1>
             <p className="text-gray-400 text-sm">
               {pkg.org_name} &nbsp;·&nbsp; {pkg.player_count} Players &nbsp;·&nbsp; Coach&rsquo;s Session Guide
             </p>

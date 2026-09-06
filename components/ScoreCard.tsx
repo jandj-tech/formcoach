@@ -67,6 +67,13 @@ interface ScoreCardProps {
   personalNotes?: PersonalNoteView[]
   /** The viewer's own personal-note editor, when they may write one. */
   personalEditor?: React.ReactNode
+  /**
+   * The "Full score breakdown" visibility tier: name, score, bar and label
+   * only — no reasoning, tips, videos or notes. The written feedback stays on
+   * the server for viewers below the 'full' tier, so a card in this mode must
+   * never receive it either.
+   */
+  numbersOnly?: boolean
 }
 
 export interface PersonalNoteView {
@@ -231,11 +238,41 @@ export default function ScoreCard({
   editor,
   personalNotes,
   personalEditor,
+  numbersOnly,
 }: ScoreCardProps) {
   const cleanReasoning = humanizeReasoning(reasoning)
   const improvementTip = score !== null && score < 10 ? IMPROVEMENT_TIPS[name] : undefined
   const showVideo = score !== null && score < 7.5 && !!videoId
   const showChannelLink = score !== null && score < 7.5 && !videoId
+
+  if (numbersOnly) {
+    return (
+      <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
+        <div className="flex items-center justify-between">
+          <h3 className="text-black font-semibold text-sm">{name}</h3>
+          {score === null ? (
+            <span className="text-xs font-medium text-black bg-gray-200 px-2 py-0.5 rounded-full">
+              Not graded
+            </span>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className={`text-xs font-medium ${scoreColor(score)}`}>{scoreLabel(score)}</span>
+              <span className={`text-2xl font-bold ${scoreColor(score)}`}>{score.toFixed(1)}</span>
+              <span className="text-black text-sm">/10</span>
+            </div>
+          )}
+        </div>
+        {score !== null && (
+          <div className="w-full bg-gray-200 rounded-full h-1.5 mt-3">
+            <div
+              className={`h-1.5 rounded-full transition-all duration-700 ${barColor(score)}`}
+              style={{ width: `${(score / 10) * 100}%` }}
+            />
+          </div>
+        )}
+      </div>
+    )
+  }
 
   if (score === null) {
     return (

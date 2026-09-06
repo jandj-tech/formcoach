@@ -159,7 +159,7 @@ export default function ClassManager({ packages, canManage = false, onStartAnoth
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <h3 className="text-lg font-black text-black dark:text-chalk">
-                    {pkg.teamName || '10-Week Shooting Development Program'}
+                    {pkg.teamName || 'Coach-Led Development Program'}
                   </h3>
                   <span
                     className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${

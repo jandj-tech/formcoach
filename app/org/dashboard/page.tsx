@@ -15,7 +15,7 @@ import { orgTierById } from '@/lib/team-features'
 import type { ClassPackage } from './org-team'
 import type { LeaderboardRow } from '@/components/LeaderboardTable'
 import Link from 'next/link'
-import { Building2Icon } from 'lucide-react'
+import { BookOpenIcon, Building2Icon } from 'lucide-react'
 import DashboardShell from '@/components/backend/DashboardShell'
 import DashboardHeader from '@/components/backend/DashboardHeader'
 import { StatGrid, StatCard } from '@/components/backend/StatGrid'
@@ -294,6 +294,10 @@ export default async function OrgDashboardPage() {
           meta={`${teams.length} team${teams.length === 1 ? '' : 's'} · signed in as ${session.adminEmail}`}
           actions={
             <>
+              <Link href="/org/guide" className={backendButton('quiet')}>
+                <BookOpenIcon aria-hidden />
+                Guide
+              </Link>
               <Link href="/team" className={backendButton('quiet')}>
                 <Building2Icon aria-hidden />
                 Organization Hub

@@ -641,7 +641,7 @@ export default function TeamDashboardClient({
     </div>
   ) : (
     <div className="rounded-2xl border border-gray-200 dark:border-courtline p-5">
-      <h3 className="font-black text-black dark:text-chalk">10-Week Shooting Class</h3>
+      <h3 className="font-black text-black dark:text-chalk">Coach-Led Development Program</h3>
       <p className="text-sm text-gray-600 dark:text-chalk-dim mt-1.5 leading-relaxed">
         Ten structured sessions that take a player from a baseline shot analysis
         through grip, elbow, stance, release and arc, to a final evaluation and a

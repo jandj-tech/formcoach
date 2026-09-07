@@ -29,6 +29,8 @@ import TeamSchedulePanel from '@/components/TeamSchedulePanel'
 import { CLASS_MIN_PLAYERS, CLASS_BULK_THRESHOLD, classPriceCents } from '@/lib/org-class-pricing'
 import { copyToClipboard } from '@/lib/copy'
 import AppearanceSection from '@/components/account/AppearanceSection'
+import Section from '@/components/account/Section'
+import ManageBillingButton from '@/components/ManageBillingButton'
 import { backendButton } from '@/components/backend/button-styles'
 import {
   ArrowRightIcon,
@@ -50,6 +52,8 @@ interface Props {
   orgTier: OrgTier
   /** Personal credit balances held by this org's coaches (credits > 0 only). */
   coachCreditBalances: Array<{ email: string; credits: number }>
+  /** True when the org has a Stripe subscription to manage (legacy/comped orgs don't). */
+  hasBilling: boolean
 }
 
 
@@ -59,7 +63,7 @@ const PLAYER_SORT_OPTIONS: SortOption<PlayerSortMode>[] = [
   { value: 'score-asc', label: 'Lowest score' },
 ]
 
-export default function OrgDashboardClient({ teams, orgName, classPackages, myUploads, orgTokenBalance, orgTier, coachCreditBalances }: Props) {
+export default function OrgDashboardClient({ teams, orgName, classPackages, myUploads, orgTokenBalance, orgTier, coachCreditBalances, hasBilling }: Props) {
   const router = useRouter()
   const inApp = useIsInApp()
   const [expanded, setExpanded] = useState<string | null>(null)
@@ -854,6 +858,22 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   const settingsTab = (
     <div className="space-y-4">
       <AppearanceSection />
+      {/* Only orgs on a Stripe plan have anything to manage; legacy and comped
+          orgs were told they would never be billed, so they never see this. */}
+      {hasBilling && (
+        <Section
+          title="Billing"
+          tipLabel="What is billing?"
+          tip="Your organization's LearnHoops plan is billed by Stripe. The billing portal lets you update the card on file, download invoices, or cancel."
+          summary="Card & invoices"
+        >
+          <p className="text-sm text-gray-600 dark:text-chalk-dim mb-3">
+            Update your payment card, download invoices, or cancel your plan in the secure Stripe billing portal.
+            To switch between Basic and Plus, use <span className="font-semibold">Change plan</span> at the top of the dashboard.
+          </p>
+          <ManageBillingButton />
+        </Section>
+      )}
     </div>
   )
 

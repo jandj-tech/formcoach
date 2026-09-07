@@ -8,6 +8,7 @@ import { useCart } from '@/lib/cart'
 import type { Variant, Size } from '@/lib/cart'
 import QuantityStepper from '@/components/QuantityStepper'
 import TokenPacks from './TokenPacks'
+import Memberships from './Memberships'
 import SectionBreak from '@/components/SectionBreak'
 import { BUNDLE_PRICE, BUNDLE_SAVINGS, FREE_ANALYSES_PER_BALL, PRICE, SIZES } from './product'
 import { ANALYSIS_FAQ, BALL_FAQ } from './faq'
@@ -80,6 +81,14 @@ export default function ShopProduct({
             belongs, so correct hand placement grooves itself on every rep.
           </p>
           <nav aria-label="Shop sections" className="flex gap-2 mt-6 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0">
+            {!isInApp && (
+              <a
+                href="#memberships"
+                className="shrink-0 bg-ember-500 hover:bg-ember-400 text-ink-950 text-sm font-bold px-5 py-2.5 rounded-full transition-colors"
+              >
+                Memberships
+              </a>
+            )}
             <a
               href="#training-ball"
               className="shrink-0 bg-ink-900 border border-courtline hover:border-ember-500/60 text-chalk text-sm font-bold px-5 py-2.5 rounded-full transition-colors"
@@ -104,7 +113,12 @@ export default function ShopProduct({
         </div>
       </section>
 
-      {/* Analysis tokens — the shop's top seller leads the page. Dark like
+      {/* Memberships lead the store: the recurring product every other item
+          here feeds. Hidden in the iOS app (Apple-billed there), divider too. */}
+      {!isInApp && <SectionBreak label="Memberships" />}
+      <Memberships isInApp={isInApp} />
+
+      {/* Analysis tokens — one-off purchases follow the memberships. Dark like
           the rest of the store; the ball hero follows immediately below. */}
       <SectionBreak label="Analysis tokens" />
       <section id="analysis-tokens" className="px-4 pt-6 pb-20 sm:pb-28 scroll-mt-20">

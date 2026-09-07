@@ -5,10 +5,11 @@ import { CreditCardIcon } from 'lucide-react'
 import { backendButton } from '@/components/backend/button-styles'
 
 /**
- * Opens the Stripe billing portal for the signed-in organization.
+ * Opens the Stripe billing portal for the signed-in account — the organization
+ * by default, or a player when pointed at /api/player/billing-portal.
  *
- * Self-contained on purpose: it needs no props, so it can be dropped into the
- * dashboard without threading subscription state through the whole tree.
+ * Self-contained on purpose: it needs no subscription props, so it can be
+ * dropped into a dashboard without threading state through the whole tree.
  *
  * It hides itself when the API answers 409 `noBilling`. That is the normal
  * state for a grandfathered or comped organization — they were told they would
@@ -16,7 +17,12 @@ import { backendButton } from '@/components/backend/button-styles'
  * small broken promise. The cost is one click to find out, which only ever
  * happens once per page view.
  */
-export default function ManageBillingButton() {
+export default function ManageBillingButton({
+  endpoint = '/api/org/billing-portal',
+}: {
+  /** Which account's Stripe portal to open; the org route by default. */
+  endpoint?: string
+}) {
   const [loading, setLoading] = useState(false)
   const [hidden, setHidden] = useState(false)
   const [error, setError] = useState('')
@@ -27,7 +33,7 @@ export default function ManageBillingButton() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/org/billing-portal', { method: 'POST' })
+      const res = await fetch(endpoint, { method: 'POST' })
       const data = await res.json().catch(() => ({}))
 
       if (res.status === 409 && data?.noBilling) {

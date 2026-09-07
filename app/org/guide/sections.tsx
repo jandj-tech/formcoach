@@ -299,7 +299,7 @@ export function GettingStarted() {
               ['Leaderboard', 'Every graded player across the whole club, ranked.'],
               ['Players', 'Every player on every roster.'],
               ['Results', 'New. Email each player their latest score and a private link.'],
-              ['Offers & Sales', 'New. Choose what families see for free, set prices, watch sales.'],
+              ['Offers & Sales', 'New. Three sections at the top: Offers, What players see, Sales & earnings.'],
               ['Purchases', 'Your token and plan purchases.'],
               ['My Uploads', 'Shots you uploaded yourself.'],
               ['Settings', 'Appearance (light or dark).'],
@@ -690,7 +690,7 @@ export function WhatPlayersSee() {
       <Steps
         items={[
           <>Open the <b>Offers &amp; Sales</b> tab.</>,
-          <>Find the card <b>What players see</b>.</>,
+          <>Click <b>What players see</b> at the top of the tab.</>,
           <>Under <b>Free with the email</b>, choose one of the four levels below.</>,
           <>Under <b>After they buy</b>, choose one of the same four levels.</>,
           <>Click <b>Save</b>.</>,
@@ -748,7 +748,7 @@ export function LockingResults() {
       <Steps
         items={[
           <>Make sure at least one offer is turned <b>On</b> (section 9). Otherwise families would see less and have nothing to buy.</>,
-          <>Open the <b>Offers &amp; Sales</b> tab and find <b>What players see</b>.</>,
+          <>Open the <b>Offers &amp; Sales</b> tab and click <b>What players see</b> at the top.</>,
           <>Set <b>Free with the email</b> to a lower level, for example <b>Main score only</b> or <b>Score + category scores</b>.</>,
           <>Set <b>After they buy</b> to <b>Full results including comments</b>.</>,
           <>Click <b>Save</b>.</>,
@@ -779,7 +779,7 @@ export function LockingResults() {
         </div>
       </Figure>
       <Callout kind="important">
-        Selling must be switched on before an offer can be turned <b>On</b>. Click <b>Request selling access</b> in the <b>Offers &amp; Sales</b> tab first (section 9). Until then, lowering the free level only hides information.
+        Selling must be switched on before an offer can be turned <b>On</b>. Click <b>Request selling access</b> in the status bar of the <b>Offers &amp; Sales</b> tab first (section 9). Until then, lowering the free level only hides information.
       </Callout>
       <Callout kind="tip">
         <b>Score + category scores</b> is a good free level. Families see the number and where the shot is strong or weak, and the detail behind it is what they buy.
@@ -797,14 +797,24 @@ export function Selling() {
       id="selling"
       what="Lets families buy things from their results page: the full breakdown, a LearnHoops ball, your Shooting Class, or bundles, at prices you set."
     >
+      <Sub>How the money works</Sub>
+      <P>
+        Families pay LearnHoops by card. LearnHoops keeps its share and pays the rest to your club. The share is never hidden: every
+        offer shows <b>Families pay · LearnHoops keeps · You get</b> right on its card, and every sale email repeats it.
+      </P>
+      <Callout kind="tip">
+        <b>Shooting Class sign-ups:</b> LearnHoops keeps a fixed <b>$100</b> per player who signs up, and your club gets the rest. For
+        example, a $300 class = $100 to LearnHoops, $200 to you. Other offers use a percent agreed with you.
+      </Callout>
+
       <Sub>Step 1 — Request selling access</Sub>
-      <P>Selling is quote-based. LearnHoops keeps a share of each sale, and the share is agreed with you first.</P>
+      <P>Selling is switched on per club. Request access once; LearnHoops confirms your share and turns selling on.</P>
       <Steps
         items={[
-          <>Open the <b>Offers &amp; Sales</b> tab.</>,
+          <>Open the <b>Offers &amp; Sales</b> tab. The status bar at the top says <b>Not selling yet</b>.</>,
           <>Click <b>Request selling access</b>.</>,
-          <>LearnHoops emails you a revenue-split quote and switches selling on for your club.</>,
-          <>When it is on, the tab shows <b>Selling enabled · LearnHoops share X%</b>.</>,
+          <>LearnHoops emails you to confirm your share and switches selling on for your club.</>,
+          <>When it is on, the status bar says <b>Selling on</b> and shows LearnHoops&apos; share.</>,
           <>Now you can turn offers <b>On</b>.</>,
         ]}
       />
@@ -845,18 +855,19 @@ export function Selling() {
       <Sub>Step 3 — Edit an offer</Sub>
       <Steps
         items={[
-          <>In the <b>Offers &amp; Sales</b> tab, find the offer card.</>,
+          <>In the <b>Offers &amp; Sales</b> tab, make sure <b>Offers</b> is selected at the top, then click <b>Edit</b> on the offer.</>,
           <>Edit the <b>Name</b> and <b>Description</b> families will read.</>,
           <>Set the <b>Regular price</b>. Families see this crossed out.</>,
           <>Set the <b>Club price</b>. This is what your families actually pay.</>,
           <>Optionally set a <b>Discount price</b> for a short promotion. It must beat the club price.</>,
           <>Tick what the offer <b>Includes</b>: <b>Full breakdown</b>, <b>LearnHoops ball</b>, <b>Shooting Class</b>.</>,
           <>Under <b>After purchase, unlock</b>, pick <b>This report only</b> or <b>All this player&apos;s reports</b>.</>,
+          <>Check the line <b>Families pay · LearnHoops keeps · You get</b> under the prices — that is exactly how each sale splits.</>,
           <>Click <b>Save</b>.</>,
-          <>When selling is enabled, flip the <b>On/Off</b> toggle to <b>On</b>.</>,
+          <>When selling is on, flip the switch to <b>On</b>.</>,
         ]}
       />
-      <Figure caption="An offer card in the Offers & Sales tab (admin view).">
+      <Figure caption="An offer card in the Offers & Sales tab, opened with Edit.">
         <div className="rounded-lg bg-white border border-gray-200 p-3">
           <div className="flex items-center justify-between gap-3 mb-2">
             <p className="font-black text-sm text-black">Shooting Class</p>
@@ -867,6 +878,9 @@ export function Selling() {
             <MockField label="Club price" value="$300" />
             <MockField label="Discount price" value="—" />
           </div>
+          <p className="text-[11px] text-gray-700 mb-2">
+            Families pay <b>$300</b> · LearnHoops keeps <b>$100</b> · You get <b>$200</b>
+          </p>
           <div className="flex flex-wrap gap-x-3 gap-y-1 mb-2 text-[11px] text-gray-700">
             <span className="font-black text-gray-400 uppercase text-[10px] tracking-wide w-full">Includes</span>
             <span>&#9744; Full breakdown</span>
@@ -969,9 +983,8 @@ export function Payments() {
       <Sub>See who paid</Sub>
       <Steps
         items={[
-          <>Open the <b>Offers &amp; Sales</b> tab.</>,
-          <>Scroll to <b>Sales &amp; earnings</b>.</>,
-          <>The totals show <b>Gross</b>, <b>Your share</b>, <b>Paid out</b> and <b>Owed</b>. CAD and USD are shown separately.</>,
+          <>Open the <b>Offers &amp; Sales</b> tab and click <b>Sales &amp; earnings</b> at the top.</>,
+          <>The totals show <b>Sales</b>, <b>You get</b>, <b>LearnHoops keeps</b>, <b>Paid to you</b> and <b>Still owed</b>. CAD and USD are shown separately.</>,
           <>The table lists every sale: <b>Date · Buyer · Offer · Paid · Your share · Status</b>.</>,
           <>Use the filter chips to narrow it: <b>All</b>, <b>Class registrations</b>, <b>Ball orders</b>, <b>Breakdown unlocks</b>.</>,
         ]}
@@ -979,10 +992,10 @@ export function Payments() {
       <Figure caption="The Sales & earnings section.">
         <div className="grid grid-cols-4 gap-2 mb-2">
           {[
-            ['Gross', '$1,196'],
-            ['Your share', '$897'],
-            ['Paid out', '$600'],
-            ['Owed', '$297'],
+            ['Sales', '$1,196'],
+            ['You get', '$897'],
+            ['LearnHoops keeps', '$299'],
+            ['Still owed', '$297'],
           ].map(([k, v]) => (
             <div key={k} className="rounded-lg bg-white border border-gray-200 px-2 py-1.5 text-center">
               <p className="text-[9px] font-black uppercase tracking-wide text-gray-400">{k}</p>
@@ -1006,7 +1019,7 @@ export function Payments() {
             <span className="font-bold text-black truncate">ava.parent@…</span>
             <span className="text-gray-700 truncate">Shooting Class</span>
             <span className="font-numeric text-black">$300</span>
-            <span className="font-numeric text-black">$225</span>
+            <span className="font-numeric text-black">$200</span>
             <span><Chip tone="green">Paid</Chip></span>
           </div>
         </div>
@@ -1208,7 +1221,7 @@ const TROUBLE: Array<{ problem: ReactNode; fix: ReactNode }> = [
     problem: 'I want to change how much families see for free.',
     fix: (
       <>
-        <b>Offers &amp; Sales</b> tab, <b>What players see</b> card, change <b>Free with the email</b>, click <b>Save</b>. Then <b>Resend</b> to anyone already sent, which refreshes their free level.
+        <b>Offers &amp; Sales</b> tab, click <b>What players see</b> at the top, change <b>Free with the email</b>, click <b>Save</b>. Then <b>Resend</b> to anyone already sent, which refreshes their free level.
       </>
     ),
   },

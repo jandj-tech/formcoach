@@ -12,7 +12,7 @@
 import type Stripe from 'stripe'
 import { db } from '@/lib/db'
 import { claimStripeSession, releaseStripeSessionClaim } from '@/lib/stripe-idempotency'
-import { parseSharePercent, shareSplit } from '@/lib/org-offers'
+import { applyShareRule, parseSharePercent, type ShareRule } from '@/lib/org-offers'
 import { isVisibilityTier, type VisibilityTier } from '@/lib/result-visibility'
 import { sendOfferPurchaseConfirmationEmail, sendOfferSaleNotificationEmail } from '@/lib/email'
 
@@ -34,9 +34,16 @@ export async function fulfillOfferSession(
     const orgId = m.orgId ?? ''
     const offerId = m.offerId ?? ''
     const releaseId = m.releaseId || null
+    // Fixed fee wins over percent; both were frozen into metadata at checkout.
+    const flatCents = m.platformShareCents ? Math.floor(Number(m.platformShareCents)) : NaN
     const pct = parseSharePercent(m.platformSharePercent)
-    if (!orgId || !offerId || pct === null) {
-      throw new Error(`org_offer metadata invalid: orgId=${orgId} offerId=${offerId} pct=${m.platformSharePercent}`)
+    const rule: ShareRule | null = Number.isFinite(flatCents) && flatCents >= 0
+      ? { mode: 'flat', cents: flatCents }
+      : pct !== null
+        ? { mode: 'percent', percent: pct }
+        : null
+    if (!orgId || !offerId || !rule) {
+      throw new Error(`org_offer metadata invalid: orgId=${orgId} offerId=${offerId} flat=${m.platformShareCents} pct=${m.platformSharePercent}`)
     }
     const includes = new Set((m.includes ?? '').split(',').filter(Boolean))
     const includesBreakdown = includes.has('breakdown')
@@ -51,7 +58,7 @@ export async function fulfillOfferSession(
     const currency = session.currency ?? 'usd'
     // Shipping is platform pass-through — only the product portion is split.
     const productPortion = Math.max(0, total - shippingCents)
-    const { orgShareCents, platformShareCents } = shareSplit(productPortion, pct)
+    const { orgShareCents, platformShareCents } = applyShareRule(productPortion, rule)
     const paymentIntent =
       typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id ?? null
     const name = session.customer_details?.name ?? null
@@ -156,6 +163,7 @@ export async function fulfillOfferSession(
         includesCourse,
         joinTeamCode,
         orgShareCents,
+        platformShareCents,
       }
       await Promise.allSettled([sendOfferPurchaseConfirmationEmail(input), sendOfferSaleNotificationEmail(input)])
     }

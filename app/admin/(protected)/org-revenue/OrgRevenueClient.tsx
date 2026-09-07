@@ -666,7 +666,7 @@ function OrgDetails({
           </div>
 
           <div className="space-y-3">
-            <SectionTitle hint="Prices in dollars; the split override is blank to inherit the org share">Offers</SectionTitle>
+            <SectionTitle hint="Prices in dollars. LearnHoops' cut per offer: a fixed fee wins when set (class sign-ups default to $100); otherwise the % override, else the org share">Offers</SectionTitle>
             {details.offers.length === 0 ? (
               <p className={`text-sm ${MUTED}`}>This organization has not created any offers yet.</p>
             ) : (
@@ -984,6 +984,7 @@ function OfferRow({
   const [discount, setDiscount] = useState(centsToDollars(offer.discountPriceCents))
   const [active, setActive] = useState(offer.active)
   const [split, setSplit] = useState(offer.platformSharePercent === null ? '' : String(offer.platformSharePercent))
+  const [flatFee, setFlatFee] = useState(centsToDollars(offer.platformShareCents))
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
@@ -993,7 +994,8 @@ function OfferRow({
     club !== centsToDollars(offer.clubPriceCents) ||
     discount !== centsToDollars(offer.discountPriceCents) ||
     active !== offer.active ||
-    split !== (offer.platformSharePercent === null ? '' : String(offer.platformSharePercent))
+    split !== (offer.platformSharePercent === null ? '' : String(offer.platformSharePercent)) ||
+    flatFee !== centsToDollars(offer.platformShareCents)
 
   async function save() {
     const regularCents = dollarsToCents(regular)
@@ -1016,12 +1018,19 @@ function OfferRow({
       }
     }
 
+    const flatCents = dollarsToCents(flatFee)
+    if (flatCents === undefined || (flatCents !== null && flatCents < 0)) {
+      setErr('Fixed fee must be a dollar amount, or blank for none.')
+      return
+    }
+
     const body: Record<string, unknown> = {
       title: title.trim(),
       regularPriceCents: regularCents,
       clubPriceCents: clubCents,
       discountPriceCents: discountCents,
       platformSharePercent: splitValue,
+      platformShareCents: flatCents,
     }
     // Only send `active` when it changed: the server refuses `active: true`
     // while the org has no split, and an untouched flag should not trip that.
@@ -1079,6 +1088,20 @@ function OfferRow({
         <label className="space-y-0.5">
           <span className={`block text-[11px] uppercase tracking-wide ${MUTED}`}>Discount</span>
           {priceInput(discount, setDiscount, 'none')}
+        </label>
+        <label className="space-y-0.5">
+          <span className={`block text-[11px] uppercase tracking-wide ${MUTED}`}>LearnHoops fixed fee $</span>
+          <input
+            type="number"
+            min={0}
+            step={0.01}
+            value={flatFee}
+            onChange={(e) => setFlatFee(e.target.value)}
+            placeholder="none (use %)"
+            title="A fixed LearnHoops amount per sale. When set it replaces the percent for this offer."
+            disabled={saving}
+            className={`${INPUT} w-32`}
+          />
         </label>
         <label className="space-y-0.5">
           <span className={`block text-[11px] uppercase tracking-wide ${MUTED}`}>Split override %</span>

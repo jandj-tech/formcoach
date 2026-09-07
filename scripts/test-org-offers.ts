@@ -22,9 +22,13 @@ import {
   MAX_OFFER_PRICE_CENTS,
   effectivePriceCents,
   hasAnchorPrice,
+  CLASS_PLATFORM_FEE_CENTS,
+  applyShareRule,
   isOfferKind,
   isUnlockScope,
   parseSharePercent,
+  shareRuleFor,
+  shareRuleLabel,
   sellingEnabled,
   shareSplit,
   validateOfferPrices,
@@ -112,6 +116,22 @@ check('percent clamped above 100', shareSplit(1000, 150).platformShareCents === 
 check('percent clamped below 0', shareSplit(1000, -5).orgShareCents === 1000)
 check('zero total splits to zero', shareSplit(0, 20).platformShareCents === 0)
 
+// ---- Share rules (fixed fee wins over percent) --------------------------------
+
+check('flat fee: $300 class → LearnHoops $100, club $200', JSON.stringify(applyShareRule(30000, { mode: 'flat', cents: 10000 })) === JSON.stringify({ orgShareCents: 20000, platformShareCents: 10000 }))
+check('flat fee never exceeds the sale', JSON.stringify(applyShareRule(8000, { mode: 'flat', cents: 10000 })) === JSON.stringify({ orgShareCents: 0, platformShareCents: 8000 }))
+check('flat fee on zero sale', applyShareRule(0, { mode: 'flat', cents: 10000 }).platformShareCents === 0)
+check('percent rule matches shareSplit', JSON.stringify(applyShareRule(30000, { mode: 'percent', percent: 30 })) === JSON.stringify(shareSplit(30000, 30)))
+const noRule = { platformShareCents: null, platformSharePercent: null }
+check('no quote → no rule', shareRuleFor(noRule, null) === null)
+check('org percent applies by default', JSON.stringify(shareRuleFor(noRule, 30)) === JSON.stringify({ mode: 'percent', percent: 30 }))
+check('offer percent overrides org percent', JSON.stringify(shareRuleFor({ platformShareCents: null, platformSharePercent: 10 }, 30)) === JSON.stringify({ mode: 'percent', percent: 10 }))
+check('flat fee beats both percents', JSON.stringify(shareRuleFor({ platformShareCents: 10000, platformSharePercent: 10 }, 30)) === JSON.stringify({ mode: 'flat', cents: 10000 }))
+check('flat fee applies even with no org quote', shareRuleFor({ platformShareCents: 10000, platformSharePercent: null }, null)?.mode === 'flat')
+check('flat label', shareRuleLabel({ mode: 'flat', cents: 10000 }) === '$100.00 per sale')
+check('percent label', shareRuleLabel({ mode: 'percent', percent: 30 }) === '30% of each sale')
+check('class fee is $100', CLASS_PLATFORM_FEE_CENTS === 10000)
+
 // ---- Selling gate -----------------------------------------------------------
 
 check('NULL split disables selling', !sellingEnabled(null) && !sellingEnabled(undefined))
@@ -162,6 +182,8 @@ check('weekly breakdown unlocks one report', breakdown?.unlockScope === 'submiss
 check('ball buyer stays unlocked', ball?.unlockScope === 'player')
 check('class buyer stays unlocked', course?.unlockScope === 'player')
 check('every seed has a valid scope', DEFAULT_OFFERS.every((s) => isUnlockScope(s.unlockScope)))
+check('class seeds carry the $100 fee', DEFAULT_OFFERS.filter((s) => s.includesCourse).every((s) => s.platformShareCents === CLASS_PLATFORM_FEE_CENTS))
+check('non-class seeds use the percent', DEFAULT_OFFERS.filter((s) => !s.includesCourse).every((s) => s.platformShareCents === null))
 
 // ---- Criteria categories ----------------------------------------------------
 

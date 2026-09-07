@@ -16,6 +16,7 @@ const columns = [
     links: [
       { href: '/team', label: 'Organizations' },
       { href: '/org/signup', label: 'Register an organization' },
+      { href: '/org/guide', label: 'Organization guide' },
       { href: '/partners', label: 'Partners' },
     ],
   },

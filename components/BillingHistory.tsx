@@ -27,7 +27,10 @@ function kindLabel(kind: string | null): string | null {
     case 'player_tokens':
       return 'Player tokens'
     case 'class_package':
-      return 'Class'
+      return 'Program'
+    case 'org_offer':
+    case 'org_offer_ball':
+      return 'Sale'
     default:
       return kind ? null : 'Shop'
   }

@@ -629,7 +629,7 @@ export default function OrgTeamCard({
               className="w-full text-left border border-ember-500/30 bg-ember-500/5 hover:bg-ember-500/10 rounded-2xl px-4 py-3 flex items-center justify-between gap-4 transition-colors"
             >
               <div className="min-w-0">
-                <p className="text-sm font-black text-black dark:text-chalk">10-Week Shooting Development Program</p>
+                <p className="text-sm font-black text-black dark:text-chalk">Coach-Led Development Program</p>
                 <p className="text-xs text-gray-500 dark:text-chalk-dim mt-0.5">
                   {classPackage.enrollments.length}/{classPackage.player_count} enrolled &middot;{' '}
                   {classPackage.enrollments.filter(en => en.has_final).length} finished &middot;{' '}

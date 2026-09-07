@@ -11,6 +11,7 @@ import { createOrgFromCheckout } from '@/lib/create-org-from-checkout'
 import { applyOrgReactivation, syncSubscriptionToOrg } from '@/lib/org-subscription'
 import { applyPlayerSubscriptionCheckout, syncSubscriptionToUser } from '@/lib/player-subscription'
 import { isPlayerPlan, PLAYER_PLANS } from '@/lib/player-plans'
+import { fulfillOfferSession } from '@/lib/org-offer-fulfillment'
 
 export async function POST(req: NextRequest) {
   try {
@@ -441,6 +442,16 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
         }
       }
 
+      return NextResponse.json({ received: true })
+    }
+
+    // --- Organization offer (results unlock / ball bundle / Shooting Class) ---
+    // Must sit above the ball-shop fallthrough: a ball-bundle offer carries
+    // shipping details that the fallthrough would otherwise treat as a shop
+    // order. Fulfillment is shared with the results page's safety net.
+    if (metaType === 'org_offer') {
+      const outcome = await fulfillOfferSession(session, 'webhook')
+      console.log('[stripe webhook] org_offer', { sessionId: session.id, outcome })
       return NextResponse.json({ received: true })
     }
 

@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 import { useIsInApp } from '@/lib/useIsInApp'
 import Link from 'next/link'
 import OrgTeamCard from './OrgTeamCard'
+import OrgResultsPanel from './OrgResultsPanel'
+import OrgOffersPanel from './OrgOffersPanel'
 import {
   memberDisplayName,
   type ClassPackage,
@@ -397,7 +399,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
         >
           <div className="min-w-0">
             <p className="text-ember-100 text-[10px] font-bold uppercase tracking-widest">New</p>
-            <p className="font-black text-base truncate">10-Week Shooting Class · $40/player</p>
+            <p className="font-black text-base truncate">Coach-Led Development Program · $40/player</p>
             <p className="text-ember-100 text-xs mt-0.5">{classPackages.length > 0 ? 'Buy another class package' : 'Tap to expand the buy form'}</p>
           </div>
           <span className="text-2xl font-black shrink-0">+</span>
@@ -408,7 +410,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="space-y-1">
             <p className="text-ember-100 text-xs font-bold uppercase tracking-widest">New</p>
-            <h2 className="text-2xl font-black">10-Week Shooting Class</h2>
+            <h2 className="text-2xl font-black">Coach-Led Development Program</h2>
             <p className="text-ember-100 text-sm max-w-sm">
               A structured program that turns your organization into a coaching powerhouse.
               Each player gets a ball, 2 shot analyses, and a personalized completion certificate.
@@ -817,7 +819,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
       <div>
         <div className="flex items-center gap-2">
           <h2 className="text-xl font-black text-black dark:text-chalk">
-            {hasClass ? 'Class Manager' : '10-Week Shooting Development Program'}
+            {hasClass ? 'Program Manager' : 'Coach-Led Development Program'}
           </h2>
           <InfoTip label="What does the 10-week program include?" align="left">
             $40 per player ($36.99 each for 30+). Every player gets a training
@@ -1171,13 +1173,30 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
       <AccountTabs
         tabs={[
           { id: 'teams', label: 'Teams', count: teams.length, content: teamsTab },
+          {
+            id: 'results',
+            label: 'Results',
+            content: (
+              <OrgResultsPanel
+                teams={teams.map(t => ({
+                  id: t.id,
+                  name: t.name,
+                  ageGroup: t.ageGroup,
+                  memberCount: t.members.length,
+                  coachName: t.coachNickname || t.adminEmail,
+                }))}
+                onGoToOffers={() => goToTab('offers')}
+              />
+            ),
+          },
+          { id: 'offers', label: 'Offers & Sales', content: <OrgOffersPanel /> },
           { id: 'schedule', label: 'Schedule', content: scheduleTab },
           // The class purchase pitch is hidden in the iOS app (guideline 3.1.1).
           // The purchase pitch is hidden in the iOS app (guideline 3.1.1), but an
           // org that already runs a program still gets its manager there.
           ...(inApp && !hasClass
             ? []
-            : [{ id: 'class', label: hasClass ? 'Class Manager' : 'Shooting Class', content: classTab }]),
+            : [{ id: 'class', label: hasClass ? 'Program Manager' : 'Coach-Led Program', content: classTab }]),
           { id: 'tokens', label: 'Tokens', content: tokensTab },
           { id: 'leaderboard', label: 'Leaderboard', count: orgLeaderboard.length, content: leaderboardTab },
           { id: 'players', label: 'Players', count: uniquePlayerCount, content: playersTab },

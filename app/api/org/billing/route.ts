@@ -21,7 +21,7 @@ function describeRow(r: OrderRow): string {
   if (r.description) return r.description
   switch (r.kind) {
     case 'class_package':
-      return '10-Week Shooting Class package'
+      return 'Coach-Led Development Program package'
     case 'org_tokens':
       return `${r.quantity ?? ''} analysis tokens`.trim()
     case 'team_credits':

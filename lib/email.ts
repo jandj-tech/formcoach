@@ -1516,3 +1516,350 @@ export async function sendFilmingTipsEmail(to: string) {
   }
   console.log('[email] sent filming tips email:', data?.id, 'to:', to)
 }
+
+// ---------------------------------------------------------------------------
+// Org results delivery + offer purchases
+// ---------------------------------------------------------------------------
+
+function gradeLetter(score: number): { letter: string; label: string } {
+  if (score >= 9) return { letter: 'A+', label: 'Elite Form' }
+  if (score >= 8) return { letter: 'A', label: 'Excellent Form' }
+  if (score > 7) return { letter: 'B+', label: 'Good Form' }
+  if (score >= 6) return { letter: 'B', label: 'Okay Form' }
+  if (score >= 5) return { letter: 'C', label: 'Below Average' }
+  if (score >= 4) return { letter: 'D', label: 'Needs Work' }
+  return { letter: 'F', label: 'Major Issues' }
+}
+
+function money(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`
+}
+
+export interface OrgResultsEmailOffer {
+  title: string
+  description: string | null
+  priceCents: number
+  regularPriceCents: number
+}
+
+export interface OrgResultsEmailInput {
+  playerName: string | null
+  orgName: string
+  teamName: string
+  score: number
+  token: string
+  /** Plain-language description of what the link shows for free. */
+  freeTierLabel: string
+  /** True when a purchase would reveal more than the free view. */
+  paywalled: boolean
+  /** The org's purchasable offers (empty when selling is off). Max 4 rendered. */
+  offers: OrgResultsEmailOffer[]
+  recipientEmail: string
+}
+
+/**
+ * The weekly score email an organization sends its players. Rendered
+ * separately from sending so the Results tab can show an exact preview.
+ *
+ * Transactional in shape (your score, your link) but it carries the org's
+ * offers, so it follows the bulk rules: List-Unsubscribe pair, suppression
+ * honored by the caller, text twin always present.
+ */
+export function renderOrgResultsEmail(input: OrgResultsEmailInput): {
+  subject: string
+  text: string
+  html: string
+} {
+  const link = `${BASE_URL}/results/${input.token}`
+  const unsubscribe = `${BASE_URL}/unsubscribe?email=${encodeURIComponent(input.recipientEmail)}`
+  const { letter, label } = gradeLetter(input.score)
+  const first = input.playerName?.trim() || 'there'
+  const scoreText = input.score.toFixed(1)
+  const offers = input.offers.slice(0, 4)
+  const subject = `${first === 'there' ? 'Your' : `${first}, your`} shot score from ${input.orgName}: ${scoreText}/10`
+
+  const text = [
+    `Hi ${first},`,
+    ``,
+    `${input.orgName} (${input.teamName}) has your latest shot evaluation.`,
+    ``,
+    `Overall score: ${scoreText} / 10  (${letter} — ${label})`,
+    ``,
+    `See your results: ${link}`,
+    input.paywalled ? `Your link shows: ${input.freeTierLabel}.` : ``,
+    ...(offers.length
+      ? [
+          ``,
+          input.paywalled ? `Unlock more:` : `Available from ${input.orgName}:`,
+          ...offers.map(
+            (o) =>
+              `- ${o.title} — ${money(o.priceCents)}${o.priceCents < o.regularPriceCents ? ` (regular ${money(o.regularPriceCents)})` : ''}`
+          ),
+          `Buy from your results page: ${link}`,
+        ]
+      : []),
+    ``,
+    `Reply to this email to reach your coach.`,
+    ``,
+    `LearnHoops.com`,
+    `Unsubscribe: ${unsubscribe}`,
+  ]
+    .filter((line) => line !== null)
+    .join('\n')
+
+  const offerRows = offers
+    .map(
+      (o) => `
+        <tr><td style="padding:0 0 10px;">
+          <table role="presentation" width="100%" style="border:1px solid #E4E4E7;border-radius:10px;">
+            <tr>
+              <td style="padding:14px 16px;">
+                <div style="color:#111;font-size:15px;font-weight:800;">${escHtml(o.title)}</div>
+                ${o.description ? `<div style="color:#52525B;font-size:13px;line-height:1.5;margin-top:3px;">${escHtml(o.description)}</div>` : ''}
+              </td>
+              <td align="right" style="padding:14px 16px;white-space:nowrap;vertical-align:top;">
+                ${o.priceCents < o.regularPriceCents ? `<div style="color:#A1A1AA;font-size:12px;text-decoration:line-through;">${money(o.regularPriceCents)}</div>` : ''}
+                <div style="color:#111;font-size:18px;font-weight:900;">${money(o.priceCents)}</div>
+              </td>
+            </tr>
+          </table>
+        </td></tr>`
+    )
+    .join('')
+
+  const html = `
+<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/></head>
+<body style="margin:0;padding:0;background:#F4F4F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#111;">
+  <table role="presentation" width="100%" style="background:#F4F4F5;"><tr><td align="center" style="padding:32px 16px;">
+    <table role="presentation" width="100%" style="max-width:560px;background:#fff;border-radius:14px;overflow:hidden;border:1px solid #E4E4E7;">
+      <tr><td style="background:#000;padding:22px 32px;">
+        <div style="color:#FF5C1A;font-size:20px;font-weight:800;letter-spacing:-0.3px;line-height:1;">LearnHoops<span style="color:#71717A;">.com</span></div>
+        <div style="color:#A1A1AA;font-size:12px;margin-top:5px;">${escHtml(input.orgName)} · ${escHtml(input.teamName)}</div>
+      </td></tr>
+      <tr><td style="padding:36px 32px 8px;">
+        <h1 style="margin:0 0 10px;color:#111;font-size:24px;line-height:1.25;font-weight:800;">Hi ${escHtml(first)}, your shot has been graded.</h1>
+        <p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;">
+          ${escHtml(input.orgName)} reviewed your latest shot. Here is your overall score.
+        </p>
+      </td></tr>
+      <tr><td align="center" style="padding:24px 32px 8px;">
+        <table role="presentation" style="border-collapse:separate;">
+          <tr><td align="center" style="width:132px;height:132px;border-radius:66px;border:3px solid #FF5C1A;background:#FAFAFA;">
+            <div style="color:#111;font-size:42px;font-weight:900;line-height:1;">${scoreText}</div>
+            <div style="color:#52525B;font-size:12px;margin-top:4px;">out of 10</div>
+          </td></tr>
+        </table>
+        <div style="color:#111;font-size:26px;font-weight:900;margin-top:12px;">${letter}</div>
+        <div style="color:#52525B;font-size:14px;">${escHtml(label)}</div>
+      </td></tr>
+      <tr><td align="center" style="padding:20px 32px 8px;">
+        <a href="${link}" style="display:inline-block;background:#FF5C1A;color:#111;padding:14px 28px;border-radius:10px;text-decoration:none;font-weight:800;font-size:15px;">See your results</a>
+        ${input.paywalled ? `<div style="color:#71717A;font-size:12px;margin-top:10px;">Your link shows: ${escHtml(input.freeTierLabel)}.</div>` : ''}
+      </td></tr>
+      ${
+        offers.length
+          ? `<tr><td style="padding:24px 32px 8px;">
+        <div style="color:#111;font-size:16px;font-weight:800;margin-bottom:12px;">${input.paywalled ? 'Unlock more' : `Available from ${escHtml(input.orgName)}`}</div>
+        <table role="presentation" width="100%">${offerRows}</table>
+        <div style="color:#71717A;font-size:12px;">Buy any of these from your results page — the link above.</div>
+      </td></tr>`
+          : ''
+      }
+      <tr><td style="padding:24px 32px 32px;">
+        <p style="margin:0;color:#71717A;font-size:12px;line-height:1.6;">
+          This link is private to you. Reply to this email to reach your coach.<br/>
+          <a href="${unsubscribe}" style="color:#71717A;">Unsubscribe</a> from score emails.
+        </p>
+      </td></tr>
+    </table>
+  </td></tr></table>
+</body></html>`.trim()
+
+  return { subject, text, html }
+}
+
+export async function sendOrgResultsEmail(
+  input: OrgResultsEmailInput,
+  replyTo: string
+): Promise<void> {
+  const { subject, text, html } = renderOrgResultsEmail(input)
+  const unsubscribe = `${BASE_URL}/unsubscribe?email=${encodeURIComponent(input.recipientEmail)}`
+  const { error } = await getResend().emails.send({
+    from: NOTIFICATION_FROM,
+    to: input.recipientEmail,
+    replyTo,
+    subject,
+    text,
+    html,
+    headers: {
+      'List-Unsubscribe': `<${unsubscribe}>`,
+      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+    },
+  })
+  if (error) {
+    console.error('[email] org results email failed:', error)
+    throw new Error(`Org results email failed: ${error instanceof Error ? error.message : String(error)}`)
+  }
+}
+
+export interface OfferPurchaseEmailInput {
+  buyerEmail: string
+  buyerName: string | null
+  orgName: string
+  orgAdminEmail: string
+  offerTitle: string
+  amountCents: number
+  currency: string
+  /** Results link the purchase came from (null for a standalone class purchase). */
+  resultsToken: string | null
+  includesBreakdown: boolean
+  includesBall: boolean
+  includesCourse: boolean
+  /** Team join code when the offer enrolls the buyer onto a roster. */
+  joinTeamCode: string | null
+  orgShareCents: number
+}
+
+/** Receipt to the family after an offer purchase. Best-effort; never throw. */
+export async function sendOfferPurchaseConfirmationEmail(input: OfferPurchaseEmailInput): Promise<void> {
+  const link = input.resultsToken ? `${BASE_URL}/results/${input.resultsToken}` : null
+  const joinLink = input.joinTeamCode ? `${BASE_URL}/signup?teamCode=${encodeURIComponent(input.joinTeamCode)}` : null
+  const amount = `${money(input.amountCents)} ${input.currency.toUpperCase()}`
+  const first = input.buyerName?.trim() || 'there'
+  const lines: string[] = []
+  if (input.includesBreakdown && link) lines.push(`Your full shot breakdown is unlocked: ${link}`)
+  if (input.includesBall) lines.push(`Your LearnHoops ball ships to the address you gave at checkout. We'll email tracking when it's on its way.`)
+  if (input.includesCourse) lines.push(`You're registered for ${input.orgName}'s Shooting Class. ${input.orgName} will be in touch with the schedule and details.`)
+  if (joinLink) lines.push(`Join the team roster on LearnHoops so your coach can track your progress: ${joinLink}`)
+
+  try {
+    const { error } = await getResend().emails.send({
+      from: NOTIFICATION_FROM,
+      to: input.buyerEmail,
+      replyTo: input.orgAdminEmail,
+      subject: `Receipt: ${input.offerTitle} — ${input.orgName}`,
+      text: [
+        `Hi ${first},`,
+        ``,
+        `Thanks for your purchase from ${input.orgName}.`,
+        ``,
+        `${input.offerTitle} — ${amount}`,
+        ``,
+        ...lines,
+        ``,
+        `Questions? Reply to this email to reach ${input.orgName}.`,
+        ``,
+        `LearnHoops.com`,
+      ].join('\n'),
+      html: `
+<!DOCTYPE html><html><head><meta charset="utf-8"/></head>
+<body style="margin:0;padding:0;background:#F4F4F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#111;">
+  <table role="presentation" width="100%" style="background:#F4F4F5;"><tr><td align="center" style="padding:32px 16px;">
+    <table role="presentation" width="100%" style="max-width:560px;background:#fff;border-radius:14px;border:1px solid #E4E4E7;">
+      <tr><td style="background:#000;padding:22px 32px;">
+        <div style="color:#FF5C1A;font-size:20px;font-weight:800;">LearnHoops<span style="color:#71717A;">.com</span></div>
+        <div style="color:#A1A1AA;font-size:12px;margin-top:5px;">${escHtml(input.orgName)}</div>
+      </td></tr>
+      <tr><td style="padding:36px 32px 8px;">
+        <h1 style="margin:0 0 10px;color:#111;font-size:22px;font-weight:800;">Thanks, ${escHtml(first)}!</h1>
+        <p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;">Your purchase from <strong>${escHtml(input.orgName)}</strong> is confirmed.</p>
+      </td></tr>
+      <tr><td style="padding:20px 32px 8px;">
+        <div style="background:#FAFAFA;border:1px solid #E4E4E7;border-radius:10px;padding:16px 20px;">
+          <div style="color:#111;font-size:16px;font-weight:800;">${escHtml(input.offerTitle)}</div>
+          <div style="color:#111;font-size:22px;font-weight:900;margin-top:4px;">${amount}</div>
+        </div>
+      </td></tr>
+      <tr><td style="padding:16px 32px 8px;">
+        ${lines.map((l) => `<p style="margin:0 0 10px;color:#52525B;font-size:14px;line-height:1.55;">${escHtml(l).replace(/(https?:\/\/\S+)/g, '<a href="$1" style="color:#E8430A;font-weight:700;">$1</a>')}</p>`).join('')}
+      </td></tr>
+      <tr><td style="padding:16px 32px 32px;">
+        <p style="margin:0;color:#71717A;font-size:12px;line-height:1.6;">Questions? Reply to this email to reach ${escHtml(input.orgName)}.</p>
+      </td></tr>
+    </table>
+  </td></tr></table>
+</body></html>`.trim(),
+    })
+    if (error) console.error('[email] offer purchase confirmation failed:', error)
+  } catch (err) {
+    console.error('[email] offer purchase confirmation failed:', err)
+  }
+}
+
+/** Heads-up to the org admin that a family bought something. Best-effort. */
+export async function sendOfferSaleNotificationEmail(input: OfferPurchaseEmailInput): Promise<void> {
+  const amount = `${money(input.amountCents)} ${input.currency.toUpperCase()}`
+  const share = `${money(input.orgShareCents)} ${input.currency.toUpperCase()}`
+  const dashboard = `${BASE_URL}/org/dashboard#offers`
+  try {
+    const { error } = await getResend().emails.send({
+      from: NOTIFICATION_FROM,
+      to: input.orgAdminEmail,
+      subject: `New sale: ${input.offerTitle} — ${amount}`,
+      text: [
+        `${input.buyerName?.trim() || input.buyerEmail} just bought ${input.offerTitle} from ${input.orgName}.`,
+        ``,
+        `Paid: ${amount}`,
+        `Your share: ${share}`,
+        input.includesCourse ? `This is a Shooting Class registration — see your Sales list to manage it.` : ``,
+        input.includesBall ? `Includes a LearnHoops ball — LearnHoops ships it; nothing for you to do.` : ``,
+        ``,
+        `Sales & earnings: ${dashboard}`,
+      ]
+        .filter(Boolean)
+        .join('\n'),
+      html: `
+<!DOCTYPE html><html><head><meta charset="utf-8"/></head>
+<body style="margin:0;padding:0;background:#F4F4F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#111;">
+  <table role="presentation" width="100%" style="background:#F4F4F5;"><tr><td align="center" style="padding:32px 16px;">
+    <table role="presentation" width="100%" style="max-width:560px;background:#fff;border-radius:14px;border:1px solid #E4E4E7;">
+      <tr><td style="background:#000;padding:22px 32px;">
+        <div style="color:#FF5C1A;font-size:20px;font-weight:800;">LearnHoops<span style="color:#71717A;">.com</span></div>
+      </td></tr>
+      <tr><td style="padding:36px 32px 8px;">
+        <h1 style="margin:0 0 10px;color:#111;font-size:22px;font-weight:800;">New sale</h1>
+        <p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;">
+          <strong>${escHtml(input.buyerName?.trim() || input.buyerEmail)}</strong> bought <strong>${escHtml(input.offerTitle)}</strong>.
+        </p>
+      </td></tr>
+      <tr><td style="padding:20px 32px 8px;">
+        <table role="presentation" width="100%" style="background:#FAFAFA;border:1px solid #E4E4E7;border-radius:10px;">
+          <tr><td style="padding:12px 20px;color:#52525B;font-size:13px;">Paid</td><td align="right" style="padding:12px 20px;color:#111;font-weight:800;">${amount}</td></tr>
+          <tr><td style="padding:12px 20px;color:#52525B;font-size:13px;border-top:1px solid #E4E4E7;">Your share</td><td align="right" style="padding:12px 20px;color:#111;font-weight:900;border-top:1px solid #E4E4E7;">${share}</td></tr>
+        </table>
+        ${input.includesCourse ? `<p style="margin:12px 0 0;color:#52525B;font-size:13px;">This is a Shooting Class registration — it's in your Sales list.</p>` : ''}
+        ${input.includesBall ? `<p style="margin:12px 0 0;color:#52525B;font-size:13px;">Includes a LearnHoops ball. LearnHoops ships it — nothing for you to do.</p>` : ''}
+      </td></tr>
+      <tr><td style="padding:20px 32px 32px;">
+        <a href="${dashboard}" style="display:inline-block;background:#FF5C1A;color:#111;padding:13px 26px;border-radius:10px;text-decoration:none;font-weight:800;font-size:15px;">Sales &amp; earnings</a>
+      </td></tr>
+    </table>
+  </td></tr></table>
+</body></html>`.trim(),
+    })
+    if (error) console.error('[email] offer sale notification failed:', error)
+  } catch (err) {
+    console.error('[email] offer sale notification failed:', err)
+  }
+}
+
+/** Internal heads-up: an org asked to enable selling; admin quotes the split. */
+export async function sendOffersRequestedEmail(orgName: string, adminEmail: string, orgId: string): Promise<void> {
+  try {
+    await getResend().emails.send({
+      from: NOTIFICATION_FROM,
+      to: INTERNAL_INBOX,
+      subject: `Selling access requested: ${orgName}`,
+      text: [
+        `${orgName} (${adminEmail}) requested selling access for results offers.`,
+        ``,
+        `Set their revenue split in the admin dashboard to enable it:`,
+        `${BASE_URL}/admin/org-revenue`,
+        ``,
+        `Org id: ${orgId}`,
+      ].join('\n'),
+    })
+  } catch (err) {
+    console.error('[email] offers requested notification failed:', err)
+  }
+}

@@ -22,6 +22,8 @@ import {
   MAX_OFFER_PRICE_CENTS,
   effectivePriceCents,
   hasAnchorPrice,
+  BALL_COST_CENTS,
+  BALL_SHIPPING_ALLOWANCE_CENTS,
   BALL_PLATFORM_FEE_CENTS,
   CLASS_PLATFORM_FEE_CENTS,
   platformFeeFor,
@@ -135,12 +137,13 @@ check('flat fee applies even with no org quote', shareRuleFor({ platformShareCen
 check('flat label', shareRuleLabel({ mode: 'flat', cents: 10000 }) === '$100.00 per sale')
 check('percent label', shareRuleLabel({ mode: 'percent', percent: 30 }) === '30% of each sale')
 check('class fee is $100', CLASS_PLATFORM_FEE_CENTS === 10000)
-check('ball fee equals the shop ball price', BALL_PLATFORM_FEE_CENTS === PRODUCT.priceCents)
+check('ball fee is cost plus a shipping allowance', BALL_PLATFORM_FEE_CENTS === BALL_COST_CENTS + BALL_SHIPPING_ALLOWANCE_CENTS)
+check('ball fee stays well under the shop price', BALL_PLATFORM_FEE_CENTS < PRODUCT.priceCents / 2)
 check('no fee without class or ball', platformFeeFor({ includesCourse: false, includesBall: false }) === null)
 check('class fee alone', platformFeeFor({ includesCourse: true, includesBall: false }) === CLASS_PLATFORM_FEE_CENTS)
 check('ball fee alone', platformFeeFor({ includesCourse: false, includesBall: true }) === BALL_PLATFORM_FEE_CENTS)
 check('class + ball fees add', platformFeeFor({ includesCourse: true, includesBall: true }) === CLASS_PLATFORM_FEE_CENTS + BALL_PLATFORM_FEE_CENTS)
-check('ball offer at $79.99 leaves the club $31.04', applyShareRule(7999, { mode: 'flat', cents: BALL_PLATFORM_FEE_CENTS }).orgShareCents === 3104)
+check('ball offer at $50 leaves the club $30', applyShareRule(5000, { mode: 'flat', cents: BALL_PLATFORM_FEE_CENTS }).orgShareCents === 3000)
 
 // ---- Default share -----------------------------------------------------------
 
@@ -185,6 +188,7 @@ const breakdown = DEFAULT_OFFERS.find((s) => s.kind === 'breakdown')
 const ball = DEFAULT_OFFERS.find((s) => s.kind === 'ball')
 const course = DEFAULT_OFFERS.find((s) => s.kind === 'course')
 check('draft breakdown club is the $29.99 idea', breakdown?.clubPriceCents === 2999)
+check('draft ball club is the $50 idea', ball?.clubPriceCents === 5000)
 check('draft ball club clears the ball fee', ball !== undefined && ball.clubPriceCents > BALL_PLATFORM_FEE_CENTS)
 check('draft course club is the $300 idea', course?.clubPriceCents === 30000)
 check('every seed unlocks the breakdown', DEFAULT_OFFERS.every((s) => s.includesBreakdown))

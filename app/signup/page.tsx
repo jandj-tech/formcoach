@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { trackCompleteRegistration } from '@/lib/meta-pixel'
+import { newMetaEventId, trackCompleteRegistration } from '@/lib/meta-pixel'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
 import TopNav from '@/components/TopNav'
@@ -43,7 +43,10 @@ function SignupForm() {
     setError('')
 
     try {
-      const body: Record<string, string> = { email, password, website }
+      // One id shared by the browser pixel event below and the server's
+      // Conversions API event, so Meta counts this signup once, not twice.
+      const metaEventId = newMetaEventId()
+      const body: Record<string, string> = { email, password, website, metaEventId }
       if (nickname.trim()) body.nickname = nickname.trim()
       if (teamInviteToken) body.teamInviteToken = teamInviteToken
       if (claimToken) body.claimToken = claimToken
@@ -63,7 +66,7 @@ function SignupForm() {
         return
       }
 
-      trackCompleteRegistration()
+      trackCompleteRegistration(metaEventId)
 
       const tc = teamCode.trim()
       if (tc) {

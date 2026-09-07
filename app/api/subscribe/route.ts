@@ -6,6 +6,7 @@ import { rejectInAppPurchase } from '@/lib/in-app'
 import { currencyForRequest } from '@/lib/region'
 import { resolveBaseUrl } from '@/lib/base-url'
 import { getPlayerSubscription, subscriptionEntitled } from '@/lib/player-subscription'
+import { stripeAttributionMetadata } from '@/lib/meta-server'
 import {
   isPlayerBillingInterval,
   isPlayerPlan,
@@ -96,7 +97,10 @@ export async function POST(req: NextRequest) {
         ? { customer: user.stripe_customer_id }
         : { customer_email: user.email }),
       allow_promotion_codes: true,
-      metadata,
+      // Session metadata additionally carries ad-click attribution for the
+      // webhook's Conversions API Purchase; the subscription's own metadata
+      // stays limited to the routing fields the lifecycle handlers key on.
+      metadata: { ...metadata, ...stripeAttributionMetadata(req) },
       // customer.subscription.* events carry NO checkout-session metadata, so
       // the same fields are stamped on the subscription itself — the lifecycle
       // handler routes player vs org syncs on subscription.metadata.type.

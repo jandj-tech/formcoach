@@ -7,6 +7,7 @@ import { isValidCompCode, getCompCouponId } from '@/lib/comp'
 import { rejectInAppPurchase } from '@/lib/in-app'
 import { currencyForRequest } from '@/lib/region'
 import { resolveBaseUrl } from '@/lib/base-url'
+import { stripeAttributionMetadata } from '@/lib/meta-server'
 
 const BASE_URL = resolveBaseUrl()
 
@@ -69,6 +70,8 @@ export async function POST(req: NextRequest) {
         type: 'analysis_token',
         userId: session.userId,
         quantity: String(quantity),
+        // Ad-click attribution for the webhook's Conversions API Purchase.
+        ...stripeAttributionMetadata(req),
       },
       success_url: returnTo ? `${BASE_URL}${returnTo}?token_purchased=1` : `${BASE_URL}/analyze?token_purchased=1`,
       ...discountOpts,

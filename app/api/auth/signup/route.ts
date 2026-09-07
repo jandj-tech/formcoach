@@ -4,7 +4,7 @@ import { db } from '@/lib/db'
 import { signSession, sessionCookieOptions } from '@/lib/auth'
 import { grantFreeOrgTokensIfEligible } from '@/lib/team-tokens'
 import { addToEmailList } from '@/lib/email-list'
-import { sendMetaEvent, makeRegistrationEvent } from '@/lib/meta-server'
+import { sendMetaEvent, makeRegistrationEvent, attributionFromRequest } from '@/lib/meta-server'
 import { BCRYPT_COST } from '@/lib/password'
 import { rateLimitByIp } from '@/lib/rate-limit'
 import { verifyTurnstile } from '@/lib/turnstile'
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const { email, password, nickname, teamInviteToken, claimToken, website, turnstileToken } =
+    const { email, password, nickname, teamInviteToken, claimToken, website, turnstileToken, metaEventId } =
       await req.json()
 
     // Honeypot: a field hidden from real visitors. Bots fill every input they
@@ -123,16 +123,23 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Fire server-side Meta CAPI event (deduplicates with client-side pixel).
-    // Skipped for signups made inside the iOS app — Apple's ATT rules forbid
-    // tracking app users without authorization, and the app never asks.
+    // Fire server-side Meta CAPI event. The signup page sends the same
+    // metaEventId it used for the browser pixel event, so Meta dedupes the
+    // pair into one conversion. Skipped for signups made inside the iOS app —
+    // Apple's ATT rules forbid tracking app users without authorization, and
+    // the app never asks (attributionFromRequest returns {} for the app UA,
+    // and the guard below skips the event entirely).
     const signupUA = req.headers.get('user-agent') ?? ''
     if (!signupUA.includes('LearnHoopsApp')) {
+      const attr = attributionFromRequest(req)
       await sendMetaEvent(makeRegistrationEvent({
         email: emailLower,
-        ip: req.headers.get('x-forwarded-for') ?? undefined,
-        userAgent: signupUA || undefined,
-        url: 'https://www.learnhoops.com/signup',
+        eventId: typeof metaEventId === 'string' && /^[\w-]{8,64}$/.test(metaEventId) ? metaEventId : undefined,
+        ip: attr.ip,
+        userAgent: attr.userAgent,
+        fbp: attr.fbp,
+        fbc: attr.fbc,
+        url: attr.sourceUrl ?? 'https://www.learnhoops.com/signup',
       }))
     }
 

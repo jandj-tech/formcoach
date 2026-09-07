@@ -16,7 +16,7 @@ import {
   signInWithOAuthProfile,
 } from '@/lib/oauth-account'
 import { clearOtherSessions } from '@/lib/sessions'
-import { sendMetaEvent, makeRegistrationEvent } from '@/lib/meta-server'
+import { sendMetaEvent, makeRegistrationEvent, attributionFromRequest } from '@/lib/meta-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -112,12 +112,17 @@ async function finish(req: NextRequest, providerParam: string, input: CallbackIn
 
     // New accounts are reported to Meta the same way password signups are, so
     // the two paths do not disagree about how many registrations there were.
+    // No browser pixel event fires on this redirect, so no shared eventId is
+    // needed — the CAPI event is the only copy.
     if (result.isNewAccount && state.mode === 'web' && profile.email) {
+      const attr = attributionFromRequest(req)
       await sendMetaEvent(
         makeRegistrationEvent({
           email: profile.email,
-          ip: req.headers.get('x-forwarded-for') ?? undefined,
-          userAgent: req.headers.get('user-agent') ?? undefined,
+          ip: attr.ip,
+          userAgent: attr.userAgent,
+          fbp: attr.fbp,
+          fbc: attr.fbc,
           url: `${origin}/signup`,
         })
       ).catch(() => {})

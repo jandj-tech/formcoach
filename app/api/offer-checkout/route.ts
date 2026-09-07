@@ -7,6 +7,7 @@ import { rateLimitByIp } from '@/lib/rate-limit'
 import { resolveBaseUrl } from '@/lib/base-url'
 import { getOfferById, getOrgResultSettings, getOrgSellingState } from '@/lib/org-offers-db'
 import { effectivePriceCents, shareRuleFor } from '@/lib/org-offers'
+import { stripeAttributionMetadata } from '@/lib/meta-server'
 
 const BASE_URL = resolveBaseUrl()
 
@@ -157,6 +158,8 @@ export async function POST(req: NextRequest) {
         unlockedTier: settings.unlockTier,
         includes,
         title: offer.title.slice(0, 200),
+        // Ad-click attribution for the webhook's Conversions API Purchase.
+        ...stripeAttributionMetadata(req),
       },
       success_url: `${BASE_URL}${returnPath}${sep}offer_purchased=1&offer_session={CHECKOUT_SESSION_ID}`,
       cancel_url: `${BASE_URL}${returnPath}`,

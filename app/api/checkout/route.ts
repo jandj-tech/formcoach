@@ -7,6 +7,7 @@ import { db } from '@/lib/db'
 import { isValidCompCode, getCompCouponId } from '@/lib/comp'
 import { getShippingOptions } from '@/lib/shipping'
 import { resolveBaseUrl } from '@/lib/base-url'
+import { stripeAttributionMetadata } from '@/lib/meta-server'
 
 const BALL_DESCRIPTION = 'Training basketball with hand-placement guide lines that build consistent shooting form.'
 
@@ -200,6 +201,9 @@ export async function POST(req: NextRequest) {
       variant: firstBallVariant ?? '',
       size: firstBallSize ?? '',
       items_count: String(rawItems.length),
+      // Ad-click attribution (_fbp/_fbc cookies, IP, UA) — read back by the
+      // webhook to send the Purchase to Meta's Conversions API.
+      ...stripeAttributionMetadata(req),
     }
 
     metadata.analysis_tokens = String(analysisTokens)

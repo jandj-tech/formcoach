@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { after } from 'next/server'
 import type Stripe from 'stripe'
 import { getStripe } from '@/lib/stripe'
+import { checkoutSessionEvents, sendMetaEvent } from '@/lib/meta-server'
 import { db } from '@/lib/db'
 import { sendAbandonedCheckoutEmail, sendClaimCreditsEmail, sendClassPurchaseConfirmationEmail, sendTokenPurchaseConfirmationEmail } from '@/lib/email'
 import { grantBallCreditsOnce } from '@/lib/grant-ball-credits'
@@ -75,6 +77,17 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
     if (session.payment_status === 'unpaid') {
       console.log('[stripe webhook] payment not settled yet, skipping grant', { sessionId: session.id })
       return NextResponse.json({ received: true })
+    }
+
+    // --- Meta Conversions API: every paid checkout is one Purchase ---
+    // Sits above the per-kind branches so no purchase type can be forgotten.
+    // event_id is the session id, so redeliveries and the completed →
+    // async_payment_succeeded pair dedupe on Meta's side; after() sends it
+    // once the response is out, so ad reporting can never slow or fail the
+    // webhook. Zero-total comp sessions return no events.
+    const metaEvents = checkoutSessionEvents(session)
+    if (metaEvents.length > 0) {
+      after(() => sendMetaEvent(metaEvents))
     }
 
     // --- Organization subscription: this is where an org is born ---

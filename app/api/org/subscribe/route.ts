@@ -4,6 +4,7 @@ import { rejectInAppPurchase } from '@/lib/in-app'
 import { currencyForRequest } from '@/lib/region'
 import { resolveBaseUrl } from '@/lib/base-url'
 import { ensureLaunchCoupon } from '@/lib/org-subscription'
+import { stripeAttributionMetadata } from '@/lib/meta-server'
 import {
   getPendingFromRequest,
   markPendingCheckout,
@@ -103,6 +104,8 @@ export async function POST(req: NextRequest) {
         pendingToken: pending.token,
         plan: interval,
         tier,
+        // Ad-click attribution for the webhook's Conversions API Purchase.
+        ...stripeAttributionMetadata(req),
       },
       // customer.subscription.* events carry NO checkout-session metadata, so
       // the same fields are stamped on the subscription itself. Without this

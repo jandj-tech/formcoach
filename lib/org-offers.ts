@@ -214,12 +214,15 @@ export interface DefaultOfferSeed {
 export const CLASS_PLATFORM_FEE_CENTS = 10000
 
 /**
- * LearnHoops' fixed fee on every offer that ships a ball: the ball's own shop
- * price (mirrors PRODUCT.priceCents in lib/stripe.ts — a test pins the two
- * together). LearnHoops supplies and ships the ball, so a percentage could
- * never cover it; the club keeps whatever it charges above this.
+ * LearnHoops' fixed fee on every offer that ships a ball, on a cost basis
+ * rather than retail: the landed cost of a ball (~$9–12, top of the range)
+ * plus a deliberately small allowance toward shipping (carrier rates in
+ * lib/shipping.ts run ~$12–24, so LearnHoops absorbs part of it). The club
+ * keeps whatever it charges above this. Change the two inputs, not the sum.
  */
-export const BALL_PLATFORM_FEE_CENTS = 4895
+export const BALL_COST_CENTS = 1200
+export const BALL_SHIPPING_ALLOWANCE_CENTS = 800
+export const BALL_PLATFORM_FEE_CENTS = BALL_COST_CENTS + BALL_SHIPPING_ALLOWANCE_CENTS
 
 /**
  * The default fixed LearnHoops fee for an offer, from what it includes: the
@@ -263,8 +266,8 @@ export const DEFAULT_OFFERS: readonly DefaultOfferSeed[] = [
     includesBall: true,
     includesCourse: false,
     unlockScope: 'player',
-    regularPriceCents: 9999,
-    clubPriceCents: 7999,
+    regularPriceCents: 7999,
+    clubPriceCents: 5000,
     platformShareCents: BALL_PLATFORM_FEE_CENTS,
     sortOrder: 2,
   },

@@ -140,8 +140,8 @@ function StatusBar({ selling, orgId }: { selling: Selling; orgId: string | null 
           <div className="min-w-0">
             <p className="text-sm font-black text-black dark:text-chalk">Selling on</p>
             <p className="text-xs text-gray-500 dark:text-chalk-dim">
-              Families pay LearnHoops by card. LearnHoops keeps {selling.platformSharePercent}% of each sale
-              (Shooting Class sign-ups: a fixed $100) and pays the rest to you.
+              Families pay LearnHoops by card. LearnHoops keeps {selling.platformSharePercent}% of each sale — or a
+              fixed amount on class sign-ups and balls, shown on each offer — and pays the rest to you.
             </p>
           </div>
         </div>
@@ -673,7 +673,10 @@ function OfferEditor({
             <p className="text-red-600">Enter a regular price.</p>
           )}
           {rule?.mode === 'flat' && (
-            <p className="text-[11px] text-gray-400 mt-1">LearnHoops&apos; fee on this offer is a fixed amount set by LearnHoops.</p>
+            <p className="text-[11px] text-gray-400 mt-1">
+              LearnHoops&apos; fee on this offer is a fixed amount set by LearnHoops
+              {incBall && incCourse ? ' (the class fee plus the ball)' : incBall ? ' (it covers the ball LearnHoops ships)' : ''}.
+            </p>
           )}
         </div>
       </div>

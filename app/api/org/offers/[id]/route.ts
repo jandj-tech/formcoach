@@ -4,6 +4,7 @@ import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { orgIsEntitledById, SUBSCRIPTION_ENDED_MESSAGE } from '@/lib/team-features'
 import { deleteOffer, getOfferById, getOrgSellingState, updateOffer } from '@/lib/org-offers-db'
 import { parseOfferInput } from '@/lib/org-offer-input'
+import { platformFeeFor } from '@/lib/org-offers'
 
 // Edit or remove one of the org's offers. Turning an offer ON requires an
 // entitled org whose selling hasn't been paused.
@@ -46,7 +47,15 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       active = body.active
     }
 
-    const offer = await updateOffer(id, parsed.value, { active })
+    // If the org changes what the offer includes (adds a ball, drops the
+    // class), the default LearnHoops fee follows — but never overwrite a fee
+    // the admin customised away from the default.
+    const prevDefault = platformFeeFor(existing)
+    const nextDefault = platformFeeFor(parsed.value)
+    const feeWasDefault = existing.platformShareCents === prevDefault
+    const platformShareCents = feeWasDefault && nextDefault !== prevDefault ? nextDefault : undefined
+
+    const offer = await updateOffer(id, parsed.value, { active, platformShareCents })
     return NextResponse.json({ success: true, offer })
   } catch (err) {
     console.error('[org/offers/:id] PATCH failed:', err)

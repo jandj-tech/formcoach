@@ -201,7 +201,7 @@ export interface DefaultOfferSeed {
   unlockScope: UnlockScope
   regularPriceCents: number
   clubPriceCents: number
-  /** Fixed LearnHoops fee seeded on class offers; admin can change it. */
+  /** Fixed LearnHoops fee seeded on class and ball offers; admin can change it. */
   platformShareCents: number | null
   sortOrder: number
 }
@@ -212,6 +212,26 @@ export interface DefaultOfferSeed {
  * class offers; the site admin can change it per offer.
  */
 export const CLASS_PLATFORM_FEE_CENTS = 10000
+
+/**
+ * LearnHoops' fixed fee on every offer that ships a ball: the ball's own shop
+ * price (mirrors PRODUCT.priceCents in lib/stripe.ts — a test pins the two
+ * together). LearnHoops supplies and ships the ball, so a percentage could
+ * never cover it; the club keeps whatever it charges above this.
+ */
+export const BALL_PLATFORM_FEE_CENTS = 4895
+
+/**
+ * The default fixed LearnHoops fee for an offer, from what it includes: the
+ * class fee, the ball fee, or both. null for offers with neither (they use
+ * the percent split). Seeds, org-created offers and org edits all go through
+ * this so the two fees can't drift apart; the admin can still override per
+ * offer.
+ */
+export function platformFeeFor(includes: { includesCourse: boolean; includesBall: boolean }): number | null {
+  const fee = (includes.includesCourse ? CLASS_PLATFORM_FEE_CENTS : 0) + (includes.includesBall ? BALL_PLATFORM_FEE_CENTS : 0)
+  return fee > 0 ? fee : null
+}
 
 /**
  * Draft offers seeded (INACTIVE) for an org's first visit to the builder.
@@ -243,9 +263,9 @@ export const DEFAULT_OFFERS: readonly DefaultOfferSeed[] = [
     includesBall: true,
     includesCourse: false,
     unlockScope: 'player',
-    regularPriceCents: 7999,
-    clubPriceCents: 5000,
-    platformShareCents: null,
+    regularPriceCents: 9999,
+    clubPriceCents: 7999,
+    platformShareCents: BALL_PLATFORM_FEE_CENTS,
     sortOrder: 2,
   },
   {
@@ -273,7 +293,7 @@ export const DEFAULT_OFFERS: readonly DefaultOfferSeed[] = [
     unlockScope: 'player',
     regularPriceCents: 44900,
     clubPriceCents: 34500,
-    platformShareCents: CLASS_PLATFORM_FEE_CENTS,
+    platformShareCents: CLASS_PLATFORM_FEE_CENTS + BALL_PLATFORM_FEE_CENTS,
     sortOrder: 4,
   },
 ]

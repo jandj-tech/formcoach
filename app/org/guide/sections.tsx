@@ -804,7 +804,8 @@ export function Selling() {
       </P>
       <Callout kind="tip">
         <b>Shooting Class sign-ups:</b> LearnHoops keeps a fixed <b>$100</b> per player who signs up, and your club gets the rest. For
-        example, a $300 class = $100 to LearnHoops, $200 to you. Other offers use a percent agreed with you.
+        example, a $300 class = $100 to LearnHoops, $200 to you. <b>Balls:</b> LearnHoops supplies and ships the ball, so it keeps a fixed
+        <b> $48.95</b> per ball and your club keeps everything you charge above that. Other offers use a percent.
       </Callout>
 
       <Sub>Step 1 — Check the status bar</Sub>
@@ -835,7 +836,7 @@ export function Selling() {
           <tbody className="divide-y divide-gray-100">
             {[
               ['Full Shot Breakdown', 'Unlocks the full report for that one shot.', '$29.99', '$49.99'],
-              ['LearnHoops Ball + Full Analysis', 'A LearnHoops ball shipped to the family by LearnHoops, plus the full report.', '$50', '$79.99'],
+              ['LearnHoops Ball + Full Analysis', 'A LearnHoops ball shipped to the family by LearnHoops, plus the full report.', '$79.99', '$99.99'],
               ['Shooting Class', 'Registration for your own shooting class.', '$300', '$399'],
               ['Shooting Class + Ball', 'The class and the ball together.', 'You set it', 'You set it'],
             ].map(([n, d, c, r]) => (

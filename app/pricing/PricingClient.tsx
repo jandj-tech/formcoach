@@ -21,6 +21,8 @@ import {
   REGULAR_ANALYSIS_PRICE_CENTS,
   REGULAR_VOLUME_MIN_QTY,
   REGULAR_VOLUME_PRICE_CENTS,
+  REGULAR_BULK_MIN_QTY,
+  REGULAR_BULK_PRICE_CENTS,
   usd,
 } from '@/lib/team-pricing'
 import { ORG_TIERS, orgUsd } from '@/lib/org-subscription-pricing'
@@ -255,13 +257,18 @@ export default function PricingClient({
                   1–{REGULAR_VOLUME_MIN_QTY - 1} analyses · {usd(REGULAR_ANALYSIS_PRICE_CENTS)} each
                 </span>
                 <span className="text-chalk-dim"> — </span>
+                <span className="font-bold text-chalk">
+                  {REGULAR_VOLUME_MIN_QTY}–{REGULAR_BULK_MIN_QTY - 1} analyses · {usd(REGULAR_VOLUME_PRICE_CENTS)} each
+                </span>
+                <span className="text-chalk-dim"> — </span>
                 <span className="font-bold text-ember-400">
-                  {REGULAR_VOLUME_MIN_QTY}+ analyses · {usd(REGULAR_VOLUME_PRICE_CENTS)} each
+                  {REGULAR_BULK_MIN_QTY}+ analyses · {usd(REGULAR_BULK_PRICE_CENTS)} each
                 </span>
               </p>
               <p className="text-chalk-dim text-xs mt-1">
-                Buy {REGULAR_VOLUME_MIN_QTY} or more and every analysis in the order is{' '}
-                {usd(REGULAR_VOLUME_PRICE_CENTS)}.
+                The volume price applies to every analysis in the order: buy {REGULAR_VOLUME_MIN_QTY} or more and
+                each is {usd(REGULAR_VOLUME_PRICE_CENTS)}; buy {REGULAR_BULK_MIN_QTY} or more and each is{' '}
+                {usd(REGULAR_BULK_PRICE_CENTS)}.
               </p>
             </div>
             <Link

@@ -14,11 +14,12 @@ import VolumeNudge from '@/components/VolumeNudge'
 //
 // Web packs jump straight from 1 to the 5+ volume rate: under the $9.99/$5.00
 // ladder a 3-pack ($29.97) would cost more than a 5-pack ($25.00), which reads
-// as a trap, so no pack sits between the single and the discount step.
+// as a trap, so no pack sits between the single and the discount step. The
+// 10-pack drops to $4.50 each ($45.00) — the best per-token price on the web.
 const WEB_PACKS: Array<{ qty: number; badge?: string; highlight?: boolean }> = [
   { qty: 1 },
-  { qty: 5, badge: 'BEST VALUE', highlight: true },
-  { qty: 10, badge: 'STOCK UP' },
+  { qty: 5, badge: 'POPULAR' },
+  { qty: 10, badge: 'BEST VALUE', highlight: true },
 ]
 
 // Inside the iOS app the packs render as part of this same page (so the shop

@@ -39,7 +39,7 @@ const FAQS: Array<{ id?: string; q: string; a: string[] }> = [
   {
     q: 'Can basketball teams and organizations use LearnHoops?',
     a: [
-      'Yes. Coaches get a team dashboard with a roster, shared credits, schedules, and team chat — players join with a team code, and the coach can upload shots for any player on the roster. Organizations can run multiple teams and 10-week training classes with progress certificates. Organization members get bulk analysis tokens at $2.49 each when buying 10 or more on the LearnHoops website; smaller orders use the regular pricing ($9.99 each, or $5 each for 5+).',
+      'Yes. Coaches get a team dashboard with a roster, shared credits, schedules, and team chat — players join with a team code, and the coach can upload shots for any player on the roster. Organizations can run multiple teams and 10-week training classes with progress certificates. Organization members get bulk analysis tokens at $2.49 each when buying 10 or more on the LearnHoops website; smaller orders use the regular pricing ($9.99 each, $5 each for 5+, or $4.50 each for 10+).',
     ],
   },
 ]

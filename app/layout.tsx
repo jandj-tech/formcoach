@@ -133,7 +133,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     '@type': 'Offer',
                     price: '9.99',
                     priceCurrency: 'USD',
-                    description: 'Per shot analysis — $5 each for 5+, or subscribe from $18.95/month.',
+                    description: 'Per shot analysis — $5 each for 5+, $4.50 each for 10+, or subscribe from $18.95/month.',
                   },
                 },
               ],

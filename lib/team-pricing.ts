@@ -34,6 +34,16 @@ export const REGULAR_VOLUME_PRICE_CENTS = 500
 export const REGULAR_VOLUME_MIN_QTY = 5
 
 /**
+ * The public 10-pack rate (cents): $4.50 each from 10 up, so the 10-pack
+ * ($45.00) is a little cheaper per token than two 5-packs ($50.00). Website
+ * only — the iOS app sells its own packs through Apple at App Store prices,
+ * and in-app Stripe checkout is refused (lib/in-app.ts), so this never bills
+ * there.
+ */
+export const REGULAR_BULK_PRICE_CENTS = 450
+export const REGULAR_BULK_MIN_QTY = 10
+
+/**
  * The organization bulk rate (cents), for members of an organization with an
  * entitled plan (Basic or Plus): $2.49 per token, but ONLY on orders of
  * ORG_BULK_MIN_QTY or more, and ONLY on the website — there is deliberately
@@ -81,8 +91,9 @@ function tierOf(minQty: number, unitCents: number): VolumeTier {
  * order is never dearer per token than a smaller one.
  */
 
-/** No plan: $9.99 each, $5.00 each from 5 up. */
+/** No plan: $9.99 each, $5.00 each from 5 up, $4.50 each from 10 up. */
 export const REGULAR_VOLUME_TIERS: ReadonlyArray<VolumeTier> = [
+  tierOf(REGULAR_BULK_MIN_QTY, REGULAR_BULK_PRICE_CENTS),
   tierOf(REGULAR_VOLUME_MIN_QTY, REGULAR_VOLUME_PRICE_CENTS),
 ]
 

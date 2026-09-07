@@ -55,6 +55,7 @@ function check(name: string, ok: boolean, detail = '') {
  * The bulk rate has a HARD minimum of 10 — an org buying 9 pays the public $5.
  */
 function expectedNoneUnit(q: number): number {
+  if (q >= 10) return 450
   return q >= 5 ? 500 : 999
 }
 function expectedOrgUnit(q: number): number {
@@ -74,7 +75,8 @@ const LADDERS: Array<{
    */
   inversions: number[]
 }> = [
-  // none: the 5-step ($25.00) undercuts four ($39.96). One cliff.
+  // none: the 5-step ($25.00) undercuts four ($39.96). One cliff — the 10-step
+  // ($45.00) exactly matches nine at $5.00, so it is not an inversion.
   { tier: 'none', expected: expectedNoneUnit, inversions: [4] },
   // org: the same 5-step cliff, plus a second at 9 — 10×$2.49=$24.90 costs
   // less than 9×$5.00=$45.00.
@@ -167,10 +169,11 @@ check('basic and plus share one ladder', diverge.length === 0, `diverge at {${di
 
 // --- spot values, hardcoded (the product promise) ----------------------------
 const SPOTS: Array<[OrgTier, number, number]> = [
-  // Public: 1–4 at $9.99, 5+ at $5.00.
+  // Public: 1–4 at $9.99, 5–9 at $5.00, 10+ at $4.50 (web only — the app
+  // sells its own Apple-priced packs).
   ['none', 1, 999], ['none', 2, 999], ['none', 3, 999], ['none', 4, 999],
   ['none', 5, 500], ['none', 9, 500],
-  ['none', 10, 500], ['none', 50, 500], ['none', 1000, 500],
+  ['none', 10, 450], ['none', 50, 450], ['none', 1000, 450],
   // Org: public below the bulk minimum — 9 tokens does NOT earn $2.49.
   ['basic', 1, 999], ['basic', 4, 999], ['basic', 5, 500], ['basic', 9, 500],
   ['basic', 10, 249], ['basic', 20, 249], ['basic', 50, 249], ['basic', 1000, 249],
@@ -188,7 +191,8 @@ const TOTALS: Array<[OrgTier, number, number]> = [
   ['none', 2, 1998],   // $19.98
   ['none', 4, 3996],   // $39.96
   ['none', 5, 2500],   // $25.00
-  ['none', 10, 5000],  // $50.00
+  ['none', 9, 4500],   // $45.00 — nine at $5.00
+  ['none', 10, 4500],  // $45.00 — the 10-pack promise: cheaper per token, never dearer in total
   ['basic', 10, 2490], // $24.90
   ['basic', 20, 4980], // $49.80
   ['basic', 50, 12450], // $124.50

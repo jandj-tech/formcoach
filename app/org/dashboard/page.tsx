@@ -376,7 +376,7 @@ export default async function OrgDashboardPage() {
           </div>
         )}
 
-        <OrgDashboardClient orgTier={orgTier} teams={teams} orgName={org.name} classPackages={classPackages} myUploads={myUploads} orgTokenBalance={orgTokenBalance} coachCreditBalances={coachCreditBalances} />
+        <OrgDashboardClient orgTier={orgTier} teams={teams} orgName={org.name} classPackages={classPackages} myUploads={myUploads} orgTokenBalance={orgTokenBalance} coachCreditBalances={coachCreditBalances} hasBilling={billing.hasBilling} />
       </DashboardShell>
       <SiteFooter />
     </main>

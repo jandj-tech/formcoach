@@ -24,6 +24,7 @@ import NameForm from './NameForm'
 import TeamChatPanel from '@/components/TeamChatPanel'
 import TeamSchedulePanel from '@/components/TeamSchedulePanel'
 import AppearanceSection from '@/components/account/AppearanceSection'
+import ManageBillingButton from '@/components/ManageBillingButton'
 
 type UserRow = {
   id: string
@@ -285,6 +286,22 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const settingsTab = (
     <div className="space-y-4">
       <AppearanceSection />
+      {/* Only subscribers have a card and invoices to manage; token buyers and
+          the iOS app (Apple-billed) never see this. */}
+      {usage.entitled && usage.plan && !isInApp && (
+        <Section
+          title="Billing"
+          tipLabel="What is billing?"
+          tip="Your LearnHoops membership is billed by Stripe. The billing portal lets you update the card on file, download invoices, or cancel."
+          summary={usage.planName}
+        >
+          <p className="text-sm text-gray-600 dark:text-chalk-dim mb-3">
+            Update your payment card, download invoices, or cancel your membership in the secure Stripe billing
+            portal. To switch plans, use the plan controls on your Overview.
+          </p>
+          <ManageBillingButton endpoint="/api/player/billing-portal" />
+        </Section>
+      )}
 
       <Section
         title="Display name"

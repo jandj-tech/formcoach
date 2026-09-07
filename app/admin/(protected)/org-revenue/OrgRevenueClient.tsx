@@ -325,7 +325,7 @@ export default function OrgRevenueClient() {
 
       {/* Selling organizations ------------------------------------------- */}
       <section className="space-y-3">
-        <SectionTitle hint="Selling is on for every organization with an active plan. Blank share = the platform default; class sign-ups carry a fixed fee per offer. Pause stops an org selling and turns its offers off.">Selling organizations</SectionTitle>
+        <SectionTitle hint="Selling is on for every organization with an active plan. Blank share = the platform default; class sign-ups ($100) and balls ($48.95) carry fixed fees per offer. Pause stops an org selling and turns its offers off.">Selling organizations</SectionTitle>
         <div className={`${CARD} overflow-x-auto`}>
           <table className="w-full text-sm">
             <thead>
@@ -473,7 +473,7 @@ function SellingOrgRow({
           )}
         </div>
         <div className={`text-xs ${MUTED} mt-1`}>
-          {org.platformSharePercent === null ? `Using default ${fmtPercent(org.effectivePercent)}` : `Override ${fmtPercent(org.platformSharePercent)}`} · class sign-ups: fixed fee per offer
+          {org.platformSharePercent === null ? `Using default ${fmtPercent(org.effectivePercent)}` : `Override ${fmtPercent(org.platformSharePercent)}`} · class / ball offers: fixed fee per offer
         </div>
         {err && <p className={`${ERROR_TEXT} mt-1`}>{err}</p>}
       </td>
@@ -619,7 +619,7 @@ function OrgDetails({
           </div>
 
           <div className="space-y-3">
-            <SectionTitle hint="Prices in dollars. LearnHoops' cut per offer: a fixed fee wins when set (class sign-ups default to $100); otherwise the % override, else the org share">Offers</SectionTitle>
+            <SectionTitle hint="Prices in dollars. LearnHoops' cut per offer: a fixed fee wins when set (class sign-ups default to $100, balls to $48.95, both when an offer has both); otherwise the % override, else the org share">Offers</SectionTitle>
             {details.offers.length === 0 ? (
               <p className={`text-sm ${MUTED}`}>This organization has not created any offers yet.</p>
             ) : (

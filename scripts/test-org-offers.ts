@@ -22,7 +22,9 @@ import {
   MAX_OFFER_PRICE_CENTS,
   effectivePriceCents,
   hasAnchorPrice,
+  BALL_PLATFORM_FEE_CENTS,
   CLASS_PLATFORM_FEE_CENTS,
+  platformFeeFor,
   applyShareRule,
   isOfferKind,
   isUnlockScope,
@@ -35,6 +37,7 @@ import {
   validateOfferPrices,
 } from '../lib/org-offers'
 import { categoryScores, categoryForCriterion, CRITERIA_CATEGORY_ORDER } from '../lib/criteria-categories'
+import { PRODUCT } from '../lib/stripe'
 
 let pass = 0
 const failures: string[] = []
@@ -132,6 +135,12 @@ check('flat fee applies even with no org quote', shareRuleFor({ platformShareCen
 check('flat label', shareRuleLabel({ mode: 'flat', cents: 10000 }) === '$100.00 per sale')
 check('percent label', shareRuleLabel({ mode: 'percent', percent: 30 }) === '30% of each sale')
 check('class fee is $100', CLASS_PLATFORM_FEE_CENTS === 10000)
+check('ball fee equals the shop ball price', BALL_PLATFORM_FEE_CENTS === PRODUCT.priceCents)
+check('no fee without class or ball', platformFeeFor({ includesCourse: false, includesBall: false }) === null)
+check('class fee alone', platformFeeFor({ includesCourse: true, includesBall: false }) === CLASS_PLATFORM_FEE_CENTS)
+check('ball fee alone', platformFeeFor({ includesCourse: false, includesBall: true }) === BALL_PLATFORM_FEE_CENTS)
+check('class + ball fees add', platformFeeFor({ includesCourse: true, includesBall: true }) === CLASS_PLATFORM_FEE_CENTS + BALL_PLATFORM_FEE_CENTS)
+check('ball offer at $79.99 leaves the club $31.04', applyShareRule(7999, { mode: 'flat', cents: BALL_PLATFORM_FEE_CENTS }).orgShareCents === 3104)
 
 // ---- Default share -----------------------------------------------------------
 
@@ -176,15 +185,15 @@ const breakdown = DEFAULT_OFFERS.find((s) => s.kind === 'breakdown')
 const ball = DEFAULT_OFFERS.find((s) => s.kind === 'ball')
 const course = DEFAULT_OFFERS.find((s) => s.kind === 'course')
 check('draft breakdown club is the $29.99 idea', breakdown?.clubPriceCents === 2999)
-check('draft ball club is the $50 idea', ball?.clubPriceCents === 5000)
+check('draft ball club clears the ball fee', ball !== undefined && ball.clubPriceCents > BALL_PLATFORM_FEE_CENTS)
 check('draft course club is the $300 idea', course?.clubPriceCents === 30000)
 check('every seed unlocks the breakdown', DEFAULT_OFFERS.every((s) => s.includesBreakdown))
 check('weekly breakdown unlocks one report', breakdown?.unlockScope === 'submission')
 check('ball buyer stays unlocked', ball?.unlockScope === 'player')
 check('class buyer stays unlocked', course?.unlockScope === 'player')
 check('every seed has a valid scope', DEFAULT_OFFERS.every((s) => isUnlockScope(s.unlockScope)))
-check('class seeds carry the $100 fee', DEFAULT_OFFERS.filter((s) => s.includesCourse).every((s) => s.platformShareCents === CLASS_PLATFORM_FEE_CENTS))
-check('non-class seeds use the percent', DEFAULT_OFFERS.filter((s) => !s.includesCourse).every((s) => s.platformShareCents === null))
+check('every seed carries its default fee', DEFAULT_OFFERS.every((s) => s.platformShareCents === platformFeeFor(s)))
+check('breakdown-only seed uses the percent', DEFAULT_OFFERS.find((s) => s.kind === 'breakdown')?.platformShareCents === null)
 
 // ---- Criteria categories ----------------------------------------------------
 

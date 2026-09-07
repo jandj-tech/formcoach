@@ -4,7 +4,7 @@
 
 import { db } from '@/lib/db'
 import type { OrgOffer, OfferKind, UnlockScope } from '@/lib/org-offers'
-import { CLASS_PLATFORM_FEE_CENTS, DEFAULT_OFFERS, orgSharePercent } from '@/lib/org-offers'
+import { DEFAULT_OFFERS, orgSharePercent, platformFeeFor } from '@/lib/org-offers'
 import { ENTITLED_STATUSES, statusIsEntitled } from '@/lib/team-features'
 import type { VisibilityTier } from '@/lib/result-visibility'
 import { isVisibilityTier } from '@/lib/result-visibility'
@@ -217,9 +217,9 @@ export async function getPurchasableOffers(orgId: string): Promise<OrgOffer[]> {
 import type { OfferInput } from '@/lib/org-offer-input'
 
 export async function createOffer(orgId: string, input: OfferInput): Promise<OrgOffer> {
-  // Anything that registers a player for the class carries the fixed class
-  // fee from the start; the admin can still change it per offer.
-  const flatFee = input.includesCourse ? CLASS_PLATFORM_FEE_CENTS : null
+  // Class sign-ups and balls carry their fixed LearnHoops fees from the
+  // start; the admin can still change it per offer.
+  const flatFee = platformFeeFor(input)
   const rows = await db`
     INSERT INTO org_offers (
       org_id, kind, title, description, includes_breakdown, includes_ball, includes_course,

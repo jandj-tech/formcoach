@@ -16,7 +16,12 @@ export async function GET(req: NextRequest) {
     ])
     return NextResponse.json({
       settings,
-      selling: { enabled: selling.enabled, requested: !!selling.offersRequestedAt, platformSharePercent: selling.platformSharePercent },
+      selling: {
+        enabled: selling.enabled,
+        entitled: selling.entitled,
+        disabled: selling.disabled,
+        platformSharePercent: selling.platformSharePercent,
+      },
       unlockOfferActive: offers.some((o) => o.includesBreakdown),
     })
   } catch (err) {

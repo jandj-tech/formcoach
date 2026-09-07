@@ -10,9 +10,10 @@
 // drafts seeded for a brand-new org (pricing is quote-negotiated per org and
 // finalized later; nothing is hard-coded into purchase logic).
 //
-// Selling is quote-gated: organizations.platform_share_percent is NULL until
-// the site admin sets that org's revenue split, and offers cannot be
-// activated or purchased before then.
+// Selling is ON for every entitled (paid/approved) organization. LearnHoops
+// keeps DEFAULT_PLATFORM_SHARE_PERCENT of each sale unless the site admin sets
+// a per-org percent override, and class sign-ups carry a fixed fee instead.
+// The admin can pause selling for one org (organizations.selling_disabled).
 
 export type OfferKind = 'breakdown' | 'ball' | 'course' | 'bundle'
 
@@ -82,9 +83,16 @@ export function hasAnchorPrice(offer: OrgOfferPricing): boolean {
   return effectivePriceCents(offer) < offer.regularPriceCents
 }
 
-/** Selling is enabled for an org once the admin has quoted its split. */
-export function sellingEnabled(platformSharePercent: number | null | undefined): boolean {
-  return platformSharePercent !== null && platformSharePercent !== undefined
+/**
+ * LearnHoops' share of a sale when an org has no override and the offer has
+ * no fixed fee. A single number here so the admin dashboard, the org's
+ * "You get" lines and the checkout all agree.
+ */
+export const DEFAULT_PLATFORM_SHARE_PERCENT = 30
+
+/** The percent that applies to an org: its override, else the default. */
+export function orgSharePercent(override: number | null | undefined): number {
+  return override === null || override === undefined ? DEFAULT_PLATFORM_SHARE_PERCENT : override
 }
 
 /** Stripe's minimum charge is $0.50; keep a whole-dollar floor for sanity. */
@@ -208,8 +216,8 @@ export const CLASS_PLATFORM_FEE_CENTS = 10000
 /**
  * Draft offers seeded (INACTIVE) for an org's first visit to the builder.
  * These numbers are conversation-starters, not policy: the org and the site
- * admin edit them freely, and nothing can be bought until the org's split is
- * quoted AND the org turns an offer on.
+ * admin edit them freely, and nothing can be bought until the org turns an
+ * offer on.
  */
 export const DEFAULT_OFFERS: readonly DefaultOfferSeed[] = [
   {

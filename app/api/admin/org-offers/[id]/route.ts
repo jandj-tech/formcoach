@@ -20,7 +20,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     let active: boolean | undefined
     if (typeof body.active === 'boolean') {
       if (body.active && !(await getOrgSellingState(existing.orgId)).enabled) {
-        return NextResponse.json({ error: 'Set this organization’s split before turning offers on.' }, { status: 403 })
+        return NextResponse.json({ error: 'This organization cannot sell right now (no active plan, or selling is paused).' }, { status: 403 })
       }
       active = body.active
     }

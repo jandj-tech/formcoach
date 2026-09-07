@@ -23,7 +23,8 @@ export async function GET(req: NextRequest) {
       offers,
       selling: {
         enabled: selling.enabled,
-        requested: !!selling.offersRequestedAt,
+        entitled: selling.entitled,
+        disabled: selling.disabled,
         platformSharePercent: selling.platformSharePercent,
       },
       teams,

@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
       team: { id: team.id, name: team.name, accessCode: team.accessCode },
       players,
       settings,
-      selling: { enabled: selling.enabled, requested: !!selling.offersRequestedAt },
+      selling: { enabled: selling.enabled, entitled: selling.entitled, disabled: selling.disabled },
       // A paywall with nothing to buy is worth a warning before the coach
       // sends: players would see the free tier and no way to unlock.
       paywallWithoutOffer: paywalled && !(selling.enabled && unlockOfferActive),

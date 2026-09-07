@@ -21,7 +21,11 @@ interface OverviewOrg {
   orgId: string
   orgName: string
   adminEmail: string
+  /** Per-org override; null = platform default. */
   platformSharePercent: number | null
+  effectivePercent: number
+  entitled: boolean
+  sellingDisabled: boolean
   offersRequestedAt: string | null
   activeOffers: number
   totals: CurrencyTotals[]
@@ -62,7 +66,7 @@ interface OrgDetailsData {
   payouts: OrgPayoutRow[]
   totals: CurrencyTotals[]
   offers: OrgOffer[]
-  selling: { platformSharePercent: number | null; offersRequestedAt: string | null; enabled: boolean }
+  selling: { platformSharePercent: number; overridePercent: number | null; entitled: boolean; disabled: boolean; enabled: boolean }
   settings: { freeTier: string; unlockTier: string }
 }
 
@@ -313,30 +317,15 @@ export default function OrgRevenueClient() {
     return <p className={`text-sm ${MUTED}`}>Loading org revenue...</p>
   }
 
-  const quoteRequests = orgs.filter((o) => o.offersRequestedAt !== null && o.platformSharePercent === null)
   const selectedOrg = selectedId ? orgs.find((o) => o.orgId === selectedId) ?? null : null
 
   return (
     <div className="space-y-8">
       {error && <p className="text-sm text-red-500">{error}</p>}
 
-      {/* Quote requests -------------------------------------------------- */}
-      <section className="space-y-3">
-        <SectionTitle hint="Organizations waiting for a LearnHoops share before they can sell">Quote requests</SectionTitle>
-        {quoteRequests.length === 0 ? (
-          <p className={`text-sm ${MUTED}`}>No open quote requests.</p>
-        ) : (
-          <div className={`${CARD} divide-y divide-gray-200/70 dark:divide-zinc-800/50`}>
-            {quoteRequests.map((org) => (
-              <QuoteRequestRow key={org.orgId} org={org} onSaved={afterSplitChange} />
-            ))}
-          </div>
-        )}
-      </section>
-
       {/* Selling organizations ------------------------------------------- */}
       <section className="space-y-3">
-        <SectionTitle hint="Every organization — set a share to enable selling, or clear it to switch selling off">Selling organizations</SectionTitle>
+        <SectionTitle hint="Selling is on for every organization with an active plan. Blank share = the platform default; class sign-ups carry a fixed fee per offer. Pause stops an org selling and turns its offers off.">Selling organizations</SectionTitle>
         <div className={`${CARD} overflow-x-auto`}>
           <table className="w-full text-sm">
             <thead>
@@ -353,14 +342,14 @@ export default function OrgRevenueClient() {
               {orgs.length === 0 ? (
                 <tr>
                   <td colSpan={6} className={`px-3 py-6 ${MUTED}`}>
-                    No organizations have requested selling access or made a sale yet.
+                    No organizations yet.
                   </td>
                 </tr>
               ) : (
                 orgs.map((org) => (
                   <SellingOrgRow
                     // Remount when the saved split changes so the inline draft resets.
-                    key={`${org.orgId}:${org.platformSharePercent ?? 'null'}`}
+                    key={`${org.orgId}:${org.platformSharePercent ?? 'null'}:${org.sellingDisabled}`}
                     org={org}
                     selected={org.orgId === selectedId}
                     onSelect={() => setSelectedId(org.orgId === selectedId ? null : org.orgId)}
@@ -389,62 +378,6 @@ export default function OrgRevenueClient() {
 }
 
 // ---------------------------------------------------------------------------
-// Quote request row
-// ---------------------------------------------------------------------------
-
-function QuoteRequestRow({ org, onSaved }: { org: OverviewOrg; onSaved: () => Promise<void> }) {
-  const [pct, setPct] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [err, setErr] = useState<string | null>(null)
-  const parsed = parsePercentInput(pct)
-
-  async function save() {
-    if (parsed === null) return
-    setSaving(true)
-    setErr(null)
-    const r = await send('/api/admin/org-split', 'PATCH', { orgId: org.orgId, platformSharePercent: parsed })
-    if (!r.ok) {
-      setErr(r.error)
-      setSaving(false)
-      return
-    }
-    await onSaved()
-    setSaving(false)
-  }
-
-  return (
-    <div className="px-4 py-3 flex items-center gap-4 flex-wrap">
-      <div className="min-w-[12rem] flex-1">
-        <div className="font-medium text-black dark:text-white">{org.orgName}</div>
-        <div className="text-xs text-gray-600 dark:text-zinc-400">{org.adminEmail}</div>
-        {org.offersRequestedAt && <div className={`text-xs ${MUTED}`}>Requested {fmtDate(org.offersRequestedAt)}</div>}
-      </div>
-      <div className="flex items-center gap-2">
-        <label className="text-xs text-gray-600 dark:text-zinc-400 whitespace-nowrap">LearnHoops share</label>
-        <div className="flex items-center gap-1">
-          <input
-            type="number"
-            min={0}
-            max={100}
-            step={0.5}
-            value={pct}
-            onChange={(e) => setPct(e.target.value)}
-            placeholder="e.g. 20"
-            disabled={saving}
-            className={`${INPUT} w-24`}
-          />
-          <span className="text-sm text-gray-600 dark:text-zinc-400">%</span>
-        </div>
-        <button onClick={() => void save()} disabled={saving || parsed === null} className={BTN_PRIMARY}>
-          {saving ? 'Saving...' : 'Set split & enable'}
-        </button>
-      </div>
-      {err && <p className={`${ERROR_TEXT} w-full`}>{err}</p>}
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
 // Selling org row
 // ---------------------------------------------------------------------------
 
@@ -463,7 +396,8 @@ function SellingOrgRow({
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const parsed = parsePercentInput(pct)
-  const dirty = parsed !== null && parsed !== org.platformSharePercent
+  const dirty =
+    pct.trim() === '' ? org.platformSharePercent !== null : parsed !== null && parsed !== org.platformSharePercent
 
   async function patchSplit(value: number | null) {
     setSaving(true)
@@ -478,20 +412,31 @@ function SellingOrgRow({
     setSaving(false)
   }
 
-  function disableSelling() {
-    const n = org.activeOffers
-    const offersNote = n > 0 ? ` and turn off ${n} active offer${n === 1 ? '' : 's'}` : ''
-    if (!confirm(`Disable selling for ${org.orgName}? This clears the LearnHoops share${offersNote}.`)) return
-    void patchSplit(null)
+  async function setPaused(paused: boolean) {
+    if (paused) {
+      const n = org.activeOffers
+      const offersNote = n > 0 ? ` and turn off ${n} active offer${n === 1 ? '' : 's'}` : ''
+      if (!confirm(`Pause selling for ${org.orgName}?${offersNote ? ` This will${offersNote}.` : ''}`)) return
+    }
+    setSaving(true)
+    setErr(null)
+    const r = await send('/api/admin/org-split', 'PATCH', { orgId: org.orgId, sellingDisabled: paused })
+    if (!r.ok) {
+      setErr(r.error)
+      setSaving(false)
+      return
+    }
+    await onChanged()
+    setSaving(false)
   }
+
+  const status = org.sellingDisabled ? 'Paused' : org.entitled ? 'Selling on' : 'No active plan'
 
   return (
     <tr className={`transition-colors ${selected ? 'bg-orange-500/5' : 'hover:bg-gray-50 dark:hover:bg-zinc-800/30'}`}>
       <td className={`${TD} text-black dark:text-white`}>
         <div className="font-medium">{org.orgName}</div>
-        {org.platformSharePercent === null && org.offersRequestedAt && (
-          <div className={`text-xs ${MUTED}`}>Quote requested {fmtDate(org.offersRequestedAt)}</div>
-        )}
+        <div className={`text-xs ${org.sellingDisabled ? 'text-red-500' : org.entitled ? 'text-green-600' : MUTED}`}>{status}</div>
       </td>
       <td className={`${TD} text-xs text-gray-600 dark:text-zinc-400`}>{org.adminEmail}</td>
       <td className={TD}>
@@ -503,27 +448,33 @@ function SellingOrgRow({
             step={0.5}
             value={pct}
             onChange={(e) => setPct(e.target.value)}
-            placeholder="unset"
+            placeholder={`default ${fmtPercent(org.effectivePercent)}`}
             disabled={saving}
-            className={`${INPUT} w-20`}
+            className={`${INPUT} w-24`}
           />
           <span className="text-xs text-gray-600 dark:text-zinc-400">%</span>
           <button
             onClick={() => {
-              if (parsed !== null) void patchSplit(parsed)
+              void patchSplit(pct.trim() === '' ? null : parsed)
             }}
             disabled={saving || !dirty}
             className={BTN_SECONDARY}
           >
             {saving ? 'Saving...' : 'Save'}
           </button>
-          {org.platformSharePercent !== null && (
-            <button onClick={disableSelling} disabled={saving} className={BTN_DANGER_QUIET}>
-              Disable selling
+          {org.sellingDisabled ? (
+            <button onClick={() => void setPaused(false)} disabled={saving} className={BTN_SECONDARY}>
+              Resume selling
+            </button>
+          ) : (
+            <button onClick={() => void setPaused(true)} disabled={saving} className={BTN_DANGER_QUIET}>
+              Pause selling
             </button>
           )}
         </div>
-        {org.platformSharePercent === null && <div className={`text-xs ${MUTED} mt-1`}>Selling disabled</div>}
+        <div className={`text-xs ${MUTED} mt-1`}>
+          {org.platformSharePercent === null ? `Using default ${fmtPercent(org.effectivePercent)}` : `Override ${fmtPercent(org.platformSharePercent)}`} · class sign-ups: fixed fee per offer
+        </div>
         {err && <p className={`${ERROR_TEXT} mt-1`}>{err}</p>}
       </td>
       <td className={`${TD} text-black dark:text-white`}>{org.activeOffers}</td>
@@ -612,9 +563,11 @@ function OrgDetails({
             {details && (
               <div className="text-xs text-gray-600 dark:text-zinc-400 mt-1 space-x-3">
                 <span>
-                  {details.selling.enabled && details.selling.platformSharePercent !== null
-                    ? `LearnHoops share ${fmtPercent(details.selling.platformSharePercent)} · selling enabled`
-                    : 'Selling disabled — set a share in the table above'}
+                  {details.selling.enabled
+                    ? `Selling on · LearnHoops share ${fmtPercent(details.selling.platformSharePercent)}${details.selling.overridePercent === null ? ' (default)' : ' (override)'}`
+                    : details.selling.disabled
+                      ? 'Selling paused'
+                      : 'No active plan — selling switches on when the org’s plan is active'}
                 </span>
                 <span>
                   Free tier: {settingsLabel(details.settings.freeTier)} · Unlock tier: {settingsLabel(details.settings.unlockTier)}
@@ -975,7 +928,7 @@ function OfferRow({
   onSaved,
 }: {
   offer: OrgOffer
-  orgSharePercent: number | null
+  orgSharePercent: number
   onSaved: () => Promise<void>
 }) {
   const [title, setTitle] = useState(offer.title)
@@ -1112,7 +1065,7 @@ function OfferRow({
             step={0.5}
             value={split}
             onChange={(e) => setSplit(e.target.value)}
-            placeholder={orgSharePercent === null ? 'inherit' : `inherit (${fmtPercent(orgSharePercent)})`}
+            placeholder={`inherit (${fmtPercent(orgSharePercent)})`}
             disabled={saving}
             className={`${INPUT} w-32`}
           />

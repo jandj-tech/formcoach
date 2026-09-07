@@ -8,6 +8,8 @@
 // the admin nets against future sales (or records as a negative payout).
 
 import { db } from '@/lib/db'
+import { orgSharePercent } from '@/lib/org-offers'
+import { statusIsEntitled } from '@/lib/team-features'
 
 export interface OrgSaleRow {
   id: string
@@ -182,7 +184,12 @@ export interface OrgRevenueOverviewRow {
   orgId: string
   orgName: string
   adminEmail: string
+  /** Per-org percent override; null = platform default. */
   platformSharePercent: number | null
+  /** The percent actually applied (override or default). */
+  effectivePercent: number
+  entitled: boolean
+  sellingDisabled: boolean
   offersRequestedAt: string | null
   activeOffers: number
   totals: CurrencyTotals[]
@@ -196,26 +203,32 @@ export interface OrgRevenueOverviewRow {
 export async function orgRevenueOverview(): Promise<OrgRevenueOverviewRow[]> {
   const orgs = (await db`
     SELECT org.id, org.name, org.admin_email, org.platform_share_percent, org.offers_requested_at,
+           org.selling_disabled, org.subscription_status,
            (SELECT COUNT(*)::int FROM org_offers oo WHERE oo.org_id = org.id AND oo.active) AS active_offers
     FROM organizations org
-    ORDER BY (org.offers_requested_at IS NOT NULL AND org.platform_share_percent IS NULL) DESC,
-             org.offers_requested_at DESC NULLS LAST, org.name
+    ORDER BY active_offers DESC, org.name
   `) as unknown as Array<{
     id: string
     name: string
     admin_email: string
     platform_share_percent: string | null
     offers_requested_at: Date | null
+    selling_disabled: boolean | null
+    subscription_status: string | null
     active_offers: number
   }>
   const out: OrgRevenueOverviewRow[] = []
   for (const o of orgs) {
     const { totals } = await orgSalesSummary(o.id)
+    const override = o.platform_share_percent == null ? null : parseFloat(o.platform_share_percent)
     out.push({
       orgId: o.id,
       orgName: o.name,
       adminEmail: o.admin_email,
-      platformSharePercent: o.platform_share_percent == null ? null : parseFloat(o.platform_share_percent),
+      platformSharePercent: override,
+      effectivePercent: orgSharePercent(override),
+      entitled: statusIsEntitled(o.subscription_status),
+      sellingDisabled: !!o.selling_disabled,
       offersRequestedAt: o.offers_requested_at ? new Date(o.offers_requested_at).toISOString() : null,
       activeOffers: o.active_offers,
       totals,

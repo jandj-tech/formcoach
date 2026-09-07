@@ -5,8 +5,8 @@ import { orgIsEntitledById, SUBSCRIPTION_ENDED_MESSAGE } from '@/lib/team-featur
 import { deleteOffer, getOfferById, getOrgSellingState, updateOffer } from '@/lib/org-offers-db'
 import { parseOfferInput } from '@/lib/org-offer-input'
 
-// Edit or remove one of the org's offers. Turning an offer ON requires the
-// org's split to have been quoted — nothing can be sold before then.
+// Edit or remove one of the org's offers. Turning an offer ON requires an
+// entitled org whose selling hasn't been paused.
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const session = await getOrgSessionFromRequest(req)
   if (!session) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
@@ -33,7 +33,12 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
         const selling = await getOrgSellingState(session.orgId)
         if (!selling.enabled) {
           return NextResponse.json(
-            { error: 'Selling is not enabled for your organization yet — request access first.', sellingDisabled: true },
+            {
+              error: selling.disabled
+                ? 'Selling is paused for your organization — contact support@learnhoops.com.'
+                : 'Selling needs an active organization plan.',
+              sellingDisabled: true,
+            },
             { status: 403 }
           )
         }

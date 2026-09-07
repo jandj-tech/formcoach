@@ -812,7 +812,7 @@ export function Selling() {
       <Steps
         items={[
           <>Open the <b>Offers &amp; Sales</b> tab.</>,
-          <>The status bar at the top reads <b>Selling on</b> and shows LearnHoops&apos; share. If it says <b>Selling needs an active plan</b>, renew your plan under <b>Manage billing</b>.</>,
+          <>The status bar at the top reads <b>Selling on</b> and shows LearnHoops&apos; share. If it says <b>Selling needs an active plan</b>, renew your plan from the plan section on the dashboard or email <b>support@learnhoops.com</b>.</>,
           <>Use <b>Copy your shop link</b> to get a page you can text or email to families who want the class before any shot is graded.</>,
         ]}
       />
@@ -1137,7 +1137,7 @@ export function OrgSettings() {
       <Sub>Billing and plan</Sub>
       <Steps
         items={[
-          <>On the dashboard, click <b>Manage billing</b>. This opens the secure Stripe billing portal, where you can update your card and see invoices.</>,
+          <>To update your card or get an invoice, email <b>support@learnhoops.com</b> and we&apos;ll send you a secure billing link.</>,
           <>Plan changes (<b>Basic</b> to <b>Plus</b> or back) are made on the dashboard as well.</>,
         ]}
       />
@@ -1195,7 +1195,7 @@ const TROUBLE: Array<{ problem: ReactNode; fix: ReactNode }> = [
     problem: 'I cannot turn an offer On.',
     fix: (
       <>
-        Selling needs an active organization plan. Check the status bar in the <b>Offers &amp; Sales</b> tab: if it says <b>Selling needs an active plan</b>, renew under <b>Manage billing</b>; if it says <b>Selling paused</b>, contact support@learnhoops.com.
+        Selling needs an active organization plan. Check the status bar in the <b>Offers &amp; Sales</b> tab: if it says <b>Selling needs an active plan</b>, renew from the plan section on the dashboard or email support@learnhoops.com; if it says <b>Selling paused</b>, contact support@learnhoops.com.
       </>
     ),
   },

@@ -7,7 +7,6 @@ import InlineEdit from '@/components/InlineEdit'
 import InfoTip from '@/components/InfoTip'
 import OrgDashboardClient from './OrgDashboardClient'
 import LogoutButton from './LogoutButton'
-import ManageBillingButton from '@/components/ManageBillingButton'
 import ReactivatePanel from '@/components/ReactivatePanel'
 import ChangePlanControl from '@/components/ChangePlanControl'
 import { isPaidTier, isBillingInterval } from '@/lib/org-subscription-pricing'
@@ -302,7 +301,6 @@ export default async function OrgDashboardPage() {
                 <Building2Icon aria-hidden />
                 Organization Hub
               </Link>
-              <ManageBillingButton />
               <LogoutButton />
             </>
           }

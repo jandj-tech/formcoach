@@ -29,7 +29,8 @@ import {
   parseSharePercent,
   shareRuleFor,
   shareRuleLabel,
-  sellingEnabled,
+  DEFAULT_PLATFORM_SHARE_PERCENT,
+  orgSharePercent,
   shareSplit,
   validateOfferPrices,
 } from '../lib/org-offers'
@@ -132,11 +133,11 @@ check('flat label', shareRuleLabel({ mode: 'flat', cents: 10000 }) === '$100.00 
 check('percent label', shareRuleLabel({ mode: 'percent', percent: 30 }) === '30% of each sale')
 check('class fee is $100', CLASS_PLATFORM_FEE_CENTS === 10000)
 
-// ---- Selling gate -----------------------------------------------------------
+// ---- Default share -----------------------------------------------------------
 
-check('NULL split disables selling', !sellingEnabled(null) && !sellingEnabled(undefined))
-check('0% split still enables selling', sellingEnabled(0))
-check('quoted split enables selling', sellingEnabled(20))
+check('default share is a sane percent', DEFAULT_PLATFORM_SHARE_PERCENT > 0 && DEFAULT_PLATFORM_SHARE_PERCENT < 100)
+check('no override → default', orgSharePercent(null) === DEFAULT_PLATFORM_SHARE_PERCENT && orgSharePercent(undefined) === DEFAULT_PLATFORM_SHARE_PERCENT)
+check('override wins, including 0', orgSharePercent(0) === 0 && orgSharePercent(12.5) === 12.5)
 
 // ---- Share percent parsing (Stripe metadata + NUMERIC both arrive as strings)
 

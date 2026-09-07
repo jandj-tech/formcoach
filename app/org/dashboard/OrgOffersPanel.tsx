@@ -23,8 +23,8 @@ import { CopyIcon, ExternalLinkIcon, PencilIcon, PlusIcon, Trash2Icon } from 'lu
 //
 // Money is never hidden: every offer row shows "Families pay · LearnHoops
 // keeps · You get", computed from the same rule the checkout freezes into the
-// order. Selling is quote-gated: offers can be edited any time but only turned
-// on once LearnHoops has switched selling on for the org.
+// order. Selling is on for every org with an active plan; offers still start
+// Off until the org flips them on.
 
 const CARD = 'bg-white dark:bg-ink-900 border border-gray-200 dark:border-courtline rounded-2xl'
 const INPUT =
@@ -35,8 +35,9 @@ type Section = 'offers' | 'visibility' | 'sales'
 
 interface Selling {
   enabled: boolean
-  requested: boolean
-  platformSharePercent: number | null
+  entitled: boolean
+  disabled: boolean
+  platformSharePercent: number
 }
 
 interface Settings {
@@ -127,34 +128,10 @@ function splitPreview(
 // Status bar
 // ---------------------------------------------------------------------------
 
-function StatusBar({
-  selling,
-  orgId,
-  onChange,
-}: {
-  selling: Selling
-  orgId: string | null
-  onChange: (s: Selling) => void
-}) {
-  const [busy, setBusy] = useState(false)
-  const [err, setErr] = useState<string | null>(null)
+function StatusBar({ selling, orgId }: { selling: Selling; orgId: string | null }) {
   const [copied, setCopied] = useState(false)
 
-  async function request() {
-    setBusy(true)
-    setErr(null)
-    try {
-      await jsonFetch('/api/org/request-offers', { method: 'POST' })
-      onChange({ ...selling, requested: true })
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Could not send the request')
-    } finally {
-      setBusy(false)
-    }
-  }
-
   if (selling.enabled) {
-    const pct = selling.platformSharePercent ?? 0
     const url = orgId ? `${typeof window !== 'undefined' ? window.location.origin : ''}/offers/${orgId}` : ''
     return (
       <section className={`${CARD} px-5 py-4 flex flex-wrap items-center justify-between gap-3`}>
@@ -163,8 +140,8 @@ function StatusBar({
           <div className="min-w-0">
             <p className="text-sm font-black text-black dark:text-chalk">Selling on</p>
             <p className="text-xs text-gray-500 dark:text-chalk-dim">
-              Families pay LearnHoops by card. LearnHoops keeps {pct}% of each sale (Shooting Class sign-ups: a fixed
-              amount, shown on the offer) and pays the rest to you.
+              Families pay LearnHoops by card. LearnHoops keeps {selling.platformSharePercent}% of each sale
+              (Shooting Class sign-ups: a fixed $100) and pays the rest to you.
             </p>
           </div>
         </div>
@@ -193,25 +170,24 @@ function StatusBar({
   }
 
   return (
-    <section className="bg-gradient-to-br from-ember-500 to-ember-600 text-white rounded-2xl px-5 py-4 flex flex-wrap items-center justify-between gap-4">
-      <div className="min-w-0 max-w-2xl">
-        <p className="text-sm font-black">{selling.requested ? 'Request received' : 'Not selling yet'}</p>
-        <p className="text-xs text-white/90 leading-relaxed mt-0.5">
-          {selling.requested
-            ? 'LearnHoops will email you to confirm your share and switch selling on — usually within a day. You can set up your offers now.'
-            : 'Sell the full breakdown, the LearnHoops ball and your Shooting Class from every player’s results page. LearnHoops takes the payment and pays you your share.'}
-        </p>
-        {err && <p className="text-xs font-bold mt-1">{err}</p>}
+    <section className={`${CARD} px-5 py-4 flex flex-wrap items-center justify-between gap-3`}>
+      <div className="flex items-center gap-3 min-w-0">
+        <span className="h-2.5 w-2.5 rounded-full bg-gray-400 shrink-0" aria-hidden />
+        <div className="min-w-0">
+          <p className="text-sm font-black text-black dark:text-chalk">
+            {selling.disabled ? 'Selling paused' : 'Selling needs an active plan'}
+          </p>
+          <p className="text-xs text-gray-500 dark:text-chalk-dim">
+            {selling.disabled
+              ? 'LearnHoops has paused selling for your organization. Contact support@learnhoops.com.'
+              : 'Selling switches on automatically once your organization plan is active. You can still set up your offers now.'}
+          </p>
+        </div>
       </div>
-      {!selling.requested && (
-        <button
-          type="button"
-          onClick={request}
-          disabled={busy}
-          className="inline-flex items-center rounded-xl bg-white text-ember-600 font-bold px-4 py-2 text-sm hover:bg-white/90 disabled:opacity-60 shrink-0"
-        >
-          {busy ? 'Sending…' : 'Request selling access'}
-        </button>
+      {!selling.disabled && (
+        <a href="#org-billing" className={backendButton('secondary')}>
+          Manage plan
+        </a>
       )}
     </section>
   )
@@ -396,7 +372,7 @@ function VisibilitySection({
       {paywalled && !(sellingEnabled && unlockOfferActive) && (
         <div className="rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
           This hides part of the report, but nothing is for sale yet — players would have no way to unlock the rest.{' '}
-          {sellingEnabled ? 'Turn on an offer that includes the full breakdown in Offers.' : 'Request selling access in the bar above first.'}
+          {sellingEnabled ? 'Turn on an offer that includes the full breakdown in Offers.' : 'Selling needs an active plan first.'}
         </div>
       )}
       <div className="flex items-center gap-3">
@@ -475,7 +451,7 @@ function OfferRow({
           aria-label={`${offer.title} ${offer.active ? 'on' : 'off'}`}
           onClick={toggleActive}
           disabled={toggling || (!offer.active && !sellingEnabled)}
-          title={!offer.active && !sellingEnabled ? 'Request selling access first' : offer.active ? 'Turn off' : 'Turn on'}
+          title={!offer.active && !sellingEnabled ? 'Selling is not available right now' : offer.active ? 'Turn off' : 'Turn on'}
           className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
             offer.active ? 'bg-green-500' : 'bg-gray-300 dark:bg-ink-700'
           }`}
@@ -986,7 +962,7 @@ export default function OrgOffersPanel() {
   const [offers, setOffers] = useState<OrgOffer[]>([])
   const [teams, setTeams] = useState<Array<{ id: string; name: string }>>([])
   const [orgId, setOrgId] = useState<string | null>(null)
-  const [selling, setSelling] = useState<Selling>({ enabled: false, requested: false, platformSharePercent: null })
+  const [selling, setSelling] = useState<Selling>({ enabled: false, entitled: false, disabled: false, platformSharePercent: 30 })
   const [settings, setSettings] = useState<Settings>({ freeTier: 'full', unlockTier: 'full' })
   const [sales, setSales] = useState<SaleRow[]>([])
   const [totals, setTotals] = useState<Totals[]>([])
@@ -1041,7 +1017,7 @@ export default function OrgOffersPanel() {
     <div className="space-y-4">
       {err && <p className="text-sm font-semibold text-red-600 dark:text-red-400">{err}</p>}
 
-      <StatusBar selling={selling} orgId={orgId} onChange={setSelling} />
+      <StatusBar selling={selling} orgId={orgId} />
 
       <SectionPicker
         value={section}

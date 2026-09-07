@@ -4,7 +4,8 @@
 
 import { db } from '@/lib/db'
 import type { OrgOffer, OfferKind, UnlockScope } from '@/lib/org-offers'
-import { CLASS_PLATFORM_FEE_CENTS, DEFAULT_OFFERS, sellingEnabled } from '@/lib/org-offers'
+import { CLASS_PLATFORM_FEE_CENTS, DEFAULT_OFFERS, orgSharePercent } from '@/lib/org-offers'
+import { ENTITLED_STATUSES, statusIsEntitled } from '@/lib/team-features'
 import type { VisibilityTier } from '@/lib/result-visibility'
 import { isVisibilityTier } from '@/lib/result-visibility'
 
@@ -149,31 +150,49 @@ export async function saveOrgResultSettings(
 }
 
 export interface OrgSellingState {
-  platformSharePercent: number | null
-  offersRequestedAt: Date | null
+  /** The percent that applies to this org (override or the platform default). */
+  platformSharePercent: number
+  /** The admin's per-org override, null when the default applies. */
+  overridePercent: number | null
+  /** Paid/approved plan (active, trialing, legacy, comp, past_due). */
+  entitled: boolean
+  /** Paused by the site admin. */
+  disabled: boolean
+  /** entitled && !disabled — the one flag the UI and checkout gate on. */
   enabled: boolean
+  offersRequestedAt: Date | null
 }
 
 export async function getOrgSellingState(orgId: string): Promise<OrgSellingState> {
   const rows = await db`
-    SELECT platform_share_percent, offers_requested_at
+    SELECT platform_share_percent, offers_requested_at, selling_disabled, subscription_status
     FROM organizations WHERE id = ${orgId}
   `
   const row = rows[0] as
-    | { platform_share_percent: string | null; offers_requested_at: Date | null }
+    | {
+        platform_share_percent: string | null
+        offers_requested_at: Date | null
+        selling_disabled: boolean | null
+        subscription_status: string | null
+      }
     | undefined
-  const pct = row?.platform_share_percent == null ? null : parseFloat(row.platform_share_percent)
+  const override = row?.platform_share_percent == null ? null : parseFloat(row.platform_share_percent)
+  const entitled = !!row && statusIsEntitled(row.subscription_status)
+  const disabled = !!row?.selling_disabled
   return {
-    platformSharePercent: pct,
+    platformSharePercent: orgSharePercent(override),
+    overridePercent: override,
+    entitled,
+    disabled,
+    enabled: entitled && !disabled,
     offersRequestedAt: row?.offers_requested_at ?? null,
-    enabled: sellingEnabled(pct),
   }
 }
 
 /**
- * The offers a PLAYER may buy right now: active rows, and only when the org's
- * split has been quoted. Anything else returns [] so a results page can never
- * show a dead-end buy button.
+ * The offers a PLAYER may buy right now: active rows of an entitled org whose
+ * selling hasn't been paused. Anything else returns [] so a results page can
+ * never show a dead-end buy button.
  */
 export async function getPurchasableOffers(orgId: string): Promise<OrgOffer[]> {
   const rows = await db`
@@ -183,7 +202,9 @@ export async function getPurchasableOffers(orgId: string): Promise<OrgOffer[]> {
            o.platform_share_percent, o.platform_share_cents, o.sort_order
     FROM org_offers o
     JOIN organizations org ON org.id = o.org_id
-    WHERE o.org_id = ${orgId} AND o.active = TRUE AND org.platform_share_percent IS NOT NULL
+    WHERE o.org_id = ${orgId} AND o.active = TRUE
+      AND org.selling_disabled = FALSE
+      AND org.subscription_status = ANY(${[...ENTITLED_STATUSES]}::text[])
     ORDER BY o.sort_order, o.created_at
   `
   return (rows as unknown as OfferRow[]).map(mapOffer)
@@ -266,15 +287,19 @@ export async function requestSelling(orgId: string): Promise<void> {
   `
 }
 
-/**
- * Admin sets (or clears) an org's split — the "quote". Clearing disables
- * selling and deactivates every offer so no live paywall is left pointing at
- * a checkout that would 403.
- */
+/** Admin sets (or clears, back to the default) an org's percent override. */
 export async function setOrgSplit(orgId: string, platformSharePercent: number | null): Promise<void> {
+  await db`UPDATE organizations SET platform_share_percent = ${platformSharePercent} WHERE id = ${orgId}`
+}
+
+/**
+ * Admin pauses or resumes selling for one org. Pausing also switches every
+ * offer off so no live paywall points at a checkout that would 403.
+ */
+export async function setOrgSellingDisabled(orgId: string, disabled: boolean): Promise<void> {
   await db.begin(async (tx) => {
-    await tx`UPDATE organizations SET platform_share_percent = ${platformSharePercent} WHERE id = ${orgId}`
-    if (platformSharePercent === null) {
+    await tx`UPDATE organizations SET selling_disabled = ${disabled} WHERE id = ${orgId}`
+    if (disabled) {
       await tx`UPDATE org_offers SET active = FALSE, updated_at = NOW() WHERE org_id = ${orgId}`
     }
   })

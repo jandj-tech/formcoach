@@ -779,7 +779,7 @@ export function LockingResults() {
         </div>
       </Figure>
       <Callout kind="important">
-        Selling must be switched on before an offer can be turned <b>On</b>. Click <b>Request selling access</b> in the status bar of the <b>Offers &amp; Sales</b> tab first (section 9). Until then, lowering the free level only hides information.
+        An offer must be turned <b>On</b> (section 9) before lowering the free level does anything but hide information — otherwise players see the lower level with nothing to buy.
       </Callout>
       <Callout kind="tip">
         <b>Score + category scores</b> is a good free level. Families see the number and where the shot is strong or weak, and the detail behind it is what they buy.
@@ -807,19 +807,17 @@ export function Selling() {
         example, a $300 class = $100 to LearnHoops, $200 to you. Other offers use a percent agreed with you.
       </Callout>
 
-      <Sub>Step 1 — Request selling access</Sub>
-      <P>Selling is switched on per club. Request access once; LearnHoops confirms your share and turns selling on.</P>
+      <Sub>Step 1 — Check the status bar</Sub>
+      <P>Selling is switched on automatically for every organization with an active plan — there is nothing to apply for.</P>
       <Steps
         items={[
-          <>Open the <b>Offers &amp; Sales</b> tab. The status bar at the top says <b>Not selling yet</b>.</>,
-          <>Click <b>Request selling access</b>.</>,
-          <>LearnHoops emails you to confirm your share and switches selling on for your club.</>,
-          <>When it is on, the status bar says <b>Selling on</b> and shows LearnHoops&apos; share.</>,
-          <>Now you can turn offers <b>On</b>.</>,
+          <>Open the <b>Offers &amp; Sales</b> tab.</>,
+          <>The status bar at the top reads <b>Selling on</b> and shows LearnHoops&apos; share. If it says <b>Selling needs an active plan</b>, renew your plan under <b>Manage billing</b>.</>,
+          <>Use <b>Copy your shop link</b> to get a page you can text or email to families who want the class before any shot is graded.</>,
         ]}
       />
       <Callout kind="tip">
-        You do not have to wait to get set up. Visibility settings and sending results work right away, and you can edit every offer (names, prices, descriptions) before selling is switched on. Only the <b>On</b> switch waits for the quote.
+        Visibility settings and sending results work right away too. Every offer starts <b>Off</b> until you flip it on.
       </Callout>
 
       <Sub>Step 2 — Review the four draft offers</Sub>
@@ -864,7 +862,7 @@ export function Selling() {
           <>Under <b>After purchase, unlock</b>, pick <b>This report only</b> or <b>All this player&apos;s reports</b>.</>,
           <>Check the line <b>Families pay · LearnHoops keeps · You get</b> under the prices — that is exactly how each sale splits.</>,
           <>Click <b>Save</b>.</>,
-          <>When selling is on, flip the switch to <b>On</b>.</>,
+          <>Flip the switch to <b>On</b>.</>,
         ]}
       />
       <Figure caption="An offer card in the Offers & Sales tab, opened with Edit.">
@@ -1197,7 +1195,7 @@ const TROUBLE: Array<{ problem: ReactNode; fix: ReactNode }> = [
     problem: 'I cannot turn an offer On.',
     fix: (
       <>
-        Click <b>Request selling access</b> in the <b>Offers &amp; Sales</b> tab and wait for the quote email. Offers can be edited before then but not switched <b>On</b>.
+        Selling needs an active organization plan. Check the status bar in the <b>Offers &amp; Sales</b> tab: if it says <b>Selling needs an active plan</b>, renew under <b>Manage billing</b>; if it says <b>Selling paused</b>, contact support@learnhoops.com.
       </>
     ),
   },

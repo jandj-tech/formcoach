@@ -4,7 +4,7 @@
 
 import { db } from '@/lib/db'
 import type { OrgOffer, OfferKind, UnlockScope } from '@/lib/org-offers'
-import { DEFAULT_OFFERS, sellingEnabled } from '@/lib/org-offers'
+import { CLASS_PLATFORM_FEE_CENTS, DEFAULT_OFFERS, sellingEnabled } from '@/lib/org-offers'
 import type { VisibilityTier } from '@/lib/result-visibility'
 import { isVisibilityTier } from '@/lib/result-visibility'
 
@@ -37,6 +37,7 @@ interface OfferRow {
   unlock_scope: string
   active: boolean
   platform_share_percent: string | null // NUMERIC comes back as a string
+  platform_share_cents: number | null
   sort_order: number
 }
 
@@ -59,6 +60,7 @@ function mapOffer(row: OfferRow): OrgOffer {
     active: row.active,
     platformSharePercent:
       row.platform_share_percent === null ? null : parseFloat(row.platform_share_percent),
+    platformShareCents: row.platform_share_cents === null ? null : Number(row.platform_share_cents),
     sortOrder: row.sort_order,
   }
 }
@@ -68,7 +70,7 @@ export async function getOrgOffers(orgId: string): Promise<OrgOffer[]> {
   const rows = await db`
     SELECT id, org_id, kind, title, description, includes_breakdown, includes_ball,
            includes_course, regular_price_cents, club_price_cents, discount_price_cents,
-           shipping_cents, join_team_id, unlock_scope, active, platform_share_percent, sort_order
+           shipping_cents, join_team_id, unlock_scope, active, platform_share_percent, platform_share_cents, sort_order
     FROM org_offers WHERE org_id = ${orgId} ORDER BY sort_order, created_at
   `
   return (rows as unknown as OfferRow[]).map(mapOffer)
@@ -78,7 +80,7 @@ export async function getOfferById(offerId: string): Promise<OrgOffer | null> {
   const rows = await db`
     SELECT id, org_id, kind, title, description, includes_breakdown, includes_ball,
            includes_course, regular_price_cents, club_price_cents, discount_price_cents,
-           shipping_cents, join_team_id, unlock_scope, active, platform_share_percent, sort_order
+           shipping_cents, join_team_id, unlock_scope, active, platform_share_percent, platform_share_cents, sort_order
     FROM org_offers WHERE id = ${offerId}
   `
   const row = (rows as unknown as OfferRow[])[0]
@@ -104,11 +106,11 @@ export async function ensureDefaultOffers(orgId: string): Promise<OrgOffer[]> {
           INSERT INTO org_offers (
             org_id, kind, title, description, includes_breakdown, includes_ball,
             includes_course, unlock_scope, regular_price_cents, club_price_cents,
-            sort_order, active
+            platform_share_cents, sort_order, active
           ) VALUES (
             ${orgId}, ${s.kind}, ${s.title}, ${s.description}, ${s.includesBreakdown},
             ${s.includesBall}, ${s.includesCourse}, ${s.unlockScope}, ${s.regularPriceCents},
-            ${s.clubPriceCents}, ${s.sortOrder}, FALSE
+            ${s.clubPriceCents}, ${s.platformShareCents}, ${s.sortOrder}, FALSE
           )
         `
       }
@@ -178,7 +180,7 @@ export async function getPurchasableOffers(orgId: string): Promise<OrgOffer[]> {
     SELECT o.id, o.org_id, o.kind, o.title, o.description, o.includes_breakdown,
            o.includes_ball, o.includes_course, o.regular_price_cents, o.club_price_cents,
            o.discount_price_cents, o.shipping_cents, o.join_team_id, o.unlock_scope, o.active,
-           o.platform_share_percent, o.sort_order
+           o.platform_share_percent, o.platform_share_cents, o.sort_order
     FROM org_offers o
     JOIN organizations org ON org.id = o.org_id
     WHERE o.org_id = ${orgId} AND o.active = TRUE AND org.platform_share_percent IS NOT NULL
@@ -194,16 +196,19 @@ export async function getPurchasableOffers(orgId: string): Promise<OrgOffer[]> {
 import type { OfferInput } from '@/lib/org-offer-input'
 
 export async function createOffer(orgId: string, input: OfferInput): Promise<OrgOffer> {
+  // Anything that registers a player for the class carries the fixed class
+  // fee from the start; the admin can still change it per offer.
+  const flatFee = input.includesCourse ? CLASS_PLATFORM_FEE_CENTS : null
   const rows = await db`
     INSERT INTO org_offers (
       org_id, kind, title, description, includes_breakdown, includes_ball, includes_course,
       regular_price_cents, club_price_cents, discount_price_cents, shipping_cents,
-      join_team_id, unlock_scope, sort_order, active
+      join_team_id, unlock_scope, platform_share_cents, sort_order, active
     ) VALUES (
       ${orgId}, ${input.kind}, ${input.title}, ${input.description}, ${input.includesBreakdown},
       ${input.includesBall}, ${input.includesCourse}, ${input.regularPriceCents},
       ${input.clubPriceCents}, ${input.discountPriceCents}, ${input.shippingCents},
-      ${input.joinTeamId}, ${input.unlockScope}, ${input.sortOrder}, FALSE
+      ${input.joinTeamId}, ${input.unlockScope}, ${flatFee}, ${input.sortOrder}, FALSE
     )
     RETURNING id
   `
@@ -219,7 +224,7 @@ export async function createOffer(orgId: string, input: OfferInput): Promise<Org
 export async function updateOffer(
   offerId: string,
   input: OfferInput,
-  extra: { active?: boolean; platformSharePercent?: number | null }
+  extra: { active?: boolean; platformSharePercent?: number | null; platformShareCents?: number | null }
 ): Promise<OrgOffer | null> {
   await db`
     UPDATE org_offers SET
@@ -239,6 +244,9 @@ export async function updateOffer(
       active = ${extra.active === undefined ? db`active` : extra.active},
       platform_share_percent = ${
         extra.platformSharePercent === undefined ? db`platform_share_percent` : extra.platformSharePercent
+      },
+      platform_share_cents = ${
+        extra.platformShareCents === undefined ? db`platform_share_cents` : extra.platformShareCents
       },
       updated_at = NOW()
     WHERE id = ${offerId}

@@ -6,7 +6,7 @@ import { currencyForRequest } from '@/lib/region'
 import { rateLimitByIp } from '@/lib/rate-limit'
 import { resolveBaseUrl } from '@/lib/base-url'
 import { getOfferById, getOrgResultSettings, getOrgSellingState } from '@/lib/org-offers-db'
-import { effectivePriceCents } from '@/lib/org-offers'
+import { effectivePriceCents, shareRuleFor } from '@/lib/org-offers'
 
 const BASE_URL = resolveBaseUrl()
 
@@ -86,7 +86,8 @@ export async function POST(req: NextRequest) {
     const currency = currencyForRequest(req)
     const priceCents = effectivePriceCents(offer)
     const shippingCents = offer.includesBall ? offer.shippingCents : 0
-    const pct = offer.platformSharePercent ?? selling.platformSharePercent!
+    const rule = shareRuleFor(offer, selling.platformSharePercent)
+    if (!rule) return NextResponse.json({ error: 'This organization is not selling yet.' }, { status: 403 })
     const includes = [
       offer.includesBreakdown ? 'breakdown' : null,
       offer.includesBall ? 'ball' : null,
@@ -145,7 +146,10 @@ export async function POST(req: NextRequest) {
         offerId: offer.id,
         releaseId: releaseId ?? '',
         submissionToken: token,
-        platformSharePercent: String(pct),
+        // The LearnHoops share rule, frozen at purchase: a fixed fee wins over
+        // a percent. Fulfillment reads these, never the live offer row.
+        platformShareCents: rule.mode === 'flat' ? String(rule.cents) : '',
+        platformSharePercent: rule.mode === 'percent' ? String(rule.percent) : '',
         shippingCents: String(shippingCents),
         ballSize,
         ballVariant,

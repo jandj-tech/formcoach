@@ -1718,6 +1718,7 @@ export interface OfferPurchaseEmailInput {
   /** Team join code when the offer enrolls the buyer onto a roster. */
   joinTeamCode: string | null
   orgShareCents: number
+  platformShareCents: number
 }
 
 /** Receipt to the family after an offer purchase. Best-effort; never throw. */
@@ -1801,6 +1802,7 @@ export async function sendOfferSaleNotificationEmail(input: OfferPurchaseEmailIn
         ``,
         `Paid: ${amount}`,
         `Your share: ${share}`,
+        `LearnHoops share: ${money(input.platformShareCents)} ${input.currency.toUpperCase()}`,
         input.includesCourse ? `This is a Shooting Class registration — see your Sales list to manage it.` : ``,
         input.includesBall ? `Includes a LearnHoops ball — LearnHoops ships it; nothing for you to do.` : ``,
         ``,
@@ -1826,6 +1828,7 @@ export async function sendOfferSaleNotificationEmail(input: OfferPurchaseEmailIn
         <table role="presentation" width="100%" style="background:#FAFAFA;border:1px solid #E4E4E7;border-radius:10px;">
           <tr><td style="padding:12px 20px;color:#52525B;font-size:13px;">Paid</td><td align="right" style="padding:12px 20px;color:#111;font-weight:800;">${amount}</td></tr>
           <tr><td style="padding:12px 20px;color:#52525B;font-size:13px;border-top:1px solid #E4E4E7;">Your share</td><td align="right" style="padding:12px 20px;color:#111;font-weight:900;border-top:1px solid #E4E4E7;">${share}</td></tr>
+          <tr><td style="padding:12px 20px;color:#52525B;font-size:13px;border-top:1px solid #E4E4E7;">LearnHoops share</td><td align="right" style="padding:12px 20px;color:#52525B;font-weight:700;border-top:1px solid #E4E4E7;">${money(input.platformShareCents)} ${input.currency.toUpperCase()}</td></tr>
         </table>
         ${input.includesCourse ? `<p style="margin:12px 0 0;color:#52525B;font-size:13px;">This is a Shooting Class registration — it's in your Sales list.</p>` : ''}
         ${input.includesBall ? `<p style="margin:12px 0 0;color:#52525B;font-size:13px;">Includes a LearnHoops ball. LearnHoops ships it — nothing for you to do.</p>` : ''}

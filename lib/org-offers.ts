@@ -65,7 +65,10 @@ export interface OrgOffer extends OrgOfferPricing {
   joinTeamId: string | null
   unlockScope: UnlockScope
   active: boolean
+  /** Per-offer percent override; null = the org's quoted percent. */
   platformSharePercent: number | null
+  /** Fixed LearnHoops fee per sale (cents); when set it wins over any percent. */
+  platformShareCents: number | null
   sortOrder: number
 }
 
@@ -130,6 +133,51 @@ export function shareSplit(
   return { orgShareCents: total - platformShareCents, platformShareCents }
 }
 
+export type ShareRule =
+  | { mode: 'flat'; cents: number }
+  | { mode: 'percent'; percent: number }
+
+/**
+ * Which rule applies to an offer: its own fixed fee, else its own percent,
+ * else the org's quoted percent. null when the org has no quote yet.
+ */
+export function shareRuleFor(
+  offer: { platformShareCents: number | null; platformSharePercent: number | null },
+  orgPercent: number | null | undefined
+): ShareRule | null {
+  if (offer.platformShareCents !== null && offer.platformShareCents !== undefined) {
+    return { mode: 'flat', cents: offer.platformShareCents }
+  }
+  if (offer.platformSharePercent !== null && offer.platformSharePercent !== undefined) {
+    return { mode: 'percent', percent: offer.platformSharePercent }
+  }
+  if (orgPercent !== null && orgPercent !== undefined) return { mode: 'percent', percent: orgPercent }
+  return null
+}
+
+/**
+ * Apply a share rule to the product portion of a sale. A fixed fee larger
+ * than the sale takes the whole sale (the org's share is never negative).
+ */
+export function applyShareRule(
+  baseCents: number,
+  rule: ShareRule
+): { orgShareCents: number; platformShareCents: number } {
+  const base = Math.max(0, Math.floor(baseCents))
+  if (rule.mode === 'flat') {
+    const platformShareCents = Math.min(base, Math.max(0, Math.floor(rule.cents)))
+    return { orgShareCents: base - platformShareCents, platformShareCents }
+  }
+  return shareSplit(base, rule.percent)
+}
+
+/** Human label for a rule: "$100 per sale" or "30% of each sale". */
+export function shareRuleLabel(rule: ShareRule): string {
+  return rule.mode === 'flat'
+    ? `${offerUsd(rule.cents)} per sale`
+    : `${Math.round(rule.percent * 100) / 100}% of each sale`
+}
+
 /** Format cents for display: 2999 -> "$29.99". */
 export function offerUsd(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`
@@ -145,8 +193,17 @@ export interface DefaultOfferSeed {
   unlockScope: UnlockScope
   regularPriceCents: number
   clubPriceCents: number
+  /** Fixed LearnHoops fee seeded on class offers; admin can change it. */
+  platformShareCents: number | null
   sortOrder: number
 }
+
+/**
+ * LearnHoops' fixed fee on every Shooting Class sign-up sold through an org's
+ * results/offers pages: $100 to LearnHoops, the rest to the club. Seeded on
+ * class offers; the site admin can change it per offer.
+ */
+export const CLASS_PLATFORM_FEE_CENTS = 10000
 
 /**
  * Draft offers seeded (INACTIVE) for an org's first visit to the builder.
@@ -166,6 +223,7 @@ export const DEFAULT_OFFERS: readonly DefaultOfferSeed[] = [
     unlockScope: 'submission',
     regularPriceCents: 4999,
     clubPriceCents: 2999,
+    platformShareCents: null,
     sortOrder: 1,
   },
   {
@@ -179,6 +237,7 @@ export const DEFAULT_OFFERS: readonly DefaultOfferSeed[] = [
     unlockScope: 'player',
     regularPriceCents: 7999,
     clubPriceCents: 5000,
+    platformShareCents: null,
     sortOrder: 2,
   },
   {
@@ -192,6 +251,7 @@ export const DEFAULT_OFFERS: readonly DefaultOfferSeed[] = [
     unlockScope: 'player',
     regularPriceCents: 39900,
     clubPriceCents: 30000,
+    platformShareCents: CLASS_PLATFORM_FEE_CENTS,
     sortOrder: 3,
   },
   {
@@ -205,6 +265,7 @@ export const DEFAULT_OFFERS: readonly DefaultOfferSeed[] = [
     unlockScope: 'player',
     regularPriceCents: 44900,
     clubPriceCents: 34500,
+    platformShareCents: CLASS_PLATFORM_FEE_CENTS,
     sortOrder: 4,
   },
 ]

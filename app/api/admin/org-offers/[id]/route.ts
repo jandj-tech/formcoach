@@ -4,8 +4,9 @@ import { getOfferById, getOrgSellingState, updateOffer } from '@/lib/org-offers-
 import { parseOfferInput } from '@/lib/org-offer-input'
 import { parseSharePercent } from '@/lib/org-offers'
 
-// Site admin edits any org's offer: prices, content, on/off, and a per-offer
-// split override (null = inherit the org's split).
+// Site admin edits any org's offer: prices, content, on/off, and the
+// LearnHoops share for it — a fixed fee (platformShareCents, wins when set) or
+// a percent override (platformSharePercent); null on both = the org's quote.
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   if (!(await isAdminSession())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   try {
@@ -32,7 +33,18 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
         platformSharePercent = Math.round(pct * 100) / 100
       }
     }
-    const offer = await updateOffer(id, parsed.value, { active, platformSharePercent })
+    let platformShareCents: number | null | undefined
+    if ('platformShareCents' in body) {
+      if (body.platformShareCents === null || body.platformShareCents === '') platformShareCents = null
+      else {
+        const cents = Number(body.platformShareCents)
+        if (!Number.isInteger(cents) || cents < 0 || cents > 100000000) {
+          return NextResponse.json({ error: 'Fixed fee must be a whole number of cents, 0 or more' }, { status: 400 })
+        }
+        platformShareCents = cents
+      }
+    }
+    const offer = await updateOffer(id, parsed.value, { active, platformSharePercent, platformShareCents })
     return NextResponse.json({ success: true, offer })
   } catch (err) {
     console.error('[admin/org-offers/:id] failed:', err)

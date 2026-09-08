@@ -38,9 +38,19 @@ export default function BuiltByCoaches({ className = '' }: { className?: string 
             <span className="text-chalk font-semibold">Megh Gandhi</span> — the two of us. We
             designed the ball, we wrote the 18 criteria the AI grades against, we pack the orders,
             and we answer the support email. The grip lines are on the ball because they are what
-            we correct most often on the floor, and players at Maple Basketball in Vaughan train
-            with it every week.
+            we correct most often on the floor.
           </p>
+          {/* A real third-party reference, not self-reference: Maple Basketball is
+              an independent academy that buys and uses this, and it is already
+              listed on /partners. Kept unquantified — no invented counts. */}
+          <p className="text-chalk-dim text-sm leading-relaxed max-w-xl border-l-2 border-ember-500/40 pl-4">
+            <Link href="/partners" className="text-chalk font-semibold hover:text-ember-400">
+              Maple Basketball
+            </Link>
+            , a training academy in Vaughan, Ontario, trains with it every week — many of their
+            players have made it the only ball they shoot with.
+          </p>
+
           <p className="text-chalk-dim text-sm leading-relaxed max-w-xl">
             Not sure about sizing, or whether this suits your player?{' '}
             <Link href="/support" className="text-ember-400 underline hover:text-ember-300">

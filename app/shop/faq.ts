@@ -36,6 +36,15 @@ export const BALL_FAQ: ShopFaq[] = [
     ],
   },
   {
+    q: "What if the ball isn't right for my player?",
+    a: [
+      'You have 30 days from delivery to change your mind. Email support@learnhoops.com and we ' +
+        'refund what you paid for the ball — shipping costs are not refunded and return postage ' +
+        'is yours to pay. Playing with it does not void this; trying it is the point. The free ' +
+        'shot analyses that came with your order stay in your account either way.',
+    ],
+  },
+  {
     q: 'How much is shipping and how fast is it?',
     a: [
       'Enter your state or postal code in the cart to see your shipping cost before you pay — ' +

@@ -168,6 +168,18 @@ export default function ShopProduct({
                 {displayUnit}
               </div>
 
+              {/* Next to the price, not at the bottom of the page: this is the
+                  moment a parent who has known the brand for 20 seconds decides
+                  whether picking the wrong size costs them anything. */}
+              <p className="text-chalk-dim text-xs -mt-2">
+                <span className="text-chalk font-semibold">30-day money-back guarantee.</span>{' '}
+                Try it, and if it&apos;s not right we refund the ball —{' '}
+                <Link href="/returns" className="text-ember-400 underline hover:text-ember-300">
+                  you cover return shipping
+                </Link>
+                .
+              </p>
+
               {/* Variant selector */}
               <div className="space-y-2">
                 <label className="block text-white text-xs font-semibold tracking-wider uppercase">Edition</label>
@@ -659,6 +671,13 @@ function BundleSection({ isInApp = false, currency = 'USD' }: { isInApp?: boolea
             </h2>
             <p className="text-chalk-dim text-sm max-w-md">
               Get 2 training balls + 10 free AI shot analyses. Save {formatPrice(BUNDLE_SAVINGS)} on the pair.
+            </p>
+            <p className="text-chalk-dim text-xs max-w-md pt-1">
+              <span className="text-chalk font-semibold">30-day money-back guarantee</span> —{' '}
+              <Link href="/returns" className="text-ember-400 underline hover:text-ember-300">
+                you cover return shipping
+              </Link>
+              .
             </p>
           </div>
           <div className="text-right">

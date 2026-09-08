@@ -354,7 +354,11 @@ export default function CartView() {
         {error && <p className="text-red-500 text-sm">{error}</p>}
 
         <p className="text-white text-xs">
-          Orders ship Canada Post within Canada and USPS within the US. Secure payment by Stripe.
+          Orders ship Canada Post within Canada and USPS within the US. Secure payment by Stripe.{' '}
+          <Link href="/returns" className="text-ember-400 underline hover:text-ember-300">
+            30-day money-back guarantee
+          </Link>{' '}
+          on the ball — you cover return shipping.
         </p>
       </div>
     </section>

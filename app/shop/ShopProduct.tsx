@@ -10,6 +10,7 @@ import QuantityStepper from '@/components/QuantityStepper'
 import TokenPacks from './TokenPacks'
 import Memberships from './Memberships'
 import SectionBreak from '@/components/SectionBreak'
+import { trackAddToCart, trackViewContent } from '@/lib/meta-pixel'
 import { BUNDLE_PRICE, BUNDLE_SAVINGS, FREE_ANALYSES_PER_BALL, PRICE, SIZES } from './product'
 import { ANALYSIS_FAQ, BALL_FAQ } from './faq'
 
@@ -42,11 +43,14 @@ export default function ShopProduct({
   isInApp = false,
   hasGear = false,
   lead = 'memberships',
+  currency = 'USD',
 }: {
   isInApp?: boolean
   hasGear?: boolean
   /** Which product opens the page — see the section-order comment below. */
   lead?: 'memberships' | 'ball'
+  /** What Stripe will charge this visitor, resolved server-side. */
+  currency?: string
 }) {
   const ballFirst = lead === 'ball'
   const { addBall } = useCart()
@@ -65,9 +69,30 @@ export default function ShopProduct({
     return () => clearTimeout(t)
   }, [added])
 
+  // Cold ad traffic lands here. Purchases are far too rare at launch to train
+  // delivery on their own, so the funnel needs its mid-funnel signals:
+  // ViewContent here, AddToCart below, InitiateCheckout in the cart.
+  useEffect(() => {
+    trackViewContent({
+      content_ids: ['ball'],
+      content_type: 'product',
+      content_name: 'training_ball',
+      value: PRICE,
+      currency,
+    })
+  }, [currency])
+
   function handleAdd() {
     addBall(variant, size, quantity)
     setAdded(true)
+    trackAddToCart({
+      content_ids: ['ball'],
+      content_type: 'product',
+      content_name: 'training_ball',
+      value: lineTotal,
+      currency,
+      num_items: quantity,
+    })
   }
 
   const membershipsBlock = (
@@ -250,7 +275,7 @@ export default function ShopProduct({
 
         {/* 2-Ball Bundle — directly under the single ball so the upsell is
             the next thing a shopper sees */}
-        <BundleSection isInApp={isInApp} />
+        <BundleSection isInApp={isInApp} currency={currency} />
     </>
   )
 
@@ -586,7 +611,7 @@ function MediaGallery({ eager }: { eager: boolean }) {
   )
 }
 
-function BundleSection({ isInApp = false }: { isInApp?: boolean }) {
+function BundleSection({ isInApp = false, currency = 'USD' }: { isInApp?: boolean; currency?: string }) {
   const { addBundle } = useCart()
   const [v1, setV1] = useState<Variant>('right')
   const [s1, setS1] = useState<Size>('7')
@@ -606,6 +631,14 @@ function BundleSection({ isInApp = false }: { isInApp?: boolean }) {
   function handleAdd() {
     addBundle(v1, s1, v2, s2)
     setAdded(true)
+    trackAddToCart({
+      content_ids: ['bundle'],
+      content_type: 'product',
+      content_name: 'training_ball_bundle',
+      value: BUNDLE_PRICE,
+      currency,
+      num_items: 2,
+    })
   }
 
   return (

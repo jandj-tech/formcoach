@@ -136,7 +136,12 @@ export default function TokenPacks({ dark = false }: { dark?: boolean }) {
   }
 
   async function buy(quantity: number) {
-    trackInitiateCheckout()
+    trackInitiateCheckout({
+      value: orderPricing('none', quantity).totalCents / 100,
+      ...(currency ? { currency } : {}),
+      content_name: 'analysis_tokens',
+      num_items: quantity,
+    })
     setBuyingQty(quantity)
     setError('')
     try {

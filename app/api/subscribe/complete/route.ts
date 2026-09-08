@@ -63,7 +63,9 @@ export async function GET(req: NextRequest) {
       })
     }
     console.log('[subscribe/complete]', { sessionId, applied })
-    return NextResponse.redirect(`${BASE_URL}/dashboard?subscribed=1`)
+    // session_id lets the dashboard fire the browser-side Purchase pixel; the
+    // amount itself is read back from Stripe, never from the URL.
+    return NextResponse.redirect(`${BASE_URL}/dashboard?subscribed=1&session_id=${encodeURIComponent(sessionId)}`)
   } catch (err) {
     console.error('[subscribe/complete] failed:', err)
     return NextResponse.redirect(`${BASE_URL}/dashboard`)

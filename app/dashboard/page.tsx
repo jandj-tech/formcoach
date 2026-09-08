@@ -25,6 +25,7 @@ import TeamChatPanel from '@/components/TeamChatPanel'
 import TeamSchedulePanel from '@/components/TeamSchedulePanel'
 import AppearanceSection from '@/components/account/AppearanceSection'
 import ManageBillingButton from '@/components/ManageBillingButton'
+import { PurchasePixelFromSession } from '@/components/PurchasePixel'
 
 type UserRow = {
   id: string
@@ -46,7 +47,7 @@ type SubmissionRow = {
   frame_urls: string[] | null
 }
 
-export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ app?: string; tab?: string; subscribed?: string }> }) {
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ app?: string; tab?: string; subscribed?: string; session_id?: string }> }) {
   const session = await getSession()
   if (!session) redirect('/login')
 
@@ -433,6 +434,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </header>
 
         {/* ── Plan & usage — always visible above the tabs ───────── */}
+        {/* A new subscriber lands here rather than on a success page, so this
+            is where the browser half of their Purchase is reported. It dedupes
+            against the webhook's Conversions API event on the session id, and
+            the amount is read back from Stripe, never from the URL. */}
+        {params.subscribed === '1' && params.session_id && (
+          <PurchasePixelFromSession sessionId={params.session_id} />
+        )}
+
         {params.subscribed === '1' && usage.entitled && (
           <div className="bg-green-50 dark:bg-green-500/10 border border-green-300 dark:border-green-500/40 rounded-2xl px-5 py-4 text-sm font-semibold text-green-800 dark:text-green-300">
             Your {usage.planName} plan is active. Included analyses reset on your own billing

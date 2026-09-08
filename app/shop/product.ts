@@ -24,10 +24,14 @@ export const FREE_ANALYSES_PER_BALL = 5
 export const CURRENCY = 'USD'
 export const BASE_URL = 'https://www.learnhoops.com'
 
-export const SIZES: { value: Size; inches: string; label: string }[] = [
-  { value: '5', inches: '27.5"', label: 'Youth' },
-  { value: '6', inches: '28.5"', label: "Women's" },
-  { value: '7', inches: '29.5"', label: "Men's" },
+/** `ages` is the parent-facing hint: most buyers know the player's age, few
+ *  know their league's ball standard. Ranges follow the common youth-league
+ *  convention (size 5 through age 11, size 6 for 12–14 and all women's play,
+ *  size 7 from 15 up and all men's play). */
+export const SIZES: { value: Size; inches: string; label: string; ages: string }[] = [
+  { value: '5', inches: '27.5"', label: 'Youth', ages: 'Ages 9–11' },
+  { value: '6', inches: '28.5"', label: "Women's", ages: 'Boys 12–14 · girls 12+' },
+  { value: '7', inches: '29.5"', label: "Men's", ages: 'Boys 15+ · men' },
 ]
 
 export const VARIANTS: { value: Variant; label: string; hand: string }[] = [

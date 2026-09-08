@@ -15,6 +15,7 @@ import {
   type PlayerPlan,
 } from '@/lib/player-plans'
 import { usd } from '@/lib/team-pricing'
+import { useRegionCurrency } from '@/lib/use-region-currency'
 
 // Memberships at the top of the shop, in the store's ink theme. Prices and
 // allowances read from lib/player-plans so this can never disagree with the
@@ -32,6 +33,7 @@ export default function Memberships({ isInApp = false }: { isInApp?: boolean }) 
   const router = useRouter()
   const [interval, setInterval] = useState<PlayerBillingInterval>('monthly')
   const [busy, setBusy] = useState<PlayerPlan | null>(null)
+  const currency = useRegionCurrency()
   const [error, setError] = useState('')
 
   if (isInApp) return null
@@ -39,7 +41,11 @@ export default function Memberships({ isInApp = false }: { isInApp?: boolean }) 
   async function subscribe(plan: PlayerPlan) {
     setBusy(plan)
     setError('')
-    trackInitiateCheckout(PLAYER_PLANS[plan][interval === 'annual' ? 'annualTotalCents' : 'monthlyCents'] / 100)
+    trackInitiateCheckout({
+      value: PLAYER_PLANS[plan][interval === 'annual' ? 'annualTotalCents' : 'monthlyCents'] / 100,
+      ...(currency ? { currency } : {}),
+      content_name: `${plan}_${interval}`,
+    })
     try {
       const res = await fetch('/api/subscribe', {
         method: 'POST',
@@ -47,7 +53,9 @@ export default function Memberships({ isInApp = false }: { isInApp?: boolean }) 
         body: JSON.stringify({ plan, interval }),
       })
       if (res.status === 401) {
-        router.push(`/login?next=${encodeURIComponent('/shop#memberships')}`)
+        // A visitor who hit 401 here almost never has an account yet — /signup
+        // honours `next` and offers login for the few who do.
+        router.push(`/signup?next=${encodeURIComponent('/shop#memberships')}`)
         return
       }
       const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string; alreadySubscribed?: boolean }

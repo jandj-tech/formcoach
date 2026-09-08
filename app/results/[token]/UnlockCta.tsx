@@ -6,6 +6,7 @@ import { useIsInApp } from '@/lib/useIsInApp'
 import { trackInitiateCheckout } from '@/lib/meta-pixel'
 import { useAnalysisPrice } from '@/lib/useAnalysisPrice'
 import { orderPricing, percentLabel, usd } from '@/lib/team-pricing'
+import { useRegionCurrency } from '@/lib/use-region-currency'
 
 // Three one-tap choices rather than a stepper: this is the moment someone
 // decides whether to buy at all, and asking them to operate a control first is
@@ -19,6 +20,9 @@ const PACKS = [1, 5, 10] as const
 // to this results page, where the server unlocks the report.
 export default function UnlockCta({ resultsPath, justPurchased }: { resultsPath: string; justPurchased: boolean }) {
   const inApp = useIsInApp()
+  // Labelled for the buyer AND sent with the pixel event, so the currency
+  // shown, the currency charged and the currency reported cannot disagree.
+  const currency = useRegionCurrency()
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   // Right after checkout the webhook that grants the token can lag the
@@ -27,17 +31,6 @@ export default function UnlockCta({ resultsPath, justPurchased }: { resultsPath:
   const [waiting, setWaiting] = useState(justPurchased)
   const triesRef = useRef(0)
   const [qty, setQty] = useState<number>(1)
-  // Labelled, not chosen: the server decides the currency from the request. This
-  // only tells the buyer which one they're about to see on the Stripe page.
-  const [currency, setCurrency] = useState<string | null>(null)
-
-  useEffect(() => {
-    fetch('/api/region')
-      .then((r) => r.json())
-      .then(({ currency: c }) => setCurrency(typeof c === 'string' ? c : null))
-      .catch(() => {})
-  }, [])
-
   // The viewer's own rate, not the report owner's. A results link is shareable,
   // and /api/buy-token charges whoever is signed in here — so this hook is the
   // only source that agrees with what the card will actually be billed.
@@ -60,7 +53,12 @@ export default function UnlockCta({ resultsPath, justPurchased }: { resultsPath:
 
   async function buy() {
     setLoading(true)
-    trackInitiateCheckout(selected.totalCents / 100)
+    trackInitiateCheckout({
+      value: selected.totalCents / 100,
+      ...(currency ? { currency } : {}),
+      content_name: 'analysis_tokens',
+      num_items: qty,
+    })
     try {
       const res = await fetch('/api/buy-token', {
         method: 'POST',

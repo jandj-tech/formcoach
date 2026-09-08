@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import InfoTip from '@/components/InfoTip'
 import { trackInitiateCheckout } from '@/lib/meta-pixel'
 import { useIsInApp } from '@/lib/useIsInApp'
 import {
+  isPlayerPlan,
   PLAYER_PLANS,
   PLAYER_PLAN_ORDER,
   playerAnnualPerMonthCents,
@@ -26,6 +27,8 @@ import {
   usd,
 } from '@/lib/team-pricing'
 import { ORG_TIERS, orgUsd } from '@/lib/org-subscription-pricing'
+import { useRegionCurrency } from '@/lib/use-region-currency'
+import BuiltByCoaches from '@/components/BuiltByCoaches'
 
 /**
  * The public pricing page. Every figure is DERIVED from the pricing libs —
@@ -58,20 +61,41 @@ export default function PricingClient({
 }) {
   const inApp = useIsInApp()
   const router = useRouter()
-  const [interval, setInterval] = useState<PlayerBillingInterval>('monthly')
+  const searchParams = useSearchParams()
+  const currency = useRegionCurrency()
+  // A visitor sent here from signup carries the plan they already picked, so
+  // the choice survives the round-trip instead of resetting to monthly.
+  const resumePlan = searchParams.get('plan')
+  const resumeInterval = searchParams.get('interval')
+  const [interval, setInterval] = useState<PlayerBillingInterval>(
+    resumeInterval === 'annual' ? 'annual' : 'monthly',
+  )
   const [loadingPlan, setLoadingPlan] = useState<PlayerPlan | null>(null)
   const [error, setError] = useState('')
 
-  async function choosePlan(plan: PlayerPlan) {
-    if (!signedIn) {
-      router.push(`/signup?next=${encodeURIComponent('/pricing')}`)
-      return
-    }
+  const choosePlan = useCallback(async (plan: PlayerPlan) => {
     if (currentPlan) {
       router.push('/dashboard')
       return
     }
-    trackInitiateCheckout(PLAYER_PLANS[plan][interval === 'annual' ? 'annualTotalCents' : 'monthlyCents'] / 100)
+
+    // Fired BEFORE the account wall: every paid click arrives signed out, so an
+    // event fired after the redirect would never see the visitors the ads paid
+    // for — and plan interest would be invisible in Ads Manager.
+    trackInitiateCheckout({
+      value: PLAYER_PLANS[plan][interval === 'annual' ? 'annualTotalCents' : 'monthlyCents'] / 100,
+      ...(currency ? { currency } : {}),
+      content_name: `${plan}_${interval}`,
+    })
+
+    if (!signedIn) {
+      // Carry the plan and billing period through signup, and mark it resumable
+      // so they land back here and go straight to Stripe.
+      const back = `/pricing?plan=${plan}&interval=${interval}&resume=1`
+      router.push(`/signup?next=${encodeURIComponent(back)}`)
+      return
+    }
+
     setLoadingPlan(plan)
     setError('')
     try {
@@ -95,7 +119,25 @@ export default function PricingClient({
       setLoadingPlan(null)
       setError('Could not start checkout. Please try again.')
     }
-  }
+  }, [currentPlan, currency, interval, router, signedIn])
+
+  // Back from signup with a plan already chosen: continue to Stripe without
+  // making them find the same button again. Once only, and never for someone
+  // who already has a plan.
+  const resumed = useRef(false)
+  useEffect(() => {
+    if (resumed.current) return
+    if (searchParams.get('resume') !== '1') return
+    if (!signedIn || currentPlan) return
+    if (!isPlayerPlan(resumePlan)) return
+    resumed.current = true
+    // Scheduled rather than called here: choosePlan sets state, and doing that
+    // synchronously inside an effect cascades renders. Deliberately NOT
+    // cancelled on cleanup — the guard above already makes it fire once, and
+    // cancelling would strand the resume when this effect re-runs (it does, as
+    // soon as the currency lookup resolves).
+    setTimeout(() => void choosePlan(resumePlan), 0)
+  }, [choosePlan, currentPlan, resumePlan, searchParams, signedIn])
 
   return (
     <div className="flex-1">
@@ -227,10 +269,22 @@ export default function PricingClient({
                         ? 'Change plan in dashboard'
                         : loadingPlan === planId
                           ? 'Opening checkout…'
-                          : planId === 'pro'
-                            ? 'Go Pro'
-                            : 'Choose Player'}
+                          : signedIn
+                            ? planId === 'pro'
+                              ? 'Go Pro'
+                              : 'Choose Player'
+                            : planId === 'pro'
+                              ? 'Create account & go Pro'
+                              : 'Create account & choose Player'}
                   </button>
+                )}
+                {/* Say the account step is coming rather than springing it: an
+                    unexplained redirect to a signup form is where cold traffic
+                    leaves. */}
+                {!inApp && !signedIn && !currentPlan && (
+                  <p className="text-chalk-dim text-[11px] text-center -mt-1">
+                    Takes 30 seconds — then straight to secure checkout.
+                  </p>
                 )}
               </div>
             )
@@ -280,6 +334,8 @@ export default function PricingClient({
           </div>
         </section>
       )}
+
+      <BuiltByCoaches className="border-t border-courtline" />
 
       {/* ── Organizations ────────────────────────────────────────────── */}
       <section className="px-4 pb-20">

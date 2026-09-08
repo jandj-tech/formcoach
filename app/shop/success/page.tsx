@@ -2,6 +2,7 @@ import Link from 'next/link'
 import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
 import ClearCart from './ClearCart'
+import PurchasePixel from '@/components/PurchasePixel'
 import { getStripe } from '@/lib/stripe'
 import { grantBallCreditsOnce } from '@/lib/grant-ball-credits'
 import { isInAppRequest } from '@/lib/in-app'
@@ -14,7 +15,7 @@ export const metadata = {
 // Idempotent via processed_stripe_sessions, so the webhook (if it fires)
 // won't double-credit. This runs without JS so a flaky client can't
 // strand the buyer's credits.
-async function grantCreditsForSession(sessionId: string | undefined): Promise<{ ok: boolean; tokens: number; reason: string; updatedRows?: number }> {
+async function grantCreditsForSession(sessionId: string | undefined): Promise<{ ok: boolean; tokens: number; reason: string; updatedRows?: number; amount?: number; currency?: string }> {
   if (!sessionId) return { ok: false, tokens: 0, reason: 'no_session_id' }
   try {
     const session = await getStripe().checkout.sessions.retrieve(sessionId)
@@ -30,7 +31,16 @@ async function grantCreditsForSession(sessionId: string | undefined): Promise<{ 
     // 'already_processed' would lie when the webhook claimed the session
     // but couldn't credit anyone.
     const ok = result.granted && (result.updatedRows ?? 0) > 0
-    return { ok, tokens: tokensToGrant, reason: result.reason, updatedRows: result.updatedRows }
+    return {
+      ok,
+      tokens: tokensToGrant,
+      reason: result.reason,
+      updatedRows: result.updatedRows,
+      // Reported to Meta below — the session is already retrieved here, so this
+      // costs nothing extra.
+      amount: (session.amount_total ?? 0) / 100,
+      currency: (session.currency ?? 'usd').toUpperCase(),
+    }
   } catch (err) {
     console.error('[shop/success] grant retrieval failed:', err)
     return { ok: false, tokens: 0, reason: 'retrieve_failed' }
@@ -48,6 +58,9 @@ export default async function ShopSuccessPage({ searchParams }: { searchParams: 
   return (
     <main className="min-h-screen bg-black flex flex-col">
       <ClearCart sessionId={sessionId} />
+      {sessionId && grant.amount ? (
+        <PurchasePixel value={grant.amount} currency={grant.currency ?? 'USD'} eventId={sessionId} />
+      ) : null}
       <TopNav />
       <div className="flex-1 flex items-center justify-center px-6">
         <div className="text-center space-y-4 max-w-md">

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useIsInApp } from '@/lib/useIsInApp'
 import { trackInitiateCheckout } from '@/lib/meta-pixel'
+import { useRegionCurrency } from '@/lib/use-region-currency'
 
 // Purchase UI for org-released results. Two modes:
 //   'unlock' — centered card over the gated section, selling everything the
@@ -59,6 +60,9 @@ export default function OfferCta({
   previewNote?: string
 }) {
   const inApp = useIsInApp()
+  // Labelled for the buyer AND sent with the pixel event, so the currency
+  // shown, the currency charged and the currency reported cannot disagree.
+  const currency = useRegionCurrency()
   const router = useRouter()
   const [buyingId, setBuyingId] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -69,16 +73,6 @@ export default function OfferCta({
   // redirect by a few seconds — poll a few refreshes before giving up.
   const [waiting, setWaiting] = useState(justPurchased)
   const triesRef = useRef(0)
-  // Labelled, not chosen: the server decides the currency from the request.
-  const [currency, setCurrency] = useState<string | null>(null)
-
-  useEffect(() => {
-    fetch('/api/region')
-      .then((r) => r.json())
-      .then(({ currency: c }) => setCurrency(typeof c === 'string' ? c : null))
-      .catch(() => {})
-  }, [])
-
   useEffect(() => {
     if (!justPurchased) return
     const interval = setInterval(() => {
@@ -102,7 +96,11 @@ export default function OfferCta({
     }
     setBuyingId(offer.id)
     setError(null)
-    trackInitiateCheckout((offer.priceCents + (offer.includesBall ? offer.shippingCents : 0)) / 100)
+    trackInitiateCheckout({
+      value: (offer.priceCents + (offer.includesBall ? offer.shippingCents : 0)) / 100,
+      ...(currency ? { currency } : {}),
+      content_name: 'org_offer',
+    })
     try {
       const res = await fetch('/api/offer-checkout', {
         method: 'POST',

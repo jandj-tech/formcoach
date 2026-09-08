@@ -4,7 +4,9 @@ import type Stripe from 'stripe'
 import { getStripe } from '@/lib/stripe'
 import { checkoutSessionEvents, sendMetaEvent } from '@/lib/meta-server'
 import { db } from '@/lib/db'
-import { sendAbandonedCheckoutEmail, sendClaimCreditsEmail, sendClassPurchaseConfirmationEmail, sendTokenPurchaseConfirmationEmail } from '@/lib/email'
+import { sendAbandonedCheckoutEmail, sendClaimCreditsEmail, sendClassPurchaseConfirmationEmail, sendOrderHoldEmail, sendTokenPurchaseConfirmationEmail } from '@/lib/email'
+import { isSizeInStock, SIZE_INCHES } from '@/lib/ball-inventory'
+import { randomBytes } from 'crypto'
 import { grantBallCreditsOnce } from '@/lib/grant-ball-credits'
 import { claimStripeSession, releaseStripeSessionClaim } from '@/lib/stripe-idempotency'
 import { recordPurchase } from '@/lib/record-purchase'
@@ -637,6 +639,26 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ received: true })
     }
 
+    // Payment intent shares the value the charge.refunded handler matches on;
+    // stored on EVERY row so a refund (from here or the Stripe dashboard) can
+    // actually attribute back to the order. Previously never persisted.
+    const paymentIntentId =
+      typeof session.payment_intent === 'string'
+        ? session.payment_intent
+        : session.payment_intent?.id ?? null
+
+    // Out-of-stock safety net: the shop + checkout guard should make this
+    // unreachable, but if a size we can't ship still completes (un-updated app
+    // build, mid-checkout stock change), hold the WHOLE order out of the ship
+    // queue and offer the buyer a refund-or-swap link. One token per session,
+    // shared across all its rows.
+    const heldSizes = [...new Set(shipmentRows.filter(r => !isSizeInStock(r.size)).map(r => r.size))]
+    const isHeld = heldSizes.length > 0
+    const holdToken = isHeld ? randomBytes(32).toString('hex') : null
+    const holdExpires = isHeld ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : null
+    const holdReason = isHeld ? 'out_of_stock_size' : null
+
+    let insertedAny = false
     try {
       for (let i = 0; i < shipmentRows.length; i++) {
         const row = shipmentRows[i]
@@ -645,27 +667,47 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
         // The session's amount_total goes on the first row only, so summing
         // rows never overstates what was actually charged.
         const orderKey = i === 0 ? session.id : `${session.id}__i${i}`
-        await db`
+        const inserted = (await db`
           INSERT INTO orders (
             stripe_session_id, email, customer_name, phone, variant, size,
             amount_total, currency, quantity,
             shipping_name, shipping_line1, shipping_line2,
             shipping_city, shipping_state, shipping_postal_code, shipping_country,
-            shipping_cost_cents, shipping_carrier, shipping_service
+            shipping_cost_cents, shipping_carrier, shipping_service,
+            stripe_payment_intent_id, fulfillment_hold, hold_reason, hold_token, hold_token_expires
           ) VALUES (
             ${orderKey}, ${email}, ${name ?? null}, ${phone ?? null}, ${row.variant}, ${row.size},
             ${i === 0 ? session.amount_total ?? 0 : 0}, ${session.currency ?? 'usd'}, ${row.quantity},
             ${ship?.name ?? null}, ${ship?.address?.line1 ?? null}, ${ship?.address?.line2 ?? null},
             ${ship?.address?.city ?? null}, ${ship?.address?.state ?? null},
             ${ship?.address?.postal_code ?? null}, ${ship?.address?.country ?? null},
-            ${i === 0 ? shippingCostCents : null}, ${i === 0 ? shippingCarrier : null}, ${i === 0 ? shippingService : null}
+            ${i === 0 ? shippingCostCents : null}, ${i === 0 ? shippingCarrier : null}, ${i === 0 ? shippingService : null},
+            ${paymentIntentId}, ${isHeld}, ${holdReason}, ${holdToken}, ${holdExpires}
           )
           ON CONFLICT (stripe_session_id) DO NOTHING
-        `
+          RETURNING id
+        `) as unknown as Array<{ id: string }>
+        if (inserted.length > 0) insertedAny = true
       }
     } catch (err) {
       console.error('Failed to save order:', err)
       // Tokens were already credited above — don't ask Stripe to retry.
+    }
+
+    // Only email on a genuinely fresh insert, so a webhook redelivery never
+    // re-sends the apology or churns the token. Best-effort — the order is
+    // already held in the DB regardless.
+    if (isHeld && insertedAny && holdToken) {
+      const sizeLabel = heldSizes.map(s => `${SIZE_INCHES[s]} (Size ${s})`).join(' & ')
+      const resolveLink = `${resolveBaseUrl()}/orders/resolve/${holdToken}`
+      console.error('[stripe webhook] ball-order HELD — out of stock, buyer notified', {
+        sessionId: session.id, heldSizes, email,
+      })
+      try {
+        await sendOrderHoldEmail(email, name ?? null, resolveLink, sizeLabel)
+      } catch (err) {
+        console.error('[stripe webhook] order-hold email failed (order still held):', err)
+      }
     }
   }
 

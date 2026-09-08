@@ -8,6 +8,15 @@ import { isValidCompCode, getCompCouponId } from '@/lib/comp'
 import { getShippingOptions } from '@/lib/shipping'
 import { resolveBaseUrl } from '@/lib/base-url'
 import { stripeAttributionMetadata } from '@/lib/meta-server'
+import { isSizeInStock, outOfStockMessage, type BallSize } from '@/lib/ball-inventory'
+
+/** Thrown when a cart contains a size we can't ship, so the POST handler can
+ *  answer with a friendly 400 (surfaced inline by both web and the app). */
+class OutOfStockError extends Error {}
+
+function assertInStock(size: BallSize): void {
+  if (!isSizeInStock(size)) throw new OutOfStockError(outOfStockMessage(size))
+}
 
 const BALL_DESCRIPTION = 'Training basketball with hand-placement guide lines that build consistent shooting form.'
 
@@ -135,8 +144,10 @@ export async function POST(req: NextRequest) {
         const bundleItem = it as IncomingBundleItem
         validateVariant(bundleItem.variant1)
         validateSize(bundleItem.size1)
+        assertInStock(bundleItem.size1)
         validateVariant(bundleItem.variant2)
         validateSize(bundleItem.size2)
+        assertInStock(bundleItem.size2)
 
         if (!firstBallVariant) {
           firstBallVariant = bundleItem.variant1
@@ -171,6 +182,7 @@ export async function POST(req: NextRequest) {
         const ballItem = it as IncomingBallItem
         validateVariant(ballItem.variant)
         validateSize(ballItem.size)
+        assertInStock(ballItem.size)
         const qty = typeof ballItem.quantity === 'number' ? Math.floor(ballItem.quantity) : 1
         if (qty < 1 || qty > 99) throw new Error('Invalid quantity')
 
@@ -316,6 +328,12 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ url: session.url })
   } catch (err) {
+    // An out-of-stock size is an expected, user-facing rejection — 400 with the
+    // friendly message, not a 500. Both the web cart and the app render this
+    // `error` string inline.
+    if (err instanceof OutOfStockError) {
+      return NextResponse.json({ error: err.message }, { status: 400 })
+    }
     console.error('Checkout error:', err)
     const message = err instanceof Error ? err.message : 'Checkout failed'
     return NextResponse.json({ error: message }, { status: 500 })

@@ -770,6 +770,168 @@ export async function sendShippingEmail(
   console.log('[email] shipping email sent:', data?.id, 'to:', to)
 }
 
+/**
+ * Apology for an order we can't ship because the size is out of stock. Sends
+ * the buyer to a resolve page where they choose a full refund or a swap to an
+ * in-stock size. Transactional (NOTIFICATION_FROM), never marketing. Two
+ * equal-weight CTAs by design — this is a genuine choice, not a buried refund.
+ */
+export async function sendOrderHoldEmail(
+  to: string,
+  customerName: string | null,
+  resolveLink: string,
+  sizeLabel: string,
+) {
+  const name = customerName?.split(' ')[0] || 'there'
+  const refundLink = `${resolveLink}?choice=refund`
+  const swapLink = `${resolveLink}?choice=swap`
+  const { data, error } = await getResend().emails.send({
+    from: NOTIFICATION_FROM,
+    to,
+    subject: `Your ${sizeLabel} ball isn't ready to ship yet`,
+    text: [
+      `Hi ${name},`,
+      ``,
+      `Straight talk: the ${sizeLabel} training ball from your order is out of stock, and we don't have a restock date yet. We're not going to have you wait on a guess.`,
+      ``,
+      `Here's how we fix it — pick one:`,
+      ``,
+      `• Get a full refund to your original payment method: ${refundLink}`,
+      `• Swap to an in-stock size (same price, ships today): ${swapLink}`,
+      ``,
+      `Would rather wait it out, or talk to a person? Just reply to this email.`,
+      ``,
+      `One more thing: the free shot analyses that came with your order are already on your account. This doesn't touch those.`,
+      ``,
+      `Sorry for the holdup.`,
+      `— LearnHoops.com`,
+    ].join('\n'),
+    html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /></head>
+<body style="margin:0;padding:0;background:#F4F4F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#111111;">
+  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background:#F4F4F5;">
+    <tr><td align="center" style="padding:32px 16px;">
+      <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:560px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #E4E4E7;">
+
+        <tr><td style="background:#000000;padding:22px 32px;">
+          <div style="color:#F97316;font-size:20px;font-weight:800;letter-spacing:-0.3px;line-height:1;">LearnHoops<span style="color:#71717A;">.com</span></div>
+          <div style="color:#A1A1AA;font-size:12px;margin-top:5px;">Your shot. Perfected by AI.</div>
+        </td></tr>
+
+        <tr><td style="padding:36px 32px 8px;">
+          <h1 style="margin:0 0 10px;color:#111111;font-size:24px;line-height:1.25;font-weight:800;">Your ${sizeLabel} ball isn't ready to ship yet</h1>
+          <p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;">
+            Hi ${name}, straight talk: the ${sizeLabel} training ball from your order is out of stock,
+            and we don't have a restock date yet. We're not going to have you wait on a guess. Pick one:
+          </p>
+        </td></tr>
+
+        <tr><td style="padding:22px 32px 8px;">
+          <a href="${refundLink}" style="display:inline-block;background:#F97316;color:#ffffff;padding:13px 26px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">
+            Get a full refund
+          </a>
+          <p style="margin:8px 0 0;color:#71717A;font-size:13px;">We'll refund the full amount to your original payment method.</p>
+        </td></tr>
+
+        <tr><td style="padding:10px 32px 28px;">
+          <a href="${swapLink}" style="display:inline-block;background:#111111;color:#ffffff;padding:13px 26px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">
+            Swap to an in-stock size
+          </a>
+          <p style="margin:8px 0 0;color:#71717A;font-size:13px;">Move to an in-stock size — same price, ships today.</p>
+        </td></tr>
+
+        <tr><td style="padding:0 32px 28px;">
+          <p style="margin:0 0 10px;color:#52525B;font-size:14px;line-height:1.55;">
+            Would rather wait it out, or just want to talk to a person? Reply to this email — we'll take care of it either way.
+          </p>
+          <p style="margin:0;color:#52525B;font-size:14px;line-height:1.55;">
+            One more thing: the free shot analyses that came with your order are already on your account. This doesn't touch those.
+          </p>
+          <p style="margin:14px 0 0;color:#A1A1AA;font-size:12px;word-break:break-all;">
+            Or open your order here: <a href="${resolveLink}" style="color:#A1A1AA;text-decoration:underline;">${resolveLink}</a>
+          </p>
+        </td></tr>
+
+        <tr><td style="padding:18px 32px;background:#FAFAFA;border-top:1px solid #E4E4E7;">
+          <p style="margin:0;color:#A1A1AA;font-size:11px;line-height:1.6;">
+            Sorry for the holdup. Questions? <a href="${BASE_URL}/support" style="color:#71717A;text-decoration:none;font-weight:600;">Contact us here</a>.
+          </p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
+    `.trim(),
+  })
+
+  if (error) {
+    console.error('[email] order-hold email failed:', error)
+    throw new Error(`Order-hold email failed: ${error.message}`)
+  }
+  console.log('[email] order-hold email sent:', data?.id, 'to:', to)
+}
+
+/**
+ * Confirms how a held order was resolved — a refund on its way, or a swapped
+ * size shipping now. Transactional; best-effort at the call site.
+ */
+export async function sendOrderResolvedEmail(
+  to: string,
+  customerName: string | null,
+  resolution: 'refunded' | 'swapped',
+  detail: string,
+) {
+  const name = customerName?.split(' ')[0] || 'there'
+  const refunded = resolution === 'refunded'
+  const subject = refunded ? `Your ${detail} refund is on its way` : `Your ${detail} ball is on its way`
+  const heading = refunded ? 'Your refund is on its way' : "You're set"
+  const bodyLine = refunded
+    ? `Your refund is processed. ${detail} is heading back to your original payment method — typically 5–10 business days, depending on your bank. No further action needed on your end.`
+    : `You're set. We're shipping your ${detail} training ball now — same price, no extra charge, no new order to place. Tracking lands in your inbox once it's on the truck.`
+  const { data, error } = await getResend().emails.send({
+    from: NOTIFICATION_FROM,
+    to,
+    subject,
+    text: [`Hi ${name},`, ``, bodyLine, ``, `— LearnHoops.com`].join('\n'),
+    html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /></head>
+<body style="margin:0;padding:0;background:#F4F4F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#111111;">
+  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background:#F4F4F5;">
+    <tr><td align="center" style="padding:32px 16px;">
+      <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:560px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #E4E4E7;">
+        <tr><td style="background:#000000;padding:22px 32px;">
+          <div style="color:#F97316;font-size:20px;font-weight:800;letter-spacing:-0.3px;line-height:1;">LearnHoops<span style="color:#71717A;">.com</span></div>
+          <div style="color:#A1A1AA;font-size:12px;margin-top:5px;">Your shot. Perfected by AI.</div>
+        </td></tr>
+        <tr><td style="padding:36px 32px 28px;">
+          <h1 style="margin:0 0 10px;color:#111111;font-size:24px;line-height:1.25;font-weight:800;">${heading}</h1>
+          <p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;">Hi ${name}, ${bodyLine}</p>
+        </td></tr>
+        <tr><td style="padding:18px 32px;background:#FAFAFA;border-top:1px solid #E4E4E7;">
+          <p style="margin:0;color:#A1A1AA;font-size:11px;line-height:1.6;">
+            Questions? <a href="${BASE_URL}/support" style="color:#71717A;text-decoration:none;font-weight:600;">Contact us here</a>.
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
+    `.trim(),
+  })
+  if (error) {
+    console.error('[email] order-resolved email failed:', error)
+    throw new Error(`Order-resolved email failed: ${error.message}`)
+  }
+  console.log('[email] order-resolved email sent:', data?.id, 'to:', to, resolution)
+}
+
 export async function sendOrgApprovalEmail(
   to: string,
   orgName: string,

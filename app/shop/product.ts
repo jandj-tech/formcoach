@@ -30,6 +30,12 @@ export const SIZES: { value: Size; inches: string; label: string }[] = [
   { value: '7', inches: '29.5"', label: "Men's" },
 ]
 
+// Stock lives in one framework-free module (lib/ball-inventory.ts) so the shop
+// UI, the checkout guard, the Stripe webhook, and the schema feed all read the
+// same list. Re-exported here under the names the shop components already
+// import, so restocking stays a one-line edit in ball-inventory.
+export { OUT_OF_STOCK_SIZES, isSizeInStock, DEFAULT_SIZE } from '@/lib/ball-inventory'
+
 export const VARIANTS: { value: Variant; label: string; hand: string }[] = [
   { value: 'right', label: 'Right-handed edition', hand: 'right-hand shooters' },
   { value: 'left', label: 'Left-handed edition', hand: 'left-hand shooters' },

@@ -15,6 +15,7 @@ import {
   PRODUCT_DESCRIPTION,
   PRODUCT_IMAGES,
   PRODUCT_NAME,
+  isSizeInStock,
   priceValidUntil,
 } from './product'
 import { SHOP_FAQ } from './faq'
@@ -102,7 +103,9 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
                 price: PRICE.toFixed(2),
                 priceCurrency: CURRENCY,
                 priceValidUntil: priceValidUntil(),
-                availability: 'https://schema.org/InStock',
+                availability: isSizeInStock(v.size)
+                  ? 'https://schema.org/InStock'
+                  : 'https://schema.org/OutOfStock',
                 itemCondition: 'https://schema.org/NewCondition',
                 seller: { '@id': `${BASE_URL}/#org` },
               },

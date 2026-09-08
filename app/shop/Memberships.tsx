@@ -47,7 +47,9 @@ export default function Memberships({ isInApp = false }: { isInApp?: boolean }) 
         body: JSON.stringify({ plan, interval }),
       })
       if (res.status === 401) {
-        router.push(`/login?next=${encodeURIComponent('/shop#memberships')}`)
+        // A visitor who hit 401 here almost never has an account yet — /signup
+        // honours `next` and offers login for the few who do.
+        router.push(`/signup?next=${encodeURIComponent('/shop#memberships')}`)
         return
       }
       const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string; alreadySubscribed?: boolean }

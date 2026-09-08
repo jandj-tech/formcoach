@@ -46,8 +46,16 @@ export const metadata = {
   },
 }
 
-export default async function ShopPage({ searchParams }: { searchParams: Promise<{ app?: string }> }) {
+export default async function ShopPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ app?: string; focus?: string }>
+}) {
   const params = await searchParams
+  // ?focus=ball is the landing variant for paid ball ads: the training ball
+  // opens the page instead of memberships. Same route, so the consent modal,
+  // canonical URL and pixel behave exactly as on /shop.
+  const lead = params.focus === 'ball' ? 'ball' : 'memberships'
   // The ?app=ios param is lost on in-page navigation, so also check the
   // app WebView's User-Agent marker.
   const isInApp = params.app === 'ios' || (await isInAppRequest())
@@ -150,7 +158,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
       />
       <TopNav />
 
-      <ShopProduct isInApp={isInApp} hasGear={hasGear} />
+      <ShopProduct isInApp={isInApp} hasGear={hasGear} lead={lead} />
 
       {/* Affiliate recommendations. Deliberately below every LearnHoops
           product so an outbound link never intercepts our own sale, and

@@ -26,6 +26,11 @@ const FEATURES = [
   { num: '04', title: 'Three sizes', desc: `27.5" youth, 28.5" women's, 29.5" men's — the right fit keeps your fingers on the lines every shot.` },
 ]
 
+const PILL_FILLED =
+  'shrink-0 bg-ember-500 hover:bg-ember-400 text-ink-950 text-sm font-bold px-5 py-2.5 rounded-full transition-colors'
+const PILL_OUTLINE =
+  'shrink-0 bg-ink-900 border border-courtline hover:border-ember-500/60 text-chalk text-sm font-bold px-5 py-2.5 rounded-full transition-colors'
+
 function formatPrice(amount: number): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)
 }
@@ -36,10 +41,14 @@ function formatPrice(amount: number): string {
 export default function ShopProduct({
   isInApp = false,
   hasGear = false,
+  lead = 'memberships',
 }: {
   isInApp?: boolean
   hasGear?: boolean
+  /** Which product opens the page — see the section-order comment below. */
+  lead?: 'memberships' | 'ball'
 }) {
+  const ballFirst = lead === 'ball'
   const { addBall } = useCart()
   const [variant, setVariant] = useState<Variant>('right')
   const [size, setSize] = useState<Size>('7')
@@ -61,6 +70,264 @@ export default function ShopProduct({
     setAdded(true)
   }
 
+  const membershipsBlock = (
+    <>
+        {/* Memberships lead the store: the recurring product every other item
+            here feeds. Hidden in the iOS app (Apple-billed there), divider too. */}
+        {!isInApp && <SectionBreak label="Memberships" />}
+        <Memberships isInApp={isInApp} />
+    </>
+  )
+
+  const tokensBlock = (
+    <>
+        {/* Analysis tokens — one-off purchases follow the memberships. Dark like
+            the rest of the store; the ball hero follows immediately below. */}
+        <SectionBreak label="Analysis tokens" />
+        <section id="analysis-tokens" className="px-4 pt-6 pb-20 sm:pb-28 scroll-mt-20">
+          <div className="max-w-6xl mx-auto">
+            <h2 className="font-display font-black uppercase text-[clamp(1.6rem,3.5vw,2.4rem)] text-chalk leading-[0.95]">
+              Get your shot <span className="text-gradient-ember">analyzed</span>
+            </h2>
+            <p className="text-chalk-dim text-sm mt-2 mb-6 max-w-xl">
+              1 token = 1 AI shot analysis with your full breakdown across all 18 coaching
+              criteria. Tokens never expire.
+            </p>
+            <TokenPacks dark />
+          </div>
+        </section>
+    </>
+  )
+
+  const ballBlock = (
+    <>
+        {/* Product hero: sticky gallery left, buy box card right */}
+        <SectionBreak label="The training ball" />
+        <section id="training-ball" className="hero-glow grain relative px-4 pt-6 pb-20 sm:pb-28 scroll-mt-20">
+          <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
+            {/* Media gallery — product photo plus the two demo clips in one
+                even-sized carousel; sticky so it stays in view while the buy
+                box scrolls */}
+            <div className="lg:col-span-7 lg:sticky lg:top-24">
+              <MediaGallery eager={ballFirst} />
+            </div>
+
+            {/* Buy box */}
+            <div className="lg:col-span-5 flex flex-col gap-5 bg-ink-900/60 border border-courtline rounded-3xl p-6 sm:p-8">
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="inline-flex items-center gap-2 bg-green-500/10 border border-green-500/30 rounded-full px-4 py-1.5">
+                  <span className="text-green-500 text-xs font-semibold tracking-wider uppercase">In Stock</span>
+                </div>
+                {/* Product-inclusion facts about a physical good — shown in the
+                    app too; the ball itself is legitimately sold via Stripe. */}
+                <span className="inline-flex items-center bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-semibold px-3 py-1.5 rounded-full">
+                  {FREE_ANALYSES_PER_BALL * quantity} Shot Analyses Included Free
+                  {quantity > 1 ? ` (${FREE_ANALYSES_PER_BALL} per ball)` : ''}
+                </span>
+                <span className="inline-flex items-center bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-black tracking-wider uppercase px-3 py-1.5 rounded-full">
+                  Best Value
+                </span>
+              </div>
+
+              <h2 className="font-display font-black uppercase text-[clamp(1.7rem,3vw,2.4rem)] text-chalk leading-[0.95] break-words">
+                The LearnHoops <span className="text-gradient-ember">Training Ball</span>
+              </h2>
+
+              <p className="text-white text-base leading-relaxed">
+                A training ball built to fix your shooting form. Pick the edition for your shooting hand —
+                the grip lines mark exactly where your fingers belong, so every rep grooves proper hand
+                placement and release.
+              </p>
+
+              <div className="font-numeric text-3xl font-medium text-chalk">
+                {displayUnit}
+              </div>
+
+              {/* Variant selector */}
+              <div className="space-y-2">
+                <label className="block text-white text-xs font-semibold tracking-wider uppercase">Edition</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setVariant('right')}
+                    className={`rounded-xl border-2 px-4 py-4 text-left transition-colors ${
+                      variant === 'right'
+                        ? 'border-ember-500 bg-ember-500/10'
+                        : 'border-courtline hover:border-chalk-dim/60'
+                    }`}
+                  >
+                    <div className="text-white font-bold text-base">Right-handed</div>
+                    <div className="text-white text-xs mt-1">For right-hand shooters</div>
+                  </button>
+                  <button
+                    onClick={() => setVariant('left')}
+                    className={`rounded-xl border-2 px-4 py-4 text-left transition-colors ${
+                      variant === 'left'
+                        ? 'border-ember-500 bg-ember-500/10'
+                        : 'border-courtline hover:border-chalk-dim/60'
+                    }`}
+                  >
+                    <div className="text-white font-bold text-base">Left-handed</div>
+                    <div className="text-white text-xs mt-1">For left-hand shooters</div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Size selector */}
+              <div className="space-y-2">
+                <label className="block text-white text-xs font-semibold tracking-wider uppercase">Size</label>
+                <div className="grid grid-cols-3 gap-3">
+                  {SIZES.map((s) => (
+                    <button
+                      key={s.value}
+                      onClick={() => setSize(s.value)}
+                      className={`rounded-xl border-2 px-3 py-4 text-center transition-colors ${
+                        size === s.value
+                          ? 'border-ember-500 bg-ember-500/10'
+                          : 'border-courtline hover:border-chalk-dim/60'
+                      }`}
+                    >
+                      <div className="text-white font-bold text-base">Size {s.value}</div>
+                      <div className="text-white text-xs mt-1">{s.inches}</div>
+                      <div className="text-white text-xs">{s.label}</div>
+                    <div className="text-chalk-dim text-[11px] mt-1 leading-tight">{s.ages}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Quantity */}
+              <div className="space-y-2">
+                <label className="block text-white text-xs font-semibold tracking-wider uppercase">Quantity</label>
+                <QuantityStepper value={quantity} onChange={setQuantity} />
+              </div>
+
+              <button
+                onClick={handleAdd}
+                className="bg-ember-500 hover:bg-ember-400 active:scale-[0.98] text-ink-950 font-bold px-8 py-4 rounded-full text-base transition-all w-full shadow-[0_0_40px_-8px_rgba(255,92,26,0.55)]"
+              >
+                Add to cart — {displayLineTotal}
+              </button>
+
+              {added && (
+                <div
+                  role="status"
+                  className="flex items-center justify-between gap-3 rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-3"
+                >
+                  <span className="text-green-400 text-sm font-semibold">
+                    Added to cart
+                  </span>
+                  <Link
+                    href="/cart"
+                    className="text-ember-400 hover:text-ember-500 text-sm font-semibold underline"
+                  >
+                    View cart →
+                  </Link>
+                </div>
+              )}
+
+              <p className="text-white text-xs">
+                Secure checkout powered by Stripe. See your shipping cost in the
+                cart — Canada Post in Canada, USPS in the US.
+              </p>
+
+              {/* Product details — collapsible so the buy box stays compact */}
+              <div className="space-y-2 pt-1">
+                {/* Rendered from ./faq.ts, which app/shop/page.tsx also turns
+                    into the FAQPage schema — one array, so the markup can never
+                    claim something the page does not say. Titles are now full
+                    questions ("What size basketball should I get?" rather than
+                    "Sizing guide") because that is both what people search and
+                    what a Question node needs. */}
+                {BALL_FAQ.map(f => (
+                  <ShopAccordion key={f.q} title={f.q} dark>
+                    {f.a.join(' ')}
+                  </ShopAccordion>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 2-Ball Bundle — directly under the single ball so the upsell is
+            the next thing a shopper sees */}
+        <BundleSection isInApp={isInApp} />
+    </>
+  )
+
+  const featuresBlock = (
+    <>
+        {/* Feature band */}
+        <section className="border-y border-courtline bg-ink-900/50">
+          <div className="max-w-6xl mx-auto px-4 py-10 sm:py-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {FEATURES.map((f) => (
+              <div
+                key={f.num}
+                className="fade-up card-lift bg-ink-800/60 border border-courtline rounded-2xl p-6"
+              >
+                <div className="font-numeric text-ember-400 text-lg mb-5 select-none">{f.num}</div>
+                <h3 className="font-display font-bold uppercase text-lg text-chalk mb-2 leading-tight">
+                  {f.title}
+                </h3>
+                <p className="text-chalk-dim text-sm leading-relaxed">{f.desc}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+    </>
+  )
+
+  const analysisBand = (
+    <>
+        {/* AI shot analysis — light band so the product sections read as
+            distinct blocks instead of one long black page. Shown in-app too:
+            TokenPacks renders IAP-bridged packs there, never web checkout. */}
+        {(
+          <section id="shot-analysis" className="bg-chalk text-ink-950 px-4 py-16 sm:py-20 scroll-mt-20">
+            <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-start">
+              <div className="space-y-5">
+                <p className="eyebrow text-ember-700 select-none">AI shot analysis</p>
+                <h2 className="font-display font-black uppercase text-[clamp(1.9rem,4vw,3rem)] leading-[0.95]">
+                  One shot.
+                  <br />
+                  <span className="text-gradient-ember">Eighteen criteria.</span>
+                </h2>
+                <p className="text-ink-950/60 leading-relaxed">
+                  Upload a video of your shot and our AI studies 28 frames of it,
+                  scoring the same 18 fundamentals real coaches teach — then tells
+                  you exactly what to fix.
+                </p>
+                <div className="space-y-2">
+                  {ANALYSIS_FAQ.map(f => (
+                    <ShopAccordion key={f.q} title={f.q}>
+                      {f.a.join(' ')}
+                    </ShopAccordion>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-4 lg:pt-16">
+                <a
+                  href="#analysis-tokens"
+                  className="block text-center bg-ember-500 hover:bg-ember-400 active:scale-[0.98] text-ink-950 font-bold px-8 py-4 rounded-full text-base transition-all"
+                >
+                  Get analysis tokens ↑
+                </a>
+                <Link
+                  href="/analyze"
+                  className="block text-center bg-ink-950 hover:bg-ink-800 active:scale-[0.98] text-chalk font-bold px-8 py-4 rounded-full text-base transition-all"
+                >
+                  Analyze your shot →
+                </Link>
+                <p className="text-ink-950/80 text-xs text-center">
+                  Have a token already? Head straight to the analyzer.
+                </p>
+              </div>
+            </div>
+          </section>
+        )}
+    </>
+  )
+
   return (
     <div className="flex-1">
       {/* Shop header — names every product up front with jump links, so
@@ -81,31 +348,25 @@ export default function ShopProduct({
             belongs, so correct hand placement grooves itself on every rep.
           </p>
           <nav aria-label="Shop sections" className="flex gap-2 mt-6 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0">
-            {!isInApp && (
-              <a
-                href="#memberships"
-                className="shrink-0 bg-ember-500 hover:bg-ember-400 text-ink-950 text-sm font-bold px-5 py-2.5 rounded-full transition-colors"
-              >
+            {/* The filled pill is the product this page leads with. */}
+            {!isInApp && !ballFirst && (
+              <a href="#memberships" className={PILL_FILLED}>
                 Memberships
               </a>
             )}
-            <a
-              href="#training-ball"
-              className="shrink-0 bg-ink-900 border border-courtline hover:border-ember-500/60 text-chalk text-sm font-bold px-5 py-2.5 rounded-full transition-colors"
-            >
+            <a href="#training-ball" className={ballFirst ? PILL_FILLED : PILL_OUTLINE}>
               Training Ball
             </a>
-            <a
-              href="#shot-analysis"
-              className="shrink-0 bg-ink-900 border border-courtline hover:border-ember-500/60 text-chalk text-sm font-bold px-5 py-2.5 rounded-full transition-colors"
-            >
+            {!isInApp && ballFirst && (
+              <a href="#memberships" className={PILL_OUTLINE}>
+                Memberships
+              </a>
+            )}
+            <a href="#shot-analysis" className={PILL_OUTLINE}>
               Shot Analysis
             </a>
             {hasGear && (
-              <a
-                href="#gear-we-like"
-                className="shrink-0 bg-ink-900 border border-courtline hover:border-ember-500/60 text-chalk text-sm font-bold px-5 py-2.5 rounded-full transition-colors"
-              >
+              <a href="#gear-we-like" className={PILL_OUTLINE}>
                 Gear We Like
               </a>
             )}
@@ -113,241 +374,27 @@ export default function ShopProduct({
         </div>
       </section>
 
-      {/* Memberships lead the store: the recurring product every other item
-          here feeds. Hidden in the iOS app (Apple-billed there), divider too. */}
-      {!isInApp && <SectionBreak label="Memberships" />}
-      <Memberships isInApp={isInApp} />
-
-      {/* Analysis tokens — one-off purchases follow the memberships. Dark like
-          the rest of the store; the ball hero follows immediately below. */}
-      <SectionBreak label="Analysis tokens" />
-      <section id="analysis-tokens" className="px-4 pt-6 pb-20 sm:pb-28 scroll-mt-20">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="font-display font-black uppercase text-[clamp(1.6rem,3.5vw,2.4rem)] text-chalk leading-[0.95]">
-            Get your shot <span className="text-gradient-ember">analyzed</span>
-          </h2>
-          <p className="text-chalk-dim text-sm mt-2 mb-6 max-w-xl">
-            1 token = 1 AI shot analysis with your full breakdown across all 18 coaching
-            criteria. Tokens never expire.
-          </p>
-          <TokenPacks dark />
-        </div>
-      </section>
-
-      {/* Product hero: sticky gallery left, buy box card right */}
-      <SectionBreak label="The training ball" />
-      <section id="training-ball" className="hero-glow grain relative px-4 pt-6 pb-20 sm:pb-28 scroll-mt-20">
-        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
-          {/* Media gallery — product photo plus the two demo clips in one
-              even-sized carousel; sticky so it stays in view while the buy
-              box scrolls */}
-          <div className="lg:col-span-7 lg:sticky lg:top-24">
-            <MediaGallery />
-          </div>
-
-          {/* Buy box */}
-          <div className="lg:col-span-5 flex flex-col gap-5 bg-ink-900/60 border border-courtline rounded-3xl p-6 sm:p-8">
-            <div className="flex items-center gap-3 flex-wrap">
-              <div className="inline-flex items-center gap-2 bg-green-500/10 border border-green-500/30 rounded-full px-4 py-1.5">
-                <span className="text-green-500 text-xs font-semibold tracking-wider uppercase">In Stock</span>
-              </div>
-              {/* Product-inclusion facts about a physical good — shown in the
-                  app too; the ball itself is legitimately sold via Stripe. */}
-              <span className="inline-flex items-center bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-semibold px-3 py-1.5 rounded-full">
-                {FREE_ANALYSES_PER_BALL * quantity} Shot Analyses Included Free
-                {quantity > 1 ? ` (${FREE_ANALYSES_PER_BALL} per ball)` : ''}
-              </span>
-              <span className="inline-flex items-center bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-black tracking-wider uppercase px-3 py-1.5 rounded-full">
-                Best Value
-              </span>
-            </div>
-
-            <h2 className="font-display font-black uppercase text-[clamp(1.7rem,3vw,2.4rem)] text-chalk leading-[0.95] break-words">
-              The LearnHoops <span className="text-gradient-ember">Training Ball</span>
-            </h2>
-
-            <p className="text-white text-base leading-relaxed">
-              A training ball built to fix your shooting form. Pick the edition for your shooting hand —
-              the grip lines mark exactly where your fingers belong, so every rep grooves proper hand
-              placement and release.
-            </p>
-
-            <div className="font-numeric text-3xl font-medium text-chalk">
-              {displayUnit}
-            </div>
-
-            {/* Variant selector */}
-            <div className="space-y-2">
-              <label className="block text-white text-xs font-semibold tracking-wider uppercase">Edition</label>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => setVariant('right')}
-                  className={`rounded-xl border-2 px-4 py-4 text-left transition-colors ${
-                    variant === 'right'
-                      ? 'border-ember-500 bg-ember-500/10'
-                      : 'border-courtline hover:border-chalk-dim/60'
-                  }`}
-                >
-                  <div className="text-white font-bold text-base">Right-handed</div>
-                  <div className="text-white text-xs mt-1">For right-hand shooters</div>
-                </button>
-                <button
-                  onClick={() => setVariant('left')}
-                  className={`rounded-xl border-2 px-4 py-4 text-left transition-colors ${
-                    variant === 'left'
-                      ? 'border-ember-500 bg-ember-500/10'
-                      : 'border-courtline hover:border-chalk-dim/60'
-                  }`}
-                >
-                  <div className="text-white font-bold text-base">Left-handed</div>
-                  <div className="text-white text-xs mt-1">For left-hand shooters</div>
-                </button>
-              </div>
-            </div>
-
-            {/* Size selector */}
-            <div className="space-y-2">
-              <label className="block text-white text-xs font-semibold tracking-wider uppercase">Size</label>
-              <div className="grid grid-cols-3 gap-3">
-                {SIZES.map((s) => (
-                  <button
-                    key={s.value}
-                    onClick={() => setSize(s.value)}
-                    className={`rounded-xl border-2 px-3 py-4 text-center transition-colors ${
-                      size === s.value
-                        ? 'border-ember-500 bg-ember-500/10'
-                        : 'border-courtline hover:border-chalk-dim/60'
-                    }`}
-                  >
-                    <div className="text-white font-bold text-base">Size {s.value}</div>
-                    <div className="text-white text-xs mt-1">{s.inches}</div>
-                    <div className="text-white text-xs">{s.label}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Quantity */}
-            <div className="space-y-2">
-              <label className="block text-white text-xs font-semibold tracking-wider uppercase">Quantity</label>
-              <QuantityStepper value={quantity} onChange={setQuantity} />
-            </div>
-
-            <button
-              onClick={handleAdd}
-              className="bg-ember-500 hover:bg-ember-400 active:scale-[0.98] text-ink-950 font-bold px-8 py-4 rounded-full text-base transition-all w-full shadow-[0_0_40px_-8px_rgba(255,92,26,0.55)]"
-            >
-              Add to cart — {displayLineTotal}
-            </button>
-
-            {added && (
-              <div
-                role="status"
-                className="flex items-center justify-between gap-3 rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-3"
-              >
-                <span className="text-green-400 text-sm font-semibold">
-                  Added to cart
-                </span>
-                <Link
-                  href="/cart"
-                  className="text-ember-400 hover:text-ember-500 text-sm font-semibold underline"
-                >
-                  View cart →
-                </Link>
-              </div>
-            )}
-
-            <p className="text-white text-xs">
-              Secure checkout powered by Stripe. See your shipping cost in the
-              cart — Canada Post in Canada, USPS in the US.
-            </p>
-
-            {/* Product details — collapsible so the buy box stays compact */}
-            <div className="space-y-2 pt-1">
-              {/* Rendered from ./faq.ts, which app/shop/page.tsx also turns
-                  into the FAQPage schema — one array, so the markup can never
-                  claim something the page does not say. Titles are now full
-                  questions ("What size basketball should I get?" rather than
-                  "Sizing guide") because that is both what people search and
-                  what a Question node needs. */}
-              {BALL_FAQ.map(f => (
-                <ShopAccordion key={f.q} title={f.q} dark>
-                  {f.a.join(' ')}
-                </ShopAccordion>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 2-Ball Bundle — directly under the single ball so the upsell is
-          the next thing a shopper sees */}
-      <BundleSection isInApp={isInApp} />
-
-      {/* Feature band */}
-      <section className="border-y border-courtline bg-ink-900/50">
-        <div className="max-w-6xl mx-auto px-4 py-10 sm:py-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {FEATURES.map((f) => (
-            <div
-              key={f.num}
-              className="fade-up card-lift bg-ink-800/60 border border-courtline rounded-2xl p-6"
-            >
-              <div className="font-numeric text-ember-400 text-lg mb-5 select-none">{f.num}</div>
-              <h3 className="font-display font-bold uppercase text-lg text-chalk mb-2 leading-tight">
-                {f.title}
-              </h3>
-              <p className="text-chalk-dim text-sm leading-relaxed">{f.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* AI shot analysis — light band so the product sections read as
-          distinct blocks instead of one long black page. Shown in-app too:
-          TokenPacks renders IAP-bridged packs there, never web checkout. */}
-      {(
-        <section id="shot-analysis" className="bg-chalk text-ink-950 px-4 py-16 sm:py-20 scroll-mt-20">
-          <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-start">
-            <div className="space-y-5">
-              <p className="eyebrow text-ember-700 select-none">AI shot analysis</p>
-              <h2 className="font-display font-black uppercase text-[clamp(1.9rem,4vw,3rem)] leading-[0.95]">
-                One shot.
-                <br />
-                <span className="text-gradient-ember">Eighteen criteria.</span>
-              </h2>
-              <p className="text-ink-950/60 leading-relaxed">
-                Upload a video of your shot and our AI studies 28 frames of it,
-                scoring the same 18 fundamentals real coaches teach — then tells
-                you exactly what to fix.
-              </p>
-              <div className="space-y-2">
-                {ANALYSIS_FAQ.map(f => (
-                  <ShopAccordion key={f.q} title={f.q}>
-                    {f.a.join(' ')}
-                  </ShopAccordion>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-4 lg:pt-16">
-              <a
-                href="#analysis-tokens"
-                className="block text-center bg-ember-500 hover:bg-ember-400 active:scale-[0.98] text-ink-950 font-bold px-8 py-4 rounded-full text-base transition-all"
-              >
-                Get analysis tokens ↑
-              </a>
-              <Link
-                href="/analyze"
-                className="block text-center bg-ink-950 hover:bg-ink-800 active:scale-[0.98] text-chalk font-bold px-8 py-4 rounded-full text-base transition-all"
-              >
-                Analyze your shot →
-              </Link>
-              <p className="text-ink-950/80 text-xs text-center">
-                Have a token already? Head straight to the analyzer.
-              </p>
-            </div>
-          </div>
-        </section>
+      {/* Section order follows the visitor's intent. Default: memberships lead
+          the store (the recurring product everything else feeds). Paid ball
+          ads land on ?focus=ball, where a parent sees the ball they tapped on
+          first — a page that opens with a different, pricier, login-gated
+          product is the classic message-match leak on cold traffic. */}
+      {ballFirst ? (
+        <>
+          {ballBlock}
+          {featuresBlock}
+          {membershipsBlock}
+          {tokensBlock}
+          {analysisBand}
+        </>
+      ) : (
+        <>
+          {membershipsBlock}
+          {tokensBlock}
+          {ballBlock}
+          {featuresBlock}
+          {analysisBand}
+        </>
       )}
 
     </div>
@@ -437,7 +484,9 @@ const GALLERY_MEDIA: Array<{
   },
 ]
 
-function MediaGallery() {
+/** `eager` preloads the hero shot — right only when the ball opens the page;
+ *  a preload for an image two screens down just competes with fonts and JS. */
+function MediaGallery({ eager }: { eager: boolean }) {
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, align: 'start' })
   const [selected, setSelected] = useState(0)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -472,7 +521,7 @@ function MediaGallery() {
                       fill
                       className="object-contain"
                       sizes="(min-width: 1024px) 55vw, 100vw"
-                      priority
+                      priority={eager}
                     />
                   </div>
                 ) : (

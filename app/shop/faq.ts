@@ -30,8 +30,9 @@ export const BALL_FAQ: ShopFaq[] = [
   {
     q: 'What size basketball should I get?',
     a: [
-      'Size 5 (27.5") fits youth players, size 6 (28.5") is the women\'s standard, and size 7 ' +
-        '(29.5") is the men\'s standard. When in doubt, pick the size used in your league.',
+      'Go by age if you are not sure of the league standard: size 5 (27.5") for players up to ' +
+        'about 11, size 6 (28.5") for boys 12–14 and for girls and women 12 and up, and size 7 ' +
+        '(29.5") for boys 15 and up and men. If your league sets a size, use that one.',
     ],
   },
   {

@@ -10,6 +10,7 @@ import QuantityStepper from '@/components/QuantityStepper'
 import TokenPacks from './TokenPacks'
 import Memberships from './Memberships'
 import SectionBreak from '@/components/SectionBreak'
+import BuiltByCoaches from '@/components/BuiltByCoaches'
 import { trackAddToCart, trackViewContent } from '@/lib/meta-pixel'
 import { BUNDLE_PRICE, BUNDLE_SAVINGS, FREE_ANALYSES_PER_BALL, PRICE, SIZES } from './product'
 import { ANALYSIS_FAQ, BALL_FAQ } from './faq'
@@ -293,6 +294,7 @@ export default function ShopProduct({
 
   const featuresBlock = (
     <>
+      <BuiltByCoaches className="border-t border-courtline" />
         {/* Feature band */}
         <section className="border-y border-courtline bg-ink-900/50">
           <div className="max-w-6xl mx-auto px-4 py-10 sm:py-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

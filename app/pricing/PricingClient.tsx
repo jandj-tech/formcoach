@@ -28,6 +28,7 @@ import {
 } from '@/lib/team-pricing'
 import { ORG_TIERS, orgUsd } from '@/lib/org-subscription-pricing'
 import { useRegionCurrency } from '@/lib/use-region-currency'
+import BuiltByCoaches from '@/components/BuiltByCoaches'
 
 /**
  * The public pricing page. Every figure is DERIVED from the pricing libs —
@@ -333,6 +334,8 @@ export default function PricingClient({
           </div>
         </section>
       )}
+
+      <BuiltByCoaches className="border-t border-courtline" />
 
       {/* ── Organizations ────────────────────────────────────────────── */}
       <section className="px-4 pb-20">

@@ -6,6 +6,7 @@ import { orgIsEntitledById, SUBSCRIPTION_ENDED_MESSAGE } from '@/lib/team-featur
 import { rejectInAppPurchase } from '@/lib/in-app'
 import { currencyForRequest } from '@/lib/region'
 import { resolveBaseUrl } from '@/lib/base-url'
+import { isSizeInStock, outOfStockMessage } from '@/lib/ball-inventory'
 import {
   CLASS_MIN_PLAYERS,
   CLASS_PRICE_PER_PLAYER_CENTS,
@@ -37,6 +38,12 @@ export async function POST(req: NextRequest) {
   const size6 = Math.max(0, Math.floor(Number(body.size6) || 0))
   const size7 = Math.max(0, Math.floor(Number(body.size7) || 0))
   const playerCount = size5 + size6 + size7
+
+  // Same stock gate as the shop: don't sell a class pack of balls we can't
+  // ship. This form has no client-side stock UI, so the check must live here.
+  if (size5 > 0 && !isSizeInStock('5')) return NextResponse.json({ error: outOfStockMessage('5') }, { status: 400 })
+  if (size6 > 0 && !isSizeInStock('6')) return NextResponse.json({ error: outOfStockMessage('6') }, { status: 400 })
+  if (size7 > 0 && !isSizeInStock('7')) return NextResponse.json({ error: outOfStockMessage('7') }, { status: 400 })
 
   if (playerCount < CLASS_MIN_PLAYERS) {
     return NextResponse.json({ error: `Minimum ${CLASS_MIN_PLAYERS} players required` }, { status: 400 })

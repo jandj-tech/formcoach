@@ -12,7 +12,8 @@ export default async function OrdersPage() {
            COALESCE(kind, 'single') AS kind,
            COALESCE(quantity, 1)::int AS quantity,
            class_package_id,
-           description, buyer_kind, buyer_ref
+           description, buyer_kind, buyer_ref,
+           fulfillment_hold, hold_reason, hold_resolved_at, hold_resolution
     FROM orders
     ORDER BY created_at DESC
     LIMIT 200
@@ -24,7 +25,14 @@ export default async function OrdersPage() {
   const totalShipping = orders.reduce((sum, o) => sum + Number(o.shipping_cost_cents ?? 0), 0)
   const fmt = (cents: number) => `$${(cents / 100).toFixed(2)}`
   const shipped = orders.filter(o => o.status === 'shipped').length
-  const pending = orders.filter(o => (o.variant === 'left' || o.variant === 'right') && o.status !== 'shipped').length
+  const held = orders.filter(o => o.fulfillment_hold && !o.hold_resolved_at).length
+  // Held orders await the buyer's refund/swap choice — they are NOT ready to
+  // ship, so they don't count toward "pending ship".
+  const pending = orders.filter(o =>
+    (o.variant === 'left' || o.variant === 'right') &&
+    o.status !== 'shipped' &&
+    !(o.fulfillment_hold && !o.hold_resolved_at)
+  ).length
 
   return (
     <div className="space-y-6">
@@ -33,6 +41,7 @@ export default async function OrdersPage() {
         <div className="flex gap-4 text-sm text-gray-600 dark:text-zinc-400">
           <span><span className="text-orange-500 font-bold">{orders.length}</span> total</span>
           <span><span className="text-yellow-400 font-bold">{pending}</span> pending ship</span>
+          {held > 0 && <span><span className="text-red-500 font-bold">{held}</span> held (out of stock)</span>}
           <span><span className="text-green-400 font-bold">{shipped}</span> shipped</span>
           <span><span className="text-orange-500 font-bold">{fmt(totalRevenue)}</span> revenue</span>
           <span><span className="text-blue-400 font-bold">{fmt(totalShipping)}</span> shipping collected</span>

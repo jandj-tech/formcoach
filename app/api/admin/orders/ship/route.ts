@@ -19,11 +19,13 @@ export async function POST(req: NextRequest) {
     await db`
       UPDATE orders SET status = 'shipped', shipping_link = ${shippingLink}
       WHERE id = ANY(${orderIds}::uuid[])
+        AND NOT (fulfillment_hold AND hold_resolved_at IS NULL)
     `
   } else {
     await db`
       UPDATE orders SET status = 'shipped'
       WHERE id = ANY(${orderIds}::uuid[])
+        AND NOT (fulfillment_hold AND hold_resolved_at IS NULL)
     `
   }
 

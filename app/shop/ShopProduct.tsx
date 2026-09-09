@@ -12,7 +12,7 @@ import Memberships from './Memberships'
 import SectionBreak from '@/components/SectionBreak'
 import BuiltByCoaches from '@/components/BuiltByCoaches'
 import { trackAddToCart, trackViewContent } from '@/lib/meta-pixel'
-import { BUNDLE_PRICE, BUNDLE_SAVINGS, FREE_ANALYSES_PER_BALL, PRICE, SIZES } from './product'
+import { BUNDLE_PRICE, BUNDLE_SAVINGS, DEFAULT_SIZE, FREE_ANALYSES_PER_BALL, PRICE, SIZES, isSizeInStock } from './product'
 import { ANALYSIS_FAQ, BALL_FAQ } from './faq'
 
 // Price, sizes and the SKU list now live in ./product.ts, because the Product
@@ -56,10 +56,11 @@ export default function ShopProduct({
   const ballFirst = lead === 'ball'
   const { addBall } = useCart()
   const [variant, setVariant] = useState<Variant>('right')
-  const [size, setSize] = useState<Size>('7')
+  const [size, setSize] = useState<Size>(DEFAULT_SIZE)
   const [quantity, setQuantity] = useState(1)
   const [added, setAdded] = useState(false)
 
+  const inStock = isSizeInStock(size)
   const lineTotal = Math.round(PRICE * quantity * 100) / 100
   const displayUnit = formatPrice(PRICE)
   const displayLineTotal = formatPrice(lineTotal)
@@ -141,9 +142,15 @@ export default function ShopProduct({
             {/* Buy box */}
             <div className="lg:col-span-5 flex flex-col gap-5 bg-ink-900/60 border border-courtline rounded-3xl p-6 sm:p-8">
               <div className="flex items-center gap-3 flex-wrap">
-                <div className="inline-flex items-center gap-2 bg-green-500/10 border border-green-500/30 rounded-full px-4 py-1.5">
-                  <span className="text-green-500 text-xs font-semibold tracking-wider uppercase">In Stock</span>
-                </div>
+                {inStock ? (
+                  <div className="inline-flex items-center gap-2 bg-green-500/10 border border-green-500/30 rounded-full px-4 py-1.5">
+                    <span className="text-green-500 text-xs font-semibold tracking-wider uppercase">In Stock</span>
+                  </div>
+                ) : (
+                  <div className="inline-flex items-center gap-2 bg-red-500/10 border border-red-500/30 rounded-full px-4 py-1.5">
+                    <span className="text-red-400 text-xs font-semibold tracking-wider uppercase">Out of Stock</span>
+                  </div>
+                )}
                 {/* Product-inclusion facts about a physical good — shown in the
                     app too; the ball itself is legitimately sold via Stripe. */}
                 <span className="inline-flex items-center bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-semibold px-3 py-1.5 rounded-full">
@@ -214,22 +221,33 @@ export default function ShopProduct({
               <div className="space-y-2">
                 <label className="block text-white text-xs font-semibold tracking-wider uppercase">Size</label>
                 <div className="grid grid-cols-3 gap-3">
-                  {SIZES.map((s) => (
-                    <button
-                      key={s.value}
-                      onClick={() => setSize(s.value)}
-                      className={`rounded-xl border-2 px-3 py-4 text-center transition-colors ${
-                        size === s.value
-                          ? 'border-ember-500 bg-ember-500/10'
-                          : 'border-courtline hover:border-chalk-dim/60'
-                      }`}
-                    >
-                      <div className="text-white font-bold text-base">Size {s.value}</div>
-                      <div className="text-white text-xs mt-1">{s.inches}</div>
-                      <div className="text-white text-xs">{s.label}</div>
-                    <div className="text-chalk-dim text-[11px] mt-1 leading-tight">{s.ages}</div>
-                    </button>
-                  ))}
+                  {SIZES.map((s) => {
+                    const outOfStock = !isSizeInStock(s.value)
+                    return (
+                      <button
+                        key={s.value}
+                        onClick={() => setSize(s.value)}
+                        disabled={outOfStock}
+                        aria-disabled={outOfStock}
+                        className={`rounded-xl border-2 px-3 py-4 text-center transition-colors ${
+                          outOfStock
+                            ? 'border-courtline bg-ink-950/40 opacity-50 cursor-not-allowed'
+                            : size === s.value
+                              ? 'border-ember-500 bg-ember-500/10'
+                              : 'border-courtline hover:border-chalk-dim/60'
+                        }`}
+                      >
+                        <div className="text-white font-bold text-base">Size {s.value}</div>
+                        <div className="text-white text-xs mt-1">{s.inches}</div>
+                        <div className="text-white text-xs">{s.label}</div>
+                        {outOfStock ? (
+                          <div className="text-red-400 text-[10px] font-semibold uppercase tracking-wide mt-1">Out of stock</div>
+                        ) : (
+                          <div className="text-chalk-dim text-[11px] mt-1 leading-tight">{s.ages}</div>
+                        )}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
 
@@ -628,9 +646,9 @@ function MediaGallery({ eager }: { eager: boolean }) {
 function BundleSection({ isInApp = false, currency = 'USD' }: { isInApp?: boolean; currency?: string }) {
   const { addBundle } = useCart()
   const [v1, setV1] = useState<Variant>('right')
-  const [s1, setS1] = useState<Size>('7')
+  const [s1, setS1] = useState<Size>(DEFAULT_SIZE)
   const [v2, setV2] = useState<Variant>('right')
-  const [s2, setS2] = useState<Size>('7')
+  const [s2, setS2] = useState<Size>(DEFAULT_SIZE)
   const [added, setAdded] = useState(false)
 
   const originalPrice = Math.round(PRICE * 2 * 100) / 100
@@ -804,20 +822,27 @@ function BallPicker({
       <div>
         <label className="block text-zinc-400 text-xs font-semibold tracking-wider uppercase mb-1.5">Size</label>
         <div className="grid grid-cols-3 gap-2">
-          {SIZES.map((s) => (
-            <button
-              key={s.value}
-              onClick={() => onSize(s.value)}
-              className={`rounded-lg border-2 px-2 py-2 text-center transition-colors ${
-                size === s.value
-                  ? 'border-ember-500 bg-ember-500/10'
-                  : 'border-courtline hover:border-chalk-dim/60'
-              }`}
-            >
-              <div className="text-white font-semibold text-sm">Size {s.value}</div>
-              <div className="text-zinc-400 text-xs">{s.label}</div>
-            </button>
-          ))}
+          {SIZES.map((s) => {
+            const outOfStock = !isSizeInStock(s.value)
+            return (
+              <button
+                key={s.value}
+                onClick={() => onSize(s.value)}
+                disabled={outOfStock}
+                aria-disabled={outOfStock}
+                className={`rounded-lg border-2 px-2 py-2 text-center transition-colors ${
+                  outOfStock
+                    ? 'border-courtline bg-ink-950/40 opacity-50 cursor-not-allowed'
+                    : size === s.value
+                      ? 'border-ember-500 bg-ember-500/10'
+                      : 'border-courtline hover:border-chalk-dim/60'
+                }`}
+              >
+                <div className="text-white font-semibold text-sm">Size {s.value}</div>
+                <div className="text-zinc-400 text-xs">{outOfStock ? 'Sold out' : s.label}</div>
+              </button>
+            )
+          })}
         </div>
       </div>
     </div>

@@ -33,6 +33,15 @@ interface Order {
   description: string | null
   buyer_kind: string | null
   buyer_ref: string | null
+  fulfillment_hold: boolean | null
+  hold_reason: string | null
+  hold_resolved_at: string | null
+  hold_resolution: string | null
+}
+
+/** Held out of the ship queue awaiting the buyer's refund/swap choice. */
+function isHeldUnresolved(o: Order) {
+  return !!o.fulfillment_hold && !o.hold_resolved_at
 }
 
 const sizeInches: Record<string, string> = { '5': '27.5"', '6': '28.5"', '7': '29.5"' }
@@ -70,7 +79,9 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
   const [trackingLink, setTrackingLink] = useState('')
 
   const ballOrders = orders.filter(isBallOrder)
-  const pendingBallOrders = ballOrders.filter(o => o.status !== 'shipped')
+  // A held order is not shippable until the buyer resolves it, so it must never
+  // enter a ship batch — the ship route enforces the same rule server-side.
+  const pendingBallOrders = ballOrders.filter(o => o.status !== 'shipped' && !isHeldUnresolved(o))
   // Shipping only makes sense for pending ball orders; deleting works on any
   // selected row (e.g. clearing out test purchases).
   const selectedPendingBall = pendingBallOrders.filter(o => selected.has(o.id))
@@ -325,13 +336,21 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      {isShipped ? (
+                      {isHeldUnresolved(o) ? (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/10 text-red-500 font-semibold whitespace-nowrap">
+                          HELD — out of stock
+                        </span>
+                      ) : o.hold_resolution === 'refunded' ? (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-gray-200 dark:bg-zinc-700 text-gray-600 dark:text-zinc-300 font-semibold">
+                          Refunded
+                        </span>
+                      ) : isShipped ? (
                         <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 font-semibold">
                           Shipped
                         </span>
                       ) : hasBall ? (
                         <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 font-semibold">
-                          Pending
+                          Pending{o.hold_resolution === 'swapped' ? ' (swapped)' : ''}
                         </span>
                       ) : (
                         <span className="text-xs px-2 py-0.5 rounded-full bg-gray-200 dark:bg-zinc-700 text-gray-600 dark:text-zinc-400 font-semibold">

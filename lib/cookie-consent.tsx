@@ -149,6 +149,26 @@ export function CookieConsentProvider({ children }: { children: React.ReactNode 
     setHasDecided(true)
     setManuallyOpened(false)
 
+    // Count the decision (never who made it — see the migration). This is the
+    // only measurement that still works for the visitors who decline, and
+    // without it the banner's cost in ad attribution is unknowable.
+    try {
+      const q = new URLSearchParams(window.location.search)
+      void fetch('/api/consent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        keepalive: true,
+        body: JSON.stringify({
+          choice: next.marketing ? 'accept' : 'reject',
+          path: window.location.pathname,
+          utmSource: q.get('utm_source'),
+          utmCampaign: q.get('utm_campaign'),
+        }),
+      }).catch(() => {})
+    } catch {
+      // Never let bookkeeping interfere with the choice itself.
+    }
+
     if (withdrawingMarketing) {
       clearMarketingCookies()
       // fbq has already loaded and lives in memory; unmounting the <Script> does

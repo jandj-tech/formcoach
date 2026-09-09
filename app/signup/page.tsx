@@ -11,6 +11,10 @@ import PasswordInput from '@/components/PasswordInput'
 import Turnstile, { TURNSTILE_ENABLED } from '@/components/Turnstile'
 import Honeypot from '@/components/Honeypot'
 import OAuthButtons from '@/components/OAuthButtons'
+import { PurchasePixelFromSession } from '@/components/PurchasePixel'
+import { useCart } from '@/lib/cart'
+import { PLAYER_PLANS, isPlayerPlan } from '@/lib/player-plans'
+import { usd } from '@/lib/team-pricing'
 
 function SignupForm() {
   const router = useRouter()
@@ -28,6 +32,26 @@ function SignupForm() {
   const teamInviteToken = searchParams.get('teamInvite') || ''
   const claimToken = searchParams.get('claimToken') || ''
   const pendingCredits = parseInt(searchParams.get('credits') || '0', 10)
+  const nextPath = searchParams.get('next') || ''
+  // A guest who just paid for a ball is sent here to claim their analyses, so
+  // this — not /shop/success — is where their purchase gets reported and their
+  // cart gets emptied.
+  const paidSessionId = searchParams.get('session_id') || ''
+  const { clear: clearCart } = useCart()
+  // When they came from a plan button, name the plan they picked so the form
+  // reads as one step of a checkout rather than an unexplained detour.
+  const pendingPlan = (() => {
+    const m = /[?&]plan=([^&]+)/.exec(nextPath)
+    const plan = m ? decodeURIComponent(m[1]) : ''
+    if (!isPlayerPlan(plan)) return null
+    const annual = /[?&]interval=annual/.test(nextPath)
+    return {
+      name: PLAYER_PLANS[plan].name,
+      price: annual
+        ? `${usd(PLAYER_PLANS[plan].annualTotalCents)}/year`
+        : `${usd(PLAYER_PLANS[plan].monthlyCents)}/month`,
+    }
+  })()
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -87,6 +111,9 @@ function SignupForm() {
 
   return (
     <main className="min-h-screen bg-ink-950 text-chalk flex flex-col">
+      {paidSessionId && (
+        <PurchasePixelFromSession sessionId={paidSessionId} onPaid={clearCart} />
+      )}
       <TopNav />
       <div className="hero-glow grain relative flex-1 flex items-center justify-center px-6 py-16">
         <div className="w-full max-w-sm space-y-6">
@@ -101,6 +128,11 @@ function SignupForm() {
               <p className="text-sm font-semibold text-ember-400 bg-ember-500/10 border border-ember-500/30 rounded-xl px-4 py-2">
                 Your coach added you to the team — sign up to join.
               </p>
+            ) : pendingPlan ? (
+              <p className="text-sm font-semibold text-ember-400 bg-ember-500/10 border border-ember-500/30 rounded-xl px-4 py-2">
+                {pendingPlan.name} — {pendingPlan.price}. Create your account, then finish on
+                Stripe.
+              </p>
             ) : (
               <p className="text-sm font-semibold text-ember-400 bg-ember-500/10 border border-ember-500/30 rounded-xl px-4 py-2">
                 Create your account to start analyzing your shots.
@@ -109,6 +141,7 @@ function SignupForm() {
           </div>
 
           <OAuthButtons
+            next={nextPath || undefined}
             claimToken={claimToken || undefined}
             teamInvite={teamInviteToken || undefined}
             teamCode={teamCode || undefined}
@@ -190,7 +223,9 @@ function SignupForm() {
             <a
               href={claimToken
                 ? `/login?claimToken=${encodeURIComponent(claimToken)}&credits=${pendingCredits}`
-                : '/login'}
+                : nextPath
+                  ? `/login?next=${encodeURIComponent(nextPath)}`
+                  : '/login'}
               className="text-ember-400 hover:text-ember-500 font-medium transition-colors"
             >
               Log in

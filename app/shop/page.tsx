@@ -3,7 +3,7 @@ import SiteFooter from '@/components/SiteFooter'
 import ShopProduct from './ShopProduct'
 import GearWeLike from './GearWeLike'
 import { isInAppRequest } from '@/lib/in-app'
-import { regionFromServerHeaders } from '@/lib/region'
+import { currencyForRegion, regionFromServerHeaders } from '@/lib/region'
 import { readyGear } from './gear'
 import {
   BALL_SKUS,
@@ -47,14 +47,27 @@ export const metadata = {
   },
 }
 
-export default async function ShopPage({ searchParams }: { searchParams: Promise<{ app?: string }> }) {
+export default async function ShopPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ app?: string; focus?: string }>
+}) {
   const params = await searchParams
+  // ?focus=ball is the landing variant for paid ball ads: the training ball
+  // opens the page instead of memberships. Same route, so the consent modal,
+  // canonical URL and pixel behave exactly as on /shop.
+  const lead = params.focus === 'ball' ? 'ball' : 'memberships'
   // The ?app=ios param is lost on in-page navigation, so also check the
   // app WebView's User-Agent marker.
   const isInApp = params.app === 'ios' || (await isInAppRequest())
   // The gear shelf is region-specific, so whether there is anything to jump to
-  // is too. ShopProduct is a Client Component and cannot read headers itself.
-  const hasGear = readyGear(await regionFromServerHeaders()).length > 0
+  // is too. ShopProduct is a Client Component and cannot read headers itself —
+  // which is also why the currency is resolved here and passed down: a pixel
+  // event tagged USD for a buyer Stripe charges in CAD makes the two
+  // incomparable in Ads Manager.
+  const region = await regionFromServerHeaders()
+  const hasGear = readyGear(region).length > 0
+  const currency = currencyForRegion(region).toUpperCase()
   return (
     <main className="flex flex-col min-h-screen bg-ink-950 text-chalk">
       {/* Product structured data — feeds Google Shopping and the Product rich
@@ -153,7 +166,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
       />
       <TopNav />
 
-      <ShopProduct isInApp={isInApp} hasGear={hasGear} />
+      <ShopProduct isInApp={isInApp} hasGear={hasGear} lead={lead} currency={currency} />
 
       {/* Affiliate recommendations. Deliberately below every LearnHoops
           product so an outbound link never intercepts our own sale, and

@@ -7,6 +7,7 @@ import { useCart } from '@/lib/cart'
 import type { CartBallItem, CartBundleItem, Variant, Size } from '@/lib/cart'
 import QuantityStepper from '@/components/QuantityStepper'
 import { useIsInApp } from '@/lib/useIsInApp'
+import { newMetaEventId, trackInitiateCheckout } from '@/lib/meta-pixel'
 
 const PRICE = 48.95
 // Bundle: ball 1 full price + ball 2 at $35.90 = $84.85 — saves $13.05.
@@ -122,12 +123,29 @@ export default function CartView() {
     if (items.length === 0 || !destReady) return
     setLoading(true)
     setError('')
+
+    // Shared with the checkout session's metadata so a server-side twin of this
+    // event can dedupe against it rather than double-count. The value includes
+    // the shipping about to be charged, so it matches the eventual Purchase.
+    const metaEventId = newMetaEventId()
+    const shippingDollars = quotes && quotes[0] ? quotes[0].amountCents / 100 : 0
+    trackInitiateCheckout(
+      {
+        value: Math.round((subtotalRounded + shippingDollars) * 100) / 100,
+        currency: country === 'CA' ? 'CAD' : 'USD',
+        content_type: 'product',
+        num_items: ballCount,
+      },
+      metaEventId,
+    )
+
     try {
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           region: country,
+          metaEventId,
           shipTo: { country, state: usState, postalCode: postal.trim() },
           ...(compCode.trim() ? { compCode: compCode.trim() } : {}),
           items: items.map((it) => {
@@ -336,7 +354,11 @@ export default function CartView() {
         {error && <p className="text-red-500 text-sm">{error}</p>}
 
         <p className="text-white text-xs">
-          Orders ship Canada Post within Canada and USPS within the US. Secure payment by Stripe.
+          Orders ship Canada Post within Canada and USPS within the US. Secure payment by Stripe.{' '}
+          <Link href="/returns" className="text-ember-400 underline hover:text-ember-300">
+            30-day money-back guarantee
+          </Link>{' '}
+          on the ball — you cover return shipping.
         </p>
       </div>
     </section>

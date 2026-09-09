@@ -218,6 +218,11 @@ export async function POST(req: NextRequest) {
       ...stripeAttributionMetadata(req),
     }
 
+    // The browser's InitiateCheckout id, kept with the session so a server-side
+    // twin of that event can dedupe against it rather than double-count.
+    const icEventId = typeof body?.metaEventId === 'string' ? body.metaEventId : ''
+    if (/^[\w-]{8,64}$/.test(icEventId)) metadata.meta_ic_event_id = icEventId
+
     metadata.analysis_tokens = String(analysisTokens)
     metadata.token_recipient = tokenRecipient
     metadata.ball_count = String(ballCount)
@@ -252,8 +257,11 @@ export async function POST(req: NextRequest) {
       `
     }
 
+    // Guests go to signup to claim their analyses rather than to /shop/success,
+    // so the session id rides along: it is what lets that page fire the
+    // browser-side Purchase pixel and clear the cart.
     const successUrl = guestClaimToken
-      ? `${BASE_URL}/signup?claimToken=${guestClaimToken}&credits=${analysisTokens}`
+      ? `${BASE_URL}/signup?claimToken=${guestClaimToken}&credits=${analysisTokens}&session_id={CHECKOUT_SESSION_ID}`
       : `${BASE_URL}/shop/success?session_id={CHECKOUT_SESSION_ID}`
 
     // A valid comp code applies a 100%-off coupon server-side, so the

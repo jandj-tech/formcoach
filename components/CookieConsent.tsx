@@ -118,12 +118,17 @@ function ConsentPanel({
   const btn =
     'flex-1 rounded-xl px-5 py-3 text-sm font-bold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ember-400 focus-visible:ring-offset-2 focus-visible:ring-offset-ink-900'
 
+  // On a phone the modal sits at the bottom rather than over the middle of the
+  // page: it is still a hard stop (the backdrop below blocks the page), but the
+  // headline and price stay readable while the visitor decides, instead of the
+  // first thing an ad click sees being a panel across the product.
   const shell = isModal
-    ? `fixed z-[91] inset-x-4 top-1/2 -translate-y-1/2 mx-auto w-auto sm:max-w-lg
+    ? `fixed z-[91] inset-x-0 bottom-0 sm:inset-x-4 sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2
+       mx-auto w-full sm:w-auto sm:max-w-lg
        max-h-[90dvh] overflow-y-auto overscroll-contain
-       rounded-3xl border border-courtline bg-ink-900 text-chalk
+       rounded-t-3xl sm:rounded-3xl border border-courtline bg-ink-900 text-chalk
        shadow-2xl shadow-black/60 focus:outline-none
-       animate-in zoom-in-95 fade-in duration-300`
+       animate-in slide-in-from-bottom-6 sm:zoom-in-95 fade-in duration-300`
     // Deliberately the full card, not a slim strip, for signed-in visitors too:
     // an unanswered banner comes back on every page load, so the version that
     // actually gets pressed is the kinder one to live with.
@@ -142,7 +147,7 @@ function ConsentPanel({
       {isModal && (
         <div
           aria-hidden
-          className="fixed inset-0 z-[90] bg-black/70 backdrop-blur-sm animate-in fade-in duration-300"
+          className="fixed inset-0 z-[90] bg-black/60 animate-in fade-in duration-300"
         />
       )}
       <div

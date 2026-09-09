@@ -136,7 +136,12 @@ export default function TokenPacks({ dark = false }: { dark?: boolean }) {
   }
 
   async function buy(quantity: number) {
-    trackInitiateCheckout()
+    trackInitiateCheckout({
+      value: orderPricing('none', quantity).totalCents / 100,
+      ...(currency ? { currency } : {}),
+      content_name: 'analysis_tokens',
+      num_items: quantity,
+    })
     setBuyingQty(quantity)
     setError('')
     try {
@@ -146,8 +151,9 @@ export default function TokenPacks({ dark = false }: { dark?: boolean }) {
         body: JSON.stringify({ quantity }),
       })
       if (res.status === 401) {
-        // Logged-out visitor: send them to log in, then back here.
-        window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`
+        // Logged-out visitor: almost always a new one, so sign up (which offers
+        // login too) and come back to this section.
+        window.location.href = `/signup?next=${encodeURIComponent(`${window.location.pathname}#analysis-tokens`)}`
         return
       }
       const data = await res.json().catch(() => ({}))

@@ -716,6 +716,10 @@ export async function sendShippingEmail(
       `Track your package here:`,
       shippingLink,
       ``,
+      `Once your player has had a couple of weeks with it, tell us how it is going —`,
+      `email support@learnhoops.com. We read every one, and with your permission we`,
+      `would love to quote you on the site.`,
+      ``,
       `LearnHoops.com`,
     ].join('\n'),
     html: `
@@ -746,6 +750,14 @@ export async function sendShippingEmail(
           </a>
           <p style="margin:12px 0 0;color:#A1A1AA;font-size:12px;word-break:break-all;">
             <a href="${shippingLink}" style="color:#A1A1AA;text-decoration:underline;">${shippingLink}</a>
+          </p>
+        </td></tr>
+
+        <tr><td style="padding:0 32px 28px;">
+          <p style="margin:0;color:#52525B;font-size:14px;line-height:1.55;">
+            Once your player has had a couple of weeks with it, tell us how it is going —
+            <a href="mailto:support@learnhoops.com" style="color:#F97316;text-decoration:none;font-weight:600;">email us</a>.
+            We read every one, and with your permission we would love to quote you on the site.
           </p>
         </td></tr>
 

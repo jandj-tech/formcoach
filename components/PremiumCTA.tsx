@@ -31,7 +31,12 @@ export default function PremiumCTA({ dark = false, initialTier = 'none' }: { dar
   if (inApp) return null
 
   async function handleBuyToken() {
-    trackInitiateCheckout()
+    trackInitiateCheckout({
+      value: totalCents / 100,
+      ...(currency ? { currency } : {}),
+      content_name: 'analysis_tokens',
+      num_items: qty,
+    })
     setLoading(true)
     setError('')
     try {

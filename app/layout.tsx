@@ -49,6 +49,12 @@ export const metadata: Metadata = {
       'Iok757H3x4dbsU-C1vIkVgSCcTwArojeOPpUoL9fBGo',
       'C8bH1Na1x-sQwjH6YK29dhGv7vdv1kF5rLy3ENh1cAs',
     ],
+    // Proves to Meta that the LearnHoops.com business portfolio owns this
+    // domain (Business settings > Brand safety > Domains). Verified domains
+    // can lock ad link previews and are trusted for Conversions API events.
+    other: {
+      'facebook-domain-verification': 'byivqjzx7vuacmmanm81sfoaatr03z',
+    },
   },
 }
 

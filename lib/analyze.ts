@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { isGatewayModel, callGatewayModel } from '@/lib/model-provider'
 import { createHash } from 'crypto'
 import { db } from './db'
 
@@ -441,6 +442,32 @@ async function analyzeShotOnce(
     })
   )
 
+  const USER_TEXT =
+    'Analyze this basketball shot across all frames and return your scoring as JSON.'
+
+  // A gateway model (id contains "/") takes the OpenAI-shaped path in
+  // lib/model-provider.ts; everything else stays on the Anthropic SDK exactly
+  // as before. Both return raw text, and every rule below this point — flag
+  // normalization, the arc and rotation guards, GUESS_PATTERNS — runs on the
+  // parsed JSON and so applies identically whichever provider answered.
+  let text: string
+  if (isGatewayModel(model)) {
+    const gw = await callGatewayModel({
+      model,
+      systemPrompt,
+      framesBase64: frameBase64Array,
+      frameMimeTypes,
+      userText: USER_TEXT,
+      maxTokens: 6000,
+    })
+    console.log('[analyze] usage', {
+      model: gw.model,
+      via: 'gateway',
+      input: gw.usage.input,
+      output: gw.usage.output,
+    })
+    text = gw.text
+  } else {
   const response = await getAnthropic().messages.create({
     model,
     max_tokens: 6000,
@@ -473,7 +500,7 @@ async function analyzeShotOnce(
           ...imageContent,
           {
             type: 'text',
-            text: 'Analyze this basketball shot across all frames and return your scoring as JSON.',
+            text: USER_TEXT,
           },
         ],
       },
@@ -490,7 +517,9 @@ async function analyzeShotOnce(
   })
 
   const textBlock = response.content.find((b) => b.type === 'text')
-  const text = textBlock?.type === 'text' ? textBlock.text : ''
+  text = textBlock?.type === 'text' ? textBlock.text : ''
+  }
+
   const jsonMatch = text.match(/\{[\s\S]*\}/)
   if (!jsonMatch) throw new Error('No JSON in Claude response')
 

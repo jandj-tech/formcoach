@@ -116,16 +116,32 @@ export async function sendResultsEmail(to: string, token: string) {
 // that has already bought something.
 const MARKETING_EMAILS = [
   {
-    subject: 'How did your shot analysis go?',
+    // Deliberately assumes NOTHING about whether the reader has uploaded yet.
+    // This is email 1 of 5 and it goes to the whole list positionally, where
+    // most addresses have an account and no submission — the old copy opened
+    // with "You have seen your scores", which most of the list had not.
+    // Filming is the actual blocker for someone who signed up and stopped, so
+    // the email answers that instead.
+    subject: 'Getting your shot analyzed',
     getText: (to: string) => [
-      `You have seen your scores. Here is what to do with them.`,
+      `The part people get wrong is the filming, not the shooting. Two minutes`,
+      `of setup is the difference between a real breakdown and a guess.`,
       ``,
-      `Knowing which part of your shot breaks down is the first half. The second`,
-      `half is repetition with something that corrects you while you shoot.`,
+      `Stand under or just behind the basket, looking back at the shooter.`,
+      `Straight on works, and so does a little off to one side - if you angle`,
+      `it, go toward the side the guide hand is on. That view shows whether the`,
+      `elbow flares, whether the guide hand stays passive, and whether the feet`,
+      `and shoulders are square. Filming from behind the shooter hides all three.`,
       ``,
-      `That is what we are building, and we will show you as soon as it is ready.`,
+      `Get the whole body in frame, head to feet, the whole way through the`,
+      `shot - stance and knee bend are graded too, and a clip cropped at the`,
+      `waist loses them. Not from across the gym either: that far out, the elbow`,
+      `and hands are too small to read.`,
       ``,
-      `Analyze another shot: ${BASE_URL}/analyze`,
+      `One shot is enough. We pull 28 frames out of it and grade all 18`,
+      `criteria, each with what to change.`,
+      ``,
+      `Analyze a shot: ${BASE_URL}/analyze`,
       ``,
       `LearnHoops.com`,
       `Unsubscribe: ${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}`,
@@ -136,16 +152,27 @@ const MARKETING_EMAILS = [
           <h1 style="color:#F97316;margin:0;font-size:24px;">LearnHoops.com</h1>
         </div>
         <div style="padding:32px;">
-          <h2 style="color:#000000;">You've seen your scores. Here's what to do with them.</h2>
+          <h2 style="color:#000000;">The part people get wrong is the filming.</h2>
           <p style="color:#000000;line-height:1.6;">
-            Knowing which part of your shot breaks down is the first half. The second half is
-            repetition with something that corrects you while you shoot.
+            Two minutes of setup is the difference between a real breakdown and a guess.
+            Stand under or just behind the basket, looking back at the shooter. Straight on
+            works, and so does a little off to one side &mdash; if you angle it, go toward the
+            side the guide hand is on. That view shows whether the elbow flares, whether the
+            guide hand stays passive, and whether the feet and shoulders are square.
+            Filming from behind the shooter hides all three.
           </p>
           <p style="color:#000000;line-height:1.6;">
-            That's what we're building, and we'll show you as soon as it's ready.
+            Get the whole body in frame, head to feet, the whole way through the shot &mdash;
+            stance and knee bend are graded too, and a clip cropped at the waist loses them.
+            Not from across the gym either: that far out, the elbow and hands are too small
+            to read.
+          </p>
+          <p style="color:#000000;line-height:1.6;">
+            One shot is enough. We pull 28 frames out of it and grade all 18 criteria, each
+            with what to change.
           </p>
           <p style="line-height:1.6;">
-            <a href="${BASE_URL}/analyze" style="color:#F97316;">Analyze another shot</a>
+            <a href="${BASE_URL}/analyze" style="color:#F97316;">Analyze a shot</a>
           </p>
           <hr style="border:none;border-top:1px solid #E2E8F0;margin:24px 0;"/>
           <p style="color:#000000;font-size:11px;text-align:center;">

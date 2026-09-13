@@ -44,7 +44,8 @@ export async function activeMarketingRecipients(): Promise<Array<{ email: string
 
 /** As above, plus the drip position, for the 5-email marketing sequence. */
 export async function activeDripRecipients(
-  maxEmails: number
+  maxEmails: number,
+  batchSize = dripBatchSize()
 ): Promise<Array<{ email: string; marketing_emails_sent: number }>> {
   return (await db`
     SELECT email, marketing_emails_sent
@@ -53,7 +54,30 @@ export async function activeDripRecipients(
       AND bounced_at IS NULL
       AND complained_at IS NULL
       AND marketing_emails_sent < ${maxEmails}
+    ORDER BY marketing_emails_sent ASC, created_at ASC
+    LIMIT ${batchSize}
   `) as unknown as Array<{ email: string; marketing_emails_sent: number }>
+}
+
+/**
+ * How many drip emails one cron run may send.
+ *
+ * Unbounded, this returns every eligible address at once, and the first run
+ * after the cron is scheduled would be the largest send this domain has ever
+ * made — a good way to teach inbox providers that we arrive in bursts. Pacing
+ * it is domain warm-up, not politeness. /api/cron/promo chunks for the same
+ * reason.
+ *
+ * `ORDER BY marketing_emails_sent ASC` is the other half: least-served first,
+ * so everyone receives email 1 before anyone receives email 2. Ordering by
+ * created_at alone would march the oldest signups through all five while the
+ * tail of the list never heard from us at all.
+ */
+const DEFAULT_DRIP_BATCH = 25
+
+export function dripBatchSize(): number {
+  const raw = Number(process.env.DRIP_BATCH_SIZE)
+  return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : DEFAULT_DRIP_BATCH
 }
 
 /**

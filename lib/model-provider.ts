@@ -86,6 +86,51 @@ export function isGatewayModel(model: string): boolean {
  * across 176 models, and the caller already extracts the JSON object with a
  * regex, which works whether or not the model wraps it in prose.
  */
+/**
+ * Retries a gateway call through transient failures.
+ *
+ * A grading arm is 28 fixtures and takes ~20 minutes, and a single blip
+ * anywhere in it reports as DID NOT RUN — which shrinks the fixture set and
+ * makes the arm uncomparable to every other arm. One dropped connection
+ * voided a whole arm: 23 "fetch failed" plus an EHOSTUNREACH from a few
+ * seconds of local network trouble, with the provider perfectly healthy
+ * before and after.
+ *
+ * Retries network-level errors, 429, and 5xx. Does NOT retry a 4xx other than
+ * 429: a malformed request, an image the provider rejects, or a bad model id
+ * will fail identically every time, and retrying hides a real bug behind a
+ * slower failure.
+ */
+async function fetchWithRetry(url: string, init: RequestInit, attempts = 4): Promise<Response> {
+  let lastErr: unknown
+  for (let i = 0; i < attempts; i++) {
+    if (i > 0) {
+      // 2s, 6s, 18s — long enough for a rate-limit window or a wifi hiccup to
+      // clear, short enough that a genuinely dead provider still fails the arm.
+      await new Promise((r) => setTimeout(r, 2000 * 3 ** (i - 1)))
+    }
+    try {
+      const res = await fetch(url, init)
+      if (res.status === 429 || res.status >= 500) {
+        lastErr = new Error(`transient ${res.status}`)
+        // Drain the body so the connection can be reused.
+        await res.text().catch(() => '')
+        continue
+      }
+      return res
+    } catch (err) {
+      // fetch() throws on DNS failure, connection reset, EHOSTUNREACH and on
+      // the AbortSignal timeout. Retrying a timeout is deliberate: a reasoning
+      // model over 28 images is genuinely slow and sometimes just needs a
+      // second run at it.
+      lastErr = err
+    }
+  }
+  throw new Error(
+    `gateway unreachable after ${attempts} attempts: ${lastErr instanceof Error ? lastErr.message : String(lastErr)}`
+  )
+}
+
 export async function callGatewayModel(params: {
   model: string
   /** Omitted for single-turn calls; an empty system message is rejected by some providers. */
@@ -105,7 +150,7 @@ export async function callGatewayModel(params: {
 
   const { url, token, headers } = endpointAndAuth()
   const isOpenRouter = url.includes('openrouter.ai')
-  const res = await fetch(url, {
+  const res = await fetchWithRetry(url, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -172,7 +217,8 @@ export async function callGatewayModel(params: {
     const truncated = choice?.finish_reason === 'length'
     const why = reasoned
       ? `it spent the whole ${maxTokens}-token budget on hidden reasoning (finish_reason=${choice?.finish_reason}). ` +
-        'Reasoning is disabled by default for OpenRouter; GATEWAY_REASONING=1 turns it back on and this is what that costs.'
+        'Reasoning is ON by default because it is worth ~1 expert failure per fixture — raise maxTokens so the budget ' +
+        'covers the thinking AND the answer, or set GATEWAY_REASONING=0 to trade that accuracy away.'
       : truncated
         ? `output hit the ${maxTokens}-token ceiling before the answer closed`
         : 'the provider returned an empty message'

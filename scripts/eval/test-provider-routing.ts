@@ -115,7 +115,10 @@ async function main() {
         framesBase64: [TINY_JPEG],
         frameMimeTypes: ['image/jpeg'],
         userText: 'Reply with exactly this JSON and nothing else: {"ok": true}',
-        maxTokens: 50,
+        // Generous on purpose: reasoning is on by default, and the budget has
+        // to cover the thinking as well as the answer. 50 tokens was enough
+        // with reasoning off and returns content:null with it on.
+        maxTokens: 2000,
       })
       check('a real gateway call returns text', live.text.length > 0, JSON.stringify(live.text).slice(0, 120))
       check('provider reports a model', !!live.model, live.model)

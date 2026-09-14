@@ -1,0 +1,61 @@
+STANCE RUBRIC v22 — how many of the player's own shoes would fit in the gap between their feet? One to two is correct. Then take up to 2 points off if they did not hold it.
+
+THE TARGET IS HIP WIDTH. "Shoulder width apart" is the phrase coaches say and the phrase you write back to the player, but it is a cue, not a measurement — taken literally it is wider than anyone shoots from. When you MEASURE, the target is the feet under the hips. The plain-English version is the toe-touch test: a correct base is one the player could fold straight down from and touch their toes without moving their feet.
+
+THERE IS ONE SCORE, NOT TWO SCORES AVERAGED. Work it in two steps and never show the steps to the player.
+  STEP A measures the base they actually shot from. Whatever it comes to IS the score.
+  STEP B is a single downward adjustment of 0, 1 or 2 points, and nothing else. There is no other arithmetic in this criterion.
+
+STEP A — MEASURE THE BASE BEFORE THE RELEASE.
+  THE WINDOW opens when the player starts driving upward into the shot and closes on the LAST frame where both feet are still on the floor. Measure inside that window and nowhere else. Players stand with their feet together while waiting and step out as they load, so a narrow reading taken before the shot starts is not a finding — but feet STILL close together inside the window IS the finding, and must never be excused by assuming they were about to step out. If the feet shift during the window, use the widest set position they hold with both feet down.
+
+  THE RULER IS THE SHOE. Never judge the base by impression; first impressions are wrong in both directions. Find the side-to-side width of ONE shoe where it meets the floor, as it appears in this frame. Then find the GAP — the bare floor between the inner edge of one shoe and the inner edge of the other. Then ask one physical question: HOW MANY OF THAT PLAYER'S OWN SHOES WOULD LIE FLAT IN THAT GAP? Answer it as shoes laid in a gap, not as a ratio. The shoe works where hip and shoulder lines do not, because both quantities shrink together — half a shoe is half a shoe whether the player is six feet from the camera or thirty.
+
+  SCORE ANCHORS — read the score off the count. Every whole and half point is available; land between two anchors when the count sits between them.
+    10 — ONE TO TWO shoes fit comfortably in the gap. This is the target. A borderline reading inside this band is a good base far more often than a bad one, so call it correct.
+    8  — About ONE shoe but squeezed, or about TWO AND A HALF: the gap is just outside the target on one side or the other. Still a workable base with something to tidy.
+    7  — Distinctly narrow at roughly half a shoe, or distinctly wide at about three shoes. A real fault with a real amount of room to find.
+    4  — Clearly wrong in one direction: a gap plainly under half a shoe with the shoes nearly meeting, or a gap of four shoes or more with the feet planted well outside the shoulders. It does not matter how athletic or loaded a wide crouch looks.
+    1  — The shoes touching or overlapping with no floor between them at any height, or a straddle so wide the foot span is half again the shoulder span.
+
+  SAY WHICH SIDE OF THE TARGET YOU ARE ON, EVERY TIME. Write the count first and the direction second. A small count can NEVER mean too wide, and a base you scored on a count under one is FORBIDDEN from being described as wide. Calling narrow "wide" or wide "narrow" is the worst error this criterion makes, and it happens whenever the two faults are blurred into one question about whether the stance "looks right".
+
+  CONFIRM WIDE WITH THE SHOULDERS, ONLY WHEN THE COUNT CAME OUT AT TWO AND A HALF OR MORE. Find the outer edge of each SHOULDER JOINT — the torso edge, never an arm, elbow, hand or the ball, because a raised arm inflates that span — and drop a vertical line from each to the floor. Shoes inside those lines or sitting right on them: not wide, keep the score the count gave you. Shoes clearly outside them: the count was right, keep it. Shoes so far outside that the foot span is half again the shoulder span: 1-2. Do not run this check on a count below two and a half — a base with the shoes close together cannot also be too wide, and a shoe sitting at the shoulder line is a GOOD base, not a wide one.
+
+  THE PHRASE "A REASONABLE SHOULDER-WIDTH BASE" IS THE TELL THAT YOU NEVER COUNTED. A loaded crouch with the thighs pushed apart and the shoes planted outside the shoulders reads as athletic and stable, and it is easy to write up as solid and move on. It is the wide fault. Before describing ANY base as good or shoulder-width, state where the shoes are relative to the shoulder lines.
+
+  JUDGE THE SHOES ON THE FLOOR, NOT THE LEGS. Knees or thighs converging while the shoes stay apart is a knee-bend question and belongs to another criterion.
+
+  WHEN THE SHOES OVERLAP IN THE IMAGE, MEASURE HIGHER UP. Correct form puts the shooting-side foot slightly AHEAD of the other, and a front-on camera — including the usual view from under or behind the basket — flattens that depth so the near shoe visually overlaps the far one. A perfectly good base then shows a gap of zero. THE TELL: a strip of floor visible BETWEEN THE LOWER LEGS somewhere between ankle and knee, the legs reading as an A rather than one post. When you see that, do not score the overlap as zero. Measure the widest visible gap between the two LEGS instead, still in shoe widths, and run the anchors on that. A genuinely bunched base shows the legs as ONE column with no floor between them at any height.
+
+  THIS CRITERION IS DIRECTLY MEASURABLE, SO NEVER DEFAULT TO A HIGH SCORE. The gap and the shoe are both in the frame, which makes a bad base a specific, countable flaw. The general burden-of-proof and default-to-10 rules do NOT soften this criterion. A square torso, a clean rise, good balance or a tidy upper body tell you nothing about the base and must never pull a narrow or wide stance back toward 9.
+
+  CONFIRM YOU CAN SEE BOTH SHOES before measuring — not cropped, not hidden behind a court marking or another player, not blurred into the floor. If the feet are never clearly visible during the shooting motion, return null.
+
+STEP B — DID THEY HOLD IT? A COMPARISON, NEVER A SECOND SCORE.
+  You can only deduct here if you have SEEN the STEP A base and can hold it next to a later frame. A collapse is a CHANGE, and one frame cannot show a change. If you have one frame, cannot identify the release, or never saw the base beforehand, deduct NOTHING.
+  IF YOU CANNOT SEE THE FEET AFTER THE RELEASE — the clip ends, the feet leave frame, the player walks off, the blur is unreadable — SKIP STEP B ENTIRELY. A 9 stays a 9. Do not guess and do not assume they collapsed.
+  Otherwise, pick the frame that shows the base best before the release and the frame where the feet are back down afterwards, and compare the two gaps directly. Take the worst of what you see:
+    Held the same base, or close to it: take nothing off. A small drift inward as the player extends is normal and costs nothing.
+    Noticeably closer together or wider than the base they set: take 1 off.
+    Bunched at the release with the shoes almost touching, a wide sideways straddle, or a full collapse at the landing with the shoes nearly touching or one foot crossing behind the other: take 2 off. Two points is the most this can ever cost.
+  On a genuine high jump some narrowing in mid-air is expected; judge at the moment of release and at touchdown, not at the peak.
+  NEVER ADD POINTS FOR WHAT HAPPENS AFTER THE BALL IS GONE. A tidy landing does not rescue a base that was wrong. If the landing reads BETTER than the base, that is not a finding: deduct nothing, report nothing, move on.
+  Whenever you deduct here, the reasoning must tell the player to HOLD the base through the shot and land in the stance they shot from — and must NOT tell them their stance was wrong to begin with, because it was not.
+
+EXPERT CALIBRATION — every case measured against that player's own shoe:
+  - Distant and small in frame, square, ball at the set point, nothing could pass between the shoes: count 0, score 1-3.
+  - Set point, ball up beside the head, square to a front-on camera, floor visible between the lower legs, gap about two fifths of a shoe: count under 1, score 4. The floor between the legs only tells you the shoes are not fused; the gap is still under half a shoe.
+  - Facing the camera in the gather, ball at the chest, gap just under one shoe: count just under 1, score 7-8. A base with that much room in it is never in the failing bands.
+  - Set point, ball raised overhead in both hands, front-on camera, shooting-side foot ahead so the shoes partly overlap in the image, but clear floor between the lower legs and the feet plainly about shoulder width: measure the legs, count 1-2, score 9-10. The expert called this "perfect shoulder width apart".
+  - Crouched gather, ball at the chest, one shoe fits exactly: count 1, score 9-10.
+  - Follow-through frame, both arms extended overhead, shoes landing near the shoulder plumb lines with an obvious gap: count 1-2, score 9-10. Feet near the shoulder lines are a good base, not a wide one.
+  - Square to the camera, ball up beside the head, KNEES and thighs close together but the SHOES clearly separated with obvious daylight: count 1-2, score 9-10. Score the shoes, not the thighs.
+  - Standing tall mid-shot, arms overhead, shoes a few inches apart and well inside the shoulders: count under 1, score 4.
+  - Crouched gather, ball at the chest, knees pushed outward, shoes clearly outside the shoulder plumb lines both sides: count about 3, score 7. A working straddle, not the extreme band.
+  - Loaded crouch, ball at the set point, thighs pushed apart, shoes planted well outside the shoulder lines: count about three and a half, score 4-5. The expert: "way too much separation, it looks uncomfortable." A live analysis called this same base "a reasonable shoulder-width base" and scored the shot 7 — the count was never checked against the top of the target band.
+  - TWO-FRAME PAIR. Gather before release: square to camera, ball up in both hands, shoes plainly separated with visible daylight, a little inside hip width — count just under 1, STEP A gives 7. Landing after release: shoes swung nearly together, almost touching — STEP B takes 2 off, final 5. The feedback tells the player the base they shot from was fine and the landing collapsed, in that order.
+
+PLAYER-FACING WORDING: always say "shoulder width" — too narrow, too wide, or a good shoulder-width base. NEVER write "hip width", and never mention spans, ratios, counts or measurements.
+
+NEVER SHOW YOUR WORKING TO THE PLAYER. The reasoning is read by a kid. The words step, deduct, deduction, points off, average, weighted, score, band and criterion are FORBIDDEN in the reasoning, along with every digit and every sum. Never write anything of the shape "before release 3-4, after release 7, averaging gives 5". Write two or three sentences the way a coach talks: what the base looked like going up, whether they held it, and the one thing to fix.

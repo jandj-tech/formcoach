@@ -1,0 +1,28 @@
+SQUARE RUBRIC v4 — do the toes and the shoulders point the same way?
+
+YOU DO NOT NEED TO SEE THE RIM. This criterion asks whether the player's own body agrees with itself. Never return null because the basket is out of frame, and never skip a deduction because you could not confirm where it is.
+
+HOW TO SEE FOOT DIRECTION FROM THE USUAL CAMERA. Filmed from under or behind the basket looking back at the shooter, a foot pointed at the camera shows you its TOP — the laces, the toe box, the shoe at its shortest. A foot rotated toward sideways shows you its SIDE — the full length of the sole, the shoe at its longest. That contrast is what you are reading, and it is clearer from this angle than from any other. From a SIDE camera it reverses: a squared foot shows its side and a turned foot shows its top or heel. Say in your reasoning which of the two views you had.
+
+SCORE ANCHORS — every whole and half point is available.
+  10 — Both feet show the same face to the camera as each other, and the SHOULDERS show the same face as the feet: toes, hips and shoulders all aimed one way, the shot coming out along that line. A pair of toes turned a little off the shot line is INCLUDED here — a right-hander pointing slightly left, a left-hander slightly right, is a stance coaches teach on purpose. So is a few degrees of settling or shuffle between the gather and the landing.
+  7  — The feet visibly move during the shot — a pivot or a step round as the player rises — but land pointing where the shoulders point, and the upper body never has to work around them. Also 7 when the two feet disagree with each other while the shoulders still match one of them.
+  4  — The feet and the shoulders show DIFFERENT faces to the camera at the set point: the shoes presenting their sides while the chest presents its front, or the reverse. The player is shooting across their own base, and the torso is visibly wound round relative to the hips and feet.
+  1  — The feet are close to sideways relative to the shot, the whole torso has rotated to get the shot away, and the base visibly swings back round during or after the release.
+
+THE FLAW IS A MISMATCH, NOT AN ANGLE. Foot direction on its own is not the fault and a small amount of foot movement is not the fault. What you are scoring is whether the upper body and the feet disagree. Only movement large enough that the player is clearly re-aiming their base mid-shot belongs below 7.
+
+A STAGGERED STANCE IS NOT A TURNED STANCE. The shooting-side foot being slightly AHEAD of the other is correct form and belongs to a different criterion. What matters is the direction the toes POINT, not which foot is forward.
+
+WATCH THE FEET ACROSS FRAMES, NOT IN ONE. One picture of turned feet is just a stance. Compare the gather frame with the rise and the landing. A few degrees of shuffle between them is nothing; a base that has visibly swung to a different direction is the deduction.
+
+THE MOST COMMON ERROR IS SCORING THIS OFF THE UPPER BODY ALONE. Square shoulders and clean arms read as "square" at a glance and that glance never looked at the feet. Look at the shoes every time, and state in your reasoning which face of the shoe you could see. If you cannot say, you have not checked.
+
+RETURN NULL only when the feet are not visible at all during the shooting motion. Not seeing the basket is never a reason.
+
+EXPERT CALIBRATION:
+  - Mid-shot with the ball at the set point, upper body and arms aimed one way, both feet clearly planted pointing another, torso visibly rotated back to compensate, rim not in frame: 5-6. Scoring it high because the arms looked fine, or returning null because the basket was out of shot, are both the error.
+  - Right-handed shooter whose toes point somewhat left of the shot line, shoulders and arms comfortably along that line, shot coming out clean: 9-10. A coached open stance with nothing to fix; deducting for foot direction alone is the error.
+  - The same shooter, feet also shifting a little between the gather and the landing while the shot is unaffected: still 9-10. Dropping this to a 6 or 7 for a small adjustment is the error.
+
+PLAYER-FACING WORDING: describe what you saw the body do — the shoulders having to twist back, or the base swinging round to get the shot away — not the angle of the feet. Never tell a player whose open stance is working that they should point their toes straight, and never make a note of a small foot adjustment. Never mention lines, angles, degrees or frames in the reasoning.

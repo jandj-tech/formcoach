@@ -1,5 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { isGatewayModel, callGatewayModel } from '@/lib/model-provider'
 import { createHash } from 'crypto'
+import { readFileSync } from 'fs'
+import { join } from 'path'
 import { db } from './db'
 
 function getAnthropic() {
@@ -10,6 +13,39 @@ interface CriterionResult {
   id: number
   score: number | null
   reasoning: string
+  /**
+   * How far the ensemble passes disagreed on this criterion (max - min).
+   *
+   * DIAGNOSTIC ONLY. **Do not gate anything on this value.** It was built as a
+   * confidence signal — suppress or escalate a score when the passes disagree —
+   * and then measured against the founder's expected ranges. It does not work:
+   *
+   *   AUC(spread -> score is wrong) = 0.504   95% CI [0.388, 0.621], p = 0.95
+   *   miss rate at spread <= 2.0: 29.6%   at spread > 2.0: 26.3%
+   *   both of the worst misses (4 points out) came from spread 0
+   *
+   * Suppressing 68% of all scores moved precision from 29.0% to 28.1%. It is a
+   * flat line, not a trade-off curve.
+   *
+   * The reason is structural: the passes run at temperature 0 against a
+   * byte-identical prompt, so this measures the provider's serving
+   * nondeterminism, not the model's uncertainty. Rerun the same clip and the
+   * old confident/not-confident verdict flipped on 12.3% of criteria.
+   *
+   * It is still worth recording — the passes are already paid for, and "did
+   * the passes agree" is a useful thing to have in the row when investigating
+   * a grade after the fact. It is only worthless as a gate.
+   *
+   * What DID predict error, on 344 expert-labelled production rows: which
+   * criterion it is (AUC 0.673) and how low the score is (0.608). If
+   * abstention is ever wanted, it belongs on a per-criterion list, not here.
+   *
+   * null on a single-pass run (Shootaround session mode) — nothing to compare.
+   */
+  spread?: number | null
+  /** Passes that returned a number vs. passes that ran at all. */
+  passes_scored?: number
+  passes_total?: number
 }
 
 // Hedging language means the model reconstructed a score instead of observing
@@ -112,12 +148,24 @@ interface AnalysisResult {
   criteria: CriterionResult[]
 }
 
-// Bump this whenever the static prompt body in buildSystemPrompt changes in a
-// way that should count as a new grader. The dynamic pieces (rubric text,
-// calibration block) are hashed in directly; the frame-count interpolation
-// (n / earlyEnd / midEnd) is deliberately excluded so the same rubric hashes
-// identically for a 20-frame and a 28-frame clip.
-const PROMPT_TEMPLATE_VERSION = 'template-v1'
+// Frame count used ONLY to render the prompt for hashing. The real prompt is
+// still built with the clip's actual frame count; pinning this one number means
+// a 20-frame and a 28-frame clip of the same rubric hash identically, so
+// prompt_sha tracks grader changes rather than clip length.
+const SHA_CANONICAL_FRAME_COUNT = 28
+
+// Salt for prompt_sha. It does NOT need bumping when the prompt changes —
+// buildSystemPrompt's full rendered output is hashed, so any edit to the prompt
+// body, the rubric text or the calibration block moves the hash on its own.
+// It exists only to force a NEW grader identity without touching the prompt
+// (e.g. after a model or decoding-parameter swap, which the prompt cannot see).
+//
+// It used to be the ONLY thing standing in for the prompt body, and the body was
+// never hashed. Editing the rubric and forgetting to bump this silently failed
+// three safety nets at once: no "GRADER CHANGED" banner, every stored
+// grader_version still claimed the old grader, and the baseline diff read the
+// change as noise. That is why past rubric rewrites regressed unnoticed.
+const PROMPT_SHA_SALT = 'template-v1'
 
 interface GraderContext {
   activeCriteria: CriteriaRow[]
@@ -127,6 +175,37 @@ interface GraderContext {
   promptSha: string
   rubricTags: string[]
 }
+
+/**
+ * Minimum corrections on a criterion before its drift is allowed to become a
+ * standing instruction in the grading prompt.
+ *
+ * This was 1. A criterion with a SINGLE correction was emitting a systematic
+ * directive: "Knees Bent" had exactly one (3.0 -> 6.0) and was telling the
+ * model "you score 3.0 pts too LOW — be more generous" on every analysis.
+ *
+ * 5 is where the gate that already exists becomes meaningful rather than
+ * arbitrary. A criterion only qualifies if EVERY correction points the same
+ * direction, so the count is a sign test: under a null of "corrections are
+ * noise, equally likely either way", unanimity across n has p = 2 * 0.5^n —
+ * 0.50 at n=2, 0.25 at n=3, 0.063 at n=5. Below 5 the block was reporting
+ * coin flips as bias.
+ *
+ * It matters more than the arithmetic suggests, because corrections are not a
+ * random sample of scores. An admin corrects what looks wrong, so a criterion
+ * can show unanimous upward drift purely because nobody bothers clicking the
+ * ones that were too high. Measured across all 78 corrections the mean signed
+ * error is -0.22 with sd 2.57: the grader's problem is variance, not bias, and
+ * a bias offset built from a handful of clicks moves scores without fixing
+ * anything.
+ *
+ * As of 2026-09-13 this empties the calibration block: the four criteria that
+ * currently inject text have n = 4, 3, 2 and 1, and all four say "be more
+ * generous". The criteria with the MOST corrections — Feet Shoulder Width
+ * (n=14), Elbow (n=11) — inject nothing, because their corrections genuinely
+ * run both ways. Emptying it is the intended outcome, not a side effect.
+ */
+const MIN_CORRECTIONS_FOR_CALIBRATION = 5
 
 /**
  * Renders the "EXPERT GRADING CALIBRATION" block from live admin corrections.
@@ -146,7 +225,7 @@ export async function buildCalibrationFeedbackText(): Promise<string> {
     JOIN criteria c ON cs.criterion_id = c.id
     WHERE cs.admin_score IS NOT NULL
     GROUP BY c.name, cs.criterion_id
-    HAVING COUNT(*) >= 1
+    HAVING COUNT(*) >= ${MIN_CORRECTIONS_FOR_CALIBRATION}
     ORDER BY ABS(AVG(cs.admin_score - cs.ai_score)) DESC
   `
 
@@ -205,13 +284,78 @@ export async function buildCalibrationFeedbackText(): Promise<string> {
  * grader-changed warning against the accepted baseline — that warning is the
  * record that corrections moved the grader.
  */
+/**
+ * Draft rubrics in scripts/rubrics/, by the criterion each one replaces.
+ * Adding a draft here is what makes it testable; it does not make it live.
+ */
+const RUBRIC_DRAFTS: Record<string, string> = {
+  elbow: 'Elbow L-Shape — Under the Ball',
+  guidehand: 'Guide Hand Follow Through',
+  power: 'Source of Shot Power',
+  square: 'Square to the Basket',
+  stance: 'Feet Shoulder Width Apart',
+}
+
+/**
+ * Swaps draft rubric text in for the live text, in memory only, for the
+ * criteria named in RUBRIC_OVERRIDE (comma-separated, e.g. "square,power").
+ *
+ * WHY THIS EXISTS: grading_notes is read from the database on every request, so
+ * writing a draft rubric to the database to evaluate it makes it LIVE — real
+ * uploads get graded by unvalidated text for the whole ~25 minutes the eval
+ * takes, and a bad draft has to be noticed and reverted before it stops. That
+ * is backwards: the point of the Test Bench is to find out BEFORE shipping.
+ *
+ * With this, a draft is evaluated against the real fixtures while production
+ * keeps grading on the rubric it already had. prompt_sha moves on its own
+ * (the rendered prompt is what gets hashed), so the run still reports
+ * GRADER CHANGED and the baseline diff still works.
+ *
+ * Unset in production, and it must stay that way — it is a local evaluation
+ * tool. A name that does not resolve THROWS rather than quietly changing
+ * nothing, because a silent no-op would report "this draft changed nothing"
+ * when the draft was never actually loaded.
+ */
+function applyRubricOverrides(rows: CriteriaRow[]): CriteriaRow[] {
+  const requested = (process.env.RUBRIC_OVERRIDE ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+  if (requested.length === 0) return rows
+
+  const out = rows.map((r) => ({ ...r }))
+  for (const name of requested) {
+    const criterionName = RUBRIC_DRAFTS[name]
+    if (!criterionName) {
+      throw new Error(
+        `RUBRIC_OVERRIDE: no draft named "${name}". Known: ${Object.keys(RUBRIC_DRAFTS).join(', ')}`
+      )
+    }
+    const row = out.find((r) => r.name === criterionName)
+    if (!row) {
+      throw new Error(
+        `RUBRIC_OVERRIDE: "${name}" maps to criterion "${criterionName}", which is not active in this database`
+      )
+    }
+    const text = readFileSync(join(process.cwd(), 'scripts', 'rubrics', `${name}.txt`), 'utf8').trim()
+    if (!text) throw new Error(`RUBRIC_OVERRIDE: scripts/rubrics/${name}.txt is empty`)
+    row.grading_notes = text
+    console.log('[analyze] RUBRIC OVERRIDE ACTIVE — not the live rubric', {
+      criterion: criterionName,
+      draft: `scripts/rubrics/${name}.txt`,
+      chars: text.length,
+    })
+  }
+  return out
+}
+
 async function loadGraderContext(): Promise<GraderContext> {
-  const activeCriteria = (await db`
+  const activeCriteria = applyRubricOverrides((await db`
     SELECT id, name, description, grading_notes, weight
     FROM criteria
     WHERE active = true
     ORDER BY order_index
-  `) as unknown as CriteriaRow[]
+  `) as unknown as CriteriaRow[])
 
   const feedbackText = await buildCalibrationFeedbackText()
   // No frozen calibration versions in live mode; the correction state is
@@ -228,14 +372,39 @@ async function loadGraderContext(): Promise<GraderContext> {
     .map((c) => (c.grading_notes || '').match(/[A-Z][A-Z /&—-]*RUBRIC v\d+/)?.[0])
     .filter((t): t is string => !!t)
 
+  // Hash the prompt the model actually receives, rendered at a pinned frame
+  // count. Hashing the *inputs* (rubric + calibration) instead left the entire
+  // static body — every principle, every moment definition, the whole output
+  // contract — outside the hash. See PROMPT_SHA_SALT.
   const promptSha = createHash('sha256')
-    .update(PROMPT_TEMPLATE_VERSION + criteriaText + feedbackText)
+    .update(
+      PROMPT_SHA_SALT +
+        buildSystemPrompt({ criteriaText, feedbackText }, SHA_CANONICAL_FRAME_COUNT)
+    )
     .digest('hex')
 
   return { activeCriteria, criteriaText, feedbackText, calibrationVersion, promptSha, rubricTags }
 }
 
-function buildSystemPrompt(ctx: GraderContext, n: number): string {
+/**
+ * The exact prompt the grader sends, for inspection — `scripts/eval/show-prompt.mjs`
+ * prints it and diffs it between branches. Worth having a supported way in:
+ * prompt_sha changing tells you the grader moved, but not what moved, and
+ * reading the prompt was previously only possible by rebuilding it by hand.
+ */
+export async function renderGraderPrompt(frames = SHA_CANONICAL_FRAME_COUNT): Promise<{
+  prompt: string
+  promptSha: string
+  rubricTags: string[]
+}> {
+  const ctx = await loadGraderContext()
+  return { prompt: buildSystemPrompt(ctx, frames), promptSha: ctx.promptSha, rubricTags: ctx.rubricTags }
+}
+
+function buildSystemPrompt(
+  ctx: Pick<GraderContext, 'criteriaText' | 'feedbackText'>,
+  n: number
+): string {
   const { criteriaText, feedbackText } = ctx
   const earlyEnd = Math.round(n * 0.4)
   const midEnd = Math.round(n * 0.7)
@@ -375,7 +544,6 @@ CRITICAL FLAGS — these operate on their own detection standard, independent of
 
 NOTE: These flags are the most important flaws to detect. Report each as a 0-10 confidence, not a guess: 0-2 clearly absent, 3-6 borderline or partially suggestive, 7-10 clearly present with a frame you can point to. Confidence 7+ is treated as the flaw being present.
 
-For overall_score: average only scored criteria (exclude nulls).
 
 SHOT DETECTION — do these specific frames actually show a shot being taken? This is the FIRST thing to decide, before any scoring. Look at the frames as a sequence. To be analyzable, the frames must actually capture the shooting motion of ONE player: gathering the ball, lifting it to a set point, rising or jumping, releasing it, and following through.
 
@@ -388,7 +556,6 @@ Set "shot_detected" to TRUE only when you can clearly see a real shot being take
 Return ONLY valid JSON, no other text:
 {
   "shot_detected": <true|false — false ONLY if there is clearly no analyzable shot>,
-  "overall_score": <average of scored criteria, 1-10, one decimal>,
   "player_assessment": {
     "player_type": "<child|recreational|college_pro|nba_bad_form|nba_decent|nba_elite>",
     "player_name": <string or null>
@@ -441,6 +608,39 @@ async function analyzeShotOnce(
     })
   )
 
+  const USER_TEXT =
+    'Analyze this basketball shot across all frames and return your scoring as JSON.'
+
+  // A gateway model (id contains "/") takes the OpenAI-shaped path in
+  // lib/model-provider.ts; everything else stays on the Anthropic SDK exactly
+  // as before. Both return raw text, and every rule below this point — flag
+  // normalization, the arc and rotation guards, GUESS_PATTERNS — runs on the
+  // parsed JSON and so applies identically whichever provider answered.
+  let text: string
+  if (isGatewayModel(model)) {
+    const gw = await callGatewayModel({
+      model,
+      systemPrompt,
+      framesBase64: frameBase64Array,
+      frameMimeTypes,
+      userText: USER_TEXT,
+      // 6000 is Anthropic's budget here, and it is too tight for the small
+      // models: they narrate 18 criteria far more verbosely than Claude and
+      // hit the ceiling mid-array, so the JSON never closes and every fixture
+      // dies on a parse error. That failure is indistinguishable from bad
+      // grading unless you look at the output token count sitting exactly on
+      // the cap. Output is the cheap half of these models (qwen3.7-flash bills
+      // $0.130/Mtok), so 16000 tokens costs about a fifth of a cent.
+      maxTokens: 16000,
+    })
+    console.log('[analyze] usage', {
+      model: gw.model,
+      via: 'gateway',
+      input: gw.usage.input,
+      output: gw.usage.output,
+    })
+    text = gw.text
+  } else {
   const response = await getAnthropic().messages.create({
     model,
     max_tokens: 6000,
@@ -473,7 +673,7 @@ async function analyzeShotOnce(
           ...imageContent,
           {
             type: 'text',
-            text: 'Analyze this basketball shot across all frames and return your scoring as JSON.',
+            text: USER_TEXT,
           },
         ],
       },
@@ -490,7 +690,9 @@ async function analyzeShotOnce(
   })
 
   const textBlock = response.content.find((b) => b.type === 'text')
-  const text = textBlock?.type === 'text' ? textBlock.text : ''
+  text = textBlock?.type === 'text' ? textBlock.text : ''
+  }
+
   const jsonMatch = text.match(/\{[\s\S]*\}/)
   if (!jsonMatch) throw new Error('No JSON in Claude response')
 
@@ -613,6 +815,57 @@ interface CriteriaRow {
   weight: unknown
 }
 
+/**
+ * Resolves criterion NAMES to the ids they currently hold in the DB.
+ *
+ * Every cap in finalizeResult targets criteria by name rather than by id.
+ * Criteria ids are serial and rows get recreated — "Feet Shoulder Width Apart"
+ * is id 19, and the seed's id 1 is deactivated — so a hardcoded id list can
+ * quietly start capping a different criterion than the one it names.
+ *
+ * A name that matches nothing is a code/DB mismatch, not a data condition, so
+ * it is logged loudly. It still returns the ids it did find: a stale name
+ * should weaken a cap, never throw away a grade mid-analysis.
+ */
+function idsForNames(activeCriteria: CriteriaRow[], names: readonly string[]): number[] {
+  const ids: number[] = []
+  for (const name of names) {
+    const row = activeCriteria.find((c) => c.name === name)
+    if (!row) {
+      console.warn('[analyze] criterion name did not resolve — cap skipped', { name })
+      continue
+    }
+    ids.push(Number(row.id))
+  }
+  return ids
+}
+
+// A chest-pass grip, and a behind-the-head catapult, each invalidate these three.
+const CHEST_PASS_CRITERIA = [
+  'Shot Pocket — Elbow',
+  'Source of Shot Power',
+  'Shooting Through Guide Hand / One Hand Release',
+] as const
+const CATAPULT_CRITERIA = [
+  'Elbow L-Shape — Under the Ball',
+  'Shot Pocket — Elbow',
+  'Source of Shot Power',
+] as const
+// Any one of these below 5 caps the overall at 6.0.
+const CRITICAL_CRITERIA = [
+  'Elbow L-Shape — Under the Ball',
+  'Shooting Through Guide Hand / One Hand Release',
+  'Shooting Hand Follow Through',
+  'Guide Hand Follow Through',
+] as const
+// Two or more of these at 5 or below stack a harder cap. Live weights
+// (2026-09-13): one-hand release 2.50, shooting follow-through 2.50, elbow 1.75.
+const HEAVY_CRITERIA = [
+  'Elbow L-Shape — Under the Ball',
+  'Shooting Through Guide Hand / One Hand Release',
+  'Shooting Hand Follow Through',
+] as const
+
 // Deterministic post-processing shared by every ensemble merge: caps,
 // weighted overall, player-type adjustment. Pure function of its inputs.
 function finalizeResult(result: AnalysisResult, activeCriteria: CriteriaRow[]): AnalysisResult {
@@ -630,14 +883,7 @@ function finalizeResult(result: AnalysisResult, activeCriteria: CriteriaRow[]): 
   // pocket, the power came from the arms, and the release cannot be one-handed.
   // Resolved by name because these ids come from the DB, not the seed order.
   if (result.critical_flags.chest_pass_hands) {
-    const chestPassCriteria = [
-      'Shot Pocket — Elbow',
-      'Source of Shot Power',
-      'Shooting Through Guide Hand / One Hand Release',
-    ]
-    const capIds = activeCriteria
-      .filter((c) => chestPassCriteria.includes(c.name as string))
-      .map((c) => c.id as number)
+    const capIds = idsForNames(activeCriteria, CHEST_PASS_CRITERIA)
     for (const c of result.criteria) {
       if (capIds.includes(c.id) && c.score !== null) {
         c.score = Math.min(c.score as number, 4)
@@ -650,14 +896,7 @@ function finalizeResult(result: AnalysisResult, activeCriteria: CriteriaRow[]): 
   // and the power comes from slinging with the arms rather than the legs. Caps
   // all three, mirroring the chest-pass cap.
   if (result.critical_flags.ball_behind_head) {
-    const catapultCriteria = [
-      'Elbow L-Shape — Under the Ball',
-      'Shot Pocket — Elbow',
-      'Source of Shot Power',
-    ]
-    const capIds = activeCriteria
-      .filter((c) => catapultCriteria.includes(c.name as string))
-      .map((c) => c.id as number)
+    const capIds = idsForNames(activeCriteria, CATAPULT_CRITERIA)
     for (const c of result.criteria) {
       if (capIds.includes(c.id) && c.score !== null) {
         c.score = Math.min(c.score as number, 4)
@@ -670,11 +909,26 @@ function finalizeResult(result: AnalysisResult, activeCriteria: CriteriaRow[]): 
   const weightMap: Record<number, number> = Object.fromEntries(
     activeCriteriaRows.map((c) => [Number(c.id), Number(c.weight) || 1])
   )
+  // The model is NOT asked for overall_score and never returns one — the
+  // headline number is computed here, from the criteria, every time.
+  //
+  // That is deliberate. When all ~18 criteria were graded in one call with
+  // overall_score sitting in the same JSON the model was still filling in, it
+  // picked a shot-level band first and filled the criteria in around it:
+  // corr(per-analysis mean signed error, overall_score) = +0.858, and 9 of 12
+  // corrected analyses had errors running 100% one direction. Classic halo.
+  // The value was already discarded and recomputed here; asking for it bought
+  // nothing and cost the independence of every criterion.
   const scored = result.criteria.filter(c => c.score !== null)
   if (scored.length > 0) {
     const totalWeight = scored.reduce((sum, c) => sum + (weightMap[c.id] ?? 1), 0)
     const weightedSum = scored.reduce((sum, c) => sum + (c.score as number) * (weightMap[c.id] ?? 1), 0)
     result.overall_score = Math.round((weightedSum / totalWeight) * 10) / 10
+  } else {
+    // Unreachable in practice — the assessableCount guard above already
+    // returned for anything under half-graded — but it keeps overall_score a
+    // number rather than undefined feeding NaN into the multiplier below.
+    result.overall_score = 0
   }
 
   // Apply critical flag caps FIRST — stacking penalties for multiple flaws
@@ -689,9 +943,15 @@ function finalizeResult(result: AnalysisResult, activeCriteria: CriteriaRow[]): 
     result.overall_score = Math.min(result.overall_score, 6.0)
   }
 
-  // Cap overall if any critical criterion scored very low (< 5)
-  // Elbow L-shape (5), one-hand release (11), shooting follow-through (15), guide follow-through (16)
-  const criticalCriteriaIds = [5, 11, 15, 16]
+  // Cap overall if any critical criterion scored very low (< 5).
+  //
+  // Resolved BY NAME, like the chest-pass and catapult caps above. These were
+  // hardcoded as ids [5, 11, 15, 16] — serial ids from the seed order. They
+  // happen to still be correct, but "Feet Shoulder Width Apart" is id 19, not
+  // 1, and the original id 1 is deactivated: criteria rows do get recreated
+  // with new ids, and when that happens a hardcoded list silently caps the
+  // WRONG criteria with no error anywhere.
+  const criticalCriteriaIds = idsForNames(activeCriteria, CRITICAL_CRITERIA)
   const hasVeryLowCriticalScore = result.criteria.some(
     c => criticalCriteriaIds.includes(c.id) && c.score !== null && (c.score as number) < 5
   )
@@ -699,10 +959,11 @@ function finalizeResult(result: AnalysisResult, activeCriteria: CriteriaRow[]): 
     result.overall_score = Math.min(result.overall_score, 6.0)
   }
 
-  // Stacking cap: 2+ of the 2.5x-weighted criteria (elbow=5, one-hand release=11, follow-through=15) score ≤5
-  const weightedLowCount = [5, 11, 15].filter(id => {
+  // Stacking cap: 2+ of the heaviest-weighted criteria score <= 5.
+  // Also by name, for the reason above.
+  const weightedLowCount = idsForNames(activeCriteria, HEAVY_CRITERIA).filter(id => {
     const c = result.criteria.find(c => c.id === id)
-    return c?.score !== null && (c?.score as number) <= 5
+    return c !== undefined && c.score !== null && (c.score as number) <= 5
   }).length
   if (weightedLowCount >= 3) result.overall_score = Math.min(result.overall_score, 5.0)
   else if (weightedLowCount >= 2) result.overall_score = Math.min(result.overall_score, 5.5)
@@ -845,7 +1106,15 @@ export async function analyzeShot(
   opts?: { model?: string; thinking?: 'disabled' | 'adaptive'; passes?: number }
 ): Promise<AnalysisResult> {
   const envPasses = parseInt(process.env.ANALYSIS_PASSES || '3', 10) || 3
-  const passes = Math.max(1, Math.min(5, opts?.passes ?? envPasses))
+  // Ceiling raised 5 -> 9. The cap existed when every pass was a Sonnet vision
+  // call at ~$0.14, where a 9-pass ensemble would have cost $1.26 an analysis.
+  // Measured against 76 admin corrections the grader is essentially UNBIASED
+  // (mean error -0.22) but imprecise (sd 2.57), and variance is the one error
+  // that averaging actually removes: sd/sqrt(N) takes ±2.57 to ±1.48 at 3
+  // passes and ±0.86 at 9. On a model that bills $0.030/Mtok those 9 passes
+  // cost about $0.016 — a fraction of ONE Sonnet pass — so the ceiling is now
+  // the only thing standing between us and the accuracy we can afford.
+  const passes = Math.max(1, Math.min(9, opts?.passes ?? envPasses))
   const model = opts?.model || process.env.ANALYSIS_MODEL || 'claude-sonnet-4-6'
 
   // One grader context for the whole ensemble: every pass grades with the
@@ -921,14 +1190,36 @@ export async function analyzeShot(
       // Null wins when it's the majority view (visibility rules held).
       if (scoredPasses.length * 2 <= perPass.length || scoredPasses.length === 0) {
         const nullPass = perPass.find(c => c.score === null)
-        return { id: Number(ac.id), score: null, reasoning: nullPass?.reasoning ?? '' }
+        return {
+          id: Number(ac.id),
+          score: null,
+          reasoning: nullPass?.reasoning ?? '',
+          spread: null,
+          passes_scored: scoredPasses.length,
+          passes_total: perPass.length,
+        }
       }
-      const med = median(scoredPasses.map(c => c.score as number))
+      const nums = scoredPasses.map(c => c.score as number)
+      const med = median(nums)
       const closest = scoredPasses.reduce((best, c) =>
         Math.abs((c.score as number) - med) < Math.abs((best.score as number) - med) ? c : best
       )
+      // Disagreement across the passes that actually scored it. With one pass
+      // there is nothing to compare, so spread is null rather than a
+      // misleading 0 — absent evidence of disagreement is not evidence of
+      // agreement.
+      const spread = nums.length > 1
+        ? Math.round((Math.max(...nums) - Math.min(...nums)) * 10) / 10
+        : null
       // Round medians to one decimal so 2-pass averages don't invent .25s.
-      return { id: Number(ac.id), score: Math.round(med * 10) / 10, reasoning: closest.reasoning }
+      return {
+        id: Number(ac.id),
+        score: Math.round(med * 10) / 10,
+        reasoning: closest.reasoning,
+        spread,
+        passes_scored: scoredPasses.length,
+        passes_total: perPass.length,
+      }
     }),
   }
 

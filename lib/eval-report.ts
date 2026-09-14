@@ -36,10 +36,28 @@ export interface EvalSummary {
 export interface EvalExpected {
   overall?: [number, number]
   criteria?: Record<string, [number, number] | 'null'>
+  /**
+   * Where each expected range came from. `expert` means the owner corrected
+   * that criterion by hand; `ai` means it was seeded from what the grader
+   * itself said at the time and the owner did not object.
+   *
+   * The distinction is the whole point of the field. An `ai` range is a
+   * STABILITY check — "did this change move the grader?" — and it is
+   * circular: it cannot tell you the grader was already wrong. Only `expert`
+   * ranges measure ACCURACY. A run that fails 20 `ai` cells and 0 `expert`
+   * cells has changed grading without being shown to have worsened it; the
+   * reverse is a real regression. Never add them into one number.
+   *
+   * Absent on hand-authored fixtures, where every range is the owner's.
+   */
+  criteria_source?: Record<string, 'expert' | 'ai'>
   flags?: Record<string, boolean>
   player_type?: string
   shot_detected?: boolean
 }
+
+/** Marks a checkAccuracy line as measuring a circular, AI-seeded range. */
+export const AI_SEEDED_PREFIX = '[ai-seeded] '
 
 /** What gets stored per fixture in an accepted baseline. */
 export interface BaselineEntry {
@@ -143,13 +161,16 @@ export function checkAccuracy(expected: EvalExpected, s: EvalSummary): string[] 
   }
   for (const [name, exp] of Object.entries(expected.criteria ?? {})) {
     const got = s.criteria[name]
+    // Ranges seeded from the grader's own past output are tagged so the caller
+    // can keep them out of the accuracy number. See EvalExpected.criteria_source.
+    const tag = expected.criteria_source?.[name] === 'ai' ? AI_SEEDED_PREFIX : ''
     if (got === undefined) {
-      errors.push(`"${name}" not present in results — renamed or deactivated criterion?`)
+      errors.push(`${tag}"${name}" not present in results — renamed or deactivated criterion?`)
     } else if (exp === 'null') {
-      if (got !== null) errors.push(`"${name}" expected ungraded (must not be guessed), got ${got}`)
+      if (got !== null) errors.push(`${tag}"${name}" expected ungraded (must not be guessed), got ${got}`)
     } else if (Array.isArray(exp)) {
-      if (got === null) errors.push(`"${name}" expected [${exp[0]}, ${exp[1]}], got ungraded`)
-      else if (got < exp[0] || got > exp[1]) errors.push(`"${name}" ${got} outside expected [${exp[0]}, ${exp[1]}]`)
+      if (got === null) errors.push(`${tag}"${name}" expected [${exp[0]}, ${exp[1]}], got ungraded`)
+      else if (got < exp[0] || got > exp[1]) errors.push(`${tag}"${name}" ${got} outside expected [${exp[0]}, ${exp[1]}]`)
     }
   }
   for (const [fn, expFlag] of Object.entries(expected.flags ?? {})) {

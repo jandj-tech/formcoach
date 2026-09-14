@@ -13,6 +13,11 @@ import {
   reserveSubscriptionAnalysis,
   subscriptionEntitled,
 } from '@/lib/player-subscription'
+import {
+  recordCharge,
+  refundChargesForSubmission,
+  settleChargesForSubmission,
+} from '@/lib/analysis-charge'
 import crypto from 'crypto'
 
 export const maxDuration = 300
@@ -27,8 +32,25 @@ const MAX_ANALYZE_FRAME_BYTES = 5 * 1024 * 1024
 export async function POST(req: NextRequest) {
   // Set once a credit is atomically reserved below; called to undo that charge
   // if the analysis yields no shot or throws, so nothing is billed for a
-  // non-result.
+  // non-result. Always go through settleRefund() rather than calling this
+  // directly — see the note there.
   let refundCharge: (() => Promise<void>) | null = null
+
+  /**
+   * Runs the pending refund AT MOST ONCE, then disarms it.
+   *
+   * Two paths reach a refund — the no-shot verdict, and the catch-all — and the
+   * first can still throw AFTER refunding (the DELETE that follows it, or the
+   * refund itself failing partway through). That lands in the catch, which
+   * refunded a second time: one debit, two credits back. Disarming before the
+   * call means a throw inside the refund cannot re-enter it either.
+   */
+  const settleRefund = async (): Promise<void> => {
+    const pending = refundCharge
+    if (!pending) return
+    refundCharge = null
+    await pending()
+  }
   // Set once the submission row exists, so the failure path can mark it
   // 'failed' instead of stranding it at 'processing' forever (a stranded row
   // would also keep counting against a subscriber's allowance for 15 minutes —
@@ -340,11 +362,12 @@ export async function POST(req: NextRequest) {
             WHERE LOWER(email) = ${teamCoachEmail} AND credits > 0 RETURNING email
           `) as unknown as unknown[])
         : []
-      if (coachRows.length > 0) {
+      // `&& teamCoachEmail` is narrowing, not a new condition: coachRows is
+      // only non-empty when the debit above ran, which required it.
+      if (coachRows.length > 0 && teamCoachEmail) {
         fundingSource = 'coach_credit'
-        refundCharge = async () => {
-          await db`UPDATE coach_credits SET credits = credits + 1 WHERE LOWER(email) = ${teamCoachEmail}`
-        }
+        await recordCharge(submission.id, 'coach_credit_lower', { email: teamCoachEmail })
+        refundCharge = () => refundChargesForSubmission(submission.id).then(() => undefined)
       } else {
         const teamRows = (await db`
           UPDATE teams SET credits = credits - 1 WHERE id = ${teamId} AND credits > 0 RETURNING id
@@ -354,9 +377,8 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: 'Insufficient credits' }, { status: 402 })
         }
         fundingSource = 'team_credit'
-        refundCharge = async () => {
-          await db`UPDATE teams SET credits = credits + 1 WHERE id = ${teamId}`
-        }
+        await recordCharge(submission.id, 'team_credit', { teamId })
+        refundCharge = () => refundChargesForSubmission(submission.id).then(() => undefined)
       }
     } else if (isCoachSelf && orgSelfId) {
       const rows = (await db`
@@ -367,9 +389,8 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'No analysis tokens' }, { status: 402 })
       }
       fundingSource = 'org_balance'
-      refundCharge = async () => {
-        await db`UPDATE organizations SET token_balance = token_balance + 1 WHERE id = ${orgSelfId}`
-      }
+      await recordCharge(submission.id, 'org_balance', { orgId: orgSelfId })
+      refundCharge = () => refundChargesForSubmission(submission.id).then(() => undefined)
     } else if (isCoachSelf && coachEmail) {
       const rows = (await db`
         UPDATE coach_credits SET credits = credits - 1 WHERE email = ${coachEmail} AND credits > 0 RETURNING email
@@ -379,9 +400,10 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'No analysis credits' }, { status: 402 })
       }
       fundingSource = 'coach_credit'
-      refundCharge = async () => {
-        await db`UPDATE coach_credits SET credits = credits + 1 WHERE email = ${coachEmail}`
-      }
+      // 'exact', not 'lower': this branch debited `WHERE email =`. Refunding it
+      // with LOWER() can credit a different row than the one debited.
+      await recordCharge(submission.id, 'coach_credit_exact', { email: coachEmail })
+      refundCharge = () => refundChargesForSubmission(submission.id).then(() => undefined)
     } else if (!isTeamUpload && userId && !isFreePreview && legacyUnlimited) {
       // Grandfathered pre-2026 subscriber: unlimited, never debited — exactly
       // the behavior their subscription was sold with.
@@ -398,9 +420,8 @@ export async function POST(req: NextRequest) {
           fundingSource = null // stamped 'subscription' inside the transaction
           // For an included analysis the "refund" is exclusion from the usage
           // count: mark the row failed and the window count no longer sees it.
-          refundCharge = async () => {
-            await markSubmissionFailed(submission.id)
-          }
+          await recordCharge(submission.id, 'subscription', {})
+          refundCharge = () => refundChargesForSubmission(submission.id).then(() => undefined)
         } else if (reserved.reason === 'weekly' || reserved.reason === 'monthly') {
           limitInfo = {
             blockedBy: reserved.reason,
@@ -435,9 +456,8 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: 'No analysis tokens' }, { status: 402 })
         }
         fundingSource = 'token'
-        refundCharge = async () => {
-          await db`UPDATE users SET analysis_tokens = analysis_tokens + 1 WHERE id = ${userId}`
-        }
+        await recordCharge(submission.id, 'user_token', { userId })
+        refundCharge = () => refundChargesForSubmission(submission.id).then(() => undefined)
       }
     }
 
@@ -459,7 +479,7 @@ export async function POST(req: NextRequest) {
     // No analyzable shot in the video — refund the reserved credit and discard
     // the submission so nothing is charged for a non-result.
     if (result.shot_detected === false) {
-      if (refundCharge) await refundCharge()
+      await settleRefund()
       await db`DELETE FROM submissions WHERE id = ${submission.id}`
       return NextResponse.json(
         {
@@ -507,18 +527,48 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Store per-criterion scores
+    // Store per-criterion scores, plus how far the ensemble passes disagreed.
+    // Diagnostic only — nothing gates on score_spread, and nothing should: it
+    // was measured against the founder's expected ranges and does not predict
+    // a wrong score (AUC 0.504). It is recorded because the passes are already
+    // paid for and it is useful when investigating a grade after the fact.
+    // See the CriterionResult doc comment in lib/analyze.ts for the numbers.
     for (const criterion of result.criteria) {
       await db`
-        INSERT INTO criterion_scores (analysis_id, criterion_id, ai_score, ai_reasoning)
-        VALUES (${analysis.id}, ${criterion.id}, ${criterion.score}, ${criterion.reasoning})
+        INSERT INTO criterion_scores (analysis_id, criterion_id, ai_score, ai_reasoning, score_spread)
+        VALUES (
+          ${analysis.id}, ${criterion.id}, ${criterion.score}, ${criterion.reasoning},
+          ${criterion.spread ?? null}
+        )
       `
     }
 
-    // Mark submission complete
-    await db`
-      UPDATE submissions SET status = 'complete' WHERE id = ${submission.id}
-    `
+    // Mark submission complete.
+    //
+    // Guarded on `status = 'processing'` so this is a compare-and-swap, not a
+    // blind write. The reconcile cron refunds analyses stranded past 30 minutes
+    // and marks them 'failed'; without the guard, a request that outlived that
+    // window and finished anyway would flip 'failed' back to 'complete' after
+    // the credit had already been given back — a free analysis, and a
+    // submission whose refund no longer matches its state.
+    const completed = (await db`
+      UPDATE submissions SET status = 'complete'
+      WHERE id = ${submission.id} AND status = 'processing'
+      RETURNING id
+    `) as unknown as unknown[]
+    if (completed.length === 0) {
+      // Lost the race to the reconciler. The analysis rows above are already
+      // written and the user still gets their result; only the charge is left
+      // alone, because it has already been refunded.
+      console.warn('[analyze] submission was no longer processing at completion', {
+        submissionId: submission.id,
+      })
+    } else {
+      // The credit is genuinely spent now — take the charge out of the
+      // reconciler's view so a slow write can never look stranded.
+      await settleChargesForSubmission(submission.id)
+      refundCharge = null
+    }
 
     // Class enrollment tracking — NO changes to scoring.
     // For first-time class players: every shot after the first gets a display score of
@@ -611,14 +661,17 @@ export async function POST(req: NextRequest) {
       submissionId: submission.id,
       analysisId: analysis.id,
       token: submissionToken,
+      // The bulk uploader shows each grade in its row as it lands, rather than
+      // making a coach open twelve tabs to find out how the session went.
+      overallScore: result.overall_score,
     })
   } catch (err) {
     // Refund the reserved credit if we charged before failing, so a crash mid-
     // analysis never costs the user a credit.
-    if (refundCharge) {
-      try { await refundCharge() } catch (refundErr) {
-        console.error('[analyze] refund after failure failed:', refundErr instanceof Error ? refundErr.message : refundErr)
-      }
+    try {
+      await settleRefund()
+    } catch (refundErr) {
+      console.error('[analyze] refund after failure failed:', refundErr instanceof Error ? refundErr.message : refundErr)
     }
     // Terminal state, not a stranded 'processing' row (markSubmissionFailed
     // never throws). Idempotent with the subscription refund above.

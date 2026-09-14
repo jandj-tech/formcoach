@@ -661,6 +661,9 @@ export async function POST(req: NextRequest) {
       submissionId: submission.id,
       analysisId: analysis.id,
       token: submissionToken,
+      // The bulk uploader shows each grade in its row as it lands, rather than
+      // making a coach open twelve tabs to find out how the session went.
+      overallScore: result.overall_score,
     })
   } catch (err) {
     // Refund the reserved credit if we charged before failing, so a crash mid-

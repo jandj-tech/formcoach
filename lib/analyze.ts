@@ -319,6 +319,21 @@ async function loadGraderContext(): Promise<GraderContext> {
   return { activeCriteria, criteriaText, feedbackText, calibrationVersion, promptSha, rubricTags }
 }
 
+/**
+ * The exact prompt the grader sends, for inspection — `scripts/eval/show-prompt.mjs`
+ * prints it and diffs it between branches. Worth having a supported way in:
+ * prompt_sha changing tells you the grader moved, but not what moved, and
+ * reading the prompt was previously only possible by rebuilding it by hand.
+ */
+export async function renderGraderPrompt(frames = SHA_CANONICAL_FRAME_COUNT): Promise<{
+  prompt: string
+  promptSha: string
+  rubricTags: string[]
+}> {
+  const ctx = await loadGraderContext()
+  return { prompt: buildSystemPrompt(ctx, frames), promptSha: ctx.promptSha, rubricTags: ctx.rubricTags }
+}
+
 function buildSystemPrompt(
   ctx: Pick<GraderContext, 'criteriaText' | 'feedbackText'>,
   n: number

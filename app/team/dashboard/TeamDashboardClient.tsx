@@ -543,7 +543,13 @@ export default function TeamDashboardClient({
         summary={`${myUploads.length} shot${myUploads.length !== 1 ? 's' : ''}`}
       >
         <div className="space-y-3 pt-2">
-          <div className="flex justify-end">
+          <div className="flex flex-wrap justify-end gap-2">
+            {/* Desktop only — the bulk page says so itself on a phone, but
+                there is no reason to advertise it there in the first place. */}
+            <Link href="/team/dashboard/bulk" className={backendButton('secondary', 'hidden lg:inline-flex shrink-0')}>
+              Upload a whole session
+              <ArrowRightIcon aria-hidden />
+            </Link>
             <Link href="/analyze" className={backendButton('primary', 'shrink-0')}>
               Analyze a shot
               <ArrowRightIcon aria-hidden />

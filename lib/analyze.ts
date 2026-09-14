@@ -1,6 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { isGatewayModel, callGatewayModel } from '@/lib/model-provider'
 import { createHash } from 'crypto'
+import { readFileSync } from 'fs'
+import { join } from 'path'
 import { db } from './db'
 
 function getAnthropic() {
@@ -282,13 +284,78 @@ export async function buildCalibrationFeedbackText(): Promise<string> {
  * grader-changed warning against the accepted baseline — that warning is the
  * record that corrections moved the grader.
  */
+/**
+ * Draft rubrics in scripts/rubrics/, by the criterion each one replaces.
+ * Adding a draft here is what makes it testable; it does not make it live.
+ */
+const RUBRIC_DRAFTS: Record<string, string> = {
+  elbow: 'Elbow L-Shape — Under the Ball',
+  guidehand: 'Guide Hand Follow Through',
+  power: 'Source of Shot Power',
+  square: 'Square to the Basket',
+  stance: 'Feet Shoulder Width Apart',
+}
+
+/**
+ * Swaps draft rubric text in for the live text, in memory only, for the
+ * criteria named in RUBRIC_OVERRIDE (comma-separated, e.g. "square,power").
+ *
+ * WHY THIS EXISTS: grading_notes is read from the database on every request, so
+ * writing a draft rubric to the database to evaluate it makes it LIVE — real
+ * uploads get graded by unvalidated text for the whole ~25 minutes the eval
+ * takes, and a bad draft has to be noticed and reverted before it stops. That
+ * is backwards: the point of the Test Bench is to find out BEFORE shipping.
+ *
+ * With this, a draft is evaluated against the real fixtures while production
+ * keeps grading on the rubric it already had. prompt_sha moves on its own
+ * (the rendered prompt is what gets hashed), so the run still reports
+ * GRADER CHANGED and the baseline diff still works.
+ *
+ * Unset in production, and it must stay that way — it is a local evaluation
+ * tool. A name that does not resolve THROWS rather than quietly changing
+ * nothing, because a silent no-op would report "this draft changed nothing"
+ * when the draft was never actually loaded.
+ */
+function applyRubricOverrides(rows: CriteriaRow[]): CriteriaRow[] {
+  const requested = (process.env.RUBRIC_OVERRIDE ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+  if (requested.length === 0) return rows
+
+  const out = rows.map((r) => ({ ...r }))
+  for (const name of requested) {
+    const criterionName = RUBRIC_DRAFTS[name]
+    if (!criterionName) {
+      throw new Error(
+        `RUBRIC_OVERRIDE: no draft named "${name}". Known: ${Object.keys(RUBRIC_DRAFTS).join(', ')}`
+      )
+    }
+    const row = out.find((r) => r.name === criterionName)
+    if (!row) {
+      throw new Error(
+        `RUBRIC_OVERRIDE: "${name}" maps to criterion "${criterionName}", which is not active in this database`
+      )
+    }
+    const text = readFileSync(join(process.cwd(), 'scripts', 'rubrics', `${name}.txt`), 'utf8').trim()
+    if (!text) throw new Error(`RUBRIC_OVERRIDE: scripts/rubrics/${name}.txt is empty`)
+    row.grading_notes = text
+    console.log('[analyze] RUBRIC OVERRIDE ACTIVE — not the live rubric', {
+      criterion: criterionName,
+      draft: `scripts/rubrics/${name}.txt`,
+      chars: text.length,
+    })
+  }
+  return out
+}
+
 async function loadGraderContext(): Promise<GraderContext> {
-  const activeCriteria = (await db`
+  const activeCriteria = applyRubricOverrides((await db`
     SELECT id, name, description, grading_notes, weight
     FROM criteria
     WHERE active = true
     ORDER BY order_index
-  `) as unknown as CriteriaRow[]
+  `) as unknown as CriteriaRow[])
 
   const feedbackText = await buildCalibrationFeedbackText()
   // No frozen calibration versions in live mode; the correction state is

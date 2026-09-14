@@ -380,6 +380,7 @@ async function loadGraderContext(): Promise<GraderContext> {
         // Grouping is part of the grader's identity: the same rubric graded in
         // 4 calls is not the same grader as in 1.
         (process.env.CRITERION_GROUPS === '1' ? 'grouped:' : '') +
+        (process.env.TWO_STAGE === '1' ? 'twostage:' : '') +
         buildSystemPrompt({ criteriaText, feedbackText }, SHA_CANONICAL_FRAME_COUNT)
     )
     .digest('hex')
@@ -699,6 +700,142 @@ async function analyzeShotGrouped(
   }
 
   return { ...primary, criteria }
+}
+
+/**
+ * Two-stage grading: LOOK, then SCORE, with the scoring step blind to the video.
+ *
+ * TWO_STAGE=1. Stage 1 is a vision call that may only describe what it sees —
+ * positions, distances, what moved and when — and is forbidden to produce a
+ * number. Stage 2 is a TEXT-ONLY call that receives those observations and the
+ * rubric, and assigns scores without ever seeing the player.
+ *
+ * WHY: the measured failure on Elbow and Square is not blindness, it is
+ * discounting. The model observes the deviation accurately and then softens the
+ * score — "the elbow reasonably tucked … a slight outward angle but nothing
+ * severe" scored 8.0 on a shot the owner scored 3.0; "only a small natural
+ * offset" scored 8.0 against his 4.5. Every correction on those two criteria is
+ * downward. The observation was right and the number was generous.
+ *
+ * Splitting the two removes the thing doing the discounting. The scorer cannot
+ * see a player trying hard, cannot form an overall impression of the shot, and
+ * has nothing to be charitable about — it has a measurement and a table of
+ * anchors. It is the same reason CRITERION_GROUPS exists (stop criteria seeing
+ * each other) applied one level up: stop the score seeing the shot.
+ *
+ * Cost is close to free. Stage 2 carries no images, and images are ~97% of the
+ * tokens in a grading call.
+ */
+const OBSERVE_INSTRUCTION = `Do NOT score anything. Do not output numbers between 1 and 10, and do not judge whether anything is good, bad, correct, poor, reasonable or acceptable.
+
+Your only job is to REPORT WHAT IS VISIBLE, as physical description, for each criterion listed in your instructions. For each one write what you can actually see: where a body part is, how far it is from something else measured in ball widths / shoe widths / head heights, which frame it is in, what moved and when. Where the rubric for a criterion names a measurement, make that measurement and state the answer.
+
+If something is not visible well enough to describe, say exactly that for that criterion and say why.
+
+Return ONLY JSON:
+{
+  "shot_detected": <true|false>,
+  "player_assessment": { "player_type": "<child|recreational|college_pro|nba_bad_form|nba_decent|nba_elite>", "player_name": <string or null> },
+  "critical_flags": { "elbow_severely_out": <0-10>, "followthrough_flick_to_side": <0-10>, "arc_too_flat": <0-10>, "chest_pass_hands": <0-10>, "ball_behind_head": <0-10> },
+  "observations": [ { "id": <criterion id>, "seen": "<what is physically visible, no judgement, no score>" } ]
+}`
+
+const SCORE_INSTRUCTION = `You are scoring a basketball shot you CANNOT see. You have only the written observations below, recorded by someone who watched the frames, and the grading guides in your instructions.
+
+Score each criterion from its observation and its guide alone. The observation is the evidence; the guide's anchors turn it into a number. You have no impression of this shot and no reason to be generous or harsh — apply the anchors literally.
+
+If an observation says something was not visible, return null for that criterion rather than guessing.
+
+You may not soften a score because a fault sounds small. If an observation describes a deviation and the guide's anchor for that deviation is a 4, the score is 4.
+
+Return ONLY JSON: {"criteria": [{"id": <number>, "score": <1-10 or null>, "reasoning": "<two or three sentences addressed to the player, no numbers, no mention of guides or steps>"}]}`
+
+interface ObservationPayload {
+  shot_detected?: boolean
+  player_assessment?: { player_type?: string; player_name?: string | null }
+  critical_flags?: Record<string, number>
+  observations?: Array<{ id: number; seen: string }>
+}
+
+async function analyzeShotTwoStage(
+  frameBase64Array: string[],
+  frameMimeTypes: string[],
+  ctx: GraderContext,
+  opts?: { model?: string; thinking?: 'disabled' | 'adaptive' }
+): Promise<AnalysisResult> {
+  const model = opts?.model || analysisModel()
+  const systemPrompt = buildSystemPrompt(ctx, frameBase64Array.length)
+
+  // ── Stage 1: look, describe, do not score ────────────────────────────────
+  const look = await callVisionModel({
+    model,
+    framesBase64: frameBase64Array,
+    frameMimeTypes,
+    userText: `${systemPrompt}\n\n${OBSERVE_INSTRUCTION}`,
+    maxTokens: 16000,
+  })
+  const obsMatch = look.text.match(/\{[\s\S]*\}/)
+  if (!obsMatch) throw new Error('two-stage: stage 1 returned no JSON')
+  const obs = JSON.parse(obsMatch[0]) as ObservationPayload
+
+  if (obs.shot_detected === false) {
+    return noShotResult(
+      ctx.activeCriteria.map((c) => Number(c.id)),
+      { prompt_sha: ctx.promptSha, rubric_tags: ctx.rubricTags, model, passes: 1, calibration_version: ctx.calibrationVersion }
+    )
+  }
+
+  // ── Stage 2: score from the words alone, no images ───────────────────────
+  const lines = (obs.observations ?? [])
+    .map((o) => `ID ${o.id}: ${o.seen}`)
+    .join('\n')
+  const score = await callVisionModel({
+    model,
+    framesBase64: [],
+    frameMimeTypes: [],
+    userText: `${systemPrompt}\n\n${SCORE_INSTRUCTION}\n\nOBSERVATIONS RECORDED FROM THE FRAMES:\n${lines}`,
+    maxTokens: 16000,
+  })
+  const scoreMatch = score.text.match(/\{[\s\S]*\}/)
+  if (!scoreMatch) throw new Error('two-stage: stage 2 returned no JSON')
+  const scored = JSON.parse(scoreMatch[0]) as { criteria?: CriterionResult[] }
+
+  console.log('[analyze] two-stage', {
+    model,
+    observeTokens: look.usage.output,
+    scoreTokens: score.usage.output,
+    criteria: scored.criteria?.length ?? 0,
+  })
+
+  const flags = obs.critical_flags ?? {}
+  const conf = (k: string) => Number(flags[k] ?? 0)
+  return {
+    overall_score: 0, // recomputed from the criteria in finalizeResult
+    shot_detected: true,
+    player_assessment: {
+      player_type: (obs.player_assessment?.player_type as PlayerType) ?? 'recreational',
+      player_name: obs.player_assessment?.player_name ?? null,
+    },
+    critical_flags: {
+      elbow_severely_out: conf('elbow_severely_out') >= 7,
+      followthrough_flick_to_side: conf('followthrough_flick_to_side') >= 7,
+      arc_too_flat: conf('arc_too_flat') >= 7,
+      chest_pass_hands: conf('chest_pass_hands') >= 7,
+      ball_behind_head: conf('ball_behind_head') >= 7,
+    },
+    flag_confidence: {
+      elbow_severely_out: conf('elbow_severely_out'),
+      followthrough_flick_to_side: conf('followthrough_flick_to_side'),
+      arc_too_flat: conf('arc_too_flat'),
+      chest_pass_hands: conf('chest_pass_hands'),
+      ball_behind_head: conf('ball_behind_head'),
+    },
+    criteria: (scored.criteria ?? []).map((c) => ({
+      id: Number(c.id),
+      score: c.score === null || c.score === undefined ? null : Number(c.score),
+      reasoning: String(c.reasoning ?? ''),
+    })),
+  }
 }
 
 async function analyzeShotOnce(
@@ -1276,7 +1413,12 @@ export async function analyzeShot(
   // the merge below deterministic.
   // CRITERION_GROUPS=1 splits each pass into independent per-moment calls so
   // criteria cannot anchor on each other. See analyzeShotGrouped.
-  const onePass = process.env.CRITERION_GROUPS === '1' ? analyzeShotGrouped : analyzeShotOnce
+  const onePass =
+    process.env.TWO_STAGE === '1'
+      ? analyzeShotTwoStage
+      : process.env.CRITERION_GROUPS === '1'
+        ? analyzeShotGrouped
+        : analyzeShotOnce
   const firstPass = await onePass(frameBase64Array, frameMimeTypes, ctx, { ...opts, model })
   const laterPasses = await Promise.all(
     Array.from({ length: passes - 1 }, () =>

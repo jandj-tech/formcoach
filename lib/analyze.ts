@@ -458,7 +458,14 @@ async function analyzeShotOnce(
       framesBase64: frameBase64Array,
       frameMimeTypes,
       userText: USER_TEXT,
-      maxTokens: 6000,
+      // 6000 is Anthropic's budget here, and it is too tight for the small
+      // models: they narrate 18 criteria far more verbosely than Claude and
+      // hit the ceiling mid-array, so the JSON never closes and every fixture
+      // dies on a parse error. That failure is indistinguishable from bad
+      // grading unless you look at the output token count sitting exactly on
+      // the cap. Output is the cheap half of these models (qwen3.7-flash bills
+      // $0.130/Mtok), so 16000 tokens costs about a fifth of a cent.
+      maxTokens: 16000,
     })
     console.log('[analyze] usage', {
       model: gw.model,

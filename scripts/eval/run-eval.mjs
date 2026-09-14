@@ -26,6 +26,7 @@ const {
   toBaselineEntry,
   SPREAD_PASS,
   SPREAD_CLOSE,
+  AI_SEEDED_PREFIX,
 } = await import('../../lib/eval-report.ts')
 
 let fixtures = await db`
@@ -46,12 +47,24 @@ const [baseline] = await db`
   SELECT id, grader, results, accepted_at FROM eval_baselines ORDER BY id DESC LIMIT 1
 `
 
-const passesDefault = Math.max(1, Math.min(5, parseInt(process.env.ANALYSIS_PASSES || '3', 10) || 3))
+const passesDefault = Math.max(1, Math.min(9, parseInt(process.env.ANALYSIS_PASSES || '3', 10) || 3))
 console.log(
   `Evaluating ${fixtures.length} fixture(s) × ${RUNS} run(s) × ${QUICK ? 1 : passesDefault} pass(es) ≈ ${fixtures.length * RUNS * (QUICK ? 1 : passesDefault)} model calls\n`
 )
 
-let accuracyFailures = 0
+// Two populations, deliberately never summed. `expert` cells are ranges the
+// owner set by hand and are the only measure of ACCURACY. `aiSeeded` cells were
+// prefilled from what the grader itself said on an imported analysis: failing
+// one means grading MOVED, which is worth seeing, but it cannot show grading
+// got worse — the range it is measured against is the old grader's own output.
+let expertFailures = 0
+let aiSeededFailures = 0
+// Fixtures that never produced a result at all — a thrown error, a gateway
+// refusal, a truncated response. Counted SEPARATELY and never folded into the
+// accuracy number: a model that dies on every fixture otherwise reports the
+// same "5 failures" as a model that merely graded them slightly wrong, and
+// reads as the better of the two. That has faked a model bake-off before.
+let runFailures = 0
 let regressions = 0
 let grader = null
 const newResults = {}
@@ -69,8 +82,8 @@ for (const fixture of fixtures) {
     }
   }
   if (failed || runs.length === 0) {
-    console.error(`  ✗ ${failed ?? 'no runs completed'}`)
-    accuracyFailures++
+    console.error(`  ✗ DID NOT RUN — ${failed ?? 'no runs completed'}`)
+    runFailures++
     console.log()
     continue
   }
@@ -92,8 +105,12 @@ for (const fixture of fixtures) {
   if (accuracy.length === 0) {
     console.log(`  ✓ ACCURACY ${summary.shot_detected ? `overall ${summary.overall}` : 'no shot (as expected)'} — all expectations met`)
   } else {
-    for (const e of accuracy) console.error(`  ✗ ACCURACY ${e}`)
-    accuracyFailures += accuracy.length
+    for (const e of accuracy) {
+      const seeded = e.startsWith(AI_SEEDED_PREFIX)
+      if (seeded) aiSeededFailures++
+      else expertFailures++
+      console.error(`  ${seeded ? '·' : '✗'} ACCURACY ${e}`)
+    }
   }
 
   const drift = diffBaseline(baseline?.results?.[fixture.slug], summary)
@@ -122,9 +139,31 @@ if (ACCEPT) {
     VALUES (${grader ? JSON.stringify(grader) : null}::jsonb, ${JSON.stringify(merged)}::jsonb)
   `
   console.log('Baseline accepted (stored in eval_baselines).')
-  if (accuracyFailures > 0) console.log(`⚠ note: accepted with ${accuracyFailures} accuracy failure(s) still open — expected ranges may need editing.`)
+  if (expertFailures + aiSeededFailures > 0) {
+    console.log(
+      `⚠ note: accepted with ${expertFailures} expert + ${aiSeededFailures} ai-seeded failure(s) still open — expected ranges may need editing.`
+    )
+  }
   process.exit(0)
 }
 
-console.log(`Done: ${accuracyFailures} accuracy failure(s), ${regressions} baseline drift(s).`)
-process.exit(accuracyFailures > 0 || regressions > 0 ? 1 : 0)
+console.log(
+  `Done: ${expertFailures} EXPERT accuracy failure(s)` +
+    ` · ${aiSeededFailures} ai-seeded movement(s)` +
+    ` · ${regressions} baseline drift(s)` +
+    ` · ${runFailures} fixture(s) DID NOT RUN.`
+)
+if (runFailures > 0) {
+  console.log(
+    `⚠ ${runFailures} fixture(s) produced no result — the accuracy numbers above` +
+      ` cover only the ${fixtures.length - runFailures} that ran. Fix these before comparing anything.`
+  )
+}
+console.log(
+  'Only the EXPERT number measures accuracy. ai-seeded cells are scored against' +
+    ' the old grader\'s own output, so they show change, not correctness.'
+)
+// Exit status tracks expert failures and baseline drift. ai-seeded movement is
+// reported but does not fail the run: a deliberate grading change would make
+// every imported fixture "fail" and there would be no way to land it.
+process.exit(expertFailures > 0 || regressions > 0 || runFailures > 0 ? 1 : 0)

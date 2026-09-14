@@ -77,8 +77,24 @@ export async function runFixtureOnce(
  * prefills the expected ranges from the expert's corrections where they
  * exist (admin_score), otherwise from the AI scores — ±1.0 per criterion,
  * ±0.5 overall. The owner then tightens the ranges in the admin Test Bench.
+ *
+ * Either way `expected.criteria_source` records which of the two each range
+ * came from, so the eval can keep AI-seeded (circular) cells out of its
+ * accuracy number.
+ *
+ * `opts.derivedExpectations: false` drops the overall / flags / player_type
+ * expectations and keeps only the per-criterion ones. Use it for bulk imports,
+ * where nobody is going to hand-tighten the ranges: `overall` is a
+ * deterministic function of the criteria, so asserting it too double-counts
+ * the same signal inside a ±0.5 band, and `flags`/`player_type` are exact-match
+ * assertions on unreviewed model output. Left on for the Test Bench, where the
+ * owner sees the prefill and edits it.
  */
-export async function authorFixtureFromAnalysis(analysisId: number, slug: string): Promise<EvalFixtureRow> {
+export async function authorFixtureFromAnalysis(
+  analysisId: number,
+  slug: string,
+  opts?: { derivedExpectations?: boolean }
+): Promise<EvalFixtureRow> {
   if (!SLUG_RE.test(slug)) throw new Error('Name must be lowercase letters, digits, and dashes only')
 
   const [a] = (await db`
@@ -115,19 +131,28 @@ export async function authorFixtureFromAnalysis(analysisId: number, slug: string
 
   const half = (v: number) => Math.round(v * 2) / 2
   const criteria: EvalExpected['criteria'] = {}
+  const criteriaSource: NonNullable<EvalExpected['criteria_source']> = {}
   for (const s of scores) {
+    const corrected = s.admin_score !== null
     const base = s.admin_score ?? s.ai_score
+    criteriaSource[s.name] = corrected ? 'expert' : 'ai'
     criteria[s.name] =
       base === null
         ? 'null'
         : [Math.max(1, half(Number(base) - 1)), Math.min(10, half(Number(base) + 1))]
   }
   const overall = Number(a.overall_score)
+  const derived = opts?.derivedExpectations !== false
   const expected: EvalExpected = {
-    overall: [Math.max(1, half(overall - 0.5)), Math.min(10, half(overall + 0.5))],
+    ...(derived
+      ? {
+          overall: [Math.max(1, half(overall - 0.5)), Math.min(10, half(overall + 0.5))] as [number, number],
+          flags: a.critical_flags ?? {},
+          player_type: a.player_type ?? 'recreational',
+        }
+      : {}),
     criteria,
-    flags: a.critical_flags ?? {},
-    player_type: a.player_type ?? 'recreational',
+    criteria_source: criteriaSource,
     shot_detected: true,
   }
 

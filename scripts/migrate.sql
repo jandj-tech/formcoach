@@ -613,3 +613,47 @@ ALTER TABLE submissions ADD COLUMN IF NOT EXISTS is_free_preview BOOLEAN DEFAULT
 
 
 
+
+-- Ensemble disagreement, recorded per criterion. DIAGNOSTIC ONLY.
+-- The N grading passes already produce a per-criterion median; this keeps the
+-- DISAGREEMENT the median discards, so a grade can be investigated after the
+-- fact ("did the passes actually agree on this?").
+--
+-- It is deliberately NOT a confidence gate. Measured against the founder's own
+-- expected ranges: AUC(spread -> score is wrong) = 0.504, CI [0.388, 0.621].
+-- Miss rate was 29.6% at spread <= 2 and 26.3% above it, and both of the worst
+-- misses came from spread 0. The passes run at temperature 0 on a byte-identical
+-- prompt, so this measures serving nondeterminism, not model uncertainty.
+-- A `confident` boolean was dropped for exactly that reason: nothing downstream
+-- should be able to read this as "trustworthy".
+-- NULL on single-pass runs (Shootaround session mode) — nothing to compare.
+ALTER TABLE criterion_scores ADD COLUMN IF NOT EXISTS score_spread DECIMAL(4,1);
+
+
+-- Durable record of the credit an analysis reserved.
+--
+-- /api/analyze reserves the credit atomically before the model call and undoes
+-- it from a closure in a `catch`. Vercel kills the function at maxDuration
+-- (300s) with a wall-clock SIGKILL, which is not a JS exception: the `catch`
+-- never runs, the closure dies with the process, and the submission is stranded
+-- at 'processing' with the credit consumed and no analysis. Nothing reconciled
+-- those rows. A closure cannot outlive the process, so the charge is written
+-- here and /api/cron/reconcile-analyses replays it.
+--
+-- refunded_at doubles as the claim: the refund path UPDATEs
+-- `WHERE refunded_at IS NULL RETURNING`, so a live request and the cron racing
+-- on the same submission cannot both give the credit back.
+CREATE TABLE IF NOT EXISTS analysis_charges (
+  id SERIAL PRIMARY KEY,
+  submission_id UUID NOT NULL REFERENCES submissions(id) ON DELETE CASCADE,
+  kind VARCHAR(32) NOT NULL,
+  ref JSONB NOT NULL DEFAULT '{}'::jsonb,
+  refunded_at TIMESTAMP,
+  settled_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- The cron's lookup: outstanding charges on a given submission.
+CREATE INDEX IF NOT EXISTS idx_analysis_charges_open
+  ON analysis_charges (submission_id)
+  WHERE refunded_at IS NULL AND settled_at IS NULL;

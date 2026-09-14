@@ -377,6 +377,9 @@ async function loadGraderContext(): Promise<GraderContext> {
   const promptSha = createHash('sha256')
     .update(
       PROMPT_SHA_SALT +
+        // Grouping is part of the grader's identity: the same rubric graded in
+        // 4 calls is not the same grader as in 1.
+        (process.env.CRITERION_GROUPS === '1' ? 'grouped:' : '') +
         buildSystemPrompt({ criteriaText, feedbackText }, SHA_CANONICAL_FRAME_COUNT)
     )
     .digest('hex')
@@ -570,6 +573,132 @@ Return ONLY valid JSON, no other text:
     ...
   ]
 }`
+}
+
+/**
+ * Criteria grouped by WHEN in the shot they are judged, matching the three
+ * moments the prompt already defines.
+ *
+ * Used only when CRITERION_GROUPS=1. Each group becomes its own model call, so
+ * the criteria in one group cannot see the scores given to the others.
+ *
+ * WHY: the measured root cause of grading error is halo. All ~18 criteria were
+ * graded in a single call, and the per-analysis mean signed error correlated
+ * +0.858 with the shot-level score, with 9 of 12 corrected analyses erring
+ * 100% in one direction. The model picks a band for the shot and fills the
+ * criteria in around it. Removing `overall_score` from the output schema took
+ * away the explicit anchor; it does not stop the criteria anchoring on each
+ * other, because they are still being written into one JSON object in one pass.
+ *
+ * This was unaffordable to try before: N groups means N x 28 frames of image
+ * tokens, and on claude-sonnet-4-6 a 4-group analysis costs about $1.73. On
+ * qwen3.7-flash with reasoning — 57 expert failures against Sonnet's 49 — the
+ * same 4 groups cost about $0.007. The cheap model is what makes the fix for
+ * the expensive model's worst failure mode testable at all.
+ */
+const CRITERION_GROUPS: readonly (readonly string[])[] = [
+  // MOMENT 1 — the rise. Base and lower body, judged as the player goes up.
+  [
+    'Feet Shoulder Width Apart',
+    'Knees Bent',
+    'Dominant Foot Forward',
+    'Square to the Basket',
+    'Forward Motion and Toes',
+  ],
+  // MOMENT 1 -> 2 — the hands and arms on the way up, and where power came from.
+  [
+    'Shot Pocket — Elbow',
+    'Elbow L-Shape — Under the Ball',
+    'Guide Hand Placement',
+    'Thumb is Spread Wide',
+    'Palm Non-Contact with Ball',
+    'Source of Shot Power',
+  ],
+  // MOMENT 2 -> 3 — the release itself and the follow-through.
+  [
+    'Shooting Through Guide Hand / One Hand Release',
+    'Two Finger Release',
+    'Shooting Hand Follow Through',
+    'Guide Hand Follow Through',
+  ],
+  // The ball in flight, and the shot as one motion.
+  ['Shot Arc', 'Ball Rotation', 'Connected Shot'],
+]
+
+/**
+ * Splits a grader context into one context per group.
+ *
+ * Any active criterion not named in CRITERION_GROUPS is appended to the LAST
+ * group rather than dropped. A criterion silently missing from every group
+ * would come back unscored on every analysis, and the eval would read that as
+ * the model abstaining rather than as a list that needs updating.
+ */
+function splitContextByGroup(ctx: GraderContext): GraderContext[] {
+  const named = new Set(CRITERION_GROUPS.flat())
+  const leftovers = ctx.activeCriteria.filter((c) => !named.has(c.name))
+  if (leftovers.length > 0) {
+    console.warn('[analyze] criteria not in any group — appended to the last one', {
+      criteria: leftovers.map((c) => c.name),
+    })
+  }
+
+  const groups = CRITERION_GROUPS.map((names, i) => {
+    const rows = ctx.activeCriteria.filter((c) => names.includes(c.name))
+    return i === CRITERION_GROUPS.length - 1 ? [...rows, ...leftovers] : rows
+  }).filter((rows) => rows.length > 0)
+
+  return groups.map((rows) => ({
+    ...ctx,
+    activeCriteria: rows,
+    criteriaText: rows
+      .map((c) => `--- ID ${c.id}: "${c.name}"\n${c.grading_notes || c.description}`)
+      .join('\n\n'),
+  }))
+}
+
+/**
+ * One grading pass, split across independent calls so criteria cannot anchor
+ * on each other. Returns a single AnalysisResult the ensemble merge can treat
+ * exactly like an ungrouped pass.
+ *
+ * The FIRST group is authoritative for everything that is a property of the
+ * shot rather than of a criterion — shot_detected, player_assessment,
+ * critical_flags. Every group sees all 28 frames and could answer those, but
+ * taking a vote across groups would make the flags (which drive hard score
+ * caps) depend on how the criteria happen to be partitioned. One owner keeps
+ * the experiment about halo and nothing else.
+ */
+async function analyzeShotGrouped(
+  frameBase64Array: string[],
+  frameMimeTypes: string[],
+  ctx: GraderContext,
+  opts?: { model?: string; thinking?: 'disabled' | 'adaptive' }
+): Promise<AnalysisResult> {
+  const groups = splitContextByGroup(ctx)
+  const parts = await Promise.all(
+    groups.map((g) => analyzeShotOnce(frameBase64Array, frameMimeTypes, g, opts))
+  )
+
+  const primary = parts[0]
+  // A group that finds no shot is reporting on the same 28 frames as the
+  // others, so disagreement is real signal: any group saying "no shot" makes
+  // the pass a no-shot, and the ensemble's own majority vote decides from there.
+  const noShot = parts.find((p) => p.shot_detected === false)
+  if (noShot) return { ...noShot, shot_detected: false }
+
+  const seen = new Set<number>()
+  const criteria: CriterionResult[] = []
+  for (const part of parts) {
+    for (const c of part.criteria) {
+      // Each group is asked for its own criteria only, but a model that answers
+      // for someone else's must not overwrite the group that owns it.
+      if (seen.has(c.id)) continue
+      seen.add(c.id)
+      criteria.push(c)
+    }
+  }
+
+  return { ...primary, criteria }
 }
 
 async function analyzeShotOnce(
@@ -1145,10 +1274,13 @@ export async function analyzeShot(
   // A non-shot verdict is decisive only by majority, so every pass is collected
   // rather than short-circuiting. Pass 1 stays first in the list, which keeps
   // the merge below deterministic.
-  const firstPass = await analyzeShotOnce(frameBase64Array, frameMimeTypes, ctx, { ...opts, model })
+  // CRITERION_GROUPS=1 splits each pass into independent per-moment calls so
+  // criteria cannot anchor on each other. See analyzeShotGrouped.
+  const onePass = process.env.CRITERION_GROUPS === '1' ? analyzeShotGrouped : analyzeShotOnce
+  const firstPass = await onePass(frameBase64Array, frameMimeTypes, ctx, { ...opts, model })
   const laterPasses = await Promise.all(
     Array.from({ length: passes - 1 }, () =>
-      analyzeShotOnce(frameBase64Array, frameMimeTypes, ctx, { ...opts, model }),
+      onePass(frameBase64Array, frameMimeTypes, ctx, { ...opts, model }),
     ),
   )
   const results: AnalysisResult[] = [firstPass, ...laterPasses]

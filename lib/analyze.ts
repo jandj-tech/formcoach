@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { isGatewayModel, callGatewayModel } from '@/lib/model-provider'
+import { isGatewayModel, callGatewayModel, callVisionModel, analysisModel } from '@/lib/model-provider'
 import { createHash } from 'crypto'
 import { readFileSync } from 'fs'
 import { join } from 'path'
@@ -580,7 +580,7 @@ async function analyzeShotOnce(
   ctx: GraderContext,
   opts?: { model?: string; thinking?: 'disabled' | 'adaptive' }
 ): Promise<AnalysisResult> {
-  const model = opts?.model || process.env.ANALYSIS_MODEL || 'claude-sonnet-4-6'
+  const model = opts?.model || analysisModel()
   const thinkingMode = opts?.thinking || 'disabled'
   const { activeCriteria } = ctx
   const systemPrompt = buildSystemPrompt(ctx, frameBase64Array.length)
@@ -1044,33 +1044,24 @@ async function findReleaseFrame(
   model: string
 ): Promise<number | null | 'error'> {
   try {
-    const imageBlocks: Anthropic.ImageBlockParam[] = frameBase64Array.map((data, i) => ({
-      type: 'image',
-      source: { type: 'base64', media_type: (frameMimeTypes[i] || 'image/jpeg') as 'image/jpeg', data },
-    }))
     const n = frameBase64Array.length
-    const response = await getAnthropic().messages.create({
-      temperature: 0,
+    // Routed through callVisionModel, not the Anthropic SDK directly. This used
+    // to take `model` — which may be a gateway id like qwen/qwen3.7-flash — and
+    // hand it to Anthropic, which rejects it. The gate runs before every grading
+    // pass, so on a model switch it failed first and failed every time.
+    const { text } = await callVisionModel({
       model,
-      max_tokens: 300,
-      messages: [{
-        role: 'user',
-        content: [
-          ...imageBlocks,
-          {
-            type: 'text',
-            text: `These are ${n} frames, numbered 0 to ${n - 1} in order, from one basketball video.
+      framesBase64: frameBase64Array,
+      frameMimeTypes,
+      maxTokens: 300,
+      userText: `These are ${n} frames, numbered 0 to ${n - 1} in order, from one basketball video.
 
 Your ONLY task: find the RELEASE — a frame where the ball is leaving or has just left the shooter's hand(s) at the top of a shooting motion, with the frames immediately before it showing that shooting motion (ball held, rising toward a set point).
 
 Be strict. A follow-through pose with the ball already gone and NO prior frame showing the ball in the shooter's hands going up is NOT a visible release. Dribbling, standing, walking, or holding the ball is NOT a release.
 
 Output ONLY this JSON: {"release_frame": <number>, "why": "<one short sentence>"} — or {"release_frame": -1, "why": "<one short sentence>"} if no release is visible in these frames.`,
-          },
-        ],
-      }],
     })
-    const text = response.content[0]?.type === 'text' ? response.content[0].text : ''
     const match = text.match(/\{[\s\S]*?\}/)
     if (!match) return 'error'
     const parsed = JSON.parse(match[0])
@@ -1115,7 +1106,7 @@ export async function analyzeShot(
   // cost about $0.016 — a fraction of ONE Sonnet pass — so the ceiling is now
   // the only thing standing between us and the accuracy we can afford.
   const passes = Math.max(1, Math.min(9, opts?.passes ?? envPasses))
-  const model = opts?.model || process.env.ANALYSIS_MODEL || 'claude-sonnet-4-6'
+  const model = opts?.model || analysisModel()
 
   // One grader context for the whole ensemble: every pass grades with the
   // byte-identical prompt, even if an admin correction lands mid-analysis.

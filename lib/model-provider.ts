@@ -88,7 +88,8 @@ export function isGatewayModel(model: string): boolean {
  */
 export async function callGatewayModel(params: {
   model: string
-  systemPrompt: string
+  /** Omitted for single-turn calls; an empty system message is rejected by some providers. */
+  systemPrompt?: string
   framesBase64: string[]
   frameMimeTypes: string[]
   userText: string
@@ -115,7 +116,7 @@ export async function callGatewayModel(params: {
       max_tokens: maxTokens,
       temperature: 0,
       messages: [
-        { role: 'system', content: systemPrompt },
+        ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
         { role: 'user', content },
       ],
     }),
@@ -145,5 +146,82 @@ export async function callGatewayModel(params: {
       output: json.usage?.completion_tokens ?? 0,
     },
     model: json.model ?? model,
+  }
+}
+
+
+/**
+ * Which model each stage runs on.
+ *
+ * Grading and the two localisation calls are separated because they are not the
+ * same job: localisation only has to point at the right frame, while grading has
+ * to produce ~18 defensible scores. If a cheap model turns out to localise well
+ * but grade badly, DETECT_MODEL lets the cheap one keep the cheap job.
+ * Unset, detection follows ANALYSIS_MODEL, which is what you want during a
+ * model switch — otherwise half the pipeline silently stays on the old provider.
+ */
+export function analysisModel(): string {
+  return process.env.ANALYSIS_MODEL || 'claude-sonnet-4-6'
+}
+export function detectModel(): string {
+  return process.env.DETECT_MODEL || process.env.ANALYSIS_MODEL || 'claude-sonnet-4-6'
+}
+
+/**
+ * One single-turn vision call — frames plus a prompt, JSON back — routed to
+ * whichever provider owns `model`.
+ *
+ * THE BUG THIS EXISTS TO PREVENT: setting ANALYSIS_MODEL used to switch only
+ * the grading call. The release gate and both /api/detect-shot-* routes went on
+ * calling Anthropic — the gate passing the gateway model id straight to
+ * Anthropic, which rejects it, and the detect routes with claude-sonnet-4-6
+ * hardcoded. So "switching models" left three of the four vision calls on the
+ * old provider, and on an Anthropic account with no credits that is not a
+ * degraded pipeline, it is a broken one.
+ *
+ * No prompt caching here on purpose: these calls are small, single-shot, and
+ * never repeated within an analysis, so there is no prefix worth caching.
+ */
+export async function callVisionModel(params: {
+  model: string
+  framesBase64: string[]
+  frameMimeTypes: string[]
+  userText: string
+  maxTokens: number
+}): Promise<ModelCallResult> {
+  const { model, framesBase64, frameMimeTypes, userText, maxTokens } = params
+
+  if (isGatewayModel(model)) {
+    return callGatewayModel({ model, framesBase64, frameMimeTypes, userText, maxTokens })
+  }
+
+  // Imported lazily so a gateway-only deployment never has to load the
+  // Anthropic SDK, and so this module stays importable without ANTHROPIC_API_KEY.
+  const { default: Anthropic } = await import('@anthropic-ai/sdk')
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  const response = await client.messages.create({
+    temperature: 0,
+    model,
+    max_tokens: maxTokens,
+    messages: [{
+      role: 'user',
+      content: [
+        ...framesBase64.map((data, i) => ({
+          type: 'image' as const,
+          source: {
+            type: 'base64' as const,
+            media_type: (frameMimeTypes[i] || 'image/jpeg') as 'image/jpeg',
+            data,
+          },
+        })),
+        { type: 'text' as const, text: userText },
+      ],
+    }],
+  })
+  const text = response.content[0]?.type === 'text' ? response.content[0].text : ''
+  return {
+    text,
+    usage: { input: response.usage.input_tokens, output: response.usage.output_tokens },
+    model: response.model,
   }
 }

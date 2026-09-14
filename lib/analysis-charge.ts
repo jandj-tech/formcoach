@@ -131,6 +131,13 @@ async function applyRefund(row: ChargeRow): Promise<void> {
  * submission cannot both give the credit back. This is the idempotency key the
  * charge path never had.
  *
+ * Settled charges are excluded too. Nothing reaches them today — the cron only
+ * looks at submissions still at 'processing', and a settled charge belongs to a
+ * completed one — but that makes "a spent credit cannot be refunded" a property
+ * of the cron's WHERE clause rather than of this function. Checking it here
+ * means a future caller cannot hand back a credit the customer already got
+ * their analysis for.
+ *
  * If a refund then throws, its claim is released so a later run retries it —
  * a claimed-but-unapplied row would be a credit silently kept.
  *
@@ -142,7 +149,9 @@ export async function refundChargesForSubmission(submissionId: string): Promise<
     claimed = (await db`
       UPDATE analysis_charges
       SET refunded_at = NOW()
-      WHERE submission_id = ${submissionId} AND refunded_at IS NULL
+      WHERE submission_id = ${submissionId}
+        AND refunded_at IS NULL
+        AND settled_at IS NULL
       RETURNING id, submission_id, kind, ref
     `) as unknown as ChargeRow[]
   } catch (err) {

@@ -101,8 +101,6 @@ const UNGRADED_ARC =
   `The ball's flight to the basket wasn't clear enough in this clip to judge arc, so it was left ungraded rather than guessed at. It does not count against your score.`
 const UNGRADED_ROTATION =
   `The ball's spin wasn't clear enough in this clip to judge rotation, so it was left ungraded rather than guessed at. It does not count against your score.`
-const UNGRADED_TWO_FINGER =
-  `The fingers at the exact release moment weren't clear enough in this clip to judge, so this was left ungraded rather than guessed at. It does not count against your score.`
 
 type PlayerType = 'child' | 'recreational' | 'college_pro' | 'nba_bad_form' | 'nba_decent' | 'nba_elite'
 
@@ -793,16 +791,25 @@ async function analyzeShotOnce(
     result.critical_flags.arc_too_flat = false
   }
 
-  // Two Finger Release is the third never-guess criterion: it depends on the
-  // fingers at the exact release frame, which most angles can't show. Arc and
-  // rotation are handled above with their extra flight-visibility rules.
-  const twoFingerCriterion = result.criteria.find(
-    c => c.id === criterionId('Two Finger Release', 12)
-  )
-  if (twoFingerCriterion && twoFingerCriterion.score !== null && readsLikeAGuess(twoFingerCriterion.reasoning)) {
-    twoFingerCriterion.score = null
-    twoFingerCriterion.reasoning = UNGRADED_TWO_FINGER
-  }
+  // Two Finger Release used to be nulled here whenever its reasoning contained
+  // a hedge word — "appears", "seems", "likely", 30 patterns, any one match.
+  // REMOVED, because the signal was measured and has no predictive value:
+  //
+  //   AUC(hedging -> score is wrong) = 0.477 across 344 expert-labelled rows.
+  //   0.5 is a coin flip; 0.477 is worse than one.
+  //   Hedged rows were MORE accurate (MAE 1.21) than unhedged ones (2.29), and
+  //   ZERO of the 23 worst misses contained a hedge word at all.
+  //
+  // It was also the only condition on this gate — arc and rotation at least
+  // have a real visibility test (`hasRimOrNetContact`) doing the work, with the
+  // hedge check merely redundant. Here it was load-bearing, and it cost 4 of
+  // the 49 expert-cell failures in the 28-fixture run: every one an ABSTAIN
+  // where the owner's correction says the criterion was scoreable.
+  //
+  // "The ball appears to roll off the index and middle fingers" is a confident
+  // observation written in ordinary English. The model is already allowed to
+  // return null when it genuinely cannot see the release, and its own null is a
+  // better judge of that than a regex over its prose.
 
   return result
 }

@@ -1,0 +1,30 @@
+GUIDE HAND FOLLOW THROUGH RUBRIC v4 — did the gap between the two hands OPEN as the ball left, or close?
+
+THE PRIMARY MEASUREMENT IS THE GAP BETWEEN THE HANDS, AND THE RULER IS THE BALL. Find the release frame — the first frame where the ball is no longer touching the shooting hand. Measure the gap between the two hands in BALL WIDTHS, using the ball in that same frame. Then measure it again one and two frames later. You are scoring ONE number and which way it moved. Two positions of one distance is the most reliable thing these frames will give you, and it reads from a camera in front of the shooter, from the side, and from above.
+
+SCORE ANCHORS — every whole and half point is available; land between two anchors when the shot sits between them.
+  10 — At release the hands are at least half a ball width apart, and the gap is the SAME or WIDER in each following frame. The guide hand holds its place or peels away while the ball goes. It does not matter whether the guide arm finishes low or high: both arms extended overhead with the hands clearly apart is correct form and costs nothing.
+  7  — Hands apart and the gap never closes, but the guide hand travels — sliding sideways by about its own width, or settling late, or angled — while still clearly separated from the shooting hand throughout.
+  4  — The gap CLOSES across the release frames: the two hands measurably nearer each other one or two frames after release than at release itself, the guide hand chasing the ball or its palm turning in to push. Rising together is fine; closing is the fault. Also 4 when the guide hand jabs sideways at the ball.
+  1  — The hands actually touch, cross, or finish stacked together, or the guide hand is still on the ball as it leaves.
+
+DIVERGENCE IS FINE, CONVERGENCE IS THE FAULT. After the ball is gone it is normal for both arms to lower and move apart as the player returns to rest. That is NEVER a flaw here. Only measure the frames at and immediately after release, and only deduct when the gap SHRINKS.
+
+FLATNESS IS A SECONDARY DEDUCTION, AND ONLY WHEN YOU CAN COUNT THE FINGERS. A correct guide hand is flat — fingers together and extended, the hand reading as one surface. Fingers clearly spread apart like a starfish, curled into a cup or claw, or closed into a fist, take 2 points off the anchor you measured.
+  BUT: IF YOU CANNOT MAKE OUT INDIVIDUAL FINGERS in at least one frame — the hand is small, blurred, or reads as an indistinct blob — DO NOT SCORE FLATNESS AT ALL. Say nothing about it and take nothing off. Guessing at finger spacing on a distant hand is the main way this criterion gets two different scores on the same shot. Do not call a hand "flat and open" because it is extended: extended with the fingers spread is spread.
+
+A THRASHING FINISH IS A THIRD FINDING, AND IT MEANS THE HAND WILL NOT SIT STILL BEFORE THE BALL LANDS. If the guide hand and elbow are in noticeably different places in each of three consecutive frames at and just after release — flying around rather than arriving and holding — take 2 points off. This is NOT the same as both arms lowering together afterwards, which costs nothing.
+
+CAMERA ANGLE COMPRESSES SEPARATION. From a camera in front of the shooter, including the usual view from under or behind the basket, the two hands can look closer than they are — and a guide hand behind the shooting hand can be hidden by it entirely. What matters is whether the measured gap CLOSES across frames, which survives the compression. If the guide hand is not visible in the release frame at all, return null rather than reading the overlap as a touch.
+
+NEVER DEDUCT FOR SOMETHING YOU CANNOT SEE. Do not shave points because the finish could have been "held a beat longer" or the hand "a little flatter" — that is coaching advice, not an observed flaw.
+BUT THE HAND IS DIRECTLY VISIBLE, SO DO NOT DEFAULT HIGH EITHER. A closing gap, spread fingers, a driving thumb and a hand that travels are all things you can see and name. The general burden-of-proof and default-to-10 rules do NOT soften this criterion, and a clean release, a good arc, or a ball that goes in tells you nothing about what the guide hand did.
+
+IF THE GUIDE HAND FLICKED — a fast lateral jab toward the shooting hand at release, or the two hands clearly converging to the point of nearly or actually crossing — this criterion and "Shooting Through Guide Hand / One Hand Release" MUST both score 4 or below.
+
+EXPERT CALIBRATION:
+  - Front-on finish, both arms extended overhead, hands clearly apart, guide hand flat with fingers together, peeling with no flick: 9-10. The height of the guide arm is not a fault and never was.
+  - Guide hand riding up alongside the shooting hand with the gap between them visibly closing as they rise: 4. The fault is the closing gap, not the rising.
+  - Guide hand extended overhead with the fingers splayed wide apart, gap holding steady: the gap anchor gives 10, the flatness deduction takes 2, final 8. Scoring this 10 because the hand was "flat and open" is the error.
+
+PLAYER-FACING WORDING: tell them to keep the guide hand flat like a board with the fingers together and the thumb relaxed, let the ball go straight through it, and finish with the hands apart — the hand peeling away cleanly instead of chasing the ball. Never mention frames, ball widths, gaps measured, or scoring bands in the reasoning.

@@ -96,21 +96,23 @@ export default function BulkUploader({
   const addFiles = useCallback(
     (files: File[]) => {
       const videos = files.filter((f) => f.type.startsWith('video/'))
-      setClips((prev) => {
-        const room = MAX_CLIPS - prev.length
-        setTooMany(videos.length > room)
-        return [
-          ...prev,
-          ...videos.slice(0, Math.max(0, room)).map((file) => ({
-            id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-            file,
-            playerId: guessPlayer(file, roster),
-            state: { kind: 'waiting' } as ClipState,
-          })),
-        ]
-      })
+      // Room is read from `clips`, not from inside the setClips updater: React
+      // may run an updater more than once, and setting other state from in
+      // there would fire the overflow notice twice.
+      const room = Math.max(0, MAX_CLIPS - clips.length)
+      setTooMany(videos.length > room)
+      if (room === 0) return
+      setClips((prev) => [
+        ...prev,
+        ...videos.slice(0, room).map((file) => ({
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          file,
+          playerId: guessPlayer(file, roster),
+          state: { kind: 'waiting' } as ClipState,
+        })),
+      ])
     },
-    [roster]
+    [clips.length, roster]
   )
 
   const readyCount = clips.filter((c) => c.playerId && c.state.kind === 'waiting').length

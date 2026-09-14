@@ -30,14 +30,12 @@ function check(name: string, cond: boolean, detail = '') {
 }
 
 // A 1x1 black JPEG. Real bytes, so a provider that validates images accepts it.
+// A real 64x64 JPEG. It is NOT 1x1 on purpose: qwen rejects images with any
+// side under 10px ("height:1 or width:1 must be larger than 10"), and a
+// fixture that trips a provider's input validation reports as a routing
+// failure when routing was fine.
 const TINY_JPEG =
-  '/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0a' +
-  'HBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAARCAABAAEDASIAAhEBAxEB/8QAHwAA' +
-  'AQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIh' +
-  'MUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpT' +
-  'VFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5' +
-  'usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD3+iii' +
-  'gD//2Q=='
+  '/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAkGBwgHBgkIBwgKCgkLDRYPDQwMDRsUFRAWIB0iIiAdHx8kKDQsJCYxJx8fLT0tMTU3Ojo6Iys/RD84QzQ5Ojf/2wBDAQoKCg0MDRoPDxo3JR8lNzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzf/wAARCABAAEADASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwDyaiiiqAKKKKACiiigAooooAKKKKACt7T/AAtd3Kb7lxbKRkAjcx6du35546UeD7Fbm/a4kwVtwCFPdjnH5YJ+uK7evLxuNlTlyQ3PXwGAhVh7Spt0Rxl54SuYo91rMtwe6EbD+HOP5VzzqyOyOpVlOCpGCDXqlcn41sVUxXyYBY+XIPU4yD+QI/KpweOnOfJU69S8dl8KcHUp6W6HLUUUV6x4oUUUUAdF4Lu0ivJrZhzOoKn3XPH5E/lXZ15WjMjq6MVZTkMDgg11Gn+LSqbNQhLEDiSLGT06g/jyPyrycdg5zn7SGvc9rL8dCnD2VR2tsdZXL+NrtBFBZgZct5p9hyB+eT+VF54ujEeLG3Yue83AH4A89+4rlrieW5meady8jnLMe9TgsFOM1OatYrH4+nKm6dN3uR0UUV7B4YUUUUAFFFFABRRRQAUUUUAf/9k='
 
 async function main() {
   console.log('\n=== Phase 1: routing (no network, no credentials) ===\n')

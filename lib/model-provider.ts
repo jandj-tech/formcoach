@@ -104,6 +104,7 @@ export async function callGatewayModel(params: {
   content.push({ type: 'text', text: userText })
 
   const { url, token, headers } = endpointAndAuth()
+  const isOpenRouter = url.includes('openrouter.ai')
   const res = await fetch(url, {
     method: 'POST',
     headers: {
@@ -115,6 +116,22 @@ export async function callGatewayModel(params: {
       model,
       max_tokens: maxTokens,
       temperature: 0,
+      // Reasoning models put chain-of-thought in `reasoning` and the answer in
+      // `content`, and BILL THE THINKING AS OUTPUT. qwen3.7-flash spends it
+      // freely: on a trivial one-line prompt it burned 301 output tokens and
+      // returned content:null with finish_reason "length", versus 6 tokens and
+      // a correct answer with reasoning off. That is the real explanation for
+      // the truncation this file already documents below — it was never
+      // "verbose narration", it was hidden reasoning eating the budget, which
+      // is why raising the ceiling appeared to fix it.
+      //
+      // `effort: "low"` does NOT help (still 301 tokens, still truncated); only
+      // an explicit disable works. Set GATEWAY_REASONING=1 to measure whether
+      // thinking actually buys accuracy on the fixtures — it is not obvious
+      // that it doesn't, just that it is not free.
+      ...(isOpenRouter && process.env.GATEWAY_REASONING !== '1'
+        ? { reasoning: { enabled: false } }
+        : {}),
       messages: [
         ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
         { role: 'user', content },
@@ -131,13 +148,29 @@ export async function callGatewayModel(params: {
   }
 
   const json = (await res.json()) as {
-    choices?: Array<{ message?: { content?: string } }>
+    choices?: Array<{
+      message?: { content?: string | null; reasoning?: string | null }
+      finish_reason?: string
+    }>
     usage?: { prompt_tokens?: number; completion_tokens?: number }
     model?: string
   }
 
-  const text = json.choices?.[0]?.message?.content ?? ''
-  if (!text) throw new Error(`Gateway returned no content for ${model}`)
+  const choice = json.choices?.[0]
+  const text = choice?.message?.content ?? ''
+  if (!text) {
+    // Distinguish the three ways this happens, because "no content" sent us
+    // looking at the wrong thing once already.
+    const reasoned = !!choice?.message?.reasoning
+    const truncated = choice?.finish_reason === 'length'
+    const why = reasoned
+      ? `it spent the whole ${maxTokens}-token budget on hidden reasoning (finish_reason=${choice?.finish_reason}). ` +
+        'Reasoning is disabled by default for OpenRouter; GATEWAY_REASONING=1 turns it back on and this is what that costs.'
+      : truncated
+        ? `output hit the ${maxTokens}-token ceiling before the answer closed`
+        : 'the provider returned an empty message'
+    throw new Error(`Gateway returned no content for ${model}: ${why}`)
+  }
 
   return {
     text,

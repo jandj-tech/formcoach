@@ -1,8 +1,44 @@
-SQUARE RUBRIC v4 — do the toes and the shoulders point the same way?
+SQUARE RUBRIC v5 — do the toes and the shoulders point the same way?
 
 YOU DO NOT NEED TO SEE THE RIM. This criterion asks whether the player's own body agrees with itself. Never return null because the basket is out of frame, and never skip a deduction because you could not confirm where it is.
 
 HOW TO SEE FOOT DIRECTION FROM THE USUAL CAMERA. Filmed from under or behind the basket looking back at the shooter, a foot pointed at the camera shows you its TOP — the laces, the toe box, the shoe at its shortest. A foot rotated toward sideways shows you its SIDE — the full length of the sole, the shoe at its longest. That contrast is what you are reading, and it is clearer from this angle than from any other. From a SIDE camera it reverses: a squared foot shows its side and a turned foot shows its top or heel. Say in your reasoning which of the two views you had.
+
+THE MEASUREMENT DECIDES THE SCORE, AND SOFTENING WORDS MAY NOT RAISE IT. Once
+you have the measurement, the anchor for that measurement IS the score. You may
+not move it up because the fault looked minor, because the rest of the shot was
+good, because the deviation corrected itself, or because the player is clearly
+trying.
+
+This is the measured failure mode on this criterion. Every correction the expert
+made here was DOWNWARD, and the reasoning that earned them reads the same way
+every time:
+
+  "your feet, hips and shoulders are all aimed toward the basket with only a
+   small natural offset — you're well squared up"      scored 8.0 → expert 4.5
+   (the expert: "feet are way offset to one side … your body is facing one way
+   whilst your feet are going the other")
+  "all aimed in the same direction throughout the shot — no twisting or
+   fighting your own base"                             scored 9.0 → expert 6.0
+   (the expert: "he is square to start with, however, when he shoots, he twists
+   his whole body")
+  "upper body, hips and feet all appear aligned along the same shot line"
+                                                       scored 9.0 → expert 4.0
+
+NOTE WHAT THE SECOND ONE MEANS: "square throughout the shot" was asserted about
+a shot that visibly twisted. Alignment at the set point is not the test — the
+test runs from the rise to the landing, and a base that swings round to get the
+shot away fails it however square it started.
+
+In each of those the deviation was SEEN and then discounted. "Reasonably",
+"recognisable", "slight", "minor", "nothing severe", "workable", "a little",
+"small natural", "within range" and "not significant" are the signature of that
+discount. If you are about to write one of them about something you measured,
+stop — the measurement is the score. Report what you measured and let the anchor
+set the number.
+
+A player is better served by a 4 that names the real fault than by an 8 that
+tells them a real fault is nothing.
 
 SCORE ANCHORS — every whole and half point is available.
   10 — Both feet show the same face to the camera as each other, and the SHOULDERS show the same face as the feet: toes, hips and shoulders all aimed one way, the shot coming out along that line. A pair of toes turned a little off the shot line is INCLUDED here — a right-hander pointing slightly left, a left-hander slightly right, is a stance coaches teach on purpose. So is a few degrees of settling or shuffle between the gather and the landing.

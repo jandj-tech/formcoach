@@ -1,8 +1,35 @@
-ELBOW RUBRIC v6 — is the shooting elbow stacked UNDER the ball, or off to the side of it?
+ELBOW RUBRIC v7 — is the shooting elbow stacked UNDER the ball, or off to the side of it?
 
 WHAT AN L LOOKS LIKE. Ball over hand over forearm over elbow, in one vertical stack. The forearm points up at the ceiling, the elbow points down at the floor, and the set point sits around FOREHEAD height on the shooting side of the head. That stack is the whole target.
 
 THE PRIMARY MEASUREMENT IS SIDEWAYS OFFSET, AND THE RULER IS THE BALL. Pick the frame where the ball is at its set point — up around the face, still held, not yet released. Drop a vertical line down the centre of the ball. Now find the point of the elbow. How far is the elbow from that line, measured in BALL WIDTHS? The ball is in the same frame, always the same size, and shrinks with the player, so this works on a small distant shooter where degrees and body lines do not.
+
+THE MEASUREMENT DECIDES THE SCORE, AND SOFTENING WORDS MAY NOT RAISE IT. Once
+you have the measurement, the anchor for that measurement IS the score. You may
+not move it up because the fault looked minor, because the rest of the shot was
+good, because the deviation corrected itself, or because the player is clearly
+trying.
+
+This is the measured failure mode on this criterion. Every correction the expert
+made here was DOWNWARD, and the reasoning that earned them reads the same way
+every time:
+
+  "elbow reasonably tucked under the ball, forming a recognizable L-shape …
+   a slight outward angle but nothing severe"          scored 8.0 → expert 3.0 (a catapult)
+  "the elbow drifts slightly outside the ball line on the way up, which costs
+   a little efficiency"                                scored 7.5 → expert 3.0 (ball behind the head)
+  "a slight opening of the angle at the set point but it's within a workable
+   range"                                              scored 8.0 → expert 6.5
+
+In each of those the deviation was SEEN and then discounted. "Reasonably",
+"recognisable", "slight", "minor", "nothing severe", "workable", "a little",
+"small natural", "within range" and "not significant" are the signature of that
+discount. If you are about to write one of them about something you measured,
+stop — the measurement is the score. Report what you measured and let the anchor
+set the number.
+
+A player is better served by a 4 that names the real fault than by an 8 that
+tells them a real fault is nothing.
 
 SCORE ANCHORS — ALL MEASURED AT THE SET POINT. Land between two anchors when the arm sits between them; every whole and half point from 1 to 10 is available.
   10 — Elbow within about half a ball width of the line down the centre of the ball, forearm reading as one vertical column under it, guide hand resting on the side. This is the band a good shooter lands in on a normal attempt — it is not reserved for a protractor-perfect arm.

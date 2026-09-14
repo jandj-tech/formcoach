@@ -118,18 +118,22 @@ export async function callGatewayModel(params: {
       temperature: 0,
       // Reasoning models put chain-of-thought in `reasoning` and the answer in
       // `content`, and BILL THE THINKING AS OUTPUT. qwen3.7-flash spends it
-      // freely: on a trivial one-line prompt it burned 301 output tokens and
-      // returned content:null with finish_reason "length", versus 6 tokens and
-      // a correct answer with reasoning off. That is the real explanation for
-      // the truncation this file already documents below — it was never
-      // "verbose narration", it was hidden reasoning eating the budget, which
-      // is why raising the ceiling appeared to fix it.
+      // freely — on a trivial one-line prompt it burned 301 output tokens and
+      // returned content:null with finish_reason "length", against 6 tokens
+      // and a correct answer with reasoning off.
       //
-      // `effort: "low"` does NOT help (still 301 tokens, still truncated); only
-      // an explicit disable works. Set GATEWAY_REASONING=1 to measure whether
-      // thinking actually buys accuracy on the fixtures — it is not obvious
-      // that it doesn't, just that it is not free.
-      ...(isOpenRouter && process.env.GATEWAY_REASONING !== '1'
+      // That is why the token ceiling has to be generous (16000 below): the
+      // budget has to cover the thinking AND the answer, and a reasoning model
+      // that runs out mid-thought returns nothing at all. Disabling reasoning
+      // "fixes" the truncation and guts the accuracy — see the measurement on
+      // the parameter below. The ceiling is the fix; the thinking stays.
+      // Reasoning stays ON. Measured on the 28-fixture suite, paired per cell:
+      // turning it off cost 36 cells fixed against 10 broken, McNemar exact
+      // p = 0.0002 — qwen went from 2.08 expert failures per fixture to 3.08,
+      // against Sonnet's 1.73. The thinking is most of this model's accuracy.
+      // GATEWAY_REASONING=0 disables it, which is only worth doing to
+      // reproduce that measurement.
+      ...(isOpenRouter && process.env.GATEWAY_REASONING === '0'
         ? { reasoning: { enabled: false } }
         : {}),
       messages: [
@@ -139,7 +143,10 @@ export async function callGatewayModel(params: {
     }),
     // A grading pass over 28 frames on a small model is slow but not endless;
     // without a ceiling a hung provider would hold the whole ensemble open.
-    signal: AbortSignal.timeout(180_000),
+    // 180s was too tight once reasoning is in the budget — one fixture in the
+    // sweep aborted here, which reads as DID NOT RUN and silently shrinks the
+    // suite. Reasoning over 28 images is simply slow.
+    signal: AbortSignal.timeout(300_000),
   })
 
   if (!res.ok) {

@@ -41,15 +41,20 @@ async function loadCriteriaNames(): Promise<Record<number, string>> {
 async function downloadFrames(frameUrls: string[]): Promise<string[]> {
   const frames: string[] = []
   for (const url of frameUrls) {
+    const cached = readCachedFrame(url)
+    if (cached) {
+      frames.push(cached)
+      continue
+    }
     let lastErr: unknown
     let got: string | null = null
-    for (let attempt = 0; attempt < 4 && got === null; attempt++) {
+    for (let attempt = 0; attempt < 6 && got === null; attempt++) {
       if (attempt > 0) await new Promise((r) => setTimeout(r, 500 * 2 ** attempt))
       try {
         const res = await fetch(url, { signal: AbortSignal.timeout(30_000) })
         if (!res.ok) {
           // A 404 is permanent — a dead frame URL will not heal, and retrying
-          // it three more times only slows the failure down.
+          // it five more times only slows the failure down.
           if (res.status === 404) throw new Error(`frame gone (404): ${url}`)
           lastErr = new Error(`status ${res.status}`)
           continue
@@ -62,12 +67,63 @@ async function downloadFrames(frameUrls: string[]): Promise<string[]> {
     }
     if (got === null) {
       throw new Error(
-        `frame download failed after 4 attempts: ${url} — ${lastErr instanceof Error ? lastErr.message : String(lastErr)}`
+        `frame download failed after 6 attempts: ${url} — ${lastErr instanceof Error ? lastErr.message : String(lastErr)}`
       )
     }
+    writeCachedFrame(url, got)
     frames.push(got)
   }
   return FRAME_UPSCALE > 1 ? upscaleFrames(frames, FRAME_UPSCALE) : frames
+}
+
+/**
+ * On-disk cache for fixture frames, keyed by URL.
+ *
+ * A fixture's frames are PINNED and immutable — that is the whole point of the
+ * Test Bench, and `frames_hash` verifies it — so re-downloading 784 of them on
+ * every arm is pure waste and, worse, pure risk. Frame downloads have been the
+ * single largest source of lost fixtures: one arm lost 27 of 28 to transient
+ * failures, and a 3-pass arm lost 13 of 28 to a mixture of download failures
+ * and timeouts. A lost fixture does not just cost itself, it makes the whole
+ * arm non-comparable to every other arm.
+ *
+ * With the cache warm an arm makes ZERO frame requests, which removes that
+ * failure mode entirely and cuts several minutes off every run.
+ *
+ * EVAL_FRAME_CACHE sets the directory; unset disables caching so CI or a
+ * one-off verification can still exercise the real download path.
+ */
+const FRAME_CACHE_DIR = process.env.EVAL_FRAME_CACHE ?? '.eval-frame-cache'
+
+function frameCachePath(url: string): string | null {
+  if (!FRAME_CACHE_DIR) return null
+  return `${FRAME_CACHE_DIR}/${createHash('sha256').update(url).digest('hex')}.b64`
+}
+
+function readCachedFrame(url: string): string | null {
+  const p = frameCachePath(url)
+  if (!p) return null
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { readFileSync } = require('fs') as typeof import('fs')
+    return readFileSync(p, 'utf8')
+  } catch {
+    return null
+  }
+}
+
+function writeCachedFrame(url: string, b64: string): void {
+  const p = frameCachePath(url)
+  if (!p) return
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { mkdirSync, writeFileSync } = require('fs') as typeof import('fs')
+    mkdirSync(FRAME_CACHE_DIR, { recursive: true })
+    writeFileSync(p, b64)
+  } catch {
+    // A cache that cannot be written is a performance problem, not a
+    // correctness one — the download already succeeded.
+  }
 }
 
 /**

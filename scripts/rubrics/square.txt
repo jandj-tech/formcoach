@@ -1,4 +1,4 @@
-SQUARE RUBRIC v5 — do the toes and the shoulders point the same way?
+SQUARE RUBRIC v6 — do the toes and the shoulders point the same way?
 
 YOU DO NOT NEED TO SEE THE RIM. This criterion asks whether the player's own body agrees with itself. Never return null because the basket is out of frame, and never skip a deduction because you could not confirm where it is.
 
@@ -40,13 +40,48 @@ set the number.
 A player is better served by a 4 that names the real fault than by an 8 that
 tells them a real fault is nothing.
 
-SCORE ANCHORS — every whole and half point is available.
-  10 — Both feet show the same face to the camera as each other, and the SHOULDERS show the same face as the feet: toes, hips and shoulders all aimed one way, the shot coming out along that line. A pair of toes turned a little off the shot line is INCLUDED here — a right-hander pointing slightly left, a left-hander slightly right, is a stance coaches teach on purpose. So is a few degrees of settling or shuffle between the gather and the landing.
+TWO CHECKS, AND THE SECOND ONE IS THE ONE THIS CRITERION KEEPS MISSING.
+
+  CHECK A — AT THE SET POINT. Do the toes and the shoulders show the same face
+  to the camera? This is the static question, and it is the one that gets
+  answered.
+
+  CHECK B — THROUGH THE RELEASE AND THE LANDING. Does that alignment HOLD, or
+  does the body twist to get the shot away? Compare the set-point frame with
+  the release frame and with the landing. A player can be perfectly square at
+  the set point and still fail this criterion by winding the torso round as
+  they rise.
+
+CHECK B IS NOT OPTIONAL AND IT IS NOT A TIE-BREAKER. Half of the expert's
+corrections on this criterion are Check B failures that were scored as if only
+Check A existed. One reads, verbatim: "he is square to start with, however,
+when he shoots, he twists his whole body. take that into account as well." That
+shot was scored 9 and the expert gave it 6. Writing "square throughout the
+shot" after looking at a single frame is the specific error being corrected —
+you cannot report on "throughout" from one moment.
+
+THE MEASURED FAILURE: THIS CRITERION NEVER SCORES BELOW 7. Across every
+correction the expert has made here the AI produced 7, 8 or 9 and nothing else,
+while the expert's own scores were 4, 4.5, 6 and 9. Three of the four were
+corrected DOWNWARD by 2.5 to 5 points. This criterion has the largest average
+error of any in the rubric — a median of 3.5 points, with 60% of its misses
+more than 2 points out — and the reason is that the bottom half of its scale is
+never used. If your answer is 7 or above, you must be able to say which check
+passed and that BOTH did.
+
+SCORE ANCHORS — every whole and half point is available, and the 3-to-6 band is
+where a genuinely misaligned shot belongs.
+  10 — Both feet show the same face to the camera as each other, and the SHOULDERS show the same face as the feet: toes, hips and shoulders all aimed one way, the shot coming out along that line, and it HOLDS from the set point through the landing. A pair of toes turned a little off the shot line is INCLUDED here — a right-hander pointing slightly left, a left-hander slightly right, is a stance coaches teach on purpose. So is a few degrees of settling or shuffle between the gather and the landing.
+  9  — As above, and the expert's own wording for this band is "whole body and feet are pointed in the same direction with no rotation happening in the body". A shot he scored 9 after the AI had said 7 — do not be stingy at the top when both checks genuinely pass.
+  8  — Aligned at the set point and holds, with one small imperfection: a slight settle, or the two feet a few degrees off each other while the shoulders match one of them.
   7  — The feet visibly move during the shot — a pivot or a step round as the player rises — but land pointing where the shoulders point, and the upper body never has to work around them. Also 7 when the two feet disagree with each other while the shoulders still match one of them.
-  4  — The feet and the shoulders show DIFFERENT faces to the camera at the set point: the shoes presenting their sides while the chest presents its front, or the reverse. The player is shooting across their own base, and the torso is visibly wound round relative to the hips and feet.
+  6  — CHECK A PASSES AND CHECK B FAILS: square at the set point, then the torso visibly twists to get the shot away. This is the expert's score for exactly that shot. The base was never wrong; the shot rotated off it.
+  5  — Mild mismatch at the set point AND some twist through the release: neither check is clean, but the player is still shooting roughly along their base.
+  4  — The feet and the shoulders show DIFFERENT faces to the camera at the set point: the shoes presenting their sides while the chest presents its front, or the reverse. The player is shooting across their own base, and the torso is visibly wound round relative to the hips and feet. ALSO 4 to 4.5 when the feet are planted well out to one side of the shot line and the body has to rotate to compensate — the expert's phrasing is "feet are way offset to one side, you can see that your body is facing one way whilst your feet are going the other".
+  3  — As 4, and the compensation is severe enough to distort the shooting arm as well — the expert on such a shot: "she has to rotate her body and put her elbow in a weird position to shoot".
   1  — The feet are close to sideways relative to the shot, the whole torso has rotated to get the shot away, and the base visibly swings back round during or after the release.
 
-THE FLAW IS A MISMATCH, NOT AN ANGLE. Foot direction on its own is not the fault and a small amount of foot movement is not the fault. What you are scoring is whether the upper body and the feet disagree. Only movement large enough that the player is clearly re-aiming their base mid-shot belongs below 7.
+THE FLAW IS A MISMATCH, NOT AN ANGLE. Foot direction on its own is not the fault and a small amount of foot movement is not the fault. What you are scoring is whether the upper body and the feet disagree — either at the set point (Check A) or by the body twisting off a good base (Check B). Small settles and shuffles stay at 7 and above. A visible torso twist to get the shot away does NOT: that is a 6, even when the base itself was perfect, because the expert scored exactly that shot a 6.
 
 A STAGGERED STANCE IS NOT A TURNED STANCE. The shooting-side foot being slightly AHEAD of the other is correct form and belongs to a different criterion. What matters is the direction the toes POINT, not which foot is forward.
 

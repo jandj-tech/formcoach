@@ -24,14 +24,92 @@ async function loadCriteriaNames(): Promise<Record<number, string>> {
   return Object.fromEntries(rows.map((r) => [Number(r.id), r.name]))
 }
 
+/**
+ * Downloads a fixture's frames, retrying each one.
+ *
+ * 28 frames per fixture across 28 fixtures is 784 fetches an arm, and without
+ * retries every one is a point of failure that loses the WHOLE fixture — the
+ * eval reports DID NOT RUN, the arm covers fewer fixtures than every other
+ * arm, and the comparison is dead. At even a 1% per-fetch failure rate that is
+ * a ~24% chance of losing any given fixture (1 - 0.99^28).
+ *
+ * This is what actually cost most of tonight's arms. I blamed grading-pass
+ * concurrency first, but the downloads were the unprotected part: one arm lost
+ * 27 of 28 fixtures to timeouts and ECONNRESET while the network tested clean
+ * moments afterwards.
+ */
 async function downloadFrames(frameUrls: string[]): Promise<string[]> {
   const frames: string[] = []
   for (const url of frameUrls) {
-    const res = await fetch(url)
-    if (!res.ok) throw new Error(`frame download failed (${res.status}): ${url}`)
-    frames.push(Buffer.from(await res.arrayBuffer()).toString('base64'))
+    let lastErr: unknown
+    let got: string | null = null
+    for (let attempt = 0; attempt < 4 && got === null; attempt++) {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 500 * 2 ** attempt))
+      try {
+        const res = await fetch(url, { signal: AbortSignal.timeout(30_000) })
+        if (!res.ok) {
+          // A 404 is permanent — a dead frame URL will not heal, and retrying
+          // it three more times only slows the failure down.
+          if (res.status === 404) throw new Error(`frame gone (404): ${url}`)
+          lastErr = new Error(`status ${res.status}`)
+          continue
+        }
+        got = Buffer.from(await res.arrayBuffer()).toString('base64')
+      } catch (err) {
+        if (err instanceof Error && err.message.startsWith('frame gone')) throw err
+        lastErr = err
+      }
+    }
+    if (got === null) {
+      throw new Error(
+        `frame download failed after 4 attempts: ${url} — ${lastErr instanceof Error ? lastErr.message : String(lastErr)}`
+      )
+    }
+    frames.push(got)
   }
-  return frames
+  return FRAME_UPSCALE > 1 ? upscaleFrames(frames, FRAME_UPSCALE) : frames
+}
+
+/**
+ * FRAME_UPSCALE=2 resamples every frame before grading.
+ *
+ * This adds NO information — the frames are already at their source
+ * resolution, verified by probing the stored videos (464x832 to 576x1024, gain
+ * 1.0x, so there is no lost detail to recover). What it changes is
+ * TOKENISATION: a vision model splits an image into fixed-size patches, so a
+ * 464-pixel-wide frame gives the shooter only about six patches of height and
+ * every spatial judgement inside the body has to survive that. Resampling 2x
+ * gives four times the patches over the same content.
+ *
+ * The hypothesis is worth testing precisely because it is cheap and because
+ * everything else about the input has been ruled out: five architecturally
+ * different models (including one ~30x the size of the smallest) miss the same
+ * cells — 71% of failing cells are missed by 4 or 5 of 5 — which points at the
+ * shared input rather than at any model's weights.
+ *
+ * Upscaling pinned frames is the clean form of the experiment: identical
+ * information, different patch grid, so any difference is attributable to the
+ * encoding alone.
+ */
+const FRAME_UPSCALE = Number(process.env.FRAME_UPSCALE || '1') || 1
+
+async function upscaleFrames(framesB64: string[], factor: number): Promise<string[]> {
+  const { default: sharp } = await import('sharp')
+  return Promise.all(
+    framesB64.map(async (b64) => {
+      const img = sharp(Buffer.from(b64, 'base64'))
+      const { width, height } = await img.metadata()
+      if (!width || !height) return b64
+      const out = await img
+        // Lanczos: the sharpest of the practical resamplers, which matters when
+        // the point is to preserve what edge detail the frame has rather than
+        // to smooth it away.
+        .resize(Math.round(width * factor), Math.round(height * factor), { kernel: 'lanczos3' })
+        .jpeg({ quality: 90 })
+        .toBuffer()
+      return out.toString('base64')
+    })
+  )
 }
 
 const hashFrames = (frames: string[]) =>

@@ -1,13 +1,70 @@
-ELBOW RUBRIC v6 — is the shooting elbow stacked UNDER the ball, or off to the side of it?
+ELBOW RUBRIC v9 — is the shooting elbow stacked UNDER the ball, or off to the side of it?
 
 WHAT AN L LOOKS LIKE. Ball over hand over forearm over elbow, in one vertical stack. The forearm points up at the ceiling, the elbow points down at the floor, and the set point sits around FOREHEAD height on the shooting side of the head. That stack is the whole target.
 
-THE PRIMARY MEASUREMENT IS SIDEWAYS OFFSET, AND THE RULER IS THE BALL. Pick the frame where the ball is at its set point — up around the face, still held, not yet released. Drop a vertical line down the centre of the ball. Now find the point of the elbow. How far is the elbow from that line, measured in BALL WIDTHS? The ball is in the same frame, always the same size, and shrinks with the player, so this works on a small distant shooter where degrees and body lines do not.
+THE PRIMARY MEASUREMENT IS SIDEWAYS OFFSET, AND THE RULER IS THE SHOULDERS — NOT THE BALL. Pick the frame where the ball is at its set point — up around the face, still held, not yet released. Drop a vertical line down the centre of the ball. Find the point of the elbow. Now measure the gap between them as a fraction of the player's SHOULDER WIDTH, measured in that same frame from the outside of one shoulder to the outside of the other.
 
-SCORE ANCHORS — ALL MEASURED AT THE SET POINT. Land between two anchors when the arm sits between them; every whole and half point from 1 to 10 is available.
-  10 — Elbow within about half a ball width of the line down the centre of the ball, forearm reading as one vertical column under it, guide hand resting on the side. This is the band a good shooter lands in on a normal attempt — it is not reserved for a protractor-perfect arm.
-  7  — Elbow roughly one ball width outside the line: recognisably stacked, clearly on the shooting side, but visibly off the ball's centre, or drifting out during the rise and recovering by the set point.
-  4  — Elbow about two ball widths outside the line: winged out to the side with the ball resting beside the head rather than above the elbow. This is the most common real fault and it is a one-hand shot with a flared elbow — write it as exactly that.
+WHY THE SHOULDERS AND NOT THE BALL. Earlier versions of this rubric used ball widths, and it was measured to fail: on these clips the shooter is about a fifth of the frame tall, which makes the ball roughly 21 pixels across, so "half a ball width" is an 11-pixel judgement on a compressed frame whose blocking artefacts are 8 pixels. The distinction was not in the image. The result was a criterion that scored only 4 or 8 — never 5, 6 or 7 — while the expert's own scores on the same shots spread across 3, 4, 5.5, 6.5, 7 and 7.5. It was not biased in either direction (three cells too high by more than a point, three too low) — it simply could not tell the gradations apart.
+
+The shoulders are about 45 pixels across on the same frame, so every step of this measurement is roughly 2.2 times larger than the ball-width version, and a quarter-shoulder judgement is about as resolvable as a half-ball one used to be. Measure against the shoulders. If the shoulders are not both visible, say so in your reasoning and fall back to the ball as the ruler — but expect to land in the middle of the range rather than at its ends, because you are then working at the resolution that produced the failure above.
+
+THE MEASUREMENT DECIDES THE SCORE, AND SOFTENING WORDS MAY NOT RAISE IT. Once
+you have the measurement, the anchor for that measurement IS the score. You may
+not move it up because the fault looked minor, because the rest of the shot was
+good, because the deviation corrected itself, or because the player is clearly
+trying.
+
+This is the measured failure mode on this criterion. Every correction the expert
+made here was DOWNWARD, and the reasoning that earned them reads the same way
+every time:
+
+  "elbow reasonably tucked under the ball, forming a recognizable L-shape …
+   a slight outward angle but nothing severe"          scored 8.0 → expert 3.0 (a catapult)
+  "the elbow drifts slightly outside the ball line on the way up, which costs
+   a little efficiency"                                scored 7.5 → expert 3.0 (ball behind the head)
+  "a slight opening of the angle at the set point but it's within a workable
+   range"                                              scored 8.0 → expert 6.5
+
+In each of those the deviation was SEEN and then discounted. "Reasonably",
+"recognisable", "slight", "minor", "nothing severe", "workable", "a little",
+"small natural", "within range" and "not significant" are the signature of that
+discount. If you are about to write one of them about something you measured,
+stop — the measurement is the score. Report what you measured and let the anchor
+set the number.
+
+A player is better served by a 4 that names the real fault than by an 8 that
+tells them a real fault is nothing.
+
+MOST SHOTS LAND BETWEEN 4 AND 8. READ THIS BEFORE THE ANCHORS. Across every
+correction the expert has made on this criterion the scores run from 3 to 8,
+with a median of 6.5. Nine and ten are rare and two and below are rare. The
+measured failure is not that this criterion scores too high or too low — it is
+that it scores at the ENDS while the expert scores in the MIDDLE. Two runs on
+the same shots produced almost nothing but 9s and almost nothing but 4s, on
+shots the expert had placed at 6 to 8 both times.
+
+So there is a check to run before you commit a number:
+  - About to write 9 or 10? The offset must be about a TENTH of shoulder width
+    — roughly one wrist. A quarter of shoulder width is a 7, not a 9.
+  - About to write 4 or below? The elbow must be out about HALF the shoulder
+    width, level with the edge of the shoulder, winged so the ball rests beside
+    the head rather than above the arm. A third of shoulder width is a 6.
+  - Neither extreme clearly applies? Then the answer is in 5 to 8, and you must
+    pick from inside that band rather than rounding to a rung.
+
+SCORE ANCHORS — ALL MEASURED AT THE SET POINT, IN FRACTIONS OF SHOULDER WIDTH.
+Every whole and half point from 1 to 10 is available, and landing BETWEEN two
+anchors is the normal outcome, not a failure to decide. A useful sanity check:
+a tenth of shoulder width is about the width of the player's own wrist, and a
+quarter is about the width of their head.
+  10 — Elbow essentially on the line: offset under a TENTH of shoulder width. One vertical column, ball directly above the forearm. Genuinely rare.
+  9  — Offset about a tenth of shoulder width — roughly one wrist. Still a column; a shooter having a good day.
+  8  — Offset about a fifth of shoulder width. Clearly stacked, slightly off centre. This is what a solid competent shot looks like.
+  7  — Offset about a quarter of shoulder width — roughly one head width. Recognisably stacked, clearly on the shooting side, but visibly off the ball's centre; or drifting out during the rise and recovering by the set point.
+  6  — Offset about a third of shoulder width. Off the ball but still on the shooting side of the body, arm still working underneath. The single most common real shot.
+  5  — Offset about four tenths of shoulder width: starting to wing, the ball drifting toward the side of the head rather than above the arm.
+  4  — Offset about HALF the shoulder width — the elbow is out level with the edge of the shoulder. Winged out to the side with the ball resting beside the head rather than above the elbow. A one-hand shot with a flared elbow — write it as exactly that.
+  3  — Offset beyond half the shoulder width: the arm is pushing from the side, the stack is gone at the set point.
   1  — No stack at any point: the ball never sits above the elbow, the arm pushes it from beside the shoulder, or the elbow is out so far the upper arm is level with the shoulders.
 
 TWO SHAPE FLOORS, EACH NEEDING A FRAME YOU CAN POINT AT. These override the offset anchors:

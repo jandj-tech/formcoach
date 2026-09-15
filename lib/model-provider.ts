@@ -86,9 +86,55 @@ export function isGatewayModel(model: string): boolean {
  * across 176 models, and the caller already extracts the JSON object with a
  * regex, which works whether or not the model wraps it in prose.
  */
+/**
+ * Retries a gateway call through transient failures.
+ *
+ * A grading arm is 28 fixtures and takes ~20 minutes, and a single blip
+ * anywhere in it reports as DID NOT RUN — which shrinks the fixture set and
+ * makes the arm uncomparable to every other arm. One dropped connection
+ * voided a whole arm: 23 "fetch failed" plus an EHOSTUNREACH from a few
+ * seconds of local network trouble, with the provider perfectly healthy
+ * before and after.
+ *
+ * Retries network-level errors, 429, and 5xx. Does NOT retry a 4xx other than
+ * 429: a malformed request, an image the provider rejects, or a bad model id
+ * will fail identically every time, and retrying hides a real bug behind a
+ * slower failure.
+ */
+async function fetchWithRetry(url: string, init: RequestInit, attempts = 4): Promise<Response> {
+  let lastErr: unknown
+  for (let i = 0; i < attempts; i++) {
+    if (i > 0) {
+      // 2s, 6s, 18s — long enough for a rate-limit window or a wifi hiccup to
+      // clear, short enough that a genuinely dead provider still fails the arm.
+      await new Promise((r) => setTimeout(r, 2000 * 3 ** (i - 1)))
+    }
+    try {
+      const res = await fetch(url, init)
+      if (res.status === 429 || res.status >= 500) {
+        lastErr = new Error(`transient ${res.status}`)
+        // Drain the body so the connection can be reused.
+        await res.text().catch(() => '')
+        continue
+      }
+      return res
+    } catch (err) {
+      // fetch() throws on DNS failure, connection reset, EHOSTUNREACH and on
+      // the AbortSignal timeout. Retrying a timeout is deliberate: a reasoning
+      // model over 28 images is genuinely slow and sometimes just needs a
+      // second run at it.
+      lastErr = err
+    }
+  }
+  throw new Error(
+    `gateway unreachable after ${attempts} attempts: ${lastErr instanceof Error ? lastErr.message : String(lastErr)}`
+  )
+}
+
 export async function callGatewayModel(params: {
   model: string
-  systemPrompt: string
+  /** Omitted for single-turn calls; an empty system message is rejected by some providers. */
+  systemPrompt?: string
   framesBase64: string[]
   frameMimeTypes: string[]
   userText: string
@@ -103,7 +149,8 @@ export async function callGatewayModel(params: {
   content.push({ type: 'text', text: userText })
 
   const { url, token, headers } = endpointAndAuth()
-  const res = await fetch(url, {
+  const isOpenRouter = url.includes('openrouter.ai')
+  const res = await fetchWithRetry(url, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -114,14 +161,37 @@ export async function callGatewayModel(params: {
       model,
       max_tokens: maxTokens,
       temperature: 0,
+      // Reasoning models put chain-of-thought in `reasoning` and the answer in
+      // `content`, and BILL THE THINKING AS OUTPUT. qwen3.7-flash spends it
+      // freely — on a trivial one-line prompt it burned 301 output tokens and
+      // returned content:null with finish_reason "length", against 6 tokens
+      // and a correct answer with reasoning off.
+      //
+      // That is why the token ceiling has to be generous (16000 below): the
+      // budget has to cover the thinking AND the answer, and a reasoning model
+      // that runs out mid-thought returns nothing at all. Disabling reasoning
+      // "fixes" the truncation and guts the accuracy — see the measurement on
+      // the parameter below. The ceiling is the fix; the thinking stays.
+      // Reasoning stays ON. Measured on the 28-fixture suite, paired per cell:
+      // turning it off cost 36 cells fixed against 10 broken, McNemar exact
+      // p = 0.0002 — qwen went from 2.08 expert failures per fixture to 3.08,
+      // against Sonnet's 1.73. The thinking is most of this model's accuracy.
+      // GATEWAY_REASONING=0 disables it, which is only worth doing to
+      // reproduce that measurement.
+      ...(isOpenRouter && process.env.GATEWAY_REASONING === '0'
+        ? { reasoning: { enabled: false } }
+        : {}),
       messages: [
-        { role: 'system', content: systemPrompt },
+        ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
         { role: 'user', content },
       ],
     }),
     // A grading pass over 28 frames on a small model is slow but not endless;
     // without a ceiling a hung provider would hold the whole ensemble open.
-    signal: AbortSignal.timeout(180_000),
+    // 180s was too tight once reasoning is in the budget — one fixture in the
+    // sweep aborted here, which reads as DID NOT RUN and silently shrinks the
+    // suite. Reasoning over 28 images is simply slow.
+    signal: AbortSignal.timeout(300_000),
   })
 
   if (!res.ok) {
@@ -130,13 +200,30 @@ export async function callGatewayModel(params: {
   }
 
   const json = (await res.json()) as {
-    choices?: Array<{ message?: { content?: string } }>
+    choices?: Array<{
+      message?: { content?: string | null; reasoning?: string | null }
+      finish_reason?: string
+    }>
     usage?: { prompt_tokens?: number; completion_tokens?: number }
     model?: string
   }
 
-  const text = json.choices?.[0]?.message?.content ?? ''
-  if (!text) throw new Error(`Gateway returned no content for ${model}`)
+  const choice = json.choices?.[0]
+  const text = choice?.message?.content ?? ''
+  if (!text) {
+    // Distinguish the three ways this happens, because "no content" sent us
+    // looking at the wrong thing once already.
+    const reasoned = !!choice?.message?.reasoning
+    const truncated = choice?.finish_reason === 'length'
+    const why = reasoned
+      ? `it spent the whole ${maxTokens}-token budget on hidden reasoning (finish_reason=${choice?.finish_reason}). ` +
+        'Reasoning is ON by default because it is worth ~1 expert failure per fixture — raise maxTokens so the budget ' +
+        'covers the thinking AND the answer, or set GATEWAY_REASONING=0 to trade that accuracy away.'
+      : truncated
+        ? `output hit the ${maxTokens}-token ceiling before the answer closed`
+        : 'the provider returned an empty message'
+    throw new Error(`Gateway returned no content for ${model}: ${why}`)
+  }
 
   return {
     text,
@@ -145,5 +232,82 @@ export async function callGatewayModel(params: {
       output: json.usage?.completion_tokens ?? 0,
     },
     model: json.model ?? model,
+  }
+}
+
+
+/**
+ * Which model each stage runs on.
+ *
+ * Grading and the two localisation calls are separated because they are not the
+ * same job: localisation only has to point at the right frame, while grading has
+ * to produce ~18 defensible scores. If a cheap model turns out to localise well
+ * but grade badly, DETECT_MODEL lets the cheap one keep the cheap job.
+ * Unset, detection follows ANALYSIS_MODEL, which is what you want during a
+ * model switch — otherwise half the pipeline silently stays on the old provider.
+ */
+export function analysisModel(): string {
+  return process.env.ANALYSIS_MODEL || 'claude-sonnet-4-6'
+}
+export function detectModel(): string {
+  return process.env.DETECT_MODEL || process.env.ANALYSIS_MODEL || 'claude-sonnet-4-6'
+}
+
+/**
+ * One single-turn vision call — frames plus a prompt, JSON back — routed to
+ * whichever provider owns `model`.
+ *
+ * THE BUG THIS EXISTS TO PREVENT: setting ANALYSIS_MODEL used to switch only
+ * the grading call. The release gate and both /api/detect-shot-* routes went on
+ * calling Anthropic — the gate passing the gateway model id straight to
+ * Anthropic, which rejects it, and the detect routes with claude-sonnet-4-6
+ * hardcoded. So "switching models" left three of the four vision calls on the
+ * old provider, and on an Anthropic account with no credits that is not a
+ * degraded pipeline, it is a broken one.
+ *
+ * No prompt caching here on purpose: these calls are small, single-shot, and
+ * never repeated within an analysis, so there is no prefix worth caching.
+ */
+export async function callVisionModel(params: {
+  model: string
+  framesBase64: string[]
+  frameMimeTypes: string[]
+  userText: string
+  maxTokens: number
+}): Promise<ModelCallResult> {
+  const { model, framesBase64, frameMimeTypes, userText, maxTokens } = params
+
+  if (isGatewayModel(model)) {
+    return callGatewayModel({ model, framesBase64, frameMimeTypes, userText, maxTokens })
+  }
+
+  // Imported lazily so a gateway-only deployment never has to load the
+  // Anthropic SDK, and so this module stays importable without ANTHROPIC_API_KEY.
+  const { default: Anthropic } = await import('@anthropic-ai/sdk')
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  const response = await client.messages.create({
+    temperature: 0,
+    model,
+    max_tokens: maxTokens,
+    messages: [{
+      role: 'user',
+      content: [
+        ...framesBase64.map((data, i) => ({
+          type: 'image' as const,
+          source: {
+            type: 'base64' as const,
+            media_type: (frameMimeTypes[i] || 'image/jpeg') as 'image/jpeg',
+            data,
+          },
+        })),
+        { type: 'text' as const, text: userText },
+      ],
+    }],
+  })
+  const text = response.content[0]?.type === 'text' ? response.content[0].text : ''
+  return {
+    text,
+    usage: { input: response.usage.input_tokens, output: response.usage.output_tokens },
+    model: response.model,
   }
 }

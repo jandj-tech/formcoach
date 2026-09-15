@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import Anthropic from '@anthropic-ai/sdk'
-import { requireEnv } from '@/lib/env'
+import { callVisionModel, detectModel } from '@/lib/model-provider'
 import { resolveUploader, uploaderKey } from '@/lib/upload-guard'
 import { rateLimit, rateLimitByIp } from '@/lib/rate-limit'
 import { validateFrames } from '@/lib/frame-input'
@@ -46,22 +45,16 @@ export async function POST(req: NextRequest) {
 
   const n = frames.length
 
-  const imageBlocks: Anthropic.ImageBlockParam[] = frames.map((data) => ({
-    type: 'image',
-    source: { type: 'base64', media_type: 'image/jpeg', data },
-  }))
-
-  const response = await new Anthropic({ apiKey: requireEnv('ANTHROPIC_API_KEY') }).messages.create({
-    temperature: 0,
-    model: 'claude-sonnet-4-6',
-    max_tokens: 100,
-    messages: [{
-      role: 'user',
-      content: [
-        ...imageBlocks,
-        {
-          type: 'text',
-          text: `These are ${n} evenly-spaced frames numbered 0 to ${n - 1} from a basketball video.
+  // Routed through callVisionModel so this follows ANALYSIS_MODEL during a
+  // provider switch. It used to hardcode claude-sonnet-4-6, so switching the
+  // grader left this call on Anthropic — and on an account with no credits
+  // that is a hard failure, not a cheaper one.
+  const { text } = await callVisionModel({
+    model: detectModel(),
+    framesBase64: frames,
+    frameMimeTypes: frames.map(() => 'image/jpeg'),
+    maxTokens: 100,
+    userText: `These are ${n} evenly-spaced frames numbered 0 to ${n - 1} from a basketball video.
 
 Find the RELEASE frame — the single moment where the shooter is at the peak of their jump with their shooting arm fully extended upward and the ball at their fingertips just leaving (or just having left) their hand. This is the most visually distinctive moment of any jump shot: full extension, ball at the top, wrist snapping or just snapped.
 
@@ -70,12 +63,7 @@ If there are multiple shots in the video, return the LAST release frame (highest
 Do NOT return a setup frame, a dribbling frame, or a follow-through frame. Only the release — arm up, ball at fingertips.
 
 Output ONLY this JSON, nothing else: {"release": <frame number 0 to ${n - 1}>}`,
-        },
-      ],
-    }],
   })
-
-  const text = response.content[0].type === 'text' ? response.content[0].text : ''
   const match = text.match(/\{[\s\S]*?\}/)
 
   const fallback = Math.floor(n * 0.6)

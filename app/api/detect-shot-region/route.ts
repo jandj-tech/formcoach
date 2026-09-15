@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import Anthropic from '@anthropic-ai/sdk'
-import { requireEnv } from '@/lib/env'
+import { callVisionModel, detectModel } from '@/lib/model-provider'
 import { resolveUploader, uploaderKey } from '@/lib/upload-guard'
 import { rateLimit, rateLimitByIp } from '@/lib/rate-limit'
 import { validateFrames } from '@/lib/frame-input'
@@ -46,32 +45,21 @@ export async function POST(req: NextRequest) {
 
   const n = frames.length
 
-  const imageBlocks: Anthropic.ImageBlockParam[] = frames.map((data) => ({
-    type: 'image',
-    source: { type: 'base64', media_type: 'image/jpeg', data },
-  }))
-
-  const response = await new Anthropic({ apiKey: requireEnv('ANTHROPIC_API_KEY') }).messages.create({
-    temperature: 0,
-    model: 'claude-sonnet-4-6',
-    max_tokens: 50,
-    messages: [{
-      role: 'user',
-      content: [
-        ...imageBlocks,
-        {
-          type: 'text',
-          text: `These are ${n} evenly-spaced frames numbered 0 to ${n - 1} covering a basketball video from start to finish.
+  // Routed through callVisionModel so this follows ANALYSIS_MODEL during a
+  // provider switch. It used to hardcode claude-sonnet-4-6, so switching the
+  // grader left this call on Anthropic — and on an account with no credits
+  // that is a hard failure, not a cheaper one.
+  const { text } = await callVisionModel({
+    model: detectModel(),
+    framesBase64: frames,
+    frameMimeTypes: frames.map(() => 'image/jpeg'),
+    maxTokens: 50,
+    userText: `These are ${n} evenly-spaced frames numbered 0 to ${n - 1} covering a basketball video from start to finish.
 
 Which frame number is closest to the basketball shot release — the moment the shooter's arm is extended upward with the ball leaving their hand? If multiple shots, pick the last one. If no obvious release, pick the most likely frame.
 
 Output ONLY this JSON: {"frame": <0 to ${n - 1}>}`,
-        },
-      ],
-    }],
   })
-
-  const text = response.content[0].type === 'text' ? response.content[0].text : ''
   const match = text.match(/\{[\s\S]*?\}/)
 
   const fallbackFrame = Math.floor(n * 0.6)

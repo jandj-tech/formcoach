@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { isGatewayModel, callGatewayModel } from '@/lib/model-provider'
+import { isGatewayModel, callGatewayModel, callVisionModel, analysisModel } from '@/lib/model-provider'
 import { createHash } from 'crypto'
 import { readFileSync } from 'fs'
 import { join } from 'path'
@@ -101,8 +101,6 @@ const UNGRADED_ARC =
   `The ball's flight to the basket wasn't clear enough in this clip to judge arc, so it was left ungraded rather than guessed at. It does not count against your score.`
 const UNGRADED_ROTATION =
   `The ball's spin wasn't clear enough in this clip to judge rotation, so it was left ungraded rather than guessed at. It does not count against your score.`
-const UNGRADED_TWO_FINGER =
-  `The fingers at the exact release moment weren't clear enough in this clip to judge, so this was left ungraded rather than guessed at. It does not count against your score.`
 
 type PlayerType = 'child' | 'recreational' | 'college_pro' | 'nba_bad_form' | 'nba_decent' | 'nba_elite'
 
@@ -379,6 +377,10 @@ async function loadGraderContext(): Promise<GraderContext> {
   const promptSha = createHash('sha256')
     .update(
       PROMPT_SHA_SALT +
+        // Grouping is part of the grader's identity: the same rubric graded in
+        // 4 calls is not the same grader as in 1.
+        (process.env.CRITERION_GROUPS === '1' ? 'grouped:' : '') +
+        (process.env.TWO_STAGE === '1' ? 'twostage:' : '') +
         buildSystemPrompt({ criteriaText, feedbackText }, SHA_CANONICAL_FRAME_COUNT)
     )
     .digest('hex')
@@ -471,6 +473,8 @@ SHOT ARC — RIM OR NET CONTACT REQUIRED: You may only score arc if you can clea
 BALL ROTATION — THE SPIN MUST BE SEEN, NOT ASSUMED: Two conditions must BOTH hold before you may score ball rotation. First, shot arc must have received a score — if arc is null the ball was never tracked in flight, so rotation is unknowable and must also be null. Second, you must have actually SEEN the ball turning over: the seams, logo, or markings rotating across consecutive in-flight frames. Backspin is never implied by a clean release, a good follow-through, or the ball going in — plenty of badly spinning balls go in, and a textbook goose-neck tells you nothing about what the ball actually did. If the ball is a blur, too small, too far away, or you only have one usable frame of it in the air, you cannot see the spin: return null. If the strongest thing you can say is that the rotation "appears" or "looks like" clean backspin, that is a guess — return null instead.
 
 SHOT ARC / BALL ROTATION / TWO FINGER RELEASE — NEVER GUESS, NULL INSTEAD: these three criteria depend on clearly seeing the ball in flight or the fingers at the exact release frame. If you cannot see them CLEARLY, the answer is null — never a middle score. Giving a 4–7 with reasoning like "appears to", "seems", "hard to tell", or "partially visible" is a violation of this rubric: either you clearly saw it and score what you saw, or you did not and you return null. There is no in-between score for poor visibility.
+
+These THREE are the only criteria allowed to disappear from a player's report. That is a product decision, not a measurement one: arc, rotation and the fingers at release are genuinely invisible at the framing most clips have, and a hidden criterion is honest where a guessed one is not. Every OTHER criterion must come back with a score — a player is entitled to know what their elbow, their base and their follow-through looked like, so "I could not tell" is not an acceptable answer for those and abstaining on them is a failure, not a safe default.
 
 THUMB — MANDATORY NULL CONDITION: Return null for the "Thumb is Spread Wide" criterion if the thumb is not clearly and directly visible in at least one frame. Do not infer thumb position from finger spacing or general hand shape — if you cannot see the thumb clearly, return null.
 
@@ -574,13 +578,275 @@ Return ONLY valid JSON, no other text:
 }`
 }
 
+/**
+ * Criteria grouped by WHEN in the shot they are judged, matching the three
+ * moments the prompt already defines.
+ *
+ * Used only when CRITERION_GROUPS=1. Each group becomes its own model call, so
+ * the criteria in one group cannot see the scores given to the others.
+ *
+ * WHY: the measured root cause of grading error is halo. All ~18 criteria were
+ * graded in a single call, and the per-analysis mean signed error correlated
+ * +0.858 with the shot-level score, with 9 of 12 corrected analyses erring
+ * 100% in one direction. The model picks a band for the shot and fills the
+ * criteria in around it. Removing `overall_score` from the output schema took
+ * away the explicit anchor; it does not stop the criteria anchoring on each
+ * other, because they are still being written into one JSON object in one pass.
+ *
+ * This was unaffordable to try before: N groups means N x 28 frames of image
+ * tokens, and on claude-sonnet-4-6 a 4-group analysis costs about $1.73. On
+ * qwen3.7-flash with reasoning — 57 expert failures against Sonnet's 49 — the
+ * same 4 groups cost about $0.007. The cheap model is what makes the fix for
+ * the expensive model's worst failure mode testable at all.
+ */
+const CRITERION_GROUPS: readonly (readonly string[])[] = [
+  // MOMENT 1 — the rise. Base and lower body, judged as the player goes up.
+  [
+    'Feet Shoulder Width Apart',
+    'Knees Bent',
+    'Dominant Foot Forward',
+    'Square to the Basket',
+    'Forward Motion and Toes',
+  ],
+  // MOMENT 1 -> 2 — the hands and arms on the way up, and where power came from.
+  [
+    'Shot Pocket — Elbow',
+    'Elbow L-Shape — Under the Ball',
+    'Guide Hand Placement',
+    'Thumb is Spread Wide',
+    'Palm Non-Contact with Ball',
+    'Source of Shot Power',
+  ],
+  // MOMENT 2 -> 3 — the release itself and the follow-through.
+  [
+    'Shooting Through Guide Hand / One Hand Release',
+    'Two Finger Release',
+    'Shooting Hand Follow Through',
+    'Guide Hand Follow Through',
+  ],
+  // The ball in flight, and the shot as one motion.
+  ['Shot Arc', 'Ball Rotation', 'Connected Shot'],
+]
+
+/**
+ * Splits a grader context into one context per group.
+ *
+ * Any active criterion not named in CRITERION_GROUPS is appended to the LAST
+ * group rather than dropped. A criterion silently missing from every group
+ * would come back unscored on every analysis, and the eval would read that as
+ * the model abstaining rather than as a list that needs updating.
+ */
+function splitContextByGroup(ctx: GraderContext): GraderContext[] {
+  const named = new Set(CRITERION_GROUPS.flat())
+  const leftovers = ctx.activeCriteria.filter((c) => !named.has(c.name))
+  if (leftovers.length > 0) {
+    console.warn('[analyze] criteria not in any group — appended to the last one', {
+      criteria: leftovers.map((c) => c.name),
+    })
+  }
+
+  const groups = CRITERION_GROUPS.map((names, i) => {
+    const rows = ctx.activeCriteria.filter((c) => names.includes(c.name))
+    return i === CRITERION_GROUPS.length - 1 ? [...rows, ...leftovers] : rows
+  }).filter((rows) => rows.length > 0)
+
+  return groups.map((rows) => ({
+    ...ctx,
+    activeCriteria: rows,
+    criteriaText: rows
+      .map((c) => `--- ID ${c.id}: "${c.name}"\n${c.grading_notes || c.description}`)
+      .join('\n\n'),
+  }))
+}
+
+/**
+ * One grading pass, split across independent calls so criteria cannot anchor
+ * on each other. Returns a single AnalysisResult the ensemble merge can treat
+ * exactly like an ungrouped pass.
+ *
+ * The FIRST group is authoritative for everything that is a property of the
+ * shot rather than of a criterion — shot_detected, player_assessment,
+ * critical_flags. Every group sees all 28 frames and could answer those, but
+ * taking a vote across groups would make the flags (which drive hard score
+ * caps) depend on how the criteria happen to be partitioned. One owner keeps
+ * the experiment about halo and nothing else.
+ */
+async function analyzeShotGrouped(
+  frameBase64Array: string[],
+  frameMimeTypes: string[],
+  ctx: GraderContext,
+  opts?: { model?: string; thinking?: 'disabled' | 'adaptive' }
+): Promise<AnalysisResult> {
+  const groups = splitContextByGroup(ctx)
+  const parts = await Promise.all(
+    groups.map((g) => analyzeShotOnce(frameBase64Array, frameMimeTypes, g, opts))
+  )
+
+  const primary = parts[0]
+  // A group that finds no shot is reporting on the same 28 frames as the
+  // others, so disagreement is real signal: any group saying "no shot" makes
+  // the pass a no-shot, and the ensemble's own majority vote decides from there.
+  const noShot = parts.find((p) => p.shot_detected === false)
+  if (noShot) return { ...noShot, shot_detected: false }
+
+  const seen = new Set<number>()
+  const criteria: CriterionResult[] = []
+  for (const part of parts) {
+    for (const c of part.criteria) {
+      // Each group is asked for its own criteria only, but a model that answers
+      // for someone else's must not overwrite the group that owns it.
+      if (seen.has(c.id)) continue
+      seen.add(c.id)
+      criteria.push(c)
+    }
+  }
+
+  return { ...primary, criteria }
+}
+
+/**
+ * Two-stage grading: LOOK, then SCORE, with the scoring step blind to the video.
+ *
+ * TWO_STAGE=1. Stage 1 is a vision call that may only describe what it sees —
+ * positions, distances, what moved and when — and is forbidden to produce a
+ * number. Stage 2 is a TEXT-ONLY call that receives those observations and the
+ * rubric, and assigns scores without ever seeing the player.
+ *
+ * WHY: the measured failure on Elbow and Square is not blindness, it is
+ * discounting. The model observes the deviation accurately and then softens the
+ * score — "the elbow reasonably tucked … a slight outward angle but nothing
+ * severe" scored 8.0 on a shot the owner scored 3.0; "only a small natural
+ * offset" scored 8.0 against his 4.5. Every correction on those two criteria is
+ * downward. The observation was right and the number was generous.
+ *
+ * Splitting the two removes the thing doing the discounting. The scorer cannot
+ * see a player trying hard, cannot form an overall impression of the shot, and
+ * has nothing to be charitable about — it has a measurement and a table of
+ * anchors. It is the same reason CRITERION_GROUPS exists (stop criteria seeing
+ * each other) applied one level up: stop the score seeing the shot.
+ *
+ * Cost is close to free. Stage 2 carries no images, and images are ~97% of the
+ * tokens in a grading call.
+ */
+const OBSERVE_INSTRUCTION = `Do NOT score anything. Do not output numbers between 1 and 10, and do not judge whether anything is good, bad, correct, poor, reasonable or acceptable.
+
+Your only job is to REPORT WHAT IS VISIBLE, as physical description, for each criterion listed in your instructions. For each one write what you can actually see: where a body part is, how far it is from something else measured in ball widths / shoe widths / head heights, which frame it is in, what moved and when. Where the rubric for a criterion names a measurement, make that measurement and state the answer.
+
+If something is not visible well enough to describe, say exactly that for that criterion and say why.
+
+Return ONLY JSON:
+{
+  "shot_detected": <true|false>,
+  "player_assessment": { "player_type": "<child|recreational|college_pro|nba_bad_form|nba_decent|nba_elite>", "player_name": <string or null> },
+  "critical_flags": { "elbow_severely_out": <0-10>, "followthrough_flick_to_side": <0-10>, "arc_too_flat": <0-10>, "chest_pass_hands": <0-10>, "ball_behind_head": <0-10> },
+  "observations": [ { "id": <criterion id>, "seen": "<what is physically visible, no judgement, no score>" } ]
+}`
+
+const SCORE_INSTRUCTION = `You are scoring a basketball shot you CANNOT see. You have only the written observations below, recorded by someone who watched the frames, and the grading guides in your instructions.
+
+Score each criterion from its observation and its guide alone. The observation is the evidence; the guide's anchors turn it into a number. You have no impression of this shot and no reason to be generous or harsh — apply the anchors literally.
+
+If an observation says something was not visible, return null for that criterion rather than guessing.
+
+You may not soften a score because a fault sounds small. If an observation describes a deviation and the guide's anchor for that deviation is a 4, the score is 4.
+
+Return ONLY JSON: {"criteria": [{"id": <number>, "score": <1-10 or null>, "reasoning": "<two or three sentences addressed to the player, no numbers, no mention of guides or steps>"}]}`
+
+interface ObservationPayload {
+  shot_detected?: boolean
+  player_assessment?: { player_type?: string; player_name?: string | null }
+  critical_flags?: Record<string, number>
+  observations?: Array<{ id: number; seen: string }>
+}
+
+async function analyzeShotTwoStage(
+  frameBase64Array: string[],
+  frameMimeTypes: string[],
+  ctx: GraderContext,
+  opts?: { model?: string; thinking?: 'disabled' | 'adaptive' }
+): Promise<AnalysisResult> {
+  const model = opts?.model || analysisModel()
+  const systemPrompt = buildSystemPrompt(ctx, frameBase64Array.length)
+
+  // ── Stage 1: look, describe, do not score ────────────────────────────────
+  const look = await callVisionModel({
+    model,
+    framesBase64: frameBase64Array,
+    frameMimeTypes,
+    userText: `${systemPrompt}\n\n${OBSERVE_INSTRUCTION}`,
+    maxTokens: 16000,
+  })
+  const obsMatch = look.text.match(/\{[\s\S]*\}/)
+  if (!obsMatch) throw new Error('two-stage: stage 1 returned no JSON')
+  const obs = JSON.parse(obsMatch[0]) as ObservationPayload
+
+  if (obs.shot_detected === false) {
+    return noShotResult(
+      ctx.activeCriteria.map((c) => Number(c.id)),
+      { prompt_sha: ctx.promptSha, rubric_tags: ctx.rubricTags, model, passes: 1, calibration_version: ctx.calibrationVersion }
+    )
+  }
+
+  // ── Stage 2: score from the words alone, no images ───────────────────────
+  const lines = (obs.observations ?? [])
+    .map((o) => `ID ${o.id}: ${o.seen}`)
+    .join('\n')
+  const score = await callVisionModel({
+    model,
+    framesBase64: [],
+    frameMimeTypes: [],
+    userText: `${systemPrompt}\n\n${SCORE_INSTRUCTION}\n\nOBSERVATIONS RECORDED FROM THE FRAMES:\n${lines}`,
+    maxTokens: 16000,
+  })
+  const scoreMatch = score.text.match(/\{[\s\S]*\}/)
+  if (!scoreMatch) throw new Error('two-stage: stage 2 returned no JSON')
+  const scored = JSON.parse(scoreMatch[0]) as { criteria?: CriterionResult[] }
+
+  console.log('[analyze] two-stage', {
+    model,
+    observeTokens: look.usage.output,
+    scoreTokens: score.usage.output,
+    criteria: scored.criteria?.length ?? 0,
+  })
+
+  const flags = obs.critical_flags ?? {}
+  const conf = (k: string) => Number(flags[k] ?? 0)
+  return {
+    overall_score: 0, // recomputed from the criteria in finalizeResult
+    shot_detected: true,
+    player_assessment: {
+      player_type: (obs.player_assessment?.player_type as PlayerType) ?? 'recreational',
+      player_name: obs.player_assessment?.player_name ?? null,
+    },
+    critical_flags: {
+      elbow_severely_out: conf('elbow_severely_out') >= 7,
+      followthrough_flick_to_side: conf('followthrough_flick_to_side') >= 7,
+      arc_too_flat: conf('arc_too_flat') >= 7,
+      chest_pass_hands: conf('chest_pass_hands') >= 7,
+      ball_behind_head: conf('ball_behind_head') >= 7,
+    },
+    flag_confidence: {
+      elbow_severely_out: conf('elbow_severely_out'),
+      followthrough_flick_to_side: conf('followthrough_flick_to_side'),
+      arc_too_flat: conf('arc_too_flat'),
+      chest_pass_hands: conf('chest_pass_hands'),
+      ball_behind_head: conf('ball_behind_head'),
+    },
+    criteria: (scored.criteria ?? []).map((c) => ({
+      id: Number(c.id),
+      score: c.score === null || c.score === undefined ? null : Number(c.score),
+      reasoning: String(c.reasoning ?? ''),
+    })),
+  }
+}
+
 async function analyzeShotOnce(
   frameBase64Array: string[],
   frameMimeTypes: string[],
   ctx: GraderContext,
   opts?: { model?: string; thinking?: 'disabled' | 'adaptive' }
 ): Promise<AnalysisResult> {
-  const model = opts?.model || process.env.ANALYSIS_MODEL || 'claude-sonnet-4-6'
+  const model = opts?.model || analysisModel()
   const thinkingMode = opts?.thinking || 'disabled'
   const { activeCriteria } = ctx
   const systemPrompt = buildSystemPrompt(ctx, frameBase64Array.length)
@@ -793,16 +1059,25 @@ async function analyzeShotOnce(
     result.critical_flags.arc_too_flat = false
   }
 
-  // Two Finger Release is the third never-guess criterion: it depends on the
-  // fingers at the exact release frame, which most angles can't show. Arc and
-  // rotation are handled above with their extra flight-visibility rules.
-  const twoFingerCriterion = result.criteria.find(
-    c => c.id === criterionId('Two Finger Release', 12)
-  )
-  if (twoFingerCriterion && twoFingerCriterion.score !== null && readsLikeAGuess(twoFingerCriterion.reasoning)) {
-    twoFingerCriterion.score = null
-    twoFingerCriterion.reasoning = UNGRADED_TWO_FINGER
-  }
+  // Two Finger Release used to be nulled here whenever its reasoning contained
+  // a hedge word — "appears", "seems", "likely", 30 patterns, any one match.
+  // REMOVED, because the signal was measured and has no predictive value:
+  //
+  //   AUC(hedging -> score is wrong) = 0.477 across 344 expert-labelled rows.
+  //   0.5 is a coin flip; 0.477 is worse than one.
+  //   Hedged rows were MORE accurate (MAE 1.21) than unhedged ones (2.29), and
+  //   ZERO of the 23 worst misses contained a hedge word at all.
+  //
+  // It was also the only condition on this gate — arc and rotation at least
+  // have a real visibility test (`hasRimOrNetContact`) doing the work, with the
+  // hedge check merely redundant. Here it was load-bearing, and it cost 4 of
+  // the 49 expert-cell failures in the 28-fixture run: every one an ABSTAIN
+  // where the owner's correction says the criterion was scoreable.
+  //
+  // "The ball appears to roll off the index and middle fingers" is a confident
+  // observation written in ordinary English. The model is already allowed to
+  // return null when it genuinely cannot see the release, and its own null is a
+  // better judge of that than a regex over its prose.
 
   return result
 }
@@ -1044,33 +1319,24 @@ async function findReleaseFrame(
   model: string
 ): Promise<number | null | 'error'> {
   try {
-    const imageBlocks: Anthropic.ImageBlockParam[] = frameBase64Array.map((data, i) => ({
-      type: 'image',
-      source: { type: 'base64', media_type: (frameMimeTypes[i] || 'image/jpeg') as 'image/jpeg', data },
-    }))
     const n = frameBase64Array.length
-    const response = await getAnthropic().messages.create({
-      temperature: 0,
+    // Routed through callVisionModel, not the Anthropic SDK directly. This used
+    // to take `model` — which may be a gateway id like qwen/qwen3.7-flash — and
+    // hand it to Anthropic, which rejects it. The gate runs before every grading
+    // pass, so on a model switch it failed first and failed every time.
+    const { text } = await callVisionModel({
       model,
-      max_tokens: 300,
-      messages: [{
-        role: 'user',
-        content: [
-          ...imageBlocks,
-          {
-            type: 'text',
-            text: `These are ${n} frames, numbered 0 to ${n - 1} in order, from one basketball video.
+      framesBase64: frameBase64Array,
+      frameMimeTypes,
+      maxTokens: 300,
+      userText: `These are ${n} frames, numbered 0 to ${n - 1} in order, from one basketball video.
 
 Your ONLY task: find the RELEASE — a frame where the ball is leaving or has just left the shooter's hand(s) at the top of a shooting motion, with the frames immediately before it showing that shooting motion (ball held, rising toward a set point).
 
 Be strict. A follow-through pose with the ball already gone and NO prior frame showing the ball in the shooter's hands going up is NOT a visible release. Dribbling, standing, walking, or holding the ball is NOT a release.
 
 Output ONLY this JSON: {"release_frame": <number>, "why": "<one short sentence>"} — or {"release_frame": -1, "why": "<one short sentence>"} if no release is visible in these frames.`,
-          },
-        ],
-      }],
     })
-    const text = response.content[0]?.type === 'text' ? response.content[0].text : ''
     const match = text.match(/\{[\s\S]*?\}/)
     if (!match) return 'error'
     const parsed = JSON.parse(match[0])
@@ -1115,7 +1381,7 @@ export async function analyzeShot(
   // cost about $0.016 — a fraction of ONE Sonnet pass — so the ceiling is now
   // the only thing standing between us and the accuracy we can afford.
   const passes = Math.max(1, Math.min(9, opts?.passes ?? envPasses))
-  const model = opts?.model || process.env.ANALYSIS_MODEL || 'claude-sonnet-4-6'
+  const model = opts?.model || analysisModel()
 
   // One grader context for the whole ensemble: every pass grades with the
   // byte-identical prompt, even if an admin correction lands mid-analysis.
@@ -1147,12 +1413,42 @@ export async function analyzeShot(
   // A non-shot verdict is decisive only by majority, so every pass is collected
   // rather than short-circuiting. Pass 1 stays first in the list, which keeps
   // the merge below deterministic.
-  const firstPass = await analyzeShotOnce(frameBase64Array, frameMimeTypes, ctx, { ...opts, model })
-  const laterPasses = await Promise.all(
-    Array.from({ length: passes - 1 }, () =>
-      analyzeShotOnce(frameBase64Array, frameMimeTypes, ctx, { ...opts, model }),
-    ),
+  // CRITERION_GROUPS=1 splits each pass into independent per-moment calls so
+  // criteria cannot anchor on each other. See analyzeShotGrouped.
+  const onePass =
+    process.env.TWO_STAGE === '1'
+      ? analyzeShotTwoStage
+      : process.env.CRITERION_GROUPS === '1'
+        ? analyzeShotGrouped
+        : analyzeShotOnce
+  const firstPass = await onePass(frameBase64Array, frameMimeTypes, ctx, { ...opts, model })
+  // Passes 2..N run in bounded batches, not all at once.
+  //
+  // Firing them together uploads N x 28 images simultaneously — about 7MB in
+  // flight at 5 passes — and that saturates an ordinary connection. The
+  // symptom is not a clean provider error but a mess of "fetch failed",
+  // ECONNRESET and CONNECT_TIMEOUT, which the harness reports as DID NOT RUN.
+  // Measured across tonight's arms: 1 pass lost 0 of 28 fixtures, 3 passes lost
+  // 3, and a later 3-pass arm lost all 28 while the network tested perfectly
+  // clean seconds afterwards. The load was ours.
+  //
+  // ANALYSIS_PASS_CONCURRENCY tunes it; 2 keeps most of the wall-clock saving
+  // from overlapping passes without putting the arm at risk.
+  const passConcurrency = Math.max(
+    1,
+    parseInt(process.env.ANALYSIS_PASS_CONCURRENCY || '2', 10) || 2
   )
+  const laterPasses: AnalysisResult[] = []
+  for (let i = 0; i < passes - 1; i += passConcurrency) {
+    const batch = Math.min(passConcurrency, passes - 1 - i)
+    laterPasses.push(
+      ...(await Promise.all(
+        Array.from({ length: batch }, () =>
+          onePass(frameBase64Array, frameMimeTypes, ctx, { ...opts, model }),
+        ),
+      )),
+    )
+  }
   const results: AnalysisResult[] = [firstPass, ...laterPasses]
 
   const activeCriteria = ctx.activeCriteria

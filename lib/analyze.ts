@@ -289,6 +289,7 @@ export async function buildCalibrationFeedbackText(): Promise<string> {
 const RUBRIC_DRAFTS: Record<string, string> = {
   elbow: 'Elbow L-Shape — Under the Ball',
   guidehand: 'Guide Hand Follow Through',
+  knees: 'Knees Bent',
   power: 'Source of Shot Power',
   square: 'Square to the Basket',
   stance: 'Feet Shoulder Width Apart',
@@ -543,7 +544,17 @@ CRITICAL FLAGS — these operate on their own detection standard, independent of
   DO NOT set this flag just because both hands are on the ball — every shot starts that way and two hands on the ball during the gather is completely normal. Set it ONLY when ALL of these hold: the ball is shoved from chest-to-chin height without ever loading above the face, the two hands stay mirrored with no hand under the ball, and the release is visibly two-handed. If any one of those is missing, leave the flag low.
   When true: "Shot Pocket — Elbow", "Source of Shot Power" and "Shooting Through Guide Hand / One Hand Release" MUST each score 4 or below. Pushing the ball from the chest with both hands means it is not loaded in a shot pocket, the power is coming from the arms rather than the legs, and the release cannot be one-handed.
 
-- ball_behind_head: the ball is brought DIRECTLY ABOVE or BEHIND the top of the head and released from there — the catapult. The tells: at the set point the ball sits over the crown of the head or behind the hairline rather than in front of and slightly above the forehead; both elbows are high and winged wide; the forearms lay back so the ball is slung forward from over the skull like a soccer throw-in. This is distinct from a normal high set point (ball in front of the forehead, shooting elbow roughly under the ball). Set the 0-10 confidence by how clearly the ball goes above/behind the head. When true (>=7): the elbow, shot pocket, and shot-power criteria are all severe — the whole shot is built on a catapult and none of those three can be credited.
+- ball_behind_head: THE CATAPULT — the ball is slung from a two-armed load rather than pushed up off one hand. There are TWO forms and EITHER ONE counts. Read both before settling on a confidence.
+
+  FORM 1 — BEHIND OR OVER THE HEAD. At the set point the ball sits over the crown of the head or behind the hairline rather than in front of and slightly above the forehead, both elbows are high and winged wide, and the forearms lay back so the ball is slung forward from over the skull like a soccer throw-in.
+
+  FORM 2 — THE V AT THE TOP. The ball stays IN FRONT of the forehead, but both arms form a wide V at the set point: two elbows out to the sides at similar heights, both hands still gripping the ball, and the ball is thrown forward out of that V rather than released off one hand stacked under it. The expert calls this a catapult in exactly these words — "it was a catapult shot, the ball was in a V at the top and out" — and scored that shot's elbow 3.0 and its shot power 3.0.
+
+  FORM 2 IS THE ONE THIS FLAG HAS BEEN MISSING, AND IT IS NOT A MINOR GAP. On that shot the model returned a confidence of 1 out of 10 for this flag, and across 109 production analyses this flag has fired ZERO times. The caps it exists to apply have therefore never once been applied. Do not require the ball to be behind the head; require only that the ball be thrown out of a two-arm V or from over the head.
+
+  WHAT IS NOT A CATAPULT, and the expert has corrected this too: the SHOOTING hand alone being flared out to the side, with the guide hand still resting on the side of the ball and the release coming off one hand. His words: "this wasnt an example of a catapult, this was just the shooting hand being flared out" — he scored that elbow a 4, not a 1. One flared elbow is a flared elbow. A V needs BOTH arms doing the work.
+
+  Set the 0-10 confidence by how clearly EITHER form is present. When true (>=7): the elbow, shot pocket, and shot-power criteria are all severe — the whole shot is built on a catapult and none of those three can be credited.
 - arc_too_flat: the ball travels on a low, flat trajectory rather than a proper high arc (45–60 degrees). If the ball visibly shoots out nearly flat or at a shallow angle with little height, set true. A flat shot has almost no arc and the ball comes in at a low angle toward the basket. Do NOT apply benefit-of-the-doubt here. When true: the shot arc criterion MUST score 4 or below.
 
 NOTE: These flags are the most important flaws to detect. Report each as a 0-10 confidence, not a guess: 0-2 clearly absent, 3-6 borderline or partially suggestive, 7-10 clearly present with a frame you can point to. Confidence 7+ is treated as the flaw being present.

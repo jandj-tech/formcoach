@@ -15,6 +15,10 @@ const runsArg = args.indexOf('--runs')
 const RUNS = QUICK ? 1 : runsArg !== -1 ? Math.max(1, parseInt(args[runsArg + 1], 10) || 2) : 2
 const onlyArg = args.indexOf('--only')
 const ONLY = onlyArg !== -1 ? args[onlyArg + 1].split(',').map((s) => s.trim()) : null
+// --dump <file> writes every asserted cell's score as JSON, passes included.
+const dumpArg = args.indexOf('--dump')
+const DUMP = dumpArg !== -1 ? args[dumpArg + 1] : null
+const dumpRows = []
 
 const { db } = await import('../../lib/db.ts')
 const { runFixtureOnce } = await import('../../lib/eval.ts')
@@ -92,6 +96,32 @@ for (const fixture of fixtures) {
   grader = summary.grader ?? grader
   newResults[fixture.slug] = toBaselineEntry(summary)
 
+  // --dump writes EVERY cell's score, not just the ones that missed.
+  //
+  // The console output prints failures only, which is fine for reading a run
+  // and useless for analysis: any statistic computed from it — a per-criterion
+  // bias offset, most obviously — is conditioned on having missed, so it is
+  // biased by construction. Fitting an offset on misses alone would overstate
+  // every offset it found.
+  if (DUMP) {
+    const expected = fixture.expected ?? {}
+    for (const [name, score] of Object.entries(summary.criteria)) {
+      const exp = expected.criteria?.[name]
+      if (exp === undefined) continue // criterion the fixture makes no claim about
+      dumpRows.push({
+        fixture: fixture.slug,
+        criterion: name,
+        score,
+        expected: exp,
+        source: expected.criteria_source?.[name] ?? 'expert',
+        missed:
+          exp === 'null'
+            ? score !== null
+            : score === null || score < exp[0] || score > exp[1],
+      })
+    }
+  }
+
   if (RUNS > 1 && summary.overall_spread !== null) {
     const grade =
       summary.overall_spread <= SPREAD_PASS ? 'PASS' : summary.overall_spread <= SPREAD_CLOSE ? 'CLOSE' : 'FAIL'
@@ -163,6 +193,32 @@ console.log(
   'Only the EXPERT number measures accuracy. ai-seeded cells are scored against' +
     ' the old grader\'s own output, so they show change, not correctness.'
 )
+if (DUMP) {
+  const { writeFileSync } = await import('fs')
+  writeFileSync(
+    DUMP,
+    JSON.stringify(
+      {
+        grader,
+        model: grader?.model ?? null,
+        passes: grader?.passes ?? null,
+        env: {
+          ANALYSIS_MODEL: process.env.ANALYSIS_MODEL ?? null,
+          RUBRIC_OVERRIDE: process.env.RUBRIC_OVERRIDE ?? null,
+          CRITERION_GROUPS: process.env.CRITERION_GROUPS ?? null,
+          GATEWAY_REASONING: process.env.GATEWAY_REASONING ?? null,
+        },
+        ranFixtures: fixtures.length - runFailures,
+        lostFixtures: runFailures,
+        cells: dumpRows,
+      },
+      null,
+      1
+    )
+  )
+  console.log(`\nwrote ${dumpRows.length} cell results to ${DUMP}`)
+}
+
 // Exit status tracks expert failures and baseline drift. ai-seeded movement is
 // reported but does not fail the run: a deliberate grading change would make
 // every imported fixture "fail" and there would be no way to land it.

@@ -1420,11 +1420,33 @@ export async function analyzeShot(
         ? analyzeShotGrouped
         : analyzeShotOnce
   const firstPass = await onePass(frameBase64Array, frameMimeTypes, ctx, { ...opts, model })
-  const laterPasses = await Promise.all(
-    Array.from({ length: passes - 1 }, () =>
-      onePass(frameBase64Array, frameMimeTypes, ctx, { ...opts, model }),
-    ),
+  // Passes 2..N run in bounded batches, not all at once.
+  //
+  // Firing them together uploads N x 28 images simultaneously — about 7MB in
+  // flight at 5 passes — and that saturates an ordinary connection. The
+  // symptom is not a clean provider error but a mess of "fetch failed",
+  // ECONNRESET and CONNECT_TIMEOUT, which the harness reports as DID NOT RUN.
+  // Measured across tonight's arms: 1 pass lost 0 of 28 fixtures, 3 passes lost
+  // 3, and a later 3-pass arm lost all 28 while the network tested perfectly
+  // clean seconds afterwards. The load was ours.
+  //
+  // ANALYSIS_PASS_CONCURRENCY tunes it; 2 keeps most of the wall-clock saving
+  // from overlapping passes without putting the arm at risk.
+  const passConcurrency = Math.max(
+    1,
+    parseInt(process.env.ANALYSIS_PASS_CONCURRENCY || '2', 10) || 2
   )
+  const laterPasses: AnalysisResult[] = []
+  for (let i = 0; i < passes - 1; i += passConcurrency) {
+    const batch = Math.min(passConcurrency, passes - 1 - i)
+    laterPasses.push(
+      ...(await Promise.all(
+        Array.from({ length: batch }, () =>
+          onePass(frameBase64Array, frameMimeTypes, ctx, { ...opts, model }),
+        ),
+      )),
+    )
+  }
   const results: AnalysisResult[] = [firstPass, ...laterPasses]
 
   const activeCriteria = ctx.activeCriteria

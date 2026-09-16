@@ -254,3 +254,76 @@ in the abstain-ok bucket and are reported separately.
    pooled miss rate is ≤30% gives ~17.5% accepted miss at ~39% coverage.
    Reaching ~0% requires accepting the 14 cells from Forward Motion / Arc /
    Rotation / Thumb / Palm — 8.6% coverage, and n=14 gives a CI of [0%, 22%].
+
+---
+
+## E12 — Catapult flag: dead subsystem, partially revived · KEEP (partial)
+**Found.** All four critical flags had fired **zero times in 109 production
+analyses**. The caps they exist to apply — a catapult forces Elbow, Shot Pocket
+and Power to 4 or below — had therefore never once applied.
+**Not the threshold.** Probed on the owner's own catapult (shot-196, "the ball
+was in a V at the top and out", elbow 3.0) the model returned confidence
+**1 of 10**. It did not recognise the shot as a catapult at all.
+**Cause.** The definition required the ball over the crown or behind the
+hairline. His catapult keeps the ball in FRONT of the forehead and slings it out
+of a two-arm V. The flag could not fire on his own examples. This also resolved
+a question previously logged as needing his adjudication: the notes are not
+contradictory, there are two forms of one fault and only one was encoded.
+**Result, shot-196:** confidence 1 → 8, Elbow 7.5 → **3** (expert 3.0),
+Power 6 → 4 (expert 3.0, band [2,4]), Shot Pocket 9 → 4.
+**But only 1 of 2.** shot-200, labelled "player catapults shot", still returns
+confidence **0**. Correctly silent on both shots he said were NOT catapults
+(shot-198, shot-202), so the boundary is right and the recall is not.
+**Conclusion.** KEEP — it moves the right cells and never fires wrongly on the
+negative cases. Recall needs more work; one more form is likely missing.
+
+## E13 — ELBOW v9, shoulder-width ruler · KEEP (insufficient)
+**Measured on the three cells it was built for**, against the live v5 rubric:
+
+| shot | expected | v5 | v9 |
+|---|---|---|---|
+| shot-202 | [3, 5] | 9 | **6** |
+| shot-198 | [3, 5] | 9 | 8 |
+| shot-200 | [2, 4] | 8 | 8 |
+
+Power on shot-202 went 9 → 6, converting a MISS to a PASS.
+**Conclusion.** KEEP: it moves scores toward the labels and never away. But it
+converts almost no Elbow misses, because the model still will not go below 6
+where the expert says 3–5. Doubling the pixels per unit (ball 21px → shoulder
+45px) still leaves the 'third vs half a shoulder width' call at about 7 pixels.
+**Self-criticism.** v8/v9 tell the model most shots land 4–8 with a median of
+6.5. That is true of the expert's distribution and it did stop the runaway 9s,
+but it also discourages the legitimate 3s — one bias traded for a milder form
+of the same one.
+
+## E14 — KNEES v2 · NO EFFECT
+2 misses before, 2 after, on the shared fixtures. The arithmetic diagnosis (a
+points-sum whose top bands demanded "elite athletic load", so an ordinary
+competent bend scored 5.6/10 against expected bands of [7,9] and [8,10]) is
+sound and 14 of 14 misses were too LOW. The rewrite did not move the number.
+**Conclusion.** Keep the file, claim nothing for it.
+
+## E15 — Combined config (catapult + elbow v9 + square v6 + knees v2) · UNPROVEN
+Paired on 24 shared fixtures vs baseline: 39 → 48 misses, **net +9 WORSE**,
+11 fixed / 20 broken, **McNemar p = 0.1496**.
+Targeted criteria improved (Square −2, Feet −2, Elbow −1, Connected −1);
+untargeted ones moved the other way (Guide Hand FT +4, One Hand Release +3,
+Shooting Hand FT +3). Direction of the new guide-hand misses was mixed — 7 low,
+6 high — which is noise, not a systematic bleed.
+**Conclusion.** Not demonstrated either way. At a 28% cell flip rate an effect
+of 5–10 cells is unresolvable from one arm per config, which applies to every
+arm-level comparison in this log.
+
+### Two measurement errors I made, recorded so they are not repeated
+1. **Claimed the catapult fix as a major win from ONE fixture.** It holds on
+   shot-196 and fails on shot-200, which carries the same label. Probe every
+   labelled instance before reporting.
+2. **Chased "prompt bloat" off a bad measurement.** `wc -c` on a pipe truncated
+   at exactly 65,536 bytes, making an override look 32,000 chars shorter than
+   it was. The real difference is 515 chars. Measure through a file.
+
+### Method change adopted
+Verify a fix on **the cells it targets**, not on the suite total. A fix aimed at
+catapult shots must be judged on catapult shots, where the effect is large and
+the sample is the right one, then checked for collateral damage. A 3-cell fix
+measured against a ±8-cell noise band cannot produce a usable answer.

@@ -18,8 +18,12 @@ import { StatGrid, StatCard } from '@/components/backend/StatGrid'
 import { backendButton } from '@/components/backend/button-styles'
 import { copyToClipboard } from '@/lib/copy'
 import OrgAddCoach from './OrgAddCoach'
+import AddPlayerForm from '@/components/AddPlayerForm'
+import CsvPlayerImport from '@/components/CsvPlayerImport'
+import { PlayerStatusBadge, ResendSetupButton } from '@/components/PlayerSetupStatus'
 import {
   memberDisplayName,
+  memberStatus,
   type ClassPackage,
   type Member,
   type PlayerSortMode,
@@ -47,6 +51,7 @@ interface Props {
   onToggleEmailMember: (userId: string) => void
   onDraftEmail: () => void
   onOpenTeam: () => void
+  onBulkUpload: () => void
   onGoToClassTab: () => void
   onOpenScheduleModal: () => void
   onOpenLeaderboardModal: () => void
@@ -88,6 +93,7 @@ export default function OrgTeamCard({
   onToggleEmailMember,
   onDraftEmail,
   onOpenTeam,
+  onBulkUpload,
   onGoToClassTab,
   onOpenScheduleModal,
   onOpenLeaderboardModal,
@@ -212,17 +218,22 @@ export default function OrgTeamCard({
 
       <Section
         title="Players"
-        tipLabel="How do players join?"
-        tip="Players join with the signup link below. Tick the boxes next to players to draft an outreach email to just those players."
-        summary={`${team.members.length} player${team.members.length !== 1 ? 's' : ''}`}
+        tipLabel="How do I add players?"
+        tip="Add players directly (name, and an email if you have one), import a whole roster from a CSV, or share the signup link below. Players you add with an email get their own account and are matched automatically if they sign up later. Tick the boxes to email just those players."
+        summary={`${team.members.length + team.pendingPlayers.length} player${team.members.length + team.pendingPlayers.length !== 1 ? 's' : ''}`}
       >
-        {team.members.length > 1 && (
-          <div className="flex items-center justify-end gap-3">
-            <SortMenu value={sort} options={PLAYER_SORT_OPTIONS} onChange={setSort} />
-          </div>
-        )}
-        {team.members.length === 0 ? (
-          <p className="text-sm text-gray-400 dark:text-chalk-dim mt-0.5">No players have joined yet.</p>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pb-1">
+          <AddPlayerForm endpoint="/api/org/add-player" extra={{ teamId: team.id }} />
+          <CsvPlayerImport endpoint="/api/org/import-players" extra={{ teamId: team.id }} />
+          {team.members.length > 1 && (
+            <div className="ml-auto">
+              <SortMenu value={sort} options={PLAYER_SORT_OPTIONS} onChange={setSort} />
+            </div>
+          )}
+        </div>
+
+        {team.members.length === 0 && team.pendingPlayers.length === 0 ? (
+          <p className="text-sm text-gray-400 dark:text-chalk-dim mt-0.5">No players yet — add one above or share the signup link.</p>
         ) : (
           <>
             <div className="mt-1 border border-gray-100 dark:border-courtline rounded-xl divide-y divide-gray-100 dark:divide-courtline">
@@ -241,9 +252,13 @@ export default function OrgTeamCard({
                     >
                       {memberDisplayName(m)}
                     </Link>
+                    <PlayerStatusBadge status={memberStatus(m)} />
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-xs text-gray-400 dark:text-chalk-dim truncate max-w-[9rem]">{m.email}</span>
+                    {memberStatus(m) === 'pending' && (
+                      <ResendSetupButton endpoint="/api/org/resend-player-setup" userId={m.id} extra={{ teamId: team.id }} />
+                    )}
+                    <span className="text-xs text-gray-400 dark:text-chalk-dim truncate max-w-[9rem] hidden sm:inline">{m.email}</span>
                     <button
                       onClick={() => onRemovePlayer(m.id)}
                       disabled={removingPlayer === m.id}
@@ -252,6 +267,17 @@ export default function OrgTeamCard({
                       {removingPlayer === m.id ? '…' : 'Remove'}
                     </button>
                   </div>
+                </div>
+              ))}
+              {team.pendingPlayers.map(p => (
+                <div key={p.id} className="flex items-center justify-between gap-3 px-3 py-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-sm font-semibold text-gray-600 dark:text-chalk-dim truncate">
+                      {p.first_name}{p.last_name_initial ? ` ${p.last_name_initial}.` : ''}
+                    </span>
+                    <PlayerStatusBadge status="invited" />
+                  </div>
+                  <span className="text-xs text-gray-400 dark:text-chalk-dim shrink-0">Joins by invite link</span>
                 </div>
               ))}
             </div>
@@ -612,6 +638,9 @@ export default function OrgTeamCard({
               <button onClick={onOpenTeam} className={backendButton('primary')}>
                 Open team dashboard
                 <ArrowRightIcon aria-hidden className="w-4 h-4" />
+              </button>
+              <button onClick={onBulkUpload} className={backendButton('secondary')} title="Upload several shot videos at once and tag each to a player">
+                Upload videos
               </button>
               <button onClick={copyLink} className={backendButton('quiet')}>
                 {copiedLink ? 'Copied!' : 'Copy invite link'}

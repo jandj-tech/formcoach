@@ -26,6 +26,13 @@ interface Member {
   first_name: string | null
   last_name_initial: string | null
   tokens: number
+  roster_pending?: boolean
+}
+
+interface PendingPlayer {
+  id: string
+  first_name: string
+  last_name_initial: string | null
 }
 
 interface Coach {
@@ -44,6 +51,7 @@ interface TeamData {
   credits: number
   classPackageId: string | null
   members: Member[]
+  pendingPlayers: PendingPlayer[]
   coaches: Coach[]
   coachNickname: string | null
   tokenPool: number
@@ -154,12 +162,26 @@ export default async function OrgDashboardPage() {
       teamRows.map(async (t) => {
         const members = (await db`
           SELECT u.id, u.email, tm.first_name, tm.last_name_initial,
-                 COALESCE(u.analysis_tokens, 0)::int AS tokens
+                 COALESCE(u.analysis_tokens, 0)::int AS tokens,
+                 COALESCE(u.roster_pending, false) AS roster_pending
           FROM team_memberships tm
           JOIN users u ON u.id = tm.user_id
           WHERE tm.team_id = ${t.id}
           ORDER BY tm.first_name ASC
         `) as unknown as Member[]
+
+        // Name-only invites a coach added without an email (no account yet).
+        let pendingPlayers: PendingPlayer[] = []
+        try {
+          pendingPlayers = (await db`
+            SELECT id, first_name, last_name_initial
+            FROM pending_team_members
+            WHERE team_id = ${t.id}
+            ORDER BY created_at ASC
+          `) as unknown as PendingPlayer[]
+        } catch {
+          // pending_team_members may not exist yet — leave empty
+        }
 
         let coaches: Coach[] = []
         try {
@@ -229,6 +251,7 @@ export default async function OrgDashboardPage() {
           credits: t.credits,
           classPackageId: t.class_package_id,
           members,
+          pendingPlayers,
           coaches,
           coachNickname,
           tokenPool,

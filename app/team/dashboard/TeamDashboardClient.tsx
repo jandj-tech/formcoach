@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 import { useIsInApp } from '@/lib/useIsInApp'
 import Link from 'next/link'
 import CoachUploadForm from './CoachUploadForm'
+import CsvPlayerImport from '@/components/CsvPlayerImport'
+import { PlayerStatusBadge, ResendSetupButton } from '@/components/PlayerSetupStatus'
 import TeamCoaches from './TeamCoaches'
 import CoachAssignPanel from '@/components/CoachAssignPanel'
 import TokenBalances from '@/components/TokenBalances'
@@ -75,6 +77,7 @@ interface Member {
   tokens: number
   first_name: string | null
   last_name_initial: string | null
+  roster_pending?: boolean
 }
 
 interface PendingMember {
@@ -145,8 +148,12 @@ export default function TeamDashboardClient({
   const [addOpen, setAddOpen] = useState(false)
   const [addFirst, setAddFirst] = useState('')
   const [addInitial, setAddInitial] = useState('')
+  const [addEmail, setAddEmail] = useState('')
+  const [addParent, setAddParent] = useState('')
+  const [addPhone, setAddPhone] = useState('')
   const [addStatus, setAddStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [addError, setAddError] = useState('')
+  const [addMessage, setAddMessage] = useState('')
   const [newInviteUrl, setNewInviteUrl] = useState('')
   const [copiedInvite, setCopiedInvite] = useState(false)
 
@@ -262,11 +269,19 @@ export default function TeamDashboardClient({
     setAddStatus('loading')
     setAddError('')
     setNewInviteUrl('')
+    setAddMessage('')
     try {
       const res = await fetch('/api/team/add-player', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ firstName: addFirst, lastInitial: addInitial }),
+        body: JSON.stringify({
+          firstName: addFirst,
+          lastName: addInitial,
+          email: addEmail.trim() || undefined,
+          parentName: addParent.trim() || undefined,
+          phone: addPhone.trim() || undefined,
+          sendEmail: true,
+        }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -274,10 +289,19 @@ export default function TeamDashboardClient({
         setAddStatus('error')
         return
       }
-      setNewInviteUrl(data.inviteUrl)
+      // With an email we created/linked a real account; without one it's a
+      // name-only invite link to share.
+      if (data.status === 'created') setAddMessage(data.emailed ? `Added — setup email sent to ${addEmail.trim()}.` : 'Player added with an account.')
+      else if (data.status === 'linked') setAddMessage('Added — this player already had an account.')
+      else if (data.status === 'already_on_team') setAddMessage('That player is already on this team.')
+      else setAddMessage('Player added! Share this link so they can sign up and join:')
+      setNewInviteUrl(data.setupUrl || data.inviteUrl || '')
       setAddStatus('success')
       setAddFirst('')
       setAddInitial('')
+      setAddEmail('')
+      setAddParent('')
+      setAddPhone('')
       setTimeout(() => router.refresh(), 1000)
     } catch {
       setAddError('Something went wrong. Please try again.')
@@ -391,15 +415,15 @@ export default function TeamDashboardClient({
           {addOpen && (
             <div className="bg-gray-50 dark:bg-ink-800 border border-gray-200 dark:border-courtline rounded-2xl p-5 space-y-3">
               <p className="text-sm text-gray-500 dark:text-chalk-dim">
-                Add a player by name. You can optionally send them a link to create their account — once they sign up, they&apos;ll be automatically added to the team under this name.
+                No password needed. Add an email to create the player&apos;s account (they get a link to finish setup, and are matched automatically if they sign up later). Without an email, they join by invite link.
               </p>
-              <form onSubmit={addPlayer} className="space-y-3">
+              <form onSubmit={addPlayer} className="space-y-2">
                 <div className="flex gap-2">
                   <input
                     type="text"
                     required
                     aria-label="First name"
-                    placeholder="First name"
+                    placeholder="First name *"
                     value={addFirst}
                     onChange={e => setAddFirst(e.target.value)}
                     className="flex-1 bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl px-4 py-3 text-black dark:text-chalk placeholder-gray-400 focus:outline-none focus:border-ember-500 transition-colors"
@@ -411,8 +435,13 @@ export default function TeamDashboardClient({
                     placeholder="Last initial"
                     value={addInitial}
                     onChange={e => setAddInitial(e.target.value.toUpperCase())}
-                    className="w-20 bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl px-4 py-3 text-black dark:text-chalk placeholder-gray-400 focus:outline-none focus:border-ember-500 transition-colors"
+                    className="w-24 bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl px-4 py-3 text-black dark:text-chalk placeholder-gray-400 focus:outline-none focus:border-ember-500 transition-colors"
                   />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <input type="email" aria-label="Email" placeholder="Email (optional)" value={addEmail} onChange={e => setAddEmail(e.target.value)} className="bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl px-4 py-2.5 text-black dark:text-chalk text-sm placeholder-gray-400 focus:outline-none focus:border-ember-500 transition-colors" />
+                  <input type="text" aria-label="Parent name" placeholder="Parent name (optional)" value={addParent} onChange={e => setAddParent(e.target.value)} className="bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl px-4 py-2.5 text-black dark:text-chalk text-sm placeholder-gray-400 focus:outline-none focus:border-ember-500 transition-colors" />
+                  <input type="text" aria-label="Phone" placeholder="Phone (optional)" value={addPhone} onChange={e => setAddPhone(e.target.value)} className="bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl px-4 py-2.5 text-black dark:text-chalk text-sm placeholder-gray-400 focus:outline-none focus:border-ember-500 transition-colors" />
                 </div>
                 {addError && <p className="text-red-500 text-sm">{addError}</p>}
                 <button
@@ -424,20 +453,26 @@ export default function TeamDashboardClient({
                 </button>
               </form>
 
-              {addStatus === 'success' && newInviteUrl && (
+              {addStatus === 'success' && (
                 <div className="bg-green-50 dark:bg-green-950/40 border border-green-200 rounded-xl p-4 space-y-2">
-                  <p className="text-sm font-semibold text-green-700 dark:text-green-400">Player added! Share this link so they can sign up and join the team:</p>
-                  <div className="flex items-center gap-2">
-                    <span className="flex-1 text-xs font-mono text-gray-600 dark:text-chalk-dim truncate">{newInviteUrl}</span>
-                    <button
-                      onClick={copyNewInviteUrl}
-                      className="shrink-0 text-sm font-semibold text-ember-500 hover:text-ember-400 transition-colors"
-                    >
-                      {copiedInvite ? 'Copied!' : 'Copy'}
-                    </button>
-                  </div>
+                  <p className="text-sm font-semibold text-green-700 dark:text-green-400">{addMessage}</p>
+                  {newInviteUrl && (
+                    <div className="flex items-center gap-2">
+                      <span className="flex-1 text-xs font-mono text-gray-600 dark:text-chalk-dim truncate">{newInviteUrl}</span>
+                      <button
+                        onClick={copyNewInviteUrl}
+                        className="shrink-0 text-sm font-semibold text-ember-500 hover:text-ember-400 transition-colors"
+                      >
+                        {copiedInvite ? 'Copied!' : 'Copy'}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
+
+              <div className="border-t border-gray-200 dark:border-courtline pt-3">
+                <CsvPlayerImport endpoint="/api/team/import-players" />
+              </div>
             </div>
           )}
 
@@ -447,14 +482,20 @@ export default function TeamDashboardClient({
               {members.map(m => (
                 <div key={m.id} className="flex items-center gap-3 py-2 px-3 bg-gray-50 dark:bg-ink-800 rounded-xl border border-gray-100 dark:border-courtline">
                   <div className="flex-1 min-w-0">
-                    <Link
-                      href={`/team/dashboard/member/${m.id}`}
-                      className="block truncate text-sm font-semibold text-black dark:text-chalk hover:text-ember-600 dark:hover:text-ember-400 hover:underline transition-colors"
-                    >
-                      {m.first_name ? formatPlayerName(m.first_name, m.last_name_initial) : m.email}
-                    </Link>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Link
+                        href={`/team/dashboard/member/${m.id}`}
+                        className="truncate text-sm font-semibold text-black dark:text-chalk hover:text-ember-600 dark:hover:text-ember-400 hover:underline transition-colors"
+                      >
+                        {m.first_name ? formatPlayerName(m.first_name, m.last_name_initial) : m.email}
+                      </Link>
+                      <PlayerStatusBadge status={m.roster_pending ? 'pending' : 'active'} />
+                    </div>
                     {m.first_name && <p className="text-xs text-gray-400 dark:text-chalk-dim truncate">{m.email}</p>}
                   </div>
+                  {m.roster_pending && (
+                    <ResendSetupButton endpoint="/api/team/resend-player-setup" userId={m.id} />
+                  )}
                   <span className="shrink-0 text-xs text-gray-400 dark:text-chalk-dim">{m.tokens} token{m.tokens !== 1 ? 's' : ''}</span>
                   <button
                     onClick={() => kickMember(m.id)}

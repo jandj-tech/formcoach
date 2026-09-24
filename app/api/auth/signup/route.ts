@@ -41,8 +41,30 @@ export async function POST(req: NextRequest) {
 
     const emailLower = email.toLowerCase().trim()
 
-    const existing = await db`SELECT id FROM users WHERE email = ${emailLower}`
-    if (existing.length > 0) {
+    const [existing] = (await db`
+      SELECT id, email, password_hash, roster_pending FROM users WHERE email = ${emailLower}
+    `) as unknown as [{ id: string; email: string; password_hash: string | null; roster_pending: boolean | null } | undefined]
+    if (existing) {
+      // A player a coach/org added by email is a real but password-less stub
+      // (roster_pending). When that same person signs up, we complete THEIR
+      // record — keeping their team memberships and history — instead of
+      // rejecting them or making a duplicate. Any other existing account is a
+      // genuine "please log in" case.
+      if (existing.roster_pending && !existing.password_hash) {
+        const hash = await bcrypt.hash(password, BCRYPT_COST)
+        await db`
+          UPDATE users
+          SET password_hash = ${hash}, roster_pending = false,
+              nickname = COALESCE(NULLIF(nickname, ''), ${nickname?.trim() || null}),
+              reset_token = NULL, reset_token_expires = NULL
+          WHERE id = ${existing.id}
+        `
+        await addToEmailList(emailLower)
+        const token = await signSession({ userId: existing.id, email: existing.email })
+        const res = NextResponse.json({ success: true, token })
+        res.cookies.set(sessionCookieOptions(token))
+        return res
+      }
       return NextResponse.json({ error: 'Account already exists. Please log in.' }, { status: 409 })
     }
 

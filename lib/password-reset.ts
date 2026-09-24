@@ -162,9 +162,12 @@ export async function consumeResetToken(
     WHERE reset_token = ${token} AND reset_token_expires > NOW()
   `) as unknown as [{ id: string; email: string } | undefined]
   if (user) {
+    // roster_pending is cleared too: a coach/org-added player who sets a
+    // password here has finished setup and should no longer read "incomplete".
     await db`
       UPDATE users
-      SET password_hash = ${passwordHash}, reset_token = NULL, reset_token_expires = NULL
+      SET password_hash = ${passwordHash}, roster_pending = false,
+          reset_token = NULL, reset_token_expires = NULL
       WHERE id = ${user.id}
     `
     return { kind: 'user', userId: user.id, email: user.email, redirect: '/dashboard' }

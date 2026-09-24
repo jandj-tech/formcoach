@@ -45,7 +45,7 @@ export default async function TeamDashboardPage() {
     latest_score: number
   }> = []
 
-  let members: Array<{ id: string; email: string; tokens: number; first_name: string | null; last_name_initial: string | null }> = []
+  let members: Array<{ id: string; email: string; tokens: number; first_name: string | null; last_name_initial: string | null; roster_pending?: boolean }> = []
   let pendingMembers: Array<{ id: string; first_name: string; last_name_initial: string | null; invite_token: string | null }> = []
   let coaches: Array<{ id: string; email: string; pending: boolean; nickname: string | null }> = []
   let headCoachNickname: string | null = null
@@ -134,7 +134,8 @@ export default async function TeamDashboardPage() {
   try {
     members = (await db`
       SELECT u.id, u.email, COALESCE(u.analysis_tokens, 0)::int AS tokens,
-        tm.first_name, tm.last_name_initial
+        tm.first_name, tm.last_name_initial,
+        COALESCE(u.roster_pending, false) AS roster_pending
       FROM team_memberships tm
       JOIN users u ON u.id = tm.user_id
       WHERE tm.team_id = ${team.id}

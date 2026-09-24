@@ -151,6 +151,8 @@ export async function signInWithOAuthProfile(profile: OAuthProfile): Promise<OAu
   `) as unknown as [{ id: string; email: string } | undefined]
   if (user) {
     await linkIdentity(user.id, profile, email)
+    // A coach/org-added stub that signs in with a provider has completed setup.
+    await db`UPDATE users SET roster_pending = false WHERE id = ${user.id} AND roster_pending = true`
     return playerResult(user, false)
   }
 

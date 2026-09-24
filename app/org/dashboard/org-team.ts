@@ -10,6 +10,15 @@ export interface Member {
   first_name: string | null
   last_name_initial: string | null
   tokens: number
+  /** true while a coach/org-added player hasn't finished account setup. */
+  roster_pending?: boolean
+}
+
+// A coach-invited player who has no account yet (name only, joined by link).
+export interface PendingPlayer {
+  id: string
+  first_name: string
+  last_name_initial: string | null
 }
 
 export interface Coach {
@@ -28,10 +37,16 @@ export interface TeamData {
   credits: number
   classPackageId: string | null
   members: Member[]
+  pendingPlayers: PendingPlayer[]
   coaches: Coach[]
   coachNickname: string | null
   tokenPool: number
   leaderboard: LeaderboardRow[]
+}
+
+// The account-setup state shown on a roster row.
+export function memberStatus(m: Member): 'active' | 'pending' {
+  return m.roster_pending ? 'pending' : 'active'
 }
 
 export interface ClassEnrollment {

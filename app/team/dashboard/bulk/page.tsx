@@ -19,10 +19,26 @@ export default async function BulkUploadPage() {
   `) as unknown as [{ id: string; name: string; access_code: string; credits: number } | undefined]
   if (!team) redirect('/login')
 
+  // The assignment dropdown should list EVERY player on the team, not only
+  // those a coach has already uploaded for. Submissions are attributed by name
+  // (see /api/analyze), so we union the three roster sources and de-duplicate
+  // by name — account players (team_memberships), coach-upload rows
+  // (team_players) and name-only invites (pending_team_members). The id is a
+  // synthetic name key; BulkUploader only uses it to drive the <select>.
   const roster = (await db`
-    SELECT id, first_name, last_name_initial
-    FROM team_players
-    WHERE team_id = ${team.id}
+    SELECT
+      first_name || '|' || COALESCE(last_name_initial, '') AS id,
+      first_name,
+      COALESCE(last_name_initial, '') AS last_name_initial
+    FROM (
+      SELECT first_name, last_name_initial FROM team_memberships WHERE team_id = ${team.id}
+      UNION
+      SELECT first_name, last_name_initial FROM team_players WHERE team_id = ${team.id}
+      UNION
+      SELECT first_name, last_name_initial FROM pending_team_members WHERE team_id = ${team.id}
+    ) all_players
+    WHERE first_name IS NOT NULL AND first_name <> ''
+    GROUP BY first_name, last_name_initial
     ORDER BY first_name ASC, last_name_initial ASC
   `) as unknown as RosterPlayer[]
 

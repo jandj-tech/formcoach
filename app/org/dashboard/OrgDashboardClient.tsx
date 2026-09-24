@@ -230,7 +230,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
     }
   }
 
-  async function openTeam(teamId: string) {
+  async function openTeam(teamId: string, dest: string = '/team/dashboard') {
     try {
       const res = await fetch('/api/org/open-team', {
         method: 'POST',
@@ -241,7 +241,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
         alert('Could not open that team. Please try again.')
         return
       }
-      router.push('/team/dashboard')
+      router.push(dest)
     } catch {
       alert('Something went wrong. Please try again.')
     }
@@ -688,6 +688,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
             onToggleEmailMember={toggleEmailMember}
             onDraftEmail={() => setEmailDraftTeam(team.id)}
             onOpenTeam={() => openTeam(team.id)}
+            onBulkUpload={() => openTeam(team.id, '/team/dashboard/bulk')}
             onGoToClassTab={() => goToTab('class')}
             onOpenScheduleModal={() => setScheduleModal(team.id)}
             onOpenLeaderboardModal={() => setTeamLbModal(team.id)}

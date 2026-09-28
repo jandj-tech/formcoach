@@ -1671,3 +1671,76 @@ flip instability            r = 0.074, p = 0.549
 Five independent attempts to know when the grader is wrong, all null. That is
 itself the finding, and it should be said plainly to anyone deciding what to ship:
 **we currently cannot tell, at serving time, which grades are the bad ones.**
+
+## E45 — The catapult IS visible at full resolution. The grader just never asks.
+
+Per-criterion big-miss map (229 cells, base3 + cur):
+```
+"bad shot scored 9"   12 of 21 big misses   Elbow x4, Square x3, Power x3, Feet x2
+"good shot scored 4-5" 9 of 21              Power x3 (shot-189 twice), Square x2, Elbow, Feet, DomFoot, Connected
+```
+The generous side clusters on FOUR clips - shot-196, 200, 198, 208 - all distant
+shooters. shot-196/200 is one shooter, and the re-extracted set-point frame shows
+a textbook catapult: ball behind the head, both elbows flared to shoulder height,
+forearm near horizontal. Expert [2,4]. Grader 9. The catapult flag has never
+fired in 109 analyses.
+
+The obvious hypothesis was resolution - the shooter is ~80px tall at 464x832 -
+and E27's note reads "resolution, not rubric wording, is the ceiling". Tested
+directly: the SAME frame, full 464x832, no crop, with a direct three-cue question.
+```
+FULL FRAME 464x832:  ball_behind_or_above_head TRUE, elbow_flared TRUE,
+                     forearm_not_vertical TRUE, catapult TRUE
+   "holding the basketball behind their head with elbows flared out to the
+    sides at shoulder height and forearms tilted backward"
+ZOOMED CROP:         identical, all TRUE
+```
+**The model sees the catapult at full resolution when asked a concrete question.**
+Inside the grading prompt, on the same footage, it scores the elbow 9 and the flag
+stays silent. The failure is in what the prompt asks for, not in what the model
+can see. That partly reverses E27's "resolution is the ceiling" - at least for the
+behind-the-head fault, which is whole-body geometry, not fine detail.
+
+This is what the owner asked for: make the grading SPECIFIC about what the fault
+looks like. The research agents (Magee/Klay, per criterion) and the rubric audit
+are producing the concrete cues; E46 will be the rubric arm against base6.
+
+Caveat until the multi-clip probe lands: one frame, one clip. The probe runs the
+same question on shot-200/198/202 (bad) AND three good-elbow controls (125, 206,
+189). If the controls also come back "catapult: true", the model has a yes-bias
+and this finding is void.
+
+### E45 addendum — the mechanism, established on shot-196
+Three probes, same three-cue catapult question, same model (qwen3.7-flash):
+```
+1 frame  (tight-window frame 16, the set point)     catapult TRUE, correct description
+1 frame  zoomed crop of the same                    catapult TRUE
+28 frames (the PINNED set the live grader sees)     catapult FALSE on all 7 clips
+```
+On the 28-frame probe the model chose frame 10 as the set point. Rendered the
+pinned set: frame 10 IS the catapult - ball on top of the head, both elbows
+flared to shoulder height, forearms laid back; frames 7-11 all show it. The
+model located the right frame and then wrote "forehead level with elbows tucked
+and forearms vertical". That sentence is the template of a good set point. It
+is not a description of the image.
+
+So, in order of what this rules OUT:
+  - NOT frame extraction: the moment is in the pinned frames (7-11 of 28).
+  - NOT resolution: the same 464x832 frame, uncropped, detects it in isolation.
+  - NOT the rubric wording per se: the rubric describes the catapult concretely.
+What is left: given 28 images and a question, the model answers from a prior
+about what set points look like. Given ONE image, it answers from the pixels.
+This is the "confident invented description" the prompt already warns about
+(A POSITIVE CLAIM NEEDS A NAMED OBSERVABLE) - and warning text does not fix it,
+because the failure is upstream of the instruction, in what the model attends to.
+
+Design implication, pending the control check below: fault detection for the
+whole-body set-point faults (catapult, V-at-top, ball beside head, flared
+elbow) should run on ONE targeted frame, not on the sequence. Two cheap calls:
+(1) over the 28 frames, "which frame is the set point?" - the model gets this
+right; (2) on that single frame, the concrete cue questions. Then the grading
+pass receives the answers as facts. This is E46's candidate design.
+
+PENDING: the single-frame probe with three good-elbow controls (125, 206, 189).
+If the controls also return catapult TRUE, single-frame detection is yes-biased
+and none of the above survives.

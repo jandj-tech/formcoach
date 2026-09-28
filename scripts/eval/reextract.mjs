@@ -45,6 +45,9 @@ await db.end()
 mkdirSync(OUT, { recursive: true })
 mkdirSync(TMP, { recursive: true })
 const releases = existsSync(RELEASES) ? JSON.parse(readFileSync(RELEASES, 'utf8')) : {}
+// Per-fixture geometry of the PINNED frames, so re-extraction reproduces it
+// exactly. Built by scripts/eval/pinned-dims.json.
+const PINNED = JSON.parse(readFileSync('scripts/eval/pinned-dims.json', 'utf8'))
 
 const ffprobe = (f) =>
   Number(execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', f]).toString().trim())
@@ -111,6 +114,8 @@ Answer JSON only: {"last_held": <0-${N - 1}>, "first_free": <0-${N - 1}>, "confi
     const rel = releases[fx.slug]
     if (rel === null) { console.log(`${fx.slug}: release not found, skipping`); failed++; continue }
 
+    const dims = PINNED[fx.slug]
+    if (!dims) { console.log(`${fx.slug}: no pinned dimensions, skipping`); failed++; continue }
     const start = Math.max(0, rel - PRE)
     const end = Math.min(dur, rel + POST)
     mkdirSync(outDir, { recursive: true })
@@ -121,6 +126,15 @@ Answer JSON only: {"last_held": <0-${N - 1}>, "first_free": <0-${N - 1}>, "confi
         // encoder refuses outright ("Non full-range YUV is non-standard").
         // Forcing the full-range pixel format costs nothing on clips that
         // already comply and is the difference between 27 and 28 fixtures.
+        //
+        // SCALED TO THE PINNED FRAMES' EXACT GEOMETRY. Extracting at source
+        // resolution confounded the whole experiment: 10 of 28 fixtures came
+        // out larger than their pinned counterparts (shot-208 at 2160x3840
+        // against a pinned 576x1024), so the arm was testing a tighter time
+        // window AND more pixels at once, and shot-208 blew the provider's
+        // 30MB image limit outright. The window is the variable under test;
+        // resolution must be held identical or the result means nothing.
+        '-vf', `scale=${dims.w}:${dims.h}`,
         '-pix_fmt', 'yuvj420p', '-q:v', '3', `${outDir}/${String(i).padStart(2, '0')}.jpg`])
     }
     console.log(`${fx.slug}: release ${rel.toFixed(2)}s, window ${start.toFixed(2)}-${end.toFixed(2)}s, ${FRAMES} frames`)

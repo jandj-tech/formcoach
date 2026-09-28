@@ -1,31 +1,39 @@
-POWER RUBRIC v5 — did the legs throw this ball, or did the arms?
+POWER RUBRIC v6 — did the ball ride up on the legs, or did the arms lift it after the legs were done?
 
-THIS CRITERION SCORES THE LOWER BODY AND THE TIMING. The shape of the shooting arm belongs to "Elbow L-Shape — Under the Ball" and "Shot Pocket — Elbow"; do not re-derive it here. The arms enter this score only through the three hard floors at the bottom, and each floor needs a specific frame you can point at.
+THIS CRITERION IS ABOUT ORDER, NOT DEPTH. How far the knees bend is a weak signal — strong and older shooters shoot from a shallow bend and are still leg-driven. What separates a leg-driven shot from an arm shot is WHEN things happen relative to each other, and that is readable at any distance because it is a comparison between frames, not a measurement inside one.
 
-THE RULER IS THE PLAYER'S OWN HEAD. Measure vertical movement in HEAD-HEIGHTS (crown to chin). The head stays readable when the player is small and far away, and it shrinks with them, so half a head is half a head at any distance. Never measure in inches, feet or degrees.
+THE SHAPE OF THE SHOOTING ARM IS NOT SCORED HERE. Elbow position belongs to the elbow criterion and is not charged twice. The only way the arms enter this score is the catapult and the two-hand shove, and those are decided by the set-point check or the flags, not by this guide.
 
-MEASURE TWO THINGS, BOTH BEFORE THE BALL LEAVES THE HAND:
-  1. THE DIP. Find the frame where the player sits lowest in the gather and the frame just before they start down. How far did the top of the head drop between the two, in head-heights?
-  2. THE TIMING. Find the RELEASE FRAME — the first frame where the ball is no longer touching the shooting hand. Look at the knees in that frame and the two before it. Are the legs still straightening at release, or were they already straight and still?
+FIND FIVE FRAMES. Track the top of the head and the ball.
+  D — the frame where the head is LOWEST in the gather.
+  B — the first frame the ball starts rising toward the set point.
+  T — the last frame with both feet flat on the floor (or, on a set shot, the frame the heels lift).
+  R — the release: the first frame the ball is no longer touching the shooting hand.
+  P — the frame where the head is HIGHEST.
+If the clip starts after D or ends before R, say so and return null.
 
-SCORE ANCHORS — land between two anchors when the shot sits between them:
-  10 — Head drops a third of a head-height or more into the gather, knees clearly closed. In the release frame the legs are STILL FINISHING: heels off the floor, feet just leaving it, or knees visibly straighter than two frames earlier. Ball and body go up as one motion.
-  7  — Dip and drive are both there but SEPARATED: by the release frame the legs are already straight and still, and the arm finishes the shot on its own. Also 7 when the dip is clearly less than a third of a head-height but the legs still drive through it.
-  4  — The top of the head does not visibly drop and the knees hold roughly the same angle through the whole rise. The ball is lifted while the body stays at one height: the arms supplied the lift.
-  1  — No lower-body change at all AND the ball is pushed out from chest height by both hands together, elbows winged, never loading above the chin.
+THEN ANSWER THREE QUESTIONS FROM THOSE FRAMES:
+  1. Did the ball and the body start up TOGETHER? (B is D or the frame after D.) Or did the ball start up while the head was still level or still going down — the arms leading the legs?
+  2. Was the body STILL RISING at the release? (R comes before P, and the head is higher in R than in the frame before it.) Or had the body already stopped or started down before the ball left?
+  3. Did the ball ever PARK? A ball that sits still at the set point for two or more frames while the head keeps moving means the legs finished and then the arm pushed on its own. One frame of stillness is not a park.
 
-ONE NAMED DEDUCTION: if the guide hand is still on the ball in the release frame and visibly pushing or steering it, take 1-2 points off the anchor you measured. The expert's template for this case, which he scored 6: "the guide hand is doing some work on the ball, which adds power. it should all come from your legs."
+SCORE ANCHORS — land between anchors when the shot sits between them.
+  10 — Any visible head drop into the gather; ball and body start up together; body still rising at the release; no park. One motion, legs to fingertips.
+  9  — As 10 with one small thing: a very shallow drop, or a single-frame stall at the top.
+  8  — A defined set point reached right at takeoff and launched from at once — no park, body still rising at the release. This is a good two-motion shooter, and it is common in strong players.
+  7  — Legs and arm both work, but they are SEPARATED: the head has stopped rising, or the feet are flat and still, in the release frame and the one before it. The legs loaded; the arm finished alone. Release still before the peak.
+  6  — The legs extend, then the ball parks for two or more frames, then a push; or a long shot released after the peak, on the way down.
+  5  — Barely any head drop; the ball rises from a nearly still body; the arm is doing the lifting, but it is one clean one-hand release.
+  4  — No head drop and the knees at one angle through the whole rise: the arms lifted it. Also the ceiling when the set-point check reports a CATAPULT.
+  2-3 — Two-hand chest shove: the ball never loads above the chin and both arms push it out together, hands mirrored on its sides.
+  1  — No lower-body change at any point, and a two-hand shove.
 
-THREE ARM FLOORS. Each needs a frame you can point at. Each OVERRIDES the anchors above however good the dip was:
-  - BALL BEHIND THE HEAD (the catapult): a frame where the ball is level with or behind the top of the head, both hands still on it, both elbows up beside the ears, before it is slung forward. Score 4 or below.
-  - TWO-HAND CHEST SHOVE: the ball never loads above the chin and is pushed from chest height by both arms together, hands mirrored on its sides. Score 2 or below.
-  - OPEN PUSH: at the set point the shooting arm has no fold left — upper arm and forearm in a near-straight line, ball out beside the head rather than stacked above the elbow, the arm reaching at the ball rather than lifting under it. Score 4 or below.
-IF NONE OF THOSE THREE FRAMES EXISTS, NO FLOOR APPLIES. A merely flared or untidy shooting elbow is the elbow criterion's business: here it costs at most 1 point, and you must NOT write the words catapult, heave, sling, hoist, chest pass or two-hand about it. The expert has corrected exactly that write-up: "this was NOT a catapult — this was just the shooting hand being flared out."
+ONE NAMED DEDUCTION: if the guide hand is still on the ball in the release frame and visibly pushing or steering it, take 1 off the anchor you landed on. The expert's own words for that case, scored 6: "the guide hand is doing some work on the ball, which adds power. it should all come from your legs."
 
-DO NOT CONFUSE FULL EXTENSION AT RELEASE WITH AN ARM PUSH. Every shooter's arm straightens as the ball leaves, and both arms finishing high is normal. Judge the arms only against the three floors.
+WHAT IS NOT A FAULT: a shallow dip in a strong shooter; a set shot with the heels down as long as the knees are straightening through the rise; releasing at the top of the jump on a close shot; a ball held high in front of the forehead with ONE elbow under it and the legs still finishing — that is a high set point, not a catapult, and it scores 8-10 here; landing ahead of the take-off spot; the guide hand on the ball at the set point; both arms finishing high.
 
-RETURN NULL WHEN: the knees are out of frame, hidden, or blurred in every pre-release frame; or every frame you have is at or after the release. Legs already extended at release tell you nothing about whether they drove the shot, and a jump you infer is not a drive you saw.
+DO NOT USE THE WORD CATAPULT unless the set-point check or a flag has established the ball went over or behind the head with both arms. A flared elbow is the elbow criterion's business and costs nothing here.
 
-CAMERA ANGLE: the dip and the release-frame knee check both read from a camera behind or under the basket and from the side. Neither depends on seeing the rim. There is no angle that excuses skipping them.
+RETURN NULL WHEN the knees and head are hidden or blurred in every pre-release frame, or every frame you have is at or after the release.
 
-PLAYER-FACING WORDING: tell them to load the legs and let the ball ride up on the drive — the shot leaving the hand while the legs are still finishing, not after they have stopped. "Catapulting the ball" is good coaching language when the ball really did go behind the head. Never mention degrees, head-heights, frames or scoring bands in the reasoning.
+PLAYER-FACING WORDING: tell them to let the ball ride up on the legs — start the ball up as the legs start up, and let it go while the body is still rising, not after it has stopped. Never mention frames, letters, angles, studies or scoring bands in the reasoning.

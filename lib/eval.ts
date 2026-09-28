@@ -381,6 +381,9 @@ export async function runFixtureOnce(
     flag_confidence: result.flag_confidence ? { ...result.flag_confidence } : undefined,
     player_type: result.player_assessment?.player_type ?? 'recreational',
     grader: result.grader_version ?? null,
+    set_point: result.set_point_check
+      ? { frame: result.set_point_check.frame, verdict: result.set_point_check.verdict }
+      : null,
   }
 }
 

@@ -209,6 +209,10 @@ for (const fixture of fixtures) {
         expected: exp,
         source: expected.criteria_source?.[name] ?? 'expert',
         evidence: summary.evidence?.[name] ?? null,
+        // SETPOINT_CHECK arms: which frame was inspected and what it found.
+        // Taken from run 1; the check is deterministic on identical frames.
+        set_point: runs[0]?.set_point?.verdict ?? null,
+        set_point_frame: runs[0]?.set_point?.frame ?? null,
         missed:
           exp === 'null'
             ? score !== null

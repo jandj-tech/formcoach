@@ -21,6 +21,8 @@ export interface EvalRun {
   flag_confidence?: Record<string, number>
   player_type: string
   grader: EvalGrader | null
+  /** SETPOINT_CHECK=1 only: the single-frame set-point inspection. */
+  set_point?: { frame: number | null; verdict: string } | null
 }
 
 /** Repeat runs of one fixture merged into a single comparable record. */

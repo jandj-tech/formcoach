@@ -1744,3 +1744,30 @@ pass receives the answers as facts. This is E46's candidate design.
 PENDING: the single-frame probe with three good-elbow controls (125, 206, 189).
 If the controls also return catapult TRUE, single-frame detection is yes-biased
 and none of the above survives.
+
+### E45 control check — single-frame detection is NOT yes-biased under a 2-cue rule
+```
+clip      expert       f16: behind flared tilt -> catapult   f19: behind flared tilt
+shot-196  BAD [2,4]         T      T     T       YES              T     F     F
+shot-200  BAD [2,4]         T      T     T       YES              T     F     F
+shot-198  BAD [3,5]         F      F     F       no               T     F     F
+shot-202  BAD [3,5]         F      F     F       no               T     F     F
+shot-125  GOOD             F      F     F       no               T     F     F
+shot-206  GOOD             F      F     F       no               F     F     F
+shot-189  GOOD             T      F     F       YES <- 1 cue     T     F     F
+```
+Three things this fixes in the design:
+1. The model's own "catapult" summary field fires on ONE cue (shot-189). Do not
+   use it. Decide from the cues: catapult = ball_behind AND (flared OR tilt).
+   Under that rule: 2/2 true catapults caught, 0/3 controls flagged, 0 false
+   positives on 198/202.
+2. Frame choice is load-bearing. At frame 19 (near release) "ball above the
+   head" is TRUE for almost everyone because the arms are extending. The check
+   must run on the SET-POINT frame, before extension - and the 28-frame probe
+   showed the model locates that frame correctly (frame 10 on the pinned set).
+3. shot-198 and shot-202 are bad-elbow clips ([3,5]) that are NOT catapults.
+   The expert distinguishes a flared elbow (4) from a catapult (1-3), and so
+   must the check: a second cue set for "ball beside the head / elbow out
+   with the ball still in front" is needed for those. Catapult alone covers
+   the two 5-point misses, not the two 4-point ones.
+n is tiny (3 controls). This is a design signal, not a result. E46a is the arm.

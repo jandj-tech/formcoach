@@ -1624,3 +1624,50 @@ Percentages were recorded without denominators, and no interval was computed on
 any of them. A 3/9 and a 300/900 both print as "33%". Rule added to the README:
 **no proportion is reported in this log without its numerator, denominator, and
 a 95% interval.**
+
+## E44 — Flip instability as a reliability signal · REJECTED, and it cost nothing
+
+The comparator curve (E43) produced one clean monotone result: pairwise verdicts
+flip less often as the expert gap widens — 25, 21, 18, 13 across four bands, and
+it got CLEANER when outage-damaged pairs were recovered. That looked like the
+reliability signal this project has been missing for nineteen experiments, and it
+needs no ground truth at serving time.
+
+Tested by joining the 480 cached comparisons against a per-cell dump. No new
+model calls.
+
+```
+cells with >=3 cached comparisons: 66   (missed 29, hit 37)
+mean flip rate, MISSED cells : 36.8%
+mean flip rate, HIT cells    : 33.5%
+difference                   :  3.4 points
+point-biserial r             :  0.074
+permutation p (two-sided)    :  0.549
+```
+
+**REJECTED.** Not a reliability signal.
+
+### Why, and this is the part worth keeping
+Flip rate measures HOW FAR APART TWO SHOTS ARE. It does not measure whether
+either shot's own score is right. A shot that happens to be compared against
+similar shots flips constantly no matter how well it was graded. The monotone
+curve is real and it is informative about the comparator — but the quantity it
+tracks is the expert gap, which we already know from the expert scores. It tells
+us nothing about the cell we cannot see.
+
+The general shape of the error, which has now happened twice in this log: a
+statistic that correlates beautifully with something we ALREADY KNOW is not
+evidence that it predicts something we DON'T. E42 was reading a curve into ten
+coin flips; this is reading prediction into a redundancy.
+
+### The reliability scoreboard is now 0 for 5
+```
+model's stated confidence   r = 0.000
+token entropy               r = 0.000
+guard rail                  0 caught, 4 broken
+big-miss catcher            not reproducible across 4 near-identical runs
+flip instability            r = 0.074, p = 0.549
+```
+Five independent attempts to know when the grader is wrong, all null. That is
+itself the finding, and it should be said plainly to anyone deciding what to ship:
+**we currently cannot tell, at serving time, which grades are the bad ones.**

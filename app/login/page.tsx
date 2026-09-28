@@ -16,7 +16,7 @@ const OAUTH_ERRORS: Record<string, string> = {
   oauth_cancelled: 'Sign-in was cancelled.',
   oauth_no_email: 'That sign-in did not share an email address, so we could not create an account.',
   oauth_failed: 'That sign-in could not be completed. Please try again.',
-  oauth_email_in_use: 'An account already uses this email. Log in with your email and password instead.',
+  oauth_email_unverified: "Your Google account's email isn't verified yet. Verify it with Google, or sign up with your email and a password instead.",
   oauth_unavailable: 'Google and Apple sign-in are not available right now — use your email and password.',
 }
 

@@ -36,7 +36,12 @@ export interface OAuthSignInResult {
   isNewAccount: boolean
 }
 
-export class OAuthSignInError extends Error {}
+export class OAuthSignInError extends Error {
+  /** Short reason code the web callback puts in the /login?error= URL. */
+  constructor(message: string, readonly code: 'no_email' | 'email_in_use' = 'no_email') {
+    super(message)
+  }
+}
 
 export async function signInWithOAuthProfile(profile: OAuthProfile): Promise<OAuthSignInResult> {
   const email = profile.emailVerified && profile.email ? profile.email.toLowerCase().trim() : null
@@ -169,23 +174,57 @@ async function createPlayer(profile: OAuthProfile, email: string | null): Promis
     throw new OAuthSignInError('That sign-in did not share an email address, so we could not create an account.')
   }
   const addr = (email ?? profile.email!).toLowerCase().trim()
+  // `email` is only non-null when the provider verified the address. An
+  // unverified address is just a string the caller typed, so it may name the
+  // account, but it must never find, link to, or inherit anything already
+  // stored under that address.
+  const verified = email !== null
 
   const nickname = profile.name?.trim().split(/\s+/)[0]?.slice(0, 50) || null
 
-  // free_analysis_used = true matches the password signup route: the free first
-  // analysis is discontinued, and a provider account must not become a way
-  // around that.
-  const [created] = (await db`
-    INSERT INTO users (email, password_hash, nickname, free_analysis_used)
-    VALUES (${addr}, NULL, ${nickname}, true)
-    ON CONFLICT (email) DO UPDATE SET email = EXCLUDED.email
-    RETURNING id, email
-  `) as unknown as [{ id: string; email: string }]
+  let created: { id: string; email: string } | undefined
+  if (verified) {
+    // free_analysis_used = true matches the password signup route: the free first
+    // analysis is discontinued, and a provider account must not become a way
+    // around that.
+    ;[created] = (await db`
+      INSERT INTO users (email, password_hash, nickname, free_analysis_used)
+      VALUES (${addr}, NULL, ${nickname}, true)
+      ON CONFLICT (email) DO UPDATE SET email = EXCLUDED.email
+      RETURNING id, email
+    `) as unknown as [{ id: string; email: string }]
+  } else {
+    // DO NOTHING, not DO UPDATE: with DO UPDATE the RETURNING hands back the
+    // EXISTING row, which would give an unverified claim a session for, and a
+    // permanent identity link to, whoever already owns this address. The
+    // explicit case-insensitive check also covers rows stored before emails
+    // were normalised, which the unique index would not catch.
+    const [taken] = (await db`
+      SELECT 1 FROM users WHERE lower(email) = ${addr} LIMIT 1
+    `) as unknown as [unknown | undefined]
+    if (!taken) {
+      ;[created] = (await db`
+        INSERT INTO users (email, password_hash, nickname, free_analysis_used)
+        VALUES (${addr}, NULL, ${nickname}, true)
+        ON CONFLICT (email) DO NOTHING
+        RETURNING id, email
+      `) as unknown as [{ id: string; email: string } | undefined]
+    }
+    if (!created) {
+      throw new OAuthSignInError(
+        'An account already uses this email. Log in with your email and password instead.',
+        'email_in_use'
+      )
+    }
+  }
 
   await linkIdentity(created.id, profile, addr)
 
-  // Adopt any analyses this address submitted before it had an account.
-  await db`UPDATE submissions SET user_id = ${created.id} WHERE email = ${addr} AND user_id IS NULL`
+  // Adopt any analyses this address submitted before it had an account — only
+  // when the provider proved the address belongs to this person.
+  if (verified) {
+    await db`UPDATE submissions SET user_id = ${created.id} WHERE email = ${addr} AND user_id IS NULL`
+  }
 
   try { await addToEmailList(addr) } catch { /* non-fatal */ }
 

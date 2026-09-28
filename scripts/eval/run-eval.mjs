@@ -131,8 +131,12 @@ async function gradeFixture(fixture) {
     if (!TRANSPORT.test(failed ?? '')) break
     if (attempt < FIXTURE_ATTEMPTS) {
       // Long waits: a wifi drop or a DNS outage lasts minutes, not seconds,
-      // and an arm is already hours long. 30s then 2m.
-      const wait = attempt === 1 ? 30_000 : 120_000
+      // and an arm is already hours long. 30s, then 2m, then 5m thereafter.
+      // An arm that dies on a 20-minute outage has thrown away hours of
+      // grading, which is strictly worse than sitting still and waiting: the
+      // calls cost money, the wall-clock is the binding constraint on this
+      // whole effort, and a half-finished arm is not comparable to anything.
+      const wait = attempt === 1 ? 30_000 : attempt === 2 ? 120_000 : 300_000
       console.error(`  … ${fixture.slug}: transport failure (attempt ${attempt}/${FIXTURE_ATTEMPTS}): ${failed}`)
       console.error(`  … waiting ${wait / 1000}s for the network before retrying`)
       await new Promise((r) => setTimeout(r, wait))

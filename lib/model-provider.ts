@@ -111,7 +111,13 @@ async function fetchWithRetry(url: string, init: RequestInit, attempts = 4): Pro
     }
     try {
       const res = await fetch(url, init)
-      if (res.status === 429 || res.status >= 500) {
+      // 402 in_flight_budget_exhausted is a CONCURRENCY limit, not an empty
+      // wallet: the provider's own message says "Retry after in-flight requests
+      // settle". Treating it as fatal cost an entire 28-fixture arm — 21 of 28
+      // fixtures died at concurrency 7 and the run was unusable. A real
+      // out-of-credit 402 will still fail, just after the retries.
+      const inFlightLimited = res.status === 402 && /in_flight|in-flight/i.test(await res.clone().text().catch(() => ''))
+      if (res.status === 429 || res.status >= 500 || inFlightLimited) {
         lastErr = new Error(`transient ${res.status}`)
         // Drain the body so the connection can be reused.
         await res.text().catch(() => '')
@@ -131,7 +137,16 @@ async function fetchWithRetry(url: string, init: RequestInit, attempts = 4): Pro
   )
 }
 
-export async function callGatewayModel(params: {
+/**
+ * The model spent its whole output budget on hidden chain-of-thought and
+ * returned no answer. Retrying the identical request is pointless — the
+ * thinking will be just as long — but retrying with a bigger ceiling works.
+ * Separate class so that escalation is targeted and does not mask real
+ * provider errors.
+ */
+class ReasoningBudgetExhausted extends Error {}
+
+async function callGatewayModelOnce(params: {
   model: string
   /** Omitted for single-turn calls; an empty system message is rejected by some providers. */
   systemPrompt?: string
@@ -211,6 +226,12 @@ export async function callGatewayModel(params: {
   const choice = json.choices?.[0]
   const text = choice?.message?.content ?? ''
   if (!text) {
+    if (choice?.message?.reasoning) {
+      throw new ReasoningBudgetExhausted(
+        `Gateway returned no content for ${model}: it spent the whole ${maxTokens}-token budget on hidden ` +
+          `reasoning (finish_reason=${choice?.finish_reason}).`
+      )
+    }
     // Distinguish the three ways this happens, because "no content" sent us
     // looking at the wrong thing once already.
     const reasoned = !!choice?.message?.reasoning
@@ -232,6 +253,36 @@ export async function callGatewayModel(params: {
       output: json.usage?.completion_tokens ?? 0,
     },
     model: json.model ?? model,
+  }
+}
+
+/**
+ * One grading call, with the output ceiling escalated if the model's hidden
+ * reasoning eats the whole budget and leaves no answer.
+ *
+ * This is not belt-and-braces: two fixtures in the 3-pass ladder arm died
+ * exactly this way, and a dead fixture does not just lose itself — it makes
+ * the whole arm non-comparable to every other arm, because the suite it was
+ * measured on is no longer the same suite. The budget is the one knob that
+ * reliably fixes it, so escalate here rather than asking every caller to
+ * guess a ceiling that covers the worst clip.
+ *
+ * Doubling once is enough in practice (16k -> 32k); a model that cannot close
+ * an answer in 32k tokens of thinking has a different problem, and a second
+ * doubling would cost a minute of wall clock per pass to find that out.
+ */
+export async function callGatewayModel(
+  params: Parameters<typeof callGatewayModelOnce>[0]
+): Promise<ModelCallResult> {
+  try {
+    return await callGatewayModelOnce(params)
+  } catch (err) {
+    if (!(err instanceof ReasoningBudgetExhausted)) throw err
+    const raised = params.maxTokens * 2
+    console.warn(
+      `[model] ${params.model} spent ${params.maxTokens} tokens on reasoning with no answer — retrying at ${raised}`
+    )
+    return await callGatewayModelOnce({ ...params, maxTokens: raised })
   }
 }
 

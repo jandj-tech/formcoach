@@ -14,13 +14,19 @@ export interface EvalRun {
   shot_detected: boolean
   overall: number
   criteria: Record<string, number | null>
+  /** Per-criterion: how well the footage showed what the criterion asks about. */
+  evidence?: Record<string, string>
   flags: Record<string, boolean>
+  /** Raw 0-10 flag confidences, so a silent cap can be distinguished from a clean shot. */
+  flag_confidence?: Record<string, number>
   player_type: string
   grader: EvalGrader | null
 }
 
 /** Repeat runs of one fixture merged into a single comparable record. */
 export interface EvalSummary {
+  /** Per-criterion evidence level, worst across runs. */
+  evidence?: Record<string, string>
   runs: number
   shot_detected: boolean
   overall: number | null
@@ -107,6 +113,16 @@ export function aggregateRuns(runs: EvalRun[]): EvalSummary {
     }
   }
   const criteria: Record<string, number | null> = {}
+  // Worst evidence any run reported. A cell one run could not see is not made
+  // visible by another run that claims it could.
+  const evidenceRank: Record<string, number> = { none: 0, partial: 1, clear: 2 }
+  const evidence: Record<string, string> = {}
+  for (const run of runs) {
+    for (const [name, ev] of Object.entries(run.evidence ?? {})) {
+      const cur = evidence[name]
+      if (cur === undefined || (evidenceRank[ev] ?? 9) < (evidenceRank[cur] ?? 9)) evidence[name] = ev
+    }
+  }
   let worstSpread = 0
   for (const [name, vals] of Object.entries(byName)) {
     const scored = vals.filter((v): v is number => v !== null && v !== undefined)
@@ -133,6 +149,7 @@ export function aggregateRuns(runs: EvalRun[]): EvalSummary {
   return {
     runs: runs.length,
     shot_detected: true,
+    evidence,
     overall: median(overalls),
     overall_spread: runs.length > 1 ? Math.round((Math.max(...overalls) - Math.min(...overalls)) * 100) / 100 : null,
     worst_criterion_spread: runs.length > 1 ? Math.round(worstSpread * 100) / 100 : null,

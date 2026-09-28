@@ -157,7 +157,7 @@ async function finish(req: NextRequest, providerParam: string, input: CallbackIn
     res.cookies.delete(OAUTH_STATE_COOKIE)
     return res
   } catch (err) {
-    if (err instanceof OAuthSignInError) return bail(origin, state, 'no_email')
+    if (err instanceof OAuthSignInError) return bail(origin, state, err.code)
     console.error(`OAuth sign-in failed for ${provider}:`, err)
     return bail(origin, state, 'failed')
   }

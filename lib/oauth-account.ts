@@ -36,7 +36,12 @@ export interface OAuthSignInResult {
   isNewAccount: boolean
 }
 
-export class OAuthSignInError extends Error {}
+export class OAuthSignInError extends Error {
+  /** Short reason code the web callback puts in the /login?error= URL. */
+  constructor(message: string, readonly code: 'no_email' | 'email_unverified' = 'no_email') {
+    super(message)
+  }
+}
 
 export async function signInWithOAuthProfile(profile: OAuthProfile): Promise<OAuthSignInResult> {
   const email = profile.emailVerified && profile.email ? profile.email.toLowerCase().trim() : null
@@ -161,14 +166,25 @@ export async function signInWithOAuthProfile(profile: OAuthProfile): Promise<OAu
 }
 
 async function createPlayer(profile: OAuthProfile, email: string | null): Promise<OAuthSignInResult> {
-  // Apple gives a relay address when the user hides theirs; it still routes
-  // mail to them, so it is a real address for our purposes. If the provider
-  // sent nothing at all we cannot create an account — `users.email` is NOT NULL
-  // and every receipt, reset and report we send needs somewhere to go.
-  if (!email && !profile.email) {
-    throw new OAuthSignInError('That sign-in did not share an email address, so we could not create an account.')
+  // `email` is only non-null when the provider verified the address. Without
+  // that, the address is just a string the token carries: it must never find,
+  // claim, or create an account — not even a brand-new one, or anyone could
+  // squat an address and inherit whatever the real owner does with it later
+  // (step 5 would link their verified sign-in straight into the squatter's
+  // account). Apple always verifies, including private-relay addresses.
+  if (!email) {
+    if (!profile.email) {
+      // `users.email` is NOT NULL and every receipt, reset and report we send
+      // needs somewhere to go.
+      throw new OAuthSignInError('That sign-in did not share an email address, so we could not create an account.')
+    }
+    const providerName = profile.provider === 'apple' ? 'Apple' : 'Google'
+    throw new OAuthSignInError(
+      `Your ${providerName} account's email isn't verified yet. Verify it with ${providerName}, or sign up with your email and a password instead.`,
+      'email_unverified'
+    )
   }
-  const addr = (email ?? profile.email!).toLowerCase().trim()
+  const addr = email
 
   const nickname = profile.name?.trim().split(/\s+/)[0]?.slice(0, 50) || null
 

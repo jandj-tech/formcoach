@@ -76,3 +76,35 @@ export async function verifyTurnstile(
     return PASS
   }
 }
+
+/**
+ * NSURLSession's default User-Agent for the shipped iOS app:
+ * "LearnHoops/<CFBundleVersion> CFNetwork/<v> Darwin/<v>". PRODUCT_NAME and
+ * CFBundleName are both "LearnHoops" in learnhoops-mobile/ios.
+ */
+const NATIVE_APP_UA = /^LearnHoops\/\d+(\.\d+)* CFNetwork\//
+
+/**
+ * TEMPORARY exemption for the native iOS app's email signup.
+ *
+ * The shipped app (learnhoops-mobile/lib/api.ts signup()) posts to
+ * /api/auth/signup with no Turnstile token — it has no widget — so once
+ * TURNSTILE_SECRET_KEY went live on production every native email signup
+ * failed with "Human check failed". Web signup and Apple/Google sign-in were
+ * unaffected.
+ *
+ * A native fetch sends no Origin and no Referer; a browser always sends Origin
+ * on a POST. So a request with no token, no Origin, no Referer and the app's
+ * NSURLSession User-Agent is treated as the app. Every header here is trivially
+ * spoofable by a script, which is why callers MUST apply much tighter rate
+ * limits to exempt requests (see app/api/auth/signup) — this trades a bounded
+ * trickle of scripted signups for not breaking the app.
+ *
+ * The real fix is in the app: send a Turnstile token (or an App Attest /
+ * DeviceCheck assertion) and delete this exemption once old builds age out.
+ */
+export function isNativeAppRequestWithoutToken(req: NextRequest, token: unknown): boolean {
+  if (typeof token === 'string' && token) return false
+  if (req.headers.get('origin') || req.headers.get('referer')) return false
+  return NATIVE_APP_UA.test(req.headers.get('user-agent') ?? '')
+}

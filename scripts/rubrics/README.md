@@ -131,3 +131,12 @@ STANCE v21 was live while `main` carried v15.
 One rubric per run. Two at once and the eval cannot tell you which one moved the
 score. Arms run at 1 pass (E16: more passes buy no accuracy) with
 `EVAL_FIXTURE_CONCURRENCY=4`, which is ~25 minutes for 28 fixtures.
+
+## Rule 5 — every proportion carries its counts and an interval
+
+No accuracy, miss rate or win rate goes in EXPERIMENTS.md as a bare percentage.
+Write `13/15 = 87% CI [62, 96]`, never `87%`. A 3/9 and a 300/900 print
+identically and mean completely different things; E42 shows a whole design
+conversation built on the former while everyone read it as the latter.
+
+If two numbers' intervals overlap, they have not been shown to differ. Say so.

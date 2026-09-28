@@ -1578,3 +1578,49 @@ only LOWER a score, anchors are leave-one-out.
 
 Judged on two numbers, not the miss rate: **big misses eliminated** and
 **correct scores broken**.
+
+## E42 — A CORRECTION TO E37, AND IT INVALIDATES THE HEADLINE OF THIS LOG
+
+E37 reported comparator accuracy as a function of expert score gap and I read a
+shape into it that the data does not carry. The raw counts were never written
+next to the percentages; here they are:
+
+```
+gap 1-1.5    4/10 = 40%     95% Wilson CI  [16.8, 68.7]
+gap 2-2.5     3/9 = 33%     95% Wilson CI  [12.1, 64.6]
+gap 3-4       3/5 = 60%     95% Wilson CI  [23.1, 88.2]
+gap 3-7     13/15 = 87%     95% Wilson CI  [62.1, 96.3]
+```
+
+**Every interval except the last contains 50%.** Not one of the three narrow
+bands is distinguishable from a coin flip, and every pair of bands overlaps, so
+they are not distinguishable from each other either. The sentence "At or below
+chance for anything under a 3-point difference" is not a finding. It is ten coin
+flips with a story attached.
+
+What DOES survive:
+- Wide-gap comparison is above chance: 13/15, CI [62.1, 96.3], excludes 50.
+- Absolute 3-band placement is AT chance: 26/82 = 31.7%, CI [22.5, 42.5] against
+  a 33% chance rate. The interval contains 33 and excludes nothing useful — the
+  honest reading is "indistinguishable from guessing", not "below chance".
+
+So "the model can RANK but cannot LOCATE" is half-supported. The LOCATE half is
+solid on 82 trials. The RANK half rests on 15 trials, and the claim that ranking
+DEGRADES smoothly with gap size rests on 24 trials spread across three bands.
+
+Why this matters beyond bookkeeping: every design that has been proposed on the
+back of E37 — anchor ladders spaced to the comparator's resolution, contrastive
+delta scoring, coarse bands chosen to match what the model can resolve — depends
+on the SHAPE of this curve. An external research review used these same numbers
+to conclude that anchors spaced 1-2 points apart are "worthless" and only ~3-point
+spacing is viable. That conclusion inherits the bad sample and must not be built on.
+
+E43 measures it properly: 526 pairs exist across the fixtures, 60 sampled per
+band, both orders asked, flips excluded from the denominator rather than counted
+as losses, Wilson intervals printed. scripts/eval/comparator-curve.mjs.
+
+### The process failure, so it does not repeat
+Percentages were recorded without denominators, and no interval was computed on
+any of them. A 3/9 and a 300/900 both print as "33%". Rule added to the README:
+**no proportion is reported in this log without its numerator, denominator, and
+a 95% interval.**

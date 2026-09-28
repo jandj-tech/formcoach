@@ -66,11 +66,11 @@ for (const fx of fixtures) {
     if (releases[fx.slug] === undefined) {
       const strip = `${TMP}/${fx.slug}-strip`
       mkdirSync(strip, { recursive: true })
-      const N = 12
+      const N = Number(process.env.STRIP_N ?? 24)
       for (let i = 0; i < N; i++) {
         const t = (dur * (i + 0.5)) / N
         execFileSync('ffmpeg', ['-v', 'error', '-y', '-ss', String(t), '-i', vid, '-frames:v', '1',
-          '-vf', 'scale=480:-2', `${strip}/${String(i).padStart(2, '0')}.jpg`])
+          '-vf', 'scale=480:-2,format=yuvj420p', `${strip}/${String(i).padStart(2, '0')}.jpg`])
       }
       const imgs = readdirSync(strip).sort().map((f) => readFileSync(`${strip}/${f}`).toString('base64'))
       const res = await callVisionModel({
@@ -79,18 +79,31 @@ for (const fx of fixtures) {
         frameMimeTypes: imgs.map(() => 'image/jpeg'),
         userText: `These ${N} images are evenly spaced through one basketball video, numbered 0 to ${N - 1} in order.
 
-Find the RELEASE: the moment the ball leaves the shooter's hand. Answer with the number of the image where the ball has just left the hand, or is closest to leaving it.
+Identify the RELEASE by bracketing it, which is more reliable than naming one frame:
 
-Answer JSON only: {"release": <0-${N - 1}>, "confident": <true|false>}`,
+  "last_held"  = the HIGHEST-numbered image in which the ball is still touching the shooter's hand(s).
+  "first_free" = the LOWEST-numbered image in which the ball is clearly separated from both hands, with visible gap.
+
+first_free should normally be last_held + 1. The release lies between them.
+Ignore any ball resting on the floor or held before the shooting motion begins; judge only the ball being shot.
+
+Answer JSON only: {"last_held": <0-${N - 1}>, "first_free": <0-${N - 1}>, "confident": <true|false>}`,
         maxTokens: 4000,
       })
       const m = res.text.match(/\{[\s\S]*\}/)
       const parsed = m ? JSON.parse(m[0]) : {}
-      const idx = Number(parsed.release)
-      releases[fx.slug] =
-        Number.isFinite(idx) && idx >= 0 && idx < N && parsed.confident !== false
-          ? (dur * (idx + 0.5)) / N
-          : null
+      const held = Number(parsed.last_held)
+      const free = Number(parsed.first_free)
+      const ok =
+        Number.isFinite(held) && Number.isFinite(free) &&
+        held >= 0 && free < N && free > held && free - held <= 3 &&
+        parsed.confident !== false
+      // The release sits between the two bracketing samples, so take the
+      // midpoint rather than either endpoint. This is what fixes the
+      // systematic lateness: naming one frame made the model pick a frame
+      // where the ball was already unambiguously airborne.
+      releases[fx.slug] = ok ? (dur * ((held + free) / 2 + 0.5)) / N : null
+      if (!ok) console.log(`${fx.slug}: bracket rejected (${res.text.slice(0, 80).replace(/\n/g, ' ')})`)
       writeFileSync(RELEASES, JSON.stringify(releases, null, 1))
       rmSync(strip, { recursive: true, force: true })
     }
@@ -104,7 +117,11 @@ Answer JSON only: {"release": <0-${N - 1}>, "confident": <true|false>}`,
     for (let i = 0; i < FRAMES; i++) {
       const t = start + ((end - start) * i) / (FRAMES - 1)
       execFileSync('ffmpeg', ['-v', 'error', '-y', '-ss', String(t), '-i', vid, '-frames:v', '1',
-        '-q:v', '3', `${outDir}/${String(i).padStart(2, '0')}.jpg`])
+        // Some source clips are tagged limited-range YUV, which the mjpeg
+        // encoder refuses outright ("Non full-range YUV is non-standard").
+        // Forcing the full-range pixel format costs nothing on clips that
+        // already comply and is the difference between 27 and 28 fixtures.
+        '-pix_fmt', 'yuvj420p', '-q:v', '3', `${outDir}/${String(i).padStart(2, '0')}.jpg`])
     }
     console.log(`${fx.slug}: release ${rel.toFixed(2)}s, window ${start.toFixed(2)}-${end.toFixed(2)}s, ${FRAMES} frames`)
     done++

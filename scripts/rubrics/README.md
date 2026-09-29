@@ -90,7 +90,7 @@ and, unlike v9/v10, says the floor WINS when that frame exists rather than
 
 | draft | version | criterion | measures | state |
 |---|---|---|---|---|
-| `elbow.txt` | ELBOW v11 | Elbow L-Shape | **Lean of the forearm as a line** (angle over a ~30px segment), three readings plus a no-stack floor. Replaces v9/v10's fraction-of-shoulder-width grid, whose adjacent anchors sat 2–5px apart. | under test |
+| `elbow.txt` | ELBOW v12 | Elbow L-Shape | **Three silhouette states** — ball vs head (front / beside / over-behind), elbow vs shoulder line (inside / at-or-beyond), forearm (post / lean / laid back) — plus the pinky tell. No fractions, no ball-edge grid (E24), no label priming. Catapult described as the up-and-back ball path. v11 (forearm-lean angle) was reverted; v10 was a rejected draft number. | draft, untested |
 | `onehand.txt` | v2 | Shooting Through Guide Hand | **Guide-hand wrist travel toward the target in ball widths** (20–30px). v1 was rejected in review: one of its signs fired on correct form, and three needed finger-scale detail. | under test |
 | `square.txt` | SQUARE v6 | Square to the Basket | Two-check plus full rungs. **r = +0.07 — measures nothing. Needs rebuilding, not tuning.** | FAILING |
 | `knees.txt` | KNEES v2 | Knees Bent | Dip depth in HEAD HEIGHTS, no points-sum. Removed the direction of the error; miss count unmoved (E14/E18). Do not grade absence of a dip as a fault — the sources conflict on whether Klay dips at all. | neutral |

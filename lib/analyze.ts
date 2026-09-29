@@ -457,6 +457,14 @@ async function loadGraderContext(): Promise<GraderContext> {
         // 4 calls is not the same grader as in 1.
         (process.env.CRITERION_GROUPS === '1' ? 'grouped:' : '') +
         (process.env.TWO_STAGE === '1' ? 'twostage:' : '') +
+        // Eval-only switches change what the grader sees or is told; an arm
+        // run with one must not hash identically to the baseline (B1 of the
+        // 2026-09-28 review: --accept would otherwise freeze a checked arm as
+        // an indistinguishable baseline).
+        (process.env.SETPOINT_CHECK === '1' ? 'setpoint:' : '') +
+        (process.env.SPLIT_FRAMES === '1' ? 'split:' : '') +
+        (process.env.ANCHORS === '1' ? 'anchors:' : '') +
+        (process.env.FAULT_GATE === '1' ? 'faultgate:' : '') +
         buildSystemPrompt({ criteriaText, feedbackText }, SHA_CANONICAL_FRAME_COUNT)
     )
     .digest('hex')
@@ -1593,12 +1601,14 @@ async function setPointCheck(
       userText: `These ${n} images are consecutive frames of ONE basketball shot, in order, numbered 0 to ${n - 1}.
 Find the SET POINT: the frame where the ball is at its HIGHEST HELD position, just before the arms begin extending upward for the release. Not the release, not the follow-through — the last frame the ball is still held at the top.
 Answer JSON only: {"set_point_frame": <0-${n - 1}>}`,
-      maxTokens: 4000,
+      // 8000 up front: this reasoning model exhausts 4000 on localisation and
+      // the retry doubles it anyway; output tokens are cheap, a retry is slow.
+      maxTokens: 8000,
     })
     const lm = locate.text.match(/\{[\s\S]*\}/)
-    const idx = lm ? Number(JSON.parse(lm[0]).set_point_frame) : NaN
+    const idx = lm ? Math.round(Number(JSON.parse(lm[0]).set_point_frame)) : NaN
     if (!Number.isFinite(idx) || idx < 0 || idx >= n) return none
-    const frame = Math.round(idx)
+    const frame = idx
 
     const look = await callVisionModel({
       model,
@@ -1609,7 +1619,7 @@ Answer literally about what is visible in THIS image. Do not describe what a set
 1. Is the ball ABOVE or BEHIND the top of the head (rather than in front of the forehead)?
 2. Is the shooting elbow flared OUT to the side at or above shoulder height, the upper arm roughly horizontal?
 3. Is the forearm tilted well away from vertical?
-4. Is the ball sitting BESIDE the head, off to the shooting side, rather than stacked above the forearm?
+4. Is the ball level with the EAR and outside the line of the shoulder — off to the side of the head rather than in front of the forehead?
 5. Are BOTH hands mirrored on the sides of the ball with BOTH elbows out wide, like a two-handed throw?
 Answer JSON only: {"ball_behind_or_above_head": true|false, "elbow_flared_shoulder_height": true|false, "forearm_not_vertical": true|false, "ball_beside_head": true|false, "both_hands_mirrored_elbows_out": true|false}`,
       maxTokens: 4000,
@@ -1617,6 +1627,11 @@ Answer JSON only: {"ball_behind_or_above_head": true|false, "elbow_flared_should
     const cm = look.text.match(/\{[\s\S]*\}/)
     if (!cm) return { frame, cues: null, verdict: 'unavailable' }
     const raw = JSON.parse(cm[0]) as Record<string, unknown>
+    const KEYS = ['ball_behind_or_above_head', 'elbow_flared_shoulder_height', 'forearm_not_vertical', 'ball_beside_head', 'both_hands_mirrored_elbows_out']
+    // A non-boolean anywhere means the answer did not parse as an answer.
+    // Mapping "yes"/1/{} to false would record a check that never ran as
+    // having exonerated the shot.
+    if (!KEYS.every((k) => typeof raw[k] === 'boolean')) return { frame, cues: null, verdict: 'unavailable' }
     const b = (k: string) => raw[k] === true
     const cues = {
       ball_behind_or_above_head: b('ball_behind_or_above_head'),
@@ -1628,9 +1643,18 @@ Answer JSON only: {"ball_behind_or_above_head": true|false, "elbow_flared_should
     // Two cues, one of them the ball position. "Ball above the head" alone is
     // true near release for everyone, which is why the frame must be the set
     // point and why one cue is not enough.
-    const catapult = cues.ball_behind_or_above_head && (cues.elbow_flared_shoulder_height || cues.forearm_not_vertical)
+    // Catapult = ball over/behind the head AND the elbow flared to the
+    // shoulder. forearm_not_vertical is dropped from the rule: it is the
+    // noisiest cue near release (true on two good controls at frame 19) and
+    // the two real catapults both light the flared cue anyway. 2/2 caught,
+    // 0/3 controls flagged, on the E45 probe.
+    const catapult = cues.ball_behind_or_above_head && cues.elbow_flared_shoulder_height
+    // v_top and flared have NO control data yet (cues 4 and 5 were never
+    // probed on good shooters). They are recorded for the dump and never
+    // injected or acted on until an arm has measured their false-positive
+    // rate. flared is two-cue so a single yes cannot fire it.
     const vTop = !catapult && cues.both_hands_mirrored_elbows_out && cues.elbow_flared_shoulder_height
-    const flared = !catapult && !vTop && (cues.ball_beside_head || cues.elbow_flared_shoulder_height)
+    const flared = !catapult && !vTop && cues.ball_beside_head && cues.elbow_flared_shoulder_height
     const verdict: SetPointCheck['verdict'] = catapult ? 'catapult' : vTop ? 'v_top' : flared ? 'flared' : 'clean'
     console.log(`[setpoint] frame ${frame}/${n} verdict=${verdict}`, cues)
     return { frame, cues, verdict }
@@ -1646,32 +1670,21 @@ Answer JSON only: {"ball_behind_or_above_head": true|false, "elbow_flared_should
  * and a comparison against baseline reads directly as fixed vs broke.
  */
 function setPointFacts(c: SetPointCheck): string {
-  if (!c.cues || c.frame === null || c.verdict === 'clean' || c.verdict === 'unavailable') return ''
+  // Only the verdict with control data is passed to the grader. flared and
+  // v_top are recorded (see the dump) and injected nowhere until an arm has
+  // measured what they do on good shooters.
+  if (!c.cues || c.frame === null || c.verdict !== 'catapult') return ''
   const yn = (v: boolean) => (v ? 'YES' : 'no')
   const k = c.cues
-  const lines = [
-    `SET-POINT CHECK — frame ${c.frame} was inspected ON ITS OWN, as a single image. These are the answers, and they are facts about the footage, not impressions:`,
+  return [
+    `SET-POINT CHECK — the set-point frame of this shot was inspected ON ITS OWN, as a single image, with these literal questions. The answers are facts about the footage, not impressions:`,
     `  ball above or behind the top of the head: ${yn(k.ball_behind_or_above_head)}`,
     `  shooting elbow flared out to shoulder height, upper arm near horizontal: ${yn(k.elbow_flared_shoulder_height)}`,
     `  forearm tilted well off vertical: ${yn(k.forearm_not_vertical)}`,
-    `  ball beside the head rather than stacked above the forearm: ${yn(k.ball_beside_head)}`,
     `  both hands mirrored on the ball with both elbows out: ${yn(k.both_hands_mirrored_elbows_out)}`,
-  ]
-  if (c.verdict === 'catapult') {
-    lines.push(
-      `VERDICT: CATAPULT. The ball is launched from over the head. The elbow guide's behind-the-head floor applies (score 1-3), the power guide's behind-the-head floor applies (4 or below), and ball_behind_head must be reported at confidence 9 or higher. Say plainly in the reasoning that the ball went behind the head.`
-    )
-  } else if (c.verdict === 'v_top') {
-    lines.push(
-      `VERDICT: TWO-ARM V AT THE TOP. Both arms are throwing the ball out of a wide V. This is the catapult's second form: ball_behind_head at confidence 8 or higher, and the elbow and power guides' catapult floors apply.`
-    )
-  } else {
-    lines.push(
-      `VERDICT: FLARED ELBOW. The ball is beside the head or the shooting elbow is out at the shoulder, but this is NOT a catapult — do not write catapult, heave or sling. The elbow guide's 4-5 anchors apply and the score may not exceed 5.`
-    )
-  }
-  lines.push(`A general impression of the shot does not overrule these answers. If the grading below contradicts them, the grading is wrong.`)
-  return lines.join('\n')
+    `VERDICT: CATAPULT. The ball is launched from over the head with the elbow flared. The elbow guide's behind-the-head floor applies, the power guide's behind-the-head floor applies, and ball_behind_head must be reported at confidence 9 or higher. Say plainly in the reasoning that the ball went behind the head.`,
+    `THIS APPLIES ONLY to the elbow, shot-pocket and shot-power criteria and the ball_behind_head flag. Grade every other criterion from the frames exactly as usual; a catapult says nothing about the feet, the follow-through or the guide hand.`,
+  ].join('\n')
 }
 
 export async function analyzeShot(
@@ -1770,7 +1783,9 @@ export async function analyzeShot(
 
   // Set-point check runs ONCE on the full frame set (never a split half) and
   // its facts go to every pass, so the ensemble sees the same evidence.
-  const spc = SETPOINT_CHECK ? await setPointCheck(frameBase64Array, frameMimeTypes, model) : null
+  const checkable = isGatewayModel(model) && process.env.CRITERION_GROUPS !== '1' && process.env.TWO_STAGE !== '1'
+  if (SETPOINT_CHECK && !checkable) console.log('[setpoint] skipped: facts only reach the gateway single-pass path')
+  const spc = SETPOINT_CHECK && checkable ? await setPointCheck(frameBase64Array, frameMimeTypes, model) : null
   const passHeader = [anchor.header, spc ? setPointFacts(spc) : ''].filter(Boolean).join('\n\n')
 
   const firstSet = withAnchors(framesForPass(0))
@@ -1915,8 +1930,10 @@ export async function analyzeShot(
   // flag, and E45 showed the passes report it at confidence 1 on real catapults.
   if (spc) {
     merged.set_point_check = spc
-    if (spc.verdict === 'catapult' || spc.verdict === 'v_top') {
+    // Only the catapult verdict acts (see setPointFacts); v_top is recorded.
+    if (spc.verdict === 'catapult') {
       merged.critical_flags.ball_behind_head = true
+      if (merged.flag_confidence) merged.flag_confidence.ball_behind_head = Math.max(merged.flag_confidence.ball_behind_head, 9)
     }
   }
   const final = finalizeResult(merged, activeCriteria)

@@ -114,12 +114,17 @@ const FIXTURE_ATTEMPTS = Number(process.env.EVAL_FIXTURE_ATTEMPTS ?? 3)
  *  runs interleaved with other fixtures, so anything printed here would arrive
  *  out of order. Reporting happens in fixture order once grading is done. */
 async function gradeFixture(fixture) {
-  let runs = []
+  // Completed runs are KEPT across attempts. The previous version reset
+  // `runs = []` on every attempt, so one transport failure on run 3 threw
+  // away runs 1 and 2 and re-graded them. Over an overnight outage with
+  // ~160 failures per arm that re-graded the same fixtures dozens of times
+  // and cost about $8 for nothing. Now a failure only redoes the run that
+  // failed.
+  const runs = []
   let failed = null
   for (let attempt = 1; attempt <= FIXTURE_ATTEMPTS; attempt++) {
-    runs = []
     failed = null
-    for (let r = 0; r < RUNS; r++) {
+    while (runs.length < RUNS) {
       try {
         runs.push(await runFixtureOnce(fixture, QUICK ? { passes: 1 } : undefined))
       } catch (err) {
@@ -127,7 +132,7 @@ async function gradeFixture(fixture) {
         break
       }
     }
-    if (!failed && runs.length > 0) return { runs, failed: null }
+    if (!failed && runs.length === RUNS) return { runs, failed: null }
     if (!TRANSPORT.test(failed ?? '')) break
     if (attempt < FIXTURE_ATTEMPTS) {
       // Long waits: a wifi drop or a DNS outage lasts minutes, not seconds,

@@ -1588,34 +1588,28 @@ const SETPOINT_CHECK = process.env.SETPOINT_CHECK === '1'
 async function setPointCheck(
   frames: string[],
   mimes: string[],
-  model: string
+  model: string,
+  releaseFrame: number
 ): Promise<SetPointCheck> {
+  // The set point is the last frame the ball is still held at the top, which
+  // sits one to three frames before the release the gate has already located.
+  // Inspecting those three frames as single images and taking a majority
+  // replaces the 28-image locate call, which failed on the target clip twice
+  // (budget exhaustion, then a dropped connection). Three small calls, in
+  // parallel, no reasoning blow-up - the shape E45 showed the model answers
+  // from the pixels.
   const none: SetPointCheck = { frame: null, cues: null, verdict: 'unavailable' }
-  if (frames.length < 4) return none
-  try {
-    const n = frames.length
-    const locate = await callVisionModel({
-      model,
-      framesBase64: frames,
-      frameMimeTypes: mimes,
-      userText: `These ${n} images are consecutive frames of ONE basketball shot, in order, numbered 0 to ${n - 1}.
-Find the SET POINT: the frame where the ball is at its HIGHEST HELD position, just before the arms begin extending upward for the release. Not the release, not the follow-through — the last frame the ball is still held at the top.
-Answer JSON only: {"set_point_frame": <0-${n - 1}>}`,
-      // 16000, the same ceiling as a grading pass: the smoke run exhausted
-      // 8000 on hidden reasoning over 28 frames and the check went
-      // 'unavailable' on the one catapult it was built for. Output is cheap.
-      maxTokens: 16000,
-    })
-    const lm = locate.text.match(/\{[\s\S]*\}/)
-    const idx = lm ? Math.round(Number(JSON.parse(lm[0]).set_point_frame)) : NaN
-    if (!Number.isFinite(idx) || idx < 0 || idx >= n) return none
-    const frame = idx
-
-    const look = await callVisionModel({
-      model,
-      framesBase64: [frames[frame]],
-      frameMimeTypes: [mimes[frame]],
-      userText: `This is ONE frame of a basketball shot at the set point, just before the upward release.
+  const candidates = [releaseFrame - 1, releaseFrame - 2, releaseFrame - 3].filter((i) => i >= 0 && i < frames.length)
+  if (candidates.length === 0) return none
+  const KEYS = ['ball_behind_or_above_head', 'elbow_flared_shoulder_height', 'forearm_not_vertical', 'ball_beside_head', 'both_hands_mirrored_elbows_out'] as const
+  type Cues = NonNullable<SetPointCheck['cues']>
+  const askFrame = async (i: number): Promise<Cues | null> => {
+    try {
+      const look = await callVisionModel({
+        model,
+        framesBase64: [frames[i]],
+        frameMimeTypes: [mimes[i]],
+        userText: `This is ONE frame of a basketball shot at or just before the set point, before the upward release.
 Answer literally about what is visible in THIS image. Do not describe what a set point usually looks like.
 1. Is the ball ABOVE or BEHIND the top of the head (rather than in front of the forehead)?
 2. Is the shooting elbow flared OUT to the side at or above shoulder height, the upper arm roughly horizontal?
@@ -1623,46 +1617,37 @@ Answer literally about what is visible in THIS image. Do not describe what a set
 4. Is the ball level with the EAR and outside the line of the shoulder — off to the side of the head rather than in front of the forehead?
 5. Are BOTH hands mirrored on the sides of the ball with BOTH elbows out wide, like a two-handed throw?
 Answer JSON only: {"ball_behind_or_above_head": true|false, "elbow_flared_shoulder_height": true|false, "forearm_not_vertical": true|false, "ball_beside_head": true|false, "both_hands_mirrored_elbows_out": true|false}`,
-      maxTokens: 8000,
-    })
-    const cm = look.text.match(/\{[\s\S]*\}/)
-    if (!cm) return { frame, cues: null, verdict: 'unavailable' }
-    const raw = JSON.parse(cm[0]) as Record<string, unknown>
-    const KEYS = ['ball_behind_or_above_head', 'elbow_flared_shoulder_height', 'forearm_not_vertical', 'ball_beside_head', 'both_hands_mirrored_elbows_out']
-    // A non-boolean anywhere means the answer did not parse as an answer.
-    // Mapping "yes"/1/{} to false would record a check that never ran as
-    // having exonerated the shot.
-    if (!KEYS.every((k) => typeof raw[k] === 'boolean')) return { frame, cues: null, verdict: 'unavailable' }
-    const b = (k: string) => raw[k] === true
-    const cues = {
-      ball_behind_or_above_head: b('ball_behind_or_above_head'),
-      elbow_flared_shoulder_height: b('elbow_flared_shoulder_height'),
-      forearm_not_vertical: b('forearm_not_vertical'),
-      ball_beside_head: b('ball_beside_head'),
-      both_hands_mirrored_elbows_out: b('both_hands_mirrored_elbows_out'),
+        maxTokens: 8000,
+      })
+      const m = look.text.match(/\{[\s\S]*\}/)
+      if (!m) return null
+      const raw = JSON.parse(m[0]) as Record<string, unknown>
+      // A non-boolean anywhere means the answer did not parse as an answer.
+      if (!KEYS.every((k) => typeof raw[k] === 'boolean')) return null
+      return Object.fromEntries(KEYS.map((k) => [k, raw[k] === true])) as unknown as Cues
+    } catch {
+      return null
     }
-    // Two cues, one of them the ball position. "Ball above the head" alone is
-    // true near release for everyone, which is why the frame must be the set
-    // point and why one cue is not enough.
-    // Catapult = ball over/behind the head AND the elbow flared to the
-    // shoulder. forearm_not_vertical is dropped from the rule: it is the
-    // noisiest cue near release (true on two good controls at frame 19) and
-    // the two real catapults both light the flared cue anyway. 2/2 caught,
-    // 0/3 controls flagged, on the E45 probe.
-    const catapult = cues.ball_behind_or_above_head && cues.elbow_flared_shoulder_height
-    // v_top and flared have NO control data yet (cues 4 and 5 were never
-    // probed on good shooters). They are recorded for the dump and never
-    // injected or acted on until an arm has measured their false-positive
-    // rate. flared is two-cue so a single yes cannot fire it.
-    const vTop = !catapult && cues.both_hands_mirrored_elbows_out && cues.elbow_flared_shoulder_height
-    const flared = !catapult && !vTop && cues.ball_beside_head && cues.elbow_flared_shoulder_height
-    const verdict: SetPointCheck['verdict'] = catapult ? 'catapult' : vTop ? 'v_top' : flared ? 'flared' : 'clean'
-    console.log(`[setpoint] frame ${frame}/${n} verdict=${verdict}`, cues)
-    return { frame, cues, verdict }
-  } catch (err) {
-    console.log('[setpoint] unavailable:', err instanceof Error ? err.message.slice(0, 120) : String(err))
-    return none
   }
+  const answers = await Promise.all(candidates.map(askFrame))
+  const usable = candidates.map((f, k) => ({ frame: f, cues: answers[k] })).filter((x): x is { frame: number; cues: Cues } => x.cues !== null)
+  if (usable.length === 0) return none
+  // Catapult = ball over/behind the head AND the elbow flared to the shoulder,
+  // on a MAJORITY of the inspected frames. forearm_not_vertical is not in the
+  // rule: it is the noisiest cue near release. Two-cue on the E45 probe: 2/2
+  // real catapults caught, 0/3 good-elbow controls flagged.
+  const isCat = (c: Cues) => c.ball_behind_or_above_head && c.elbow_flared_shoulder_height
+  const need = Math.ceil(usable.length / 2)
+  const catVotes = usable.filter((u) => isCat(u.cues))
+  const catapult = catVotes.length >= need && catVotes.length > 0
+  // v_top and flared have NO control data yet. Recorded, never injected.
+  const vTop = !catapult && usable.filter((u) => u.cues.both_hands_mirrored_elbows_out && u.cues.elbow_flared_shoulder_height).length >= need
+  const flared = !catapult && !vTop && usable.filter((u) => u.cues.ball_beside_head && u.cues.elbow_flared_shoulder_height).length >= need
+  const verdict: SetPointCheck['verdict'] = catapult ? 'catapult' : vTop ? 'v_top' : flared ? 'flared' : 'clean'
+  // Report the frame that carried the verdict, or the middle candidate.
+  const pick = (catapult ? catVotes[0] : usable[Math.floor(usable.length / 2)])
+  console.log(`[setpoint] release ${releaseFrame}, inspected ${usable.map((u) => u.frame).join(',')} of ${candidates.join(',')} verdict=${verdict}`, pick.cues)
+  return { frame: pick.frame, cues: pick.cues, verdict }
 }
 
 /**
@@ -1800,7 +1785,11 @@ export async function analyzeShot(
   // its facts go to every pass, so the ensemble sees the same evidence.
   const checkable = isGatewayModel(model) && process.env.CRITERION_GROUPS !== '1' && process.env.TWO_STAGE !== '1'
   if (SETPOINT_CHECK && !checkable) console.log('[setpoint] skipped: facts only reach the gateway single-pass path')
-  const spc = SETPOINT_CHECK && checkable ? await setPointCheck(frameBase64Array, frameMimeTypes, model) : null
+  // The gate returns 'error' when its own call failed; there is then no
+  // release index to anchor on, and the check is skipped rather than guessed.
+  const spc = SETPOINT_CHECK && checkable && typeof releaseFrame === 'number'
+    ? await setPointCheck(frameBase64Array, frameMimeTypes, model, releaseFrame)
+    : null
   const passHeader = [anchor.header, spc ? setPointFacts(spc) : ''].filter(Boolean).join('\n\n')
 
   const firstSet = withAnchors(framesForPass(0))

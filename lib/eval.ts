@@ -384,6 +384,7 @@ export async function runFixtureOnce(
     set_point: result.set_point_check
       ? { frame: result.set_point_check.frame, verdict: result.set_point_check.verdict }
       : null,
+    frame_checks: result.frame_checks ? { applied: result.frame_checks.applied, bounds: result.frame_checks.bounds } : null,
   }
 }
 

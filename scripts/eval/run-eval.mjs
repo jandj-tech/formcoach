@@ -248,6 +248,7 @@ for (const fixture of fixtures) {
         // this model at temperature 0 (E16/E35), so agreement is data.
         set_point: runs.map((r) => r.set_point?.verdict ?? null),
         set_point_frame: runs.map((r) => r.set_point?.frame ?? null),
+        frame_checks_applied: runs.map((r) => r.frame_checks?.applied ?? null),
         missed:
           exp === 'null'
             ? score !== null
@@ -356,6 +357,7 @@ if (DUMP) {
         env: {
           ANALYSIS_MODEL: process.env.ANALYSIS_MODEL ?? null,
           SETPOINT_CHECK: process.env.SETPOINT_CHECK ?? null,
+          FRAME_CHECKS: process.env.FRAME_CHECKS ?? null,
           SPLIT_FRAMES: process.env.SPLIT_FRAMES ?? null,
           ANCHORS: process.env.ANCHORS ?? null,
           FAULT_GATE: process.env.FAULT_GATE ?? null,

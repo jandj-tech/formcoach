@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { anchorsEnabled, renderAnchorHeader, type Anchor } from './anchors'
+import { runFrameChecks, frameCheckBounds, frameCheckFacts, type FrameChecks } from './frame-checks'
 import { observationSpecFor, renderObservationPrompt, scoreFromObservation, OBSERVATION_SPECS } from './observations'
 import { isGatewayModel, callGatewayModel, callVisionModel, analysisModel } from '@/lib/model-provider'
 import { createHash } from 'crypto'
@@ -175,6 +176,8 @@ interface AnalysisResult {
   grader_version?: GraderVersion
   /** SETPOINT_CHECK=1 only. Recorded even when the verdict is clean. */
   set_point_check?: SetPointCheck
+  /** FRAME_CHECKS=1 only: the cue answers and the caps/floors they produced. */
+  frame_checks?: FrameChecks & { bounds: Array<{ criterion: string; cap?: number; floor?: number; why: string }> }
   criteria: CriterionResult[]
 }
 
@@ -462,6 +465,7 @@ async function loadGraderContext(): Promise<GraderContext> {
         // 2026-09-28 review: --accept would otherwise freeze a checked arm as
         // an indistinguishable baseline).
         (process.env.SETPOINT_CHECK === '1' ? 'setpoint:' : '') +
+        (process.env.FRAME_CHECKS === '1' ? 'framechecks:' : '') +
         (process.env.SPLIT_FRAMES === '1' ? 'split:' : '') +
         (process.env.ANCHORS === '1' ? 'anchors:' : '') +
         (process.env.FAULT_GATE === '1' ? 'faultgate:' : '') +
@@ -1797,7 +1801,13 @@ export async function analyzeShot(
   const spc = SETPOINT_CHECK && checkable && typeof releaseFrame === 'number'
     ? await setPointCheck(frameBase64Array, frameMimeTypes, model, releaseFrame)
     : null
-  const passHeader = [anchor.header, spc ? setPointFacts(spc) : ''].filter(Boolean).join('\n\n')
+  // FRAME_CHECKS supersedes the set-point check when both are on: it asks the
+  // same set-point questions plus dip, release, landing and feet.
+  const FRAME_CHECKS = process.env.FRAME_CHECKS === '1'
+  const fc = FRAME_CHECKS && checkable && typeof releaseFrame === 'number'
+    ? await runFrameChecks(frameBase64Array, frameMimeTypes, model, releaseFrame)
+    : null
+  const passHeader = [anchor.header, fc ? frameCheckFacts(fc) : spc ? setPointFacts(spc) : ''].filter(Boolean).join('\n\n')
 
   const firstSet = withAnchors(framesForPass(0))
   const firstPass = await onePass(firstSet.frames, firstSet.mimes, ctx, { ...opts, model, anchorHeader: passHeader })
@@ -1946,6 +1956,29 @@ export async function analyzeShot(
       merged.critical_flags.ball_behind_head = true
       if (merged.flag_confidence) merged.flag_confidence.ball_behind_head = Math.max(merged.flag_confidence.ball_behind_head, 9)
     }
+  }
+  // Frame-check caps and floors are applied in CODE on the merged scores,
+  // then finalizeResult recomputes the overall. A cap stops a catapult
+  // scoring 9; a floor stops a clean elbow scoring 4. Both only ever move a
+  // score that the pixels contradict.
+  if (fc) {
+    const bounds = frameCheckBounds(fc)
+    const applied: string[] = []
+    for (const b of bounds) {
+      const [id] = idsForNames(activeCriteria, [b.criterion])
+      const c = merged.criteria.find((x) => x.id === id)
+      if (!c || c.score === null) continue
+      const before = c.score as number
+      if (b.cap !== undefined && before > b.cap) { c.score = b.cap; applied.push(`${b.criterion}: ${before} -> cap ${b.cap}`) }
+      if (b.floor !== undefined && before < b.floor) { c.score = b.floor; applied.push(`${b.criterion}: ${before} -> floor ${b.floor}`) }
+    }
+    if (fc.elbow?.catapult) {
+      merged.critical_flags.ball_behind_head = true
+      if (merged.flag_confidence) merged.flag_confidence.ball_behind_head = Math.max(merged.flag_confidence.ball_behind_head, 9)
+    }
+    fc.applied = applied
+    merged.frame_checks = { ...fc, bounds }
+    if (applied.length) console.log('[framechecks] applied', applied)
   }
   const final = finalizeResult(merged, activeCriteria)
   final.grader_version = graderVersion

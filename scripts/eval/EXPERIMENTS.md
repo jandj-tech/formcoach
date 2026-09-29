@@ -1827,3 +1827,19 @@ much ground truth. The audit's "measure Square before writing a fourth rubric"
 stands as advice that cannot currently be followed; Square v7 (the coach's
 shoulders-to-target definition) goes into the drafts arm on the strength of
 the definition, flagged as unmeasured at the comparator level.
+
+## E49 — The release gate has been silently dead since the model switch
+Found while wiring the set-point check to the gate's release index: on
+shot-196, three runs in a row, `findReleaseFrame` returned 'error'. Cause:
+it asked a reasoning model for one number with `maxTokens: 300`; the model
+spent all 300 on hidden reasoning, the retry at 600 likewise, the throw was
+caught, and `analyzeShot` continued as if the gate had passed. The retry
+lines "spent 300 tokens on reasoning with no answer - retrying at 600" have
+been in every arm log all week; nobody read them as "the gate never answers".
+
+Consequences: (a) no clip has been refused as "no shot" by the gate in
+production on qwen; the only no-shot verdicts come from the grading passes'
+own shot_detected field; (b) every "gate" call was two wasted requests per
+analysis; (c) the set-point check, anchored on the gate's index, could never
+run. Fixed: ceiling raised to 4000 (the answer is one number; the budget is
+for the thinking before it). This is a production fix, not an eval switch.

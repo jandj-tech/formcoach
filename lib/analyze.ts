@@ -1498,7 +1498,14 @@ async function findReleaseFrame(
       model,
       framesBase64: frameBase64Array,
       frameMimeTypes,
-      maxTokens: 300,
+      // 4000, not 300. On a reasoning model the 300-token ceiling was spent
+      // entirely on hidden reasoning, the retry at 600 likewise, and the
+      // catch below returned 'error' - on EVERY analysis. The gate has been
+      // silently off since the model switch: no clip was ever refused as
+      // "no shot" by this call, and the set-point check had no release
+      // index to anchor on. The answer is one number; the budget is for the
+      // thinking that precedes it.
+      maxTokens: 4000,
       userText: `These are ${n} frames, numbered 0 to ${n - 1} in order, from one basketball video.
 
 Your ONLY task: find the RELEASE — a frame where the ball is leaving or has just left the shooter's hand(s) at the top of a shooting motion, with the frames immediately before it showing that shooting motion (ball held, rising toward a set point).
@@ -1600,7 +1607,7 @@ async function setPointCheck(
   // from the pixels.
   const none: SetPointCheck = { frame: null, cues: null, verdict: 'unavailable' }
   const candidates = [releaseFrame - 1, releaseFrame - 2, releaseFrame - 3].filter((i) => i >= 0 && i < frames.length)
-  if (candidates.length === 0) return none
+  if (candidates.length === 0) { console.log(`[setpoint] no candidate frames before release ${releaseFrame} of ${frames.length}`); return none }
   const KEYS = ['ball_behind_or_above_head', 'elbow_flared_shoulder_height', 'forearm_not_vertical', 'ball_beside_head', 'both_hands_mirrored_elbows_out'] as const
   type Cues = NonNullable<SetPointCheck['cues']>
   const askFrame = async (i: number): Promise<Cues | null> => {
@@ -1620,18 +1627,19 @@ Answer JSON only: {"ball_behind_or_above_head": true|false, "elbow_flared_should
         maxTokens: 8000,
       })
       const m = look.text.match(/\{[\s\S]*\}/)
-      if (!m) return null
+      if (!m) { console.log(`[setpoint] frame ${i}: no JSON in answer: ${look.text.slice(0, 120).replace(/\n/g, ' ')}`); return null }
       const raw = JSON.parse(m[0]) as Record<string, unknown>
       // A non-boolean anywhere means the answer did not parse as an answer.
-      if (!KEYS.every((k) => typeof raw[k] === 'boolean')) return null
+      if (!KEYS.every((k) => typeof raw[k] === 'boolean')) { console.log(`[setpoint] frame ${i}: non-boolean cues`, raw); return null }
       return Object.fromEntries(KEYS.map((k) => [k, raw[k] === true])) as unknown as Cues
-    } catch {
+    } catch (err) {
+      console.log(`[setpoint] frame ${i}: ${err instanceof Error ? err.message.slice(0, 140) : String(err)}`)
       return null
     }
   }
   const answers = await Promise.all(candidates.map(askFrame))
   const usable = candidates.map((f, k) => ({ frame: f, cues: answers[k] })).filter((x): x is { frame: number; cues: Cues } => x.cues !== null)
-  if (usable.length === 0) return none
+  if (usable.length === 0) { console.log(`[setpoint] release ${releaseFrame}: none of ${candidates.join(',')} answered`); return none }
   // Catapult = ball over/behind the head AND the elbow flared to the shoulder,
   // on a MAJORITY of the inspected frames. forearm_not_vertical is not in the
   // rule: it is the noisiest cue near release. Two-cue on the E45 probe: 2/2
@@ -1787,6 +1795,7 @@ export async function analyzeShot(
   if (SETPOINT_CHECK && !checkable) console.log('[setpoint] skipped: facts only reach the gateway single-pass path')
   // The gate returns 'error' when its own call failed; there is then no
   // release index to anchor on, and the check is skipped rather than guessed.
+  if (SETPOINT_CHECK) console.log(`[setpoint] gate release=${String(releaseFrame)} checkable=${checkable} frames=${frameBase64Array.length}`)
   const spc = SETPOINT_CHECK && checkable && typeof releaseFrame === 'number'
     ? await setPointCheck(frameBase64Array, frameMimeTypes, model, releaseFrame)
     : null

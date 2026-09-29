@@ -1762,12 +1762,26 @@ export async function analyzeShot(
   // the merge below deterministic.
   // CRITERION_GROUPS=1 splits each pass into independent per-moment calls so
   // criteria cannot anchor on each other. See analyzeShotGrouped.
-  const onePass =
+  const onePassRaw =
     process.env.TWO_STAGE === '1'
       ? analyzeShotTwoStage
       : process.env.CRITERION_GROUPS === '1'
         ? analyzeShotGrouped
         : analyzeShotOnce
+  // A grading response that does not parse is not a grading outcome, it is a
+  // dropped answer. It has killed a fixture in three separate arms (194, 204,
+  // 210 - about 7% per arm) and makes those arms non-comparable, and in
+  // production it fails the analysis outright. One same-call retry; a second
+  // failure propagates. This cannot change a graded cell, only rescue one.
+  const onePass: typeof onePassRaw = async (...args) => {
+    try {
+      return await onePassRaw(...args)
+    } catch (err) {
+      if (!(err instanceof SyntaxError)) throw err
+      console.log('[analyze] grading pass returned malformed JSON; retrying the pass once')
+      return await onePassRaw(...args)
+    }
+  }
   // Anchor frames go in FRONT of the shot's own frames, with a header saying
   // what they are and that they are not to be graded. Loaded once and reused by
   // every pass so the ensemble sees identical reference material.

@@ -1771,3 +1771,59 @@ Three things this fixes in the design:
    with the ball still in front" is needed for those. Catapult alone covers
    the two 5-point misses, not the two 4-point ones.
 n is tiny (3 controls). This is a design signal, not a result. E46a is the arm.
+
+### E45 — model choice for the check: the instruct model fails the controls
+qwen3-vl-235b-a22b-instruct answers the release-locate question in 3s where
+flash burns its reasoning budget, so it was the obvious candidate for the
+set-point check. Same 14-frame cue probe:
+```
+forearm_not_vertical   TRUE on 14/14 frames   <- a constant; carries nothing
+elbow_flared           TRUE on 1/14 (shot-200 f16 only; misses shot-196)
+ball_behind            TRUE on shot-196 x2, shot-200 x2, and shot-125 f16 (GOOD)
+```
+Under the two-cue rule that gives shot-125 (expert [6.5,8]) a catapult. Flash
+on the same frames: forearm false on both good controls at the set point,
+flared true on both real catapults, zero controls flagged. The check stays on
+flash and eats the latency. Speed is not worth a false positive that caps
+three criteria on a good shot.
+
+Note for the rule itself: on flash, forearm_not_vertical is also the noisiest
+cue near release (true on 206 f19, 189 f19). Requiring elbow_flared for the
+catapult verdict keeps 2/2 recall on this sample and removes the exposure.
+Pending the adversarial review before changing it.
+
+## E47 — Tight re-extraction window (release-1.0s to +0.3s) · REJECTED / UNDECIDED
+
+The one intervention that changed the EVIDENCE rather than the question. Frames
+re-extracted at the pinned geometry (the first attempt was confounded by
+resolution, see E45's preamble), release located by bracketing at 24 samples,
+28 videos x 3 runs x 3 passes per arm, same session, same model, zero lost.
+
+```
+PAIRED on 116 expert cells across 25 common fixtures
+base    miss 48/116 = 41.4%  CI [32.8, 50.5]
+tight   miss 51/116 = 44.0%  CI [35.3, 53.0]
+tight FIXED 12, BROKE 15      McNemar exact p = 0.70
+Elbow   10 -> 10     Power  8 -> 8     (the criteria it was built for: no change)
+```
+Not adopted. The frames are not the problem: concentrating 28 frames on the
+0.4s of mechanics did nothing for Elbow or Power, which is consistent with E45 -
+the fault is IN the pinned frames and the model locates it; it just does not
+act on it inside a 28-image grading pass. EVAL_REEXTRACT stays as an eval-only
+switch.
+
+The three fixtures absent from base6: shot-204 and shot-210 DID NOT RUN on a
+malformed-JSON grading response (not transport, so not retried), shot-209 was
+called "no shot" by the release gate on the pinned frames but graded fine on
+the tight frames. Malformed JSON has now cost a fixture in three separate
+arms (194, 204, 210) - about 7% attrition per arm, and it is what makes arms
+non-comparable. A single same-call retry on a parse failure is being added;
+it cannot change a graded cell, only rescue a fixture that would have died.
+
+## E48 — Square comparator, per criterion · NO USABLE DATA
+16 expert cells -> 26 pairs. After a rate-limit window: 19 transport failures,
+15 unusable, 6 stable pairs across four bands. Cannot be measured with this
+much ground truth. The audit's "measure Square before writing a fourth rubric"
+stands as advice that cannot currently be followed; Square v7 (the coach's
+shoulders-to-target definition) goes into the drafts arm on the strength of
+the definition, flagged as unmeasured at the comparator level.

@@ -1843,3 +1843,19 @@ own shot_detected field; (b) every "gate" call was two wasted requests per
 analysis; (c) the set-point check, anchored on the gate's index, could never
 run. Fixed: ceiling raised to 4000 (the answer is one number; the budget is
 for the thinking before it). This is a production fix, not an eval switch.
+
+## E46 — Set-point check, end-to-end smoke (after the gate fix)
+Two fixtures, one run, three passes, SETPOINT_CHECK=1, release-anchored:
+```
+shot-125 (control)  gate release=20, inspected 19,18,17 -> CLEAN
+                    Elbow 9 vs [6.5,8]: the pre-existing generous miss, untouched (by design)
+shot-196 (catapult) gate release=12, inspected 11,10,9  -> CATAPULT
+                    Elbow  -> inside [2,4]   (was 9, +5.0 - one of the four worst misses)
+                    Power  -> inside [2,4]   (was 9, +5.0 - another)
+                    Pocket -> 2 (ai-seeded band [7.5,9.5] is the old grader's own output; expected to move)
+```
+The single-frame detection that E45 showed in a probe now works inside the
+pipeline, and the code cap does what the prompt's "MUST score 4 or below"
+never did. n=2. The arms (base7 / e46a / e46c / e46b, launched 22:13-22:15)
+measure it across all 28 fixtures with the false-positive rate of the two
+recorded-only verdicts. Not a result yet; a working mechanism.

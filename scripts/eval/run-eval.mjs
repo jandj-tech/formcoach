@@ -110,6 +110,32 @@ const newResults = {}
 const TRANSPORT = /ENOTFOUND|ECONNRESET|EHOSTUNREACH|ETIMEDOUT|ENETDOWN|ENETUNREACH|EAI_AGAIN|socket hang up|fetch failed|aborted due to timeout|gateway unreachable|terminated/i
 const FIXTURE_ATTEMPTS = Number(process.env.EVAL_FIXTURE_ATTEMPTS ?? 3)
 
+// CIRCUIT BREAKER - the arm cancels ITSELF when money would be wasted, so
+// that never depends on a person being awake to kill it.
+//   402 (credits)   : one is enough. Every later call would fail the same way.
+//   network dead    : BREAKER_FAILURES consecutive transport failures across
+//                     the whole arm with no success in between. A dropped
+//                     Wi-Fi at 3am should end the run, not run up the retries.
+// Both write a banner and exit non-zero, leaving whatever was dumped so far.
+const BREAKER_FAILURES = Number(process.env.EVAL_BREAKER_FAILURES ?? 12)
+const breaker = {
+  consecutive: 0,
+  success() { this.consecutive = 0 },
+  failure(msg) {
+    if (/\b402\b|Insufficient credits|requires more credits/i.test(msg)) {
+      console.error(`\n*** ARM CANCELLED: OpenRouter credits exhausted (${msg.slice(0, 120)}). ***`)
+      process.exit(3)
+    }
+    if (TRANSPORT.test(msg)) {
+      this.consecutive++
+      if (this.consecutive >= BREAKER_FAILURES) {
+        console.error(`\n*** ARM CANCELLED: ${this.consecutive} consecutive transport failures - the network is down. Nothing more is spent. ***`)
+        process.exit(4)
+      }
+    }
+  },
+}
+
 /** Grade one fixture, retrying only transport failures. No console output: it
  *  runs interleaved with other fixtures, so anything printed here would arrive
  *  out of order. Reporting happens in fixture order once grading is done. */
@@ -127,8 +153,10 @@ async function gradeFixture(fixture) {
     while (runs.length < RUNS) {
       try {
         runs.push(await runFixtureOnce(fixture, QUICK ? { passes: 1 } : undefined))
+        breaker.success()
       } catch (err) {
         failed = err instanceof Error ? err.message : String(err)
+        breaker.failure(failed)
         break
       }
     }

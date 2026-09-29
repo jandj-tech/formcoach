@@ -1,30 +1,25 @@
-SQUARE RUBRIC v7 — are the SHOULDERS square to the TARGET at the release, and did the turn finish before the jump?
+SQUARE RUBRIC v8 — are the SHOULDERS square to the TARGET at the release, and did the turn finish before the feet left the floor?
 
-THIS IS THE COACH'S OWN DEFINITION. "I must get my shoulders square to the target." His named fault is the player who jumps and THEN turns, when they should turn and THEN jump. He checks it from under the basket, looking at the shooter's shoulders as the ball leaves. He does not score where the toes point — feet turned toward the off-hand side, the way most good shooters stand, is normal and costs nothing here. Toes belong to "Forward Motion and Toes". Do not compare the feet to the shoulders: a body can be perfectly consistent with itself and aimed at the wrong place, and that is the fault, not the cure.
+THIS IS THE COACH'S OWN DEFINITION: "I must get my shoulders square to the target." His named fault is the player who jumps and THEN turns, when they should turn and THEN jump. He does not score where the toes point — feet turned toward the off-hand side, the way most good shooters stand (Hopla via Klay Thompson), is normal and costs nothing here. Ignore any instruction elsewhere to compare the toes: that belongs to "Forward Motion and Toes". Do not compare the feet to the shoulders either: a body can be consistent with itself and aimed at the wrong place.
 
-STEP 0 — FIND THE TARGET DIRECTION FROM THE BALL, AND BEWARE THE RIM BEHIND THE SHOOTER.
-  Most clips are filmed from near the basket the player is shooting at. Watch the ball in the frames after it leaves the hand:
-  - The ball GROWS and leaves through the TOP of the frame: the target is behind or above the camera. Square means the chest faces the camera — both shoulders visible, the same size, the torso at its widest.
-  - The ball SHRINKS as it goes: the target is away from the camera. A rim visible beyond the shooter may be the target.
-  - The ball exits LEFT or RIGHT of the frame: the target is on that side. A shooter whose chest faces the camera while the ball leaves sideways is NOT square, however tidy they look.
-  A RIM VISIBLE BEHIND THE SHOOTER IS USUALLY THE FAR BASKET. Never take it as the target unless the ball is travelling away from the camera. Several corrected clips show a square shooter scored 4 because the grader lined them up against the wrong rim.
-  If the ball cannot be followed, use the extended shooting arm at release — it points down the shot line. If neither is available, set evidence to "none" and score 7: you have not seen the fault and you have not seen its absence.
+STEP 0 — FIND THE TARGET DIRECTION. Use these in order, and beware the rim behind the shooter.
+  1. WHERE THE BALL LEAVES THE PICTURE after release: out of the TOP means the target is behind or above the camera; out of the LEFT or RIGHT means the target is on that side.
+  2. A rim the ball is visibly travelling toward and arriving at.
+  3. The extended shooting arm at release — it points down the shot line.
+  A RIM VISIBLE BEHIND THE SHOOTER IS USUALLY THE FAR BASKET. Never take it as the target unless the ball is visibly travelling toward it. If none of the three is readable, set evidence to "none" and score from the shoulders alone against the camera.
 
-STEP 1 — THREE FRAMES. (a) The first frame the body starts up. (b) The release frame. (c) The landing. Read the SHOULDER LINE — the two outer edges of the torso — in each, against the target direction from Step 0.
+STEP 1 — THREE FRAMES: the last frame with both feet on the floor, the release, the landing. Read the SHOULDER LINE — the two outer edges of the torso — in each. When the target is behind the camera, square means the chest faces the camera: both shoulders visible, the far one not hidden behind the near one, the torso at its widest.
 
-SCORE ANCHORS — land between anchors when the shot sits between them.
-  10 — Shoulders square to the target at the release, and they were already square when the body started up. Lands facing the same way it took off. Feet may be turned; that is fine.
-  9  — Square at release; a small settle of the shoulders on the way up, or a small turn on landing that a coach would not mention.
-  8  — Shoulders a little open at release — one shoulder slightly nearer the target than the other — but steady through the shot.
-  7  — Shoulders noticeably open at release, one shoulder clearly ahead, but they did not move during the rise; or square at release with a visible turn on landing.
-  6  — The shoulders come round DURING the rise and only reach square at the release: the jump-then-turn. The shot got there, but late.
-  5  — Open at release — the shooter is shooting somewhat across the body — and still turning as the ball leaves.
-  4  — The torso is well off the target line at release, the chest pointing clearly to one side of where the ball goes; or the body twists in the air and lands facing a different direction from the take-off.
-  3  — Shooting across the body from a torso that is close to side-on to the target; a hard twist and a landing turned away.
-  1-2 — Side or back to the target on a set shot; the shoulders never came round at all.
+SCORE ANCHORS — a coarse ladder on purpose; land between anchors when the shot sits between them.
+  9-10 — At the release both shoulders are visible and the far one is not hidden; the shoulders were already there before the feet left the floor; lands facing the same way. The ordinary correct shot. Feet may be turned; that is fine.
+  7-8  — Slightly open at the release — the far shoulder partly tucked behind the near one — but steady from take-off to landing; or square at release with a visible turn on landing.
+  6    — The shoulders are still coming round AFTER the feet have left the floor and only reach square at the release: jump-then-turn. A turn completed before take-off costs nothing.
+  5    — Open at the release and still turning as the ball leaves; shooting somewhat across the body.
+  3-4  — One shoulder occluded — the torso side-on or nearly so — with the ball leaving toward the camera; or the body twists in the air and lands facing a different direction from the take-off.
+  1-2  — Side or back to the target on a set shot; the shoulders never came round.
 
-WHAT IS NOT A FAULT HERE: feet turned to eleven o'clock; the shooting shoulder slightly forward of the guide-hand shoulder (that is what a one-hand shot looks like); a fade or a drift, which belong to the balance criteria; the hips finishing their turn after the shoulders have locked — the shoulders are what you score.
+WHAT IS NOT A FAULT: feet turned to eleven o'clock; the shooting shoulder slightly forward (that is what a one-hand shot looks like); a fade or drift (balance criteria); the hips finishing their turn after the shoulders have locked; rotation that finishes before take-off.
 
-RETURN NULL WHEN the shoulders are hidden at the release in every frame, or the clip ends before the release.
+IF THE RELEASE IS NOT IN THE CLIP, score the last frame you have with evidence "partial". Never null.
 
-PLAYER-FACING WORDING: tell them to turn first and jump second — get the shoulders facing the rim before the feet leave the floor, and land facing the same way. Never mention lines, angles, degrees, frames, the camera or the far basket in the reasoning.
+PLAYER-FACING WORDING: tell them to turn first and jump second — shoulders facing the rim before the feet leave the floor, land facing the same way. Never mention lines, letters, angles, frames, the camera, the far basket, the expert or the guide in the reasoning.

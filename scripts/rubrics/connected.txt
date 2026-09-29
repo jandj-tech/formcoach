@@ -1,25 +1,22 @@
-CONNECTED SHOT RUBRIC v1 — is it one continuous rise from the legs to the fingertips, or does it stop and restart?
+CONNECTED SHOT RUBRIC v2 — does the motion flow from the legs to the fingertips, or does it stop and restart?
 
-THIS IS A TIMING CRITERION AND NOTHING ELSE. Do not deduct here for the elbow, the guide hand, the base or the follow-through — each has its own criterion, and charging a fault twice is how a good shot with one flaw ends up scored as a bad shot. "Connected" asks one question: does the motion flow, or does it hitch?
+THIS SCORES THE PAUSE AND THE RESTART, AND NOTHING ELSE. Order of legs and arms belongs to "Source of Shot Power"; elbow shape to the elbow criterion; the base to the stance criteria. Charging a fault twice is how a good shot with one flaw ends up scored as a bad shot.
 
-USE THE SAME FIVE FRAMES AS THE POWER GUIDE: D (lowest head), B (ball starts up), T (last flat-footed frame), R (release), P (highest head). Then watch the BALL between B and R: does it keep moving every frame, or does it sit still?
+FIND TWO FRAMES: R, the release — the first frame the ball is no longer touching the shooting hand — and the frame where the ball reaches its highest HELD position before R. Then watch the BALL from the gather to R: does it keep moving every frame, or does it sit still?
+
+A ONE-FRAME STALL IS NOT A HITCH. At this frame spacing a continuous shot can look still for a single frame. Call a hitch only when the ball is in the same place for two or more consecutive frames while the head keeps moving.
 
 SCORE ANCHORS — land between anchors when the shot sits between them.
-  10 — The ball starts up as the body starts up, never sits still on the way, and leaves while the body is still rising. One piece.
-  9  — One frame of stillness at the top, everything else continuous.
-  8  — A defined set point reached as the feet leave the floor and launched from immediately — the connected two-motion shot.
-  7  — A small hitch — the ball still for about two frames — but the legs and the arm still overlap at the release.
-  6  — A clear pause at the set point with the legs already straight; the arm finishes on its own; the ball still leaves before the peak.
-  5  — The ball starts rising before the head drops or before the knees start to straighten — the arms lead and the legs catch up.
-  4  — The legs finish and the head is already coming down before the ball moves forward; or two separate knee bends.
-  3  — More than one hitch, or the ball travels BACKWARD toward the ear before it comes forward, breaking the up-and-out path.
-  2  — Upper body only, with a token knee flex that does not line up with the ball's rise.
-  1  — No lower-body involvement at all.
+  8-10 — The ball never sits still on the way up; one piece from gather to release. The ordinary correct shot, including a defined set point launched from at once. 10 when it flows without any visible check, 8 with a single-frame check.
+  7    — A small hitch — the ball still for about two frames — but the shot continues straight out of it.
+  6    — A clear pause at the top with the body already stopped; the arm finishes on its own.
+  5    — A pause and a visible re-gather: the ball dips or resets before coming forward.
+  4    — Two separate knee bends, or two separate pushes at the ball.
+  3    — More than one hitch.
+  1-2  — The shot stops dead at the top and is thrown from a standstill.
 
-A ONE-FRAME STALL IS NOT A HITCH. At the frame spacing you are given, a genuinely continuous shot can look like it paused for a single frame. Call a hitch only when the ball is still for two or more frames while the head keeps moving.
+WHAT IS NOT A FAULT: a high set point launched from without a pause; a shallow dip; a set shot; a fade or drift; a guide hand on the ball at the set point; a ball that rises above the forehead (that is the elbow criterion's question, not this one).
 
-WHAT IS NOT A FAULT: a high set point launched from without a park; a shallow dip; a set shot; a fade or a drift (balance criteria); a guide hand still on the ball at the set point.
+IF THE CLIP STARTS AFTER THE GATHER OR ENDS BEFORE THE RELEASE, score what you can see with evidence "partial". Never null.
 
-RETURN NULL WHEN the clip starts after the gather or ends before the release, or the ball is hidden through the rise.
-
-PLAYER-FACING WORDING: tell them to make it one motion — the ball goes up with the legs and leaves before the body stops rising, no pause at the top. Never mention frames, letters, angles or scoring bands in the reasoning.
+PLAYER-FACING WORDING: tell them to make it one motion — no stop at the top, the ball leaves straight out of the rise. Never mention frames, letters, angles, the check, the expert or scoring bands in the reasoning.

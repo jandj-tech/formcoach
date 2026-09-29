@@ -1859,3 +1859,22 @@ pipeline, and the code cap does what the prompt's "MUST score 4 or below"
 never did. n=2. The arms (base7 / e46a / e46c / e46b, launched 22:13-22:15)
 measure it across all 28 fixtures with the false-positive rate of the two
 recorded-only verdicts. Not a result yet; a working mechanism.
+
+## E50 — FRAME_CHECKS: observation-first grading · smoke, then arm
+lib/frame-checks.ts. Elbow, Power, Square and Feet get yes/no questions on
+named frames (offsets from the gate's release frame R: set point R-1..R-3,
+dip R-6, release R, landing R+4, feet R-3) and CODE turns the answers into a
+cap or a floor. Caps stop "fault not seen -> 9"; floors stop "good shot
+double-charged -> 4". Facts are injected per criterion so nothing haloes.
+Smoke, 3 fixtures, 1 run x 3 passes:
+```
+shot-196 catapult     Elbow 2 [2,4]  Power 3 [2,4]           both were +5.0 misses
+shot-125 control      Elbow 8 [6.5,8] Power 8 Square 9 Feet 8 (Elbow was a 9 miss)
+shot-189 high set pt  Power 8 [8,10] Feet 9  Elbow 9 [5.5,7.5] MISS +1.5
+```
+Zero big misses on the nine big-four cells; one 1.5-point miss. The caps
+and floors never had to move a score in code - the injected facts steered
+the passes - which is the best case: score and reasoning agree.
+Cost: 8 small single-image calls, ~+$0.003 per analysis (est. $0.0102 total).
+Arm e50 (FRAME_CHECKS=1, live rubrics, E46b prompt) launched 12:2x alongside
+e46b; e50 - e46b isolates the checks; base7 is the common baseline.

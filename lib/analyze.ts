@@ -1601,9 +1601,10 @@ async function setPointCheck(
       userText: `These ${n} images are consecutive frames of ONE basketball shot, in order, numbered 0 to ${n - 1}.
 Find the SET POINT: the frame where the ball is at its HIGHEST HELD position, just before the arms begin extending upward for the release. Not the release, not the follow-through — the last frame the ball is still held at the top.
 Answer JSON only: {"set_point_frame": <0-${n - 1}>}`,
-      // 8000 up front: this reasoning model exhausts 4000 on localisation and
-      // the retry doubles it anyway; output tokens are cheap, a retry is slow.
-      maxTokens: 8000,
+      // 16000, the same ceiling as a grading pass: the smoke run exhausted
+      // 8000 on hidden reasoning over 28 frames and the check went
+      // 'unavailable' on the one catapult it was built for. Output is cheap.
+      maxTokens: 16000,
     })
     const lm = locate.text.match(/\{[\s\S]*\}/)
     const idx = lm ? Math.round(Number(JSON.parse(lm[0]).set_point_frame)) : NaN
@@ -1622,7 +1623,7 @@ Answer literally about what is visible in THIS image. Do not describe what a set
 4. Is the ball level with the EAR and outside the line of the shoulder — off to the side of the head rather than in front of the forehead?
 5. Are BOTH hands mirrored on the sides of the ball with BOTH elbows out wide, like a two-handed throw?
 Answer JSON only: {"ball_behind_or_above_head": true|false, "elbow_flared_shoulder_height": true|false, "forearm_not_vertical": true|false, "ball_beside_head": true|false, "both_hands_mirrored_elbows_out": true|false}`,
-      maxTokens: 4000,
+      maxTokens: 8000,
     })
     const cm = look.text.match(/\{[\s\S]*\}/)
     if (!cm) return { frame, cues: null, verdict: 'unavailable' }

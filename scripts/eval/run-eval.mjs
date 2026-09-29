@@ -211,8 +211,10 @@ for (const fixture of fixtures) {
         evidence: summary.evidence?.[name] ?? null,
         // SETPOINT_CHECK arms: which frame was inspected and what it found.
         // Taken from run 1; the check is deterministic on identical frames.
-        set_point: runs[0]?.set_point?.verdict ?? null,
-        set_point_frame: runs[0]?.set_point?.frame ?? null,
+        // Every run's verdict, not run 1's: byte-identical clips diverge on
+        // this model at temperature 0 (E16/E35), so agreement is data.
+        set_point: runs.map((r) => r.set_point?.verdict ?? null),
+        set_point_frame: runs.map((r) => r.set_point?.frame ?? null),
         missed:
           exp === 'null'
             ? score !== null
@@ -276,6 +278,13 @@ if (ACCEPT) {
   process.exit(0)
 }
 
+if (process.env.SETPOINT_CHECK === '1') {
+  const all = [...graded.values()].flatMap((g) => g.runs ?? [])
+  const byVerdict = {}
+  for (const r of all) { const v = r.set_point?.verdict ?? 'unavailable'; byVerdict[v] = (byVerdict[v] ?? 0) + 1 }
+  console.log(`\nSET-POINT CHECK verdicts across ${all.length} run(s):`, byVerdict)
+  if (byVerdict.unavailable) console.log(`*** ARM PARTIALLY CHECKED: ${byVerdict.unavailable} run(s) had no usable check and graded as baseline. ***`)
+}
 console.log(
   `Done: ${expertFailures} EXPERT accuracy failure(s)` +
     ` · ${aiSeededFailures} ai-seeded movement(s)` +
@@ -313,6 +322,10 @@ if (DUMP) {
         passes: grader?.passes ?? null,
         env: {
           ANALYSIS_MODEL: process.env.ANALYSIS_MODEL ?? null,
+          SETPOINT_CHECK: process.env.SETPOINT_CHECK ?? null,
+          SPLIT_FRAMES: process.env.SPLIT_FRAMES ?? null,
+          ANCHORS: process.env.ANCHORS ?? null,
+          FAULT_GATE: process.env.FAULT_GATE ?? null,
           RUBRIC_OVERRIDE: process.env.RUBRIC_OVERRIDE ?? null,
           CRITERION_GROUPS: process.env.CRITERION_GROUPS ?? null,
           GATEWAY_REASONING: process.env.GATEWAY_REASONING ?? null,

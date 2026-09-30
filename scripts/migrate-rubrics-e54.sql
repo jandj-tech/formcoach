@@ -1,9 +1,9 @@
 -- Promote the four research-based rubrics measured in E54 (2026-09-30) into the
 -- live grading text. Production reads criteria.grading_notes; the draft files under
+-- No BEGIN/COMMIT: migrate.ts runs each file through db.unsafe, which rejects a transaction wrapper (UNSAFE_TRANSACTION). Every UPDATE here is idempotent on its own.
 -- scripts/rubrics/ are eval-only. Idempotent: each UPDATE skips a row already on
 -- this version. Measured with FRAME_CHECKS=1: miss 46.2% -> 33.3%, FIXED 25 /
 -- BROKE 10, McNemar p = 0.0167; big misses 11 -> 4. See scripts/eval/EXPERIMENTS.md E54.
-BEGIN;
 
 UPDATE criteria
 SET grading_notes = 'ELBOW RUBRIC v12 — where is the ball relative to the head, where is the elbow relative to the shoulder, and does the forearm stand or lean?
@@ -150,4 +150,3 @@ PLAYER-FACING WORDING: tell them to make it one motion — no stop at the top, t
 WHERE name = 'Connected Shot'
   AND (grading_notes IS NULL OR grading_notes NOT LIKE 'CONNECTED SHOT RUBRIC v2%');
 
-COMMIT;

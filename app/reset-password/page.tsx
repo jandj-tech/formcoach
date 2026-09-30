@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, Suspense } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
@@ -9,7 +9,29 @@ import PasswordInput from '@/components/PasswordInput'
 
 function ResetPasswordForm() {
   const router = useRouter()
-  const token = useSearchParams().get('token') || ''
+  const params = useSearchParams()
+  const token = params.get('token') || ''
+  // From a free-membership confirm link, when the clicker must take control of
+  // the account (see app/api/auth/confirm-email).
+  const activate = params.get('activate') === '1'
+  // Coach/org-added player finishing setup from the emailed link.
+  const setup = params.get('setup') === '1'
+  // Carried from a link bound to one account (confirm / setup link) so a comp
+  // on a shared family email lands on that account in this one step.
+  const chosen = params.get('chosen') || ''
+  // Several players can share a family email: name the one this link is for.
+  const [playerName, setPlayerName] = useState('')
+  useEffect(() => {
+    if (!token) return
+    let cancelled = false
+    fetch(`/api/auth/reset-password?token=${encodeURIComponent(token)}`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => {
+        if (!cancelled && d?.valid && typeof d.firstName === 'string') setPlayerName(d.firstName)
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [token])
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
@@ -27,7 +49,7 @@ function ResetPasswordForm() {
       const res = await fetch('/api/auth/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, password }),
+        body: JSON.stringify(chosen ? { token, password, chosen } : { token, password }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -36,7 +58,8 @@ function ResetPasswordForm() {
         return
       }
       // Coaches and orgs land on their own dashboard; players go to /dashboard.
-      router.push(data.redirect || '/dashboard')
+      const dest = data.redirect || '/dashboard'
+      router.push(activate && dest === '/dashboard' ? '/dashboard?activated=1' : dest)
     } catch {
       setError('Something went wrong. Please try again.')
       setStatus('error')
@@ -50,8 +73,22 @@ function ResetPasswordForm() {
         <div className="w-full max-w-sm space-y-6">
           <div className="text-center space-y-3">
             <Image src="/icon.png" alt="" width={48} height={48} className="mx-auto rounded-2xl select-none" aria-hidden />
-            <h1 className="font-display font-black uppercase text-2xl leading-tight">Set a new password</h1>
-            <p className="text-chalk-dim text-sm">Choose a new password for your account.</p>
+            <h1 className="font-display font-black uppercase text-2xl leading-tight">
+              {activate
+                ? 'Activate your free membership'
+                : playerName
+                  ? setup ? `Set ${playerName}’s password` : `Reset ${playerName}’s password`
+                  : 'Set a new password'}
+            </h1>
+            <p className="text-chalk-dim text-sm">
+              {activate
+                ? 'Someone may have created this account with your email. Set your password to take control and activate your free membership.'
+                : playerName
+                  ? setup
+                    ? `Each player on a family email has their own password. This one is for ${playerName}.`
+                    : `This changes ${playerName}’s password only. Each player on a family email has their own.`
+                  : 'Choose a new password for your account.'}
+            </p>
           </div>
 
           {!token ? (
@@ -88,7 +125,9 @@ function ResetPasswordForm() {
                 disabled={status === 'loading'}
                 className="w-full bg-ember-500 hover:bg-ember-400 disabled:opacity-50 active:scale-[0.99] text-ink-950 font-bold py-3.5 rounded-full transition-all"
               >
-                {status === 'loading' ? 'Resetting...' : 'Reset password'}
+                {status === 'loading'
+                  ? activate ? 'Activating...' : setup ? 'Saving...' : 'Resetting...'
+                  : activate ? 'Set password and activate' : setup ? 'Set password' : 'Reset password'}
               </button>
             </form>
           )}

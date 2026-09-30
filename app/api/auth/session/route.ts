@@ -5,6 +5,8 @@ import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { db } from '@/lib/db'
 import { userTier } from '@/lib/team-features'
 import { getPlayerSubscription, subscriptionEntitled } from '@/lib/player-subscription'
+import { effectivePlan } from '@/lib/player-entitlement'
+import { applyEmailEntitlement, hasPendingEntitlement } from '@/lib/email-entitlements'
 
 export async function GET(req: NextRequest) {
   // 1. Player session — also returns token/subscription info used elsewhere.
@@ -22,6 +24,7 @@ export async function GET(req: NextRequest) {
       first_name?: string | null
       last_initial?: string | null
       nickname?: string | null
+      email_verified_at?: string | null
     }
 
     // The analysis_tokens column may not exist yet if the DB migration
@@ -30,12 +33,12 @@ export async function GET(req: NextRequest) {
     let user: UserRow | undefined
     try {
       ;[user] = (await db`
-        SELECT id, email, subscription_type, subscription_expires_at, analysis_tokens, free_analysis_used, first_name, last_initial, nickname
+        SELECT id, email, subscription_type, subscription_expires_at, analysis_tokens, free_analysis_used, first_name, last_initial, nickname, email_verified_at
         FROM users WHERE id = ${session.userId}
       `) as unknown as [UserRow | undefined]
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
-      if (!/(analysis_tokens|free_analysis_used|first_name|last_initial|nickname).*does not exist/i.test(msg)) throw err
+      if (!/(analysis_tokens|free_analysis_used|first_name|last_initial|nickname|email_verified_at).*does not exist/i.test(msg)) throw err
       console.warn('users.analysis_tokens column missing — run `npm run migrate`.')
       ;[user] = (await db`
         SELECT id, email, subscription_type, subscription_expires_at
@@ -49,39 +52,40 @@ export async function GET(req: NextRequest) {
         !!user.subscription_expires_at &&
         new Date(user.subscription_expires_at) > new Date()
 
-      // Admin complimentary grants land in email_list; signup carries them
-      // onto the users row, but a grant made AFTER the account existed never
-      // reached it. Sync it here so grants apply to existing accounts too.
+      // Admin complimentary grants land in email_list, keyed on an address.
+      // A grant made after the account existed is synced here — but ONLY onto
+      // an account that has proven it owns that inbox (email_verified_at).
+      // Anyone can sign up with any address, so syncing on the address alone
+      // handed the comp to whoever registered it first. An unverified account
+      // with a comp waiting is told so (pendingEntitlement) and activates it
+      // from the emailed confirmation link.
+      let pendingEntitlement = false
       if (!isSubscribed) {
-        try {
-          const [comp] = (await db`
-            SELECT subscription_type, subscription_expires_at
-            FROM email_list
-            WHERE email = ${user.email} AND subscription_type IS NOT NULL
-          `) as unknown as [{ subscription_type: string; subscription_expires_at: string | null } | undefined]
-          if (comp?.subscription_expires_at && new Date(comp.subscription_expires_at) > new Date()) {
-            await db`
-              UPDATE users
-              SET subscription_type = ${comp.subscription_type}, subscription_expires_at = ${comp.subscription_expires_at}
-              WHERE id = ${user.id}
-            `
-            isSubscribed = true
-          }
-        } catch {
-          // email_list may be missing columns in old environments — non-fatal
+        if (user.email_verified_at) {
+          isSubscribed = await applyEmailEntitlement(user.id)
+        } else {
+          pendingEntitlement = await hasPendingEntitlement(user.id)
         }
       }
 
       // The Player/Pro plan (2026 pricing) — legacy subscription_type holders
       // above stay grandfathered-unlimited and never carry a plan.
-      const playerSub = await getPlayerSubscription(user.id)
+      const [playerSub, eff] = await Promise.all([
+        getPlayerSubscription(user.id),
+        effectivePlan(user.id),
+      ])
       const planEntitled = subscriptionEntitled(playerSub)
+      // An org-sponsored seat (lib/player-entitlement.ts) that is the ACTIVE
+      // source. `plan` below is the EFFECTIVE plan on purpose: shipped iOS
+      // builds hide their Apple paywall whenever user.plan is set, so a
+      // club-covered player never sees a purchase prompt — no new build needed.
+      const orgSeat = eff.source === 'org' && eff.plan && eff.orgName ? eff : null
 
       const tokens = user.analysis_tokens ?? 0
       // `subscribed` is a shipped wire field older app builds gate Analyze on:
       // "this account can reach the analyze flow". An entitled plan counts —
       // if they're at their cap the analyze POST returns the structured 402.
-      const subscribed = isSubscribed || planEntitled || tokens > 0
+      const subscribed = isSubscribed || planEntitled || !!orgSeat || tokens > 0
 
       // Whether the player is on a team — drives the "ask your coach" option.
       let onTeam = false
@@ -134,8 +138,17 @@ export async function GET(req: NextRequest) {
           nickname: user.nickname ?? null,
           // New fields (additive — old builds ignore them): the Player/Pro
           // plan when one is entitled, for the app's Home/Settings surfaces.
-          plan: planEntitled ? playerSub.plan : null,
-          planStatus: playerSub?.status ?? null,
+          plan: orgSeat ? orgSeat.plan : planEntitled ? playerSub.plan : null,
+          planStatus: orgSeat ? 'active' : playerSub?.status ?? null,
+          // Org-sponsored membership (additive): who covers the plan and until
+          // when, and who bills the active entitlement. Display only — the app
+          // never sells or assigns seats.
+          sponsor: orgSeat
+            ? { orgName: orgSeat.orgName!, plan: orgSeat.plan!, endsAt: orgSeat.endsAt ? orgSeat.endsAt.toISOString() : null }
+            : null,
+          billedVia: orgSeat ? 'org' : eff.billedVia,
+          // A comp is waiting on this address until the inbox is confirmed.
+          ...(pendingEntitlement ? { pendingEntitlement: true } : {}),
         },
         account: { type: 'player', dashboard: '/dashboard' },
       })

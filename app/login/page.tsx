@@ -8,6 +8,7 @@ import SiteFooter from '@/components/SiteFooter'
 import Image from 'next/image'
 import PasswordInput from '@/components/PasswordInput'
 import OAuthButtons from '@/components/OAuthButtons'
+import { LoaderCircleIcon } from 'lucide-react'
 
 // Messages for a provider round trip that came back without a session. The
 // callback can only hand back a reason code in the URL, so the wording lives
@@ -15,6 +16,7 @@ import OAuthButtons from '@/components/OAuthButtons'
 const OAUTH_ERRORS: Record<string, string> = {
   oauth_cancelled: 'Sign-in was cancelled.',
   oauth_no_email: 'That sign-in did not share an email address, so we could not create an account.',
+  oauth_choose_account: 'More than one player uses this email address, so we can’t tell which one to sign in to. Log in with that player’s email and password instead.',
   oauth_failed: 'That sign-in could not be completed. Please try again.',
   oauth_unavailable: 'Google and Apple sign-in are not available right now — use your email and password.',
 }
@@ -35,8 +37,32 @@ function LoginForm() {
   // this coach may choose between. Kept in memory only — /api/team/select will
   // not issue a session without it.
   const [choiceToken, setChoiceToken] = useState('')
+  // Set when one sign-in opened several player accounts: a shared login
+  // (password, with a player-choice token) or Google/Apple on an address
+  // several players share (`oauth` — the choice lives in an httpOnly cookie).
+  const [players, setPlayers] = useState<Array<{ id: string; firstName: string }> | null>(null)
+  const [playerChoice, setPlayerChoice] = useState<{ via: 'password'; token: string } | { via: 'oauth' } | null>(null)
+  const chooseOAuth = searchParams.get('choose') === 'oauth'
 
   useEffect(() => {
+    if (!chooseOAuth) return
+    fetch('/api/auth/select-player/oauth')
+      .then(async r => ({ ok: r.ok, data: await r.json().catch(() => ({})) }))
+      .then(({ ok, data }) => {
+        if (!ok || !Array.isArray(data.players)) {
+          setError(data.error || 'That sign-in has expired. Please try again.')
+          return
+        }
+        setPlayers(data.players)
+        setPlayerChoice({ via: 'oauth' })
+      })
+      .catch(() => setError('Something went wrong. Please try again.'))
+  }, [chooseOAuth])
+
+  useEffect(() => {
+    // A pending Google/Apple player choice is finished here even when an
+    // older session is still around — choosing replaces it.
+    if (chooseOAuth) return
     fetch('/api/auth/session')
       .then(r => r.json())
       .then(({ account }) => {
@@ -45,7 +71,7 @@ function LoginForm() {
         router.replace(account.type === 'player' ? next : account.dashboard)
       })
       .catch(() => {})
-  }, [router, next])
+  }, [router, next, chooseOAuth])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -56,7 +82,9 @@ function LoginForm() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, ...(claimToken ? { claimToken } : {}) }),
+        // acceptsPlayerChoice: this page can show "Which player?" for a shared
+        // login. Shipped app builds omit it and get a message instead.
+        body: JSON.stringify({ email, password, acceptsPlayerChoice: true, ...(claimToken ? { claimToken } : {}) }),
       })
       const data = await res.json()
 
@@ -70,6 +98,14 @@ function LoginForm() {
       if (data.multipleTeams === true) {
         setTeams(data.teams)
         setChoiceToken(data.choiceToken ?? '')
+        setStatus('idle')
+        return
+      }
+
+      // A shared login (several players, one password) picks the player.
+      if (data.multiplePlayers === true && Array.isArray(data.players)) {
+        setPlayers(data.players)
+        setPlayerChoice({ via: 'password', token: data.choiceToken ?? '' })
         setStatus('idle')
         return
       }
@@ -107,6 +143,49 @@ function LoginForm() {
     }
   }
 
+  async function selectPlayer(playerId: string) {
+    if (!playerChoice) return
+    setStatus('loading')
+    setError('')
+
+    try {
+      const res =
+        playerChoice.via === 'password'
+          ? await fetch('/api/auth/select-player', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ playerId, choiceToken: playerChoice.token, ...(claimToken ? { claimToken } : {}) }),
+            })
+          : await fetch('/api/auth/select-player/oauth', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ playerId }),
+            })
+      const data = await res.json().catch(() => ({}))
+
+      if (!res.ok || !data.success) {
+        setError(data.error || 'Could not sign in as that player')
+        setStatus('error')
+        return
+      }
+
+      router.push(data.redirect || next)
+    } catch {
+      setError('Something went wrong. Please try again.')
+      setStatus('error')
+    }
+  }
+
+  function backToLogin() {
+    setPlayers(null)
+    setPlayerChoice(null)
+    setTeams(null)
+    setChoiceToken('')
+    setError('')
+    setStatus('idle')
+    if (chooseOAuth) router.replace('/login')
+  }
+
   return (
     <main className="min-h-screen bg-ink-950 text-chalk flex flex-col">
       <TopNav />
@@ -124,12 +203,48 @@ function LoginForm() {
             )}
           </div>
 
-          {teams ? (
+          {players ? (
+            <div className="space-y-4">
+              <div className="text-center space-y-1">
+                <h2 className="font-display font-black uppercase text-lg">Which player?</h2>
+                <p className="text-chalk-dim text-sm">
+                  {playerChoice?.via === 'oauth'
+                    ? 'More than one player uses this email. Choose who is signing in.'
+                    : 'This login is shared. Choose who is signing in.'}
+                </p>
+              </div>
+              {error && (
+                <div role="alert" className="bg-red-500/15 border border-red-500 rounded-xl px-4 py-3">
+                  <p className="text-red-400 text-sm font-semibold text-center">{error}</p>
+                </div>
+              )}
+              <div className="space-y-3">
+                {players.map(p => (
+                  <button
+                    key={p.id}
+                    onClick={() => selectPlayer(p.id)}
+                    disabled={status === 'loading'}
+                    className="w-full bg-ink-900 border border-courtline hover:border-ember-500/60 rounded-2xl px-5 py-5 text-left transition-colors disabled:opacity-60 active:scale-[0.99] flex items-center justify-between"
+                  >
+                    <span className="font-display font-black text-xl text-chalk">{p.firstName}</span>
+                    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden className="text-chalk-dim">
+                      <path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                ))}
+              </div>
+              <p className="text-center text-sm">
+                <button type="button" onClick={backToLogin} className="text-ember-400 hover:text-ember-500 font-medium transition-colors">
+                  Back to login
+                </button>
+              </p>
+            </div>
+          ) : teams ? (
             <div className="space-y-3">
               <h2 className="font-display font-black uppercase text-lg text-center">Select your team</h2>
               {error && (
                 <div role="alert" className="bg-red-500/15 border-2 border-red-500 rounded-xl px-4 py-3">
-                  <p className="text-red-400 text-sm font-bold text-center">❌ {error}</p>
+                  <p className="text-red-400 text-sm font-bold text-center">{error}</p>
                 </div>
               )}
               <div className="space-y-2">
@@ -203,7 +318,7 @@ export default function LoginPage() {
       <main className="min-h-screen bg-ink-950 flex flex-col">
         <TopNav />
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-5xl animate-bounce select-none">🏀</div>
+          <LoaderCircleIcon className="h-8 w-8 animate-spin text-chalk-dim" aria-label="Loading" />
         </div>
       </main>
     }>

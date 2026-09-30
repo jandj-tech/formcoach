@@ -13,6 +13,7 @@ import {
   OAuthSignInError,
   applySignupContext,
   createLoginCode,
+  oauthPlayerChoiceCookie,
   signInWithOAuthProfile,
 } from '@/lib/oauth-account'
 import { clearOtherSessions } from '@/lib/sessions'
@@ -157,7 +158,27 @@ async function finish(req: NextRequest, providerParam: string, input: CallbackIn
     res.cookies.delete(OAUTH_STATE_COOKIE)
     return res
   } catch (err) {
-    if (err instanceof OAuthSignInError) return bail(origin, state, 'no_email')
+    // Several unlinked player accounts share the verified address (siblings
+    // on a parent's inbox). The provider proved the inbox, so the website
+    // lets the person pick one — no password — on /login. The choice is bound
+    // to this provider identity and carried in an encrypted httpOnly cookie.
+    // The app has no chooser yet; it gets the reason code as before.
+    if (err instanceof OAuthSignInError && err.code === 'choose_account' && err.choice && state.mode !== 'mobile') {
+      const url = new URL('/login', origin)
+      url.searchParams.set('choose', 'oauth')
+      const res = NextResponse.redirect(url)
+      res.cookies.set(
+        await oauthPlayerChoiceCookie(profile, err.choice, {
+          claimToken: state.claimToken,
+          teamInvite: state.teamInvite,
+          teamCode: state.teamCode,
+          next: safeNext(state.next),
+        }),
+      )
+      res.cookies.delete(OAUTH_STATE_COOKIE)
+      return res
+    }
+    if (err instanceof OAuthSignInError) return bail(origin, state, err.code)
     console.error(`OAuth sign-in failed for ${provider}:`, err)
     return bail(origin, state, 'failed')
   }

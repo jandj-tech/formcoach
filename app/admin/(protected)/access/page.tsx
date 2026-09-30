@@ -29,6 +29,7 @@ export default function AccessPage() {
   const [accountLoading, setAccountLoading] = useState(false)
   const [accountError, setAccountError] = useState('')
   const [accountSuccess, setAccountSuccess] = useState('')
+  const [accountWarning, setAccountWarning] = useState('')
 
   // Promo codes state
   const [codes, setCodes] = useState<PromoCode[]>([])
@@ -67,6 +68,7 @@ export default function AccessPage() {
     setAccountLoading(true)
     setAccountError('')
     setAccountSuccess('')
+    setAccountWarning('')
     try {
       const res = await fetch('/api/admin/free-account', {
         method: 'POST',
@@ -77,7 +79,19 @@ export default function AccessPage() {
         const { error } = await res.json()
         setAccountError(error || 'Failed')
       } else {
-        setAccountSuccess(`Free account created for ${accountEmail.trim()}. Welcome email sent.`)
+        // The grant only reaches an account whose owner proved the inbox, so
+        // what happened depends on who holds the address — say which.
+        const data = (await res.json().catch(() => ({}))) as { status?: string; message?: string }
+        const who = accountEmail.trim()
+        const fallback: Record<string, string> = {
+          applied: 'Free membership is active on their account now.',
+          confirmation_sent: 'They have an account — we emailed a link to confirm the address and activate it.',
+          invite_sent: 'No account yet — we emailed a link to sign up with this address and activate it.',
+          pending: 'Grant recorded, but no email went out. It activates once they confirm the address.',
+        }
+        const text = data.message || (data.status && fallback[data.status]) || 'Grant recorded.'
+        if (data.status === 'pending') setAccountWarning(`${who}: ${text}`)
+        else setAccountSuccess(`${who}: ${text}`)
         setAccountEmail('')
         await loadAccounts()
       }
@@ -176,7 +190,7 @@ export default function AccessPage() {
           <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-zinc-800 p-6 space-y-4">
             <h2 className="text-black dark:text-white font-bold">Create Free Account</h2>
             <p className="text-gray-600 dark:text-zinc-400 text-sm">
-              Enter an email to grant unlimited access for 10 years. A welcome email will be sent automatically.
+              Enter an email to grant unlimited access for 10 years. It turns on once the owner of that inbox confirms it: right away if their account is already verified, otherwise from the link we email them.
             </p>
             <form onSubmit={handleCreateAccount} className="flex gap-3">
               <input
@@ -198,6 +212,7 @@ export default function AccessPage() {
             </form>
             {accountError && <p className="text-red-400 text-sm">{accountError}</p>}
             {accountSuccess && <p className="text-green-400 text-sm">{accountSuccess}</p>}
+            {accountWarning && <p className="text-amber-500 text-sm">{accountWarning}</p>}
           </div>
 
           {/* Accounts list */}

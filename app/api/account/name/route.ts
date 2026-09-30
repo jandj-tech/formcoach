@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getSessionFromRequest } from '@/lib/auth'
-import { isCleanDisplayText, BLOCKED_TEXT_ERROR } from '@/lib/moderation'
+import { cleanOptionalDisplayText, capitalizeFirst, lastInitialFromText } from '@/lib/moderation'
 
 // Sets the user's canonical display name (first name + last initial) and
 // mirrors it onto every team membership and class enrollment they have, so
@@ -14,15 +14,18 @@ export async function POST(req: NextRequest) {
     firstName?: string
     lastInitial?: string
   }
-  const rawFirst = body.firstName?.trim().slice(0, 100) ?? ''
-  const firstName = rawFirst ? rawFirst.charAt(0).toUpperCase() + rawFirst.slice(1) : ''
-  const lastInitial = body.lastInitial?.trim().charAt(0).toUpperCase() ?? ''
-  if (!isCleanDisplayText(`${rawFirst} ${lastInitial}`)) {
-    return NextResponse.json({ error: BLOCKED_TEXT_ERROR }, { status: 400 })
-  }
+  const first = cleanOptionalDisplayText(body.firstName, 100)
+  if (!first.ok) return NextResponse.json({ error: first.error }, { status: 400 })
+  const last = cleanOptionalDisplayText(body.lastInitial, 100)
+  if (!last.ok) return NextResponse.json({ error: last.error }, { status: 400 })
+  const firstName = first.value ? capitalizeFirst(first.value) : ''
 
   if (!firstName) return NextResponse.json({ error: 'First name is required' }, { status: 400 })
-  if (!lastInitial) return NextResponse.json({ error: 'Last initial is required' }, { status: 400 })
+  if (!last.value) return NextResponse.json({ error: 'Last initial is required' }, { status: 400 })
+  // One letter, one character: "ß" must not become "SS" in a CHAR(1) column.
+  const initial = lastInitialFromText(last.value)
+  if (!initial.ok) return NextResponse.json({ error: initial.error }, { status: 400 })
+  const lastInitial = initial.value
 
   try {
     await db`

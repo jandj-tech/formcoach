@@ -5,6 +5,7 @@ import { db } from '@/lib/db'
 import { clearAllSessions } from '@/lib/sessions'
 import { sendAccountDeletedEmail } from '@/lib/email'
 import { appleRevoke, appleAppClientId, appleWebClientId } from '@/lib/oauth'
+import { releaseSeatsForDeletedUser } from '@/lib/org-membership'
 
 // getSessionFromRequest instead of the cookie-only getSession: the app's
 // native Settings screen deletes over Bearer auth (Apple 5.1.1(v) requires
@@ -18,13 +19,21 @@ export async function DELETE(req: NextRequest) {
   // Capture email before deletion for confirmation email
   const [userRow] = await db`SELECT email FROM users WHERE id = ${userId}` as unknown as [{ email: string } | undefined]
 
+  // Ownership is user_id ONLY (security audit 2026-09-28, item 1). An email
+  // match is not ownership: signup does not verify the inbox, and
+  // submissions.email today holds a coach's or org admin's address on their
+  // own self-uploads — so matching on it let a stranger who signed up with a
+  // coach's email delete that coach's shots. Legacy anonymous uploads that
+  // really are this person's were given a user_id at signup (and by the
+  // one-time backfill in migrate-email-list-legacy-sub.sql).
+  //
   // Collect blob URLs (frames + videos) BEFORE dropping the rows — deleting
   // the analyses first would destroy the only record of the URLs and orphan
   // the files at public URLs forever.
   const analyses = (await db`
     SELECT a.* FROM analyses a
     JOIN submissions s ON s.id = a.submission_id
-    WHERE s.user_id = ${userId} OR s.email = (SELECT email FROM users WHERE id = ${userId})
+    WHERE s.user_id = ${userId}
   `) as unknown as Array<Record<string, unknown>>
 
   const blobUrls: string[] = []
@@ -49,23 +58,33 @@ export async function DELETE(req: NextRequest) {
     WHERE analysis_id IN (
       SELECT a.id FROM analyses a
       JOIN submissions s ON s.id = a.submission_id
-      WHERE s.user_id = ${userId} OR s.email = (SELECT email FROM users WHERE id = ${userId})
+      WHERE s.user_id = ${userId}
     )
   `
   await db`
     DELETE FROM analyses
-    WHERE submission_id IN (
-      SELECT id FROM submissions
-      WHERE user_id = ${userId} OR email = (SELECT email FROM users WHERE id = ${userId})
-    )
+    WHERE submission_id IN (SELECT id FROM submissions WHERE user_id = ${userId})
   `
-  await db`DELETE FROM submissions WHERE user_id = ${userId} OR email = (SELECT email FROM users WHERE id = ${userId})`
+  await db`DELETE FROM submissions WHERE user_id = ${userId}`
+  // Org membership seats go back to their orgs' pools (silently — the
+  // account is going away).
+  await releaseSeatsForDeletedUser(userId)
   await db`DELETE FROM team_memberships WHERE user_id = ${userId}`
 
   // Stop all marketing email to this address — "account deleted" must mean
   // no more mail beyond the single confirmation below.
+  // But not when the same address is also a coach's or org admin's: that
+  // row is theirs too (and signup never proved this account owns the inbox).
   if (userRow?.email) {
-    try { await db`DELETE FROM email_list WHERE email = ${userRow.email}` } catch {}
+    try {
+      await db`
+        DELETE FROM email_list
+        WHERE email = ${userRow.email}
+          AND NOT EXISTS (SELECT 1 FROM teams WHERE LOWER(admin_email) = LOWER(${userRow.email}))
+          AND NOT EXISTS (SELECT 1 FROM team_coaches WHERE LOWER(email) = LOWER(${userRow.email}))
+          AND NOT EXISTS (SELECT 1 FROM organizations WHERE LOWER(admin_email) = LOWER(${userRow.email}))
+      `
+    } catch {}
   }
 
   await db`DELETE FROM users WHERE id = ${userId}`

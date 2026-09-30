@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { resolveChatActorFromRequest, canPostInChat, NO_ACCESS_MESSAGE } from '@/lib/team-chat'
+import { resolveChatActorFromRequest, chatDeniedResponse, canPostInChat, isOwnMessage, NO_ACCESS_MESSAGE } from '@/lib/team-chat'
 import { NO_PLAN_MESSAGE, tierCan } from '@/lib/team-features'
 import { isCleanDisplayText } from '@/lib/moderation'
 
@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   if (!teamId) return NextResponse.json({ error: 'teamId required' }, { status: 400 })
 
   const actor = await resolveChatActorFromRequest(req, teamId)
-  if (!actor) return NextResponse.json({ error: 'Login required' }, { status: 401 })
+  if (!actor) return chatDeniedResponse(req)
   if (!tierCan(actor.tier, 'chat')) {
     return NextResponse.json({ error: NO_PLAN_MESSAGE, upgradeRequired: true }, { status: 402 })
   }
@@ -21,13 +21,14 @@ export async function GET(req: NextRequest) {
   try {
     type MessageRow = {
       id: number; sender_user_id: string | null; sender_name: string
-      sender_role: string; body: string; created_at: string
+      sender_role: string; sender_kind: string | null; sender_email: string | null
+      body: string; created_at: string
     }
     // Personal blocks only exist for player accounts — coach/org sessions
     // have no users row, so they read the unfiltered feed.
     const messages = (actor.userId
       ? await db`
-          SELECT m.id, m.sender_user_id, m.sender_name, m.sender_role, m.body, m.created_at
+          SELECT m.id, m.sender_user_id, m.sender_name, m.sender_role, m.sender_kind, m.sender_email, m.body, m.created_at
           FROM team_messages m
           WHERE m.team_id = ${teamId}
             AND m.deleted = FALSE
@@ -39,7 +40,7 @@ export async function GET(req: NextRequest) {
           LIMIT 50
         `
       : await db`
-          SELECT m.id, m.sender_user_id, m.sender_name, m.sender_role, m.body, m.created_at
+          SELECT m.id, m.sender_user_id, m.sender_name, m.sender_role, m.sender_kind, m.sender_email, m.body, m.created_at
           FROM team_messages m
           WHERE m.team_id = ${teamId}
             AND m.deleted = FALSE
@@ -86,9 +87,10 @@ export async function GET(req: NextRequest) {
         senderRole: m.sender_role,
         body: m.body,
         createdAt: m.created_at,
-        mine: actor.userId
-          ? m.sender_user_id === actor.userId
-          : identity.isCoach && m.sender_user_id === null && m.sender_name === identity.senderName,
+        // Who sent it, never the sender's email (that stays server-side).
+        // null on messages stored before senders were recorded.
+        senderKind: m.sender_kind,
+        mine: isOwnMessage(actor, m),
       })),
       canPost,
       postBlockedReason: canPost
@@ -116,7 +118,7 @@ export async function POST(req: NextRequest) {
   if (!teamId || !body) return NextResponse.json({ error: 'Message required' }, { status: 400 })
 
   const actor = await resolveChatActorFromRequest(req, teamId)
-  if (!actor) return NextResponse.json({ error: 'Login required' }, { status: 401 })
+  if (!actor) return chatDeniedResponse(req)
   if (!tierCan(actor.tier, 'chat')) {
     return NextResponse.json({ error: NO_PLAN_MESSAGE, upgradeRequired: true }, { status: 402 })
   }
@@ -135,8 +137,9 @@ export async function POST(req: NextRequest) {
 
   try {
     const [msg] = (await db`
-      INSERT INTO team_messages (team_id, sender_user_id, sender_name, sender_role, body)
-      VALUES (${teamId}, ${actor.userId}, ${identity.senderName}, ${identity.isCoach ? 'coach' : 'player'}, ${body})
+      INSERT INTO team_messages (team_id, sender_user_id, sender_name, sender_role, sender_kind, sender_email, body)
+      VALUES (${teamId}, ${actor.userId}, ${identity.senderName}, ${identity.isCoach ? 'coach' : 'player'},
+              ${actor.senderKind}, ${actor.email}, ${body})
       RETURNING id, created_at
     `) as unknown as [{ id: number; created_at: string }]
 
@@ -146,6 +149,7 @@ export async function POST(req: NextRequest) {
         senderUserId: actor.userId,
         senderName: identity.senderName,
         senderRole: identity.isCoach ? 'coach' : 'player',
+        senderKind: actor.senderKind,
         body,
         createdAt: msg.created_at,
         mine: true,

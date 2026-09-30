@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
 import {
+  choiceRowForTeam,
   getTeamSessionFromRequest,
   signTeamSession,
   teamSessionCookieOptions,
+  teamSwitchTarget,
   verifyTeamChoice,
 } from '@/lib/team-auth'
-import { clearOtherSessions, TEAM_COOKIE } from '@/lib/sessions'
+import { getOrgSessionFromRequest } from '@/lib/org-auth'
+import { clearOtherSessions, ORG_COOKIE, TEAM_COOKIE } from '@/lib/sessions'
 import { rateLimitByIp } from '@/lib/rate-limit'
 
 /**
@@ -28,8 +30,13 @@ import { rateLimitByIp } from '@/lib/rate-limit'
  *      10-minute team-choice token naming the teams that coach may choose
  *      between. The chosen id has to be one of them.
  *   B. the team dashboard's team switcher, where the coach already holds a
- *      valid team session. The target team must share that session's
- *      admin_email — a coach may only switch between their own teams.
+ *      valid team session. Sharing an email with the target's coach is NOT
+ *      enough (self-serve team registration never proved the inbox, so a
+ *      stranger could hold a team session under a director's or assistant's
+ *      address): the session's own row must carry the same password hash as
+ *      the email's row on the target team, or — for an org director — the
+ *      request must also carry a valid org session for the target's org.
+ *      See teamSwitchEmail() in lib/team-auth.ts.
  *
  * The email is never read from the request body any more; it comes from the
  * verified token in both paths.
@@ -51,44 +58,60 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Team is required' }, { status: 400 })
     }
 
-    let adminEmail: string | null = null
+    // The proven identity, and which team it may land on.
+    let signedEmail: string | null = null
+    // The credential the new session is bound to (see signTeamSession).
+    let credential: string | null = null
 
-    // Path A — fresh login, holding a team-choice token.
+    // Path A — fresh login, holding a team-choice token. Login put in it only
+    // teams whose own row's password matched (head or added coach), so the
+    // chosen id must be one of them; it is re-checked against the database in
+    // case the coach was removed in the ten minutes since.
     if (typeof choiceToken === 'string' && choiceToken) {
       const choice = await verifyTeamChoice(choiceToken)
-      if (choice && choice.teamIds.includes(teamId)) {
-        adminEmail = choice.adminEmail
+      const row = choice ? await choiceRowForTeam(choice, teamId) : null
+      if (row) {
+        signedEmail = row.email
+        credential = row.credential
       }
     }
 
-    // Path B — already signed in, switching teams.
-    if (!adminEmail) {
+    // Path B — already signed in (getTeamSessionFromRequest re-checks that the
+    // session's email still coaches its team), switching to another team with
+    // the SAME proven credential: an equal password hash on both rows, or a
+    // live org session for the target's org when the email is its director.
+    let authenticated = !!signedEmail
+    let keepOrgCookie = false
+    if (!signedEmail) {
       const session = await getTeamSessionFromRequest(req)
-      if (session) adminEmail = session.adminEmail
+      if (session) {
+        authenticated = true
+        const orgSession = await getOrgSessionFromRequest(req)
+        const target = await teamSwitchTarget(session, teamId, orgSession)
+        signedEmail = target?.email ?? null
+        credential = target?.credential ?? null
+        keepOrgCookie = !!orgSession && typeof orgSession.adminEmail === 'string' &&
+          orgSession.adminEmail.toLowerCase() === session.adminEmail.toLowerCase()
+      }
     }
 
-    if (!adminEmail) {
+    if (!authenticated) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
-
-    // Even with a proven identity, confirm the team is actually theirs. Path A
-    // already constrained the id to the token's list; this also covers path B,
-    // and re-reads admin_email so the session is signed from the database
-    // rather than from anything the client sent.
-    const [team] = (await db`
-      SELECT id, admin_email FROM teams
-      WHERE id = ${teamId} AND admin_email = ${adminEmail.toLowerCase().trim()}
-    `) as unknown as [{ id: string; admin_email: string } | undefined]
-
-    if (!team) {
+    if (!signedEmail) {
       return NextResponse.json({ error: 'Not authorized for this team' }, { status: 403 })
     }
 
-    const token = await signTeamSession({ teamId: team.id, adminEmail: team.admin_email })
+    // Signed from the database's copy of the address, never the request's.
+    const token = await signTeamSession({ teamId, adminEmail: signedEmail }, credential)
     // `token` is for the mobile app (Bearer auth); the web follows the cookie.
     const res = NextResponse.json({ success: true, token })
     res.cookies.set(teamSessionCookieOptions(token))
-    clearOtherSessions(res, TEAM_COOKIE)
+    // A director switching between their org's teams keeps their own org
+    // cookie — it is what authorises the next switch (and the "back to
+    // organization" link). Everyone else ends up with just the team session.
+    if (keepOrgCookie) clearOtherSessions(res, TEAM_COOKIE, ORG_COOKIE)
+    else clearOtherSessions(res, TEAM_COOKIE)
     return res
   } catch (err) {
     console.error('Team select error:', err)

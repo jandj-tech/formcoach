@@ -18,10 +18,36 @@ export async function isInAppRequest(): Promise<boolean> {
 // Stripe session for digital goods must also refuse in-app requests.
 // Returns a 403 response to send back, or null to proceed.
 export function rejectInAppPurchase(req: NextRequest): NextResponse | null {
-  const ua = req.headers.get('user-agent') ?? ''
-  if (ua.includes(IN_APP_UA_MARKER)) {
+  // Covers the native app too (isNativeAppRequest, below): the WebView marker
+  // alone never caught it, so a native Bearer session could reach Stripe.
+  if (isNativeAppRequest(req)) {
     return NextResponse.json(
       { error: 'Purchases in the iOS app are made with in-app purchase.' },
+      { status: 403 },
+    )
+  }
+  return null
+}
+
+// The native iOS app (not the old WebView) identifies as
+// "LearnHoops/<build> CFNetwork/…" and authenticates with a Bearer token, so
+// the WebView marker above never catches it. Org membership deals are
+// WEBSITE ONLY (App Store guideline 3.1.1 and the owner's v1 decision), so
+// their purchase routes refuse anything that looks like the app: the native
+// UA, the WebView marker, or ANY Authorization header — a browser on the
+// website authenticates with the httpOnly session cookie and never sends one.
+const NATIVE_APP_UA = /\bLearnHoops\/\d+/
+
+export function isNativeAppRequest(req: NextRequest): boolean {
+  const ua = req.headers.get('user-agent') ?? ''
+  return ua.includes(IN_APP_UA_MARKER) || NATIVE_APP_UA.test(ua) || req.headers.has('authorization')
+}
+
+/** 403 for any request from the iOS app (native or WebView) or carrying a Bearer token; null to proceed. */
+export function rejectNativeAppPurchase(req: NextRequest): NextResponse | null {
+  if (isNativeAppRequest(req)) {
+    return NextResponse.json(
+      { error: 'This purchase is not available in the app.' },
       { status: 403 },
     )
   }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { resolveChatActorFromRequest } from '@/lib/team-chat'
+import { resolveChatActorFromRequest, chatDeniedResponse } from '@/lib/team-chat'
 import { NO_PLAN_MESSAGE, tierCan } from '@/lib/team-features'
 
 // Coach moderation + everyone's self-service actions:
@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
   if (!teamId || !p.action) return NextResponse.json({ error: 'Bad request' }, { status: 400 })
 
   const actor = await resolveChatActorFromRequest(req, teamId)
-  if (!actor) return NextResponse.json({ error: 'Login required' }, { status: 401 })
+  if (!actor) return chatDeniedResponse(req)
   if (!tierCan(actor.tier, 'chat')) {
     return NextResponse.json({ error: NO_PLAN_MESSAGE, upgradeRequired: true }, { status: 402 })
   }

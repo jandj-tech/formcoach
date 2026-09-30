@@ -12,14 +12,19 @@
  * dashboard their password does.
  */
 
-import { randomBytes } from 'crypto'
+import { createHmac, randomBytes } from 'crypto'
+import { EncryptJWT, jwtDecrypt } from 'jose'
+import { requireEnv } from '@/lib/env'
 import { db } from '@/lib/db'
-import { signSession, sessionCookieOptions } from '@/lib/auth'
+import { currentUserPasswordHash, signSession, sessionCookieOptions } from '@/lib/auth'
 import { signTeamSession, teamSessionCookieOptions } from '@/lib/team-auth'
 import { signOrgSession, orgSessionCookieOptions } from '@/lib/org-auth'
 import { PLAYER_COOKIE, TEAM_COOKIE, ORG_COOKIE } from '@/lib/sessions'
 import { addToEmailList } from '@/lib/email-list'
-import { grantFreeOrgTokensIfEligible } from '@/lib/team-tokens'
+import { cleanOptionalDisplayText } from '@/lib/moderation'
+import { adoptLegacySubmissions, claimPendingInvite } from '@/lib/roster-players'
+import { markEmailVerified, applyEmailEntitlement } from '@/lib/email-entitlements'
+import { playersByEmail, type PlayerAccount } from '@/lib/player-accounts'
 import type { OAuthProfile } from '@/lib/oauth'
 
 export interface OAuthSignInResult {
@@ -36,7 +41,62 @@ export interface OAuthSignInResult {
   isNewAccount: boolean
 }
 
-export class OAuthSignInError extends Error {}
+/**
+ * A sign-in that cannot complete, with a message fit to show the person.
+ * `code` is what the web callback puts in the /login?error=oauth_<code> URL.
+ */
+export class OAuthSignInError extends Error {
+  constructor(
+    message: string,
+    readonly code: 'no_email' | 'choose_account' = 'no_email',
+    /**
+     * choose_account only: the verified address and the player accounts on it
+     * the provider could be linked to (2+). The web callback turns these into
+     * the "Which player?" chooser (signOAuthPlayerChoice); the native app,
+     * which has no chooser yet, shows `message`.
+     */
+    readonly choice?: { email: string; candidates: PlayerAccount[] },
+  ) {
+    super(message)
+  }
+}
+
+/**
+ * Several player accounts share this verified address and more than one could
+ * be the one meant, so there is no account to link the provider to. The
+ * website shows a chooser; the app (no chooser yet) is told to use the
+ * password, which decides.
+ */
+const CHOOSE_ACCOUNT_MESSAGE =
+  'More than one player uses this email address. Log in with that player’s email and password instead, or use Continue with Google/Apple on learnhoops.com to choose the player.'
+
+/**
+ * The one player account a provider sign-in may be linked to by email, or
+ * null when that is ambiguous. One account on the address: that account (as
+ * always). Several (siblings on a parent's inbox): only when exactly one of
+ * them has no identity from this provider yet.
+ */
+async function unlinkedPlayers(
+  players: PlayerAccount[],
+  provider: string,
+): Promise<PlayerAccount[]> {
+  if (players.length === 0) return []
+  const linked = (await db`
+    SELECT DISTINCT user_id FROM user_oauth_identities
+    WHERE provider = ${provider} AND user_id = ANY(${players.map((p) => p.id)}::uuid[])
+  `) as unknown as Array<{ user_id: string }>
+  const linkedIds = new Set(linked.map((r) => r.user_id))
+  return players.filter((p) => !linkedIds.has(p.id))
+}
+
+async function linkTargetByEmail(
+  players: PlayerAccount[],
+  provider: string,
+): Promise<{ target: PlayerAccount | null; candidates: PlayerAccount[] }> {
+  if (players.length === 1) return { target: players[0], candidates: players }
+  const unlinked = await unlinkedPlayers(players, provider)
+  return { target: unlinked.length === 1 ? unlinked[0] : null, candidates: unlinked }
+}
 
 export async function signInWithOAuthProfile(profile: OAuthProfile): Promise<OAuthSignInResult> {
   const email = profile.emailVerified && profile.email ? profile.email.toLowerCase().trim() : null
@@ -78,10 +138,10 @@ export async function signInWithOAuthProfile(profile: OAuthProfile): Promise<OAu
 
   // 2. Organization admin
   const [org] = (await db`
-    SELECT id, admin_email FROM organizations WHERE admin_email = ${email}
-  `) as unknown as [{ id: string; admin_email: string } | undefined]
+    SELECT id, admin_email, password_hash FROM organizations WHERE admin_email = ${email}
+  `) as unknown as [{ id: string; admin_email: string; password_hash: string | null } | undefined]
   if (org) {
-    const token = await signOrgSession({ orgId: org.id, adminEmail: org.admin_email })
+    const token = await signOrgSession({ orgId: org.id, adminEmail: org.admin_email }, org.password_hash)
     return {
       accountType: 'org',
       redirect: '/org/dashboard',
@@ -95,12 +155,12 @@ export async function signInWithOAuthProfile(profile: OAuthProfile): Promise<OAu
   //    their first team and switches from the dashboard — password login asks
   //    which team, but there is no form to ask in mid-redirect.
   const teams = (await db`
-    SELECT id, admin_email, name FROM teams
+    SELECT id, admin_email, name, password_hash FROM teams
     WHERE admin_email = ${email} AND password_hash IS NOT NULL
     ORDER BY name ASC
-  `) as unknown as Array<{ id: string; admin_email: string; name: string }>
+  `) as unknown as Array<{ id: string; admin_email: string; name: string; password_hash: string }>
   if (teams.length > 0) {
-    const token = await signTeamSession({ teamId: teams[0].id, adminEmail: teams[0].admin_email })
+    const token = await signTeamSession({ teamId: teams[0].id, adminEmail: teams[0].admin_email }, teams[0].password_hash)
     return {
       accountType: 'team',
       redirect: '/team/dashboard',
@@ -113,11 +173,11 @@ export async function signInWithOAuthProfile(profile: OAuthProfile): Promise<OAu
   // 4. Additional coach on someone else's team
   try {
     const [coach] = (await db`
-      SELECT team_id, email FROM team_coaches
+      SELECT team_id, email, password_hash FROM team_coaches
       WHERE email = ${email} AND password_hash IS NOT NULL
-    `) as unknown as [{ team_id: string; email: string } | undefined]
+    `) as unknown as [{ team_id: string; email: string; password_hash: string } | undefined]
     if (coach) {
-      const token = await signTeamSession({ teamId: coach.team_id, adminEmail: coach.email })
+      const token = await signTeamSession({ teamId: coach.team_id, adminEmail: coach.email }, coach.password_hash)
       return {
         accountType: 'team',
         redirect: '/team/dashboard',
@@ -141,23 +201,50 @@ export async function signInWithOAuthProfile(profile: OAuthProfile): Promise<OAu
   //     iOS app saw the "join a team with a code" screen while the webview
   //     (holding a real team cookie) still showed them as the coach. Password
   //     login has always preferred the coach account; this now matches it.
-  if (identityUser) return playerResult(identityUser, false)
+  if (identityUser) {
+    // The provider verified this address; if it is the account's own, that is
+    // proof of the inbox (and activates a comp waiting on it).
+    await proveInbox(identityUser.id, email)
+    return playerResult(identityUser, false)
+  }
 
   // 5. Existing player with this address — link the provider to it. This is the
   //    path that keeps someone who signed up with a password from accidentally
   //    creating a second, empty account by tapping "Continue with Google".
-  const [user] = (await db`
-    SELECT id, email FROM users WHERE email = ${email}
-  `) as unknown as [{ id: string; email: string } | undefined]
-  if (user) {
-    await linkIdentity(user.id, profile, email)
-    // A coach/org-added stub that signs in with a provider has completed setup.
-    await db`UPDATE users SET roster_pending = false WHERE id = ${user.id} AND roster_pending = true`
-    return playerResult(user, false)
+  //    Several player accounts may share the address (siblings): link only
+  //    when exactly one of them is the candidate, otherwise refuse clearly.
+  const players = await playersByEmail(email)
+  if (players.length > 0) {
+    const { target: user, candidates } = await linkTargetByEmail(players, profile.provider)
+    if (!user) {
+      // 2+ unlinked accounts: the provider proved the inbox, so the web lets
+      // the person pick (no password needed). Zero unlinked (every account
+      // already carries a DIFFERENT identity from this provider): nothing to
+      // offer; the password decides.
+      throw new OAuthSignInError(
+        CHOOSE_ACCOUNT_MESSAGE,
+        'choose_account',
+        candidates.length >= 2 ? { email, candidates } : undefined,
+      )
+    }
+    return linkAndSignIn(user, profile, email)
   }
 
   // 6. Nobody by that address — new player account.
   return createPlayer(profile, email)
+}
+
+/** Links the provider identity to an existing player account and signs it in. */
+async function linkAndSignIn(
+  user: { id: string; email: string },
+  profile: OAuthProfile,
+  email: string,
+): Promise<OAuthSignInResult> {
+  await linkIdentity(user.id, profile, email)
+  // A coach/org-added stub that signs in with a provider has completed setup.
+  await db`UPDATE users SET roster_pending = false WHERE id = ${user.id} AND roster_pending = true`
+  await proveInbox(user.id, email)
+  return playerResult(user, false)
 }
 
 async function createPlayer(profile: OAuthProfile, email: string | null): Promise<OAuthSignInResult> {
@@ -170,26 +257,78 @@ async function createPlayer(profile: OAuthProfile, email: string | null): Promis
   }
   const addr = (email ?? profile.email!).toLowerCase().trim()
 
-  const nickname = profile.name?.trim().split(/\s+/)[0]?.slice(0, 50) || null
+  // The provider's display name is user-controlled too: same rule as every
+  // other name save site. A name that fails it is simply not used.
+  const nickClean = cleanOptionalDisplayText(profile.name?.trim().split(/\s+/)[0] ?? null, 50)
+  const nickname = nickClean.ok ? nickClean.value : null
 
   // free_analysis_used = true matches the password signup route: the free first
   // analysis is discontinued, and a provider account must not become a way
   // around that.
-  const [created] = (await db`
-    INSERT INTO users (email, password_hash, nickname, free_analysis_used)
-    VALUES (${addr}, NULL, ${nickname}, true)
-    ON CONFLICT (email) DO UPDATE SET email = EXCLUDED.email
-    RETURNING id, email
-  `) as unknown as [{ id: string; email: string }]
+  //
+  // With an UNVERIFIED provider address (`email` null, falling back to
+  // profile.email) nothing here may attach to an existing account: the old
+  // ON CONFLICT DO UPDATE adopted whatever row already carried the address —
+  // a sign-in as someone else for anyone who could mint an unverified claim.
+  // Such an address can only ever start a brand-new account; if it is taken,
+  // refuse. Its earlier anonymous shots are not adopted either.
+  //
+  // No ON CONFLICT (email): the unique constraint on users.email is dropped by
+  // scripts/migrate-family-email.sql (several player accounts may share an
+  // address), and ON CONFLICT on a constraint that no longer exists is an
+  // error. Instead the insert is conditional on no player row carrying the
+  // address, under a transaction-scoped advisory lock on the address so two
+  // concurrent first sign-ins cannot both create one.
+  const created = (await db.begin(async (t) => {
+    const tx = t as unknown as typeof db
+    await tx`SELECT pg_advisory_xact_lock(hashtext(${'users-email:' + addr}))`
+    const [existing] = (await tx`
+      SELECT id, email FROM users WHERE LOWER(email) = ${addr}
+      ORDER BY created_at ASC NULLS LAST, id ASC
+    `) as unknown as Array<{ id: string; email: string }>
+    if (existing) {
+      // Verified address: the lookup in signInWithOAuthProfile found no player
+      // a moment ago, so this is the losing side of a race — the account the
+      // winner just created is this person's (the old DO UPDATE adopted it the
+      // same way). Unverified: never attach to an existing account.
+      if (email) return existing
+      return undefined
+    }
+    const [row] = (await tx`
+      INSERT INTO users (email, password_hash, nickname, free_analysis_used, email_verified_at)
+      VALUES (${addr}, NULL, ${nickname}, true, ${email ? new Date() : null})
+      RETURNING id, email
+    `) as unknown as [{ id: string; email: string }]
+    return row
+  })) as { id: string; email: string } | undefined
+  if (!created) {
+    throw new OAuthSignInError('An account already uses this email address. Log in with your password instead.')
+  }
 
-  await linkIdentity(created.id, profile, addr)
+  // The identity keeps the address only when the provider verified it — that
+  // column is what later counts as proof (migrate-email-verified.sql).
+  await linkIdentity(created.id, profile, email)
 
-  // Adopt any analyses this address submitted before it had an account.
-  await db`UPDATE submissions SET user_id = ${created.id} WHERE email = ${addr} AND user_id IS NULL`
+  if (email) {
+    // Adopt any analyses this address submitted before it had an account —
+    // same rule as password signup: never a coach's or org admin's
+    // self-uploads (see adoptLegacySubmissions). Verified addresses only.
+    await adoptLegacySubmissions(created.id, addr)
+    await proveInbox(created.id, email)
+  }
 
   try { await addToEmailList(addr) } catch { /* non-fatal */ }
 
   return playerResult(created, true)
+}
+
+/** Provider-verified address matches the account's: record the proof, activate any comp. */
+async function proveInbox(userId: string, verifiedEmail: string) {
+  try {
+    if (await markEmailVerified(userId, verifiedEmail)) await applyEmailEntitlement(userId)
+  } catch (err) {
+    console.warn('OAuth inbox proof failed:', err instanceof Error ? err.message : err)
+  }
 }
 
 async function linkIdentity(userId: string, profile: OAuthProfile, email: string | null) {
@@ -204,7 +343,7 @@ async function linkIdentity(userId: string, profile: OAuthProfile, email: string
 }
 
 async function playerResult(user: { id: string; email: string }, isNewAccount: boolean): Promise<OAuthSignInResult> {
-  const token = await signSession({ userId: user.id, email: user.email })
+  const token = await signSession({ userId: user.id, email: user.email }, await currentUserPasswordHash(user.id))
   return {
     accountType: 'player',
     redirect: '/dashboard',
@@ -252,20 +391,9 @@ export async function applySignupContext(
 
   if (ctx.teamInvite) {
     try {
-      const [pending] = (await db`
-        SELECT id, team_id, first_name, last_name_initial
-        FROM pending_team_members WHERE invite_token = ${ctx.teamInvite}
-      `) as unknown as [{ id: string; team_id: string; first_name: string; last_name_initial: string | null } | undefined]
-      if (pending) {
-        await db`
-          INSERT INTO team_memberships (user_id, team_id, first_name, last_name_initial)
-          VALUES (${userId}, ${pending.team_id}, ${pending.first_name}, ${pending.last_name_initial})
-          ON CONFLICT (user_id, team_id) DO UPDATE
-            SET first_name = EXCLUDED.first_name, last_name_initial = EXCLUDED.last_name_initial
-        `
-        await db`DELETE FROM pending_team_members WHERE id = ${pending.id}`
-        await grantFreeOrgTokensIfEligible(pending.team_id)
-      }
+      // Membership + the shots already uploaded for the invite, in one
+      // transaction (shared with password signup).
+      await claimPendingInvite(userId, ctx.teamInvite)
     } catch (err) {
       console.warn('OAuth team-invite claim failed:', err instanceof Error ? err.message : err)
     }
@@ -317,4 +445,161 @@ export async function redeemLoginCode(code: string): Promise<{ id: string; email
   } catch { /* non-fatal */ }
 
   return rows[0] ?? null
+}
+
+// ---------------------------------------------------------------------------
+// Web "Which player?" after a provider sign-in (several unlinked accounts)
+// ---------------------------------------------------------------------------
+
+/**
+ * httpOnly cookie carrying the pending provider choice from the web callback
+ * to the /login chooser. Scoped to the endpoints that read it.
+ */
+export const OAUTH_CHOICE_COOKIE = 'fc_oauth_choice'
+const OAUTH_CHOICE_PATH = '/api/auth/select-player'
+const OAUTH_CHOICE_TTL = 60 * 10 // 10 minutes
+
+/**
+ * What the chooser may complete: the provider identity that just proved the
+ * inbox (provider + subject — the choice is bound to it), the verified
+ * address, and exactly the unlinked accounts on it that were offered. Also the
+ * signup context the callback would otherwise have applied.
+ *
+ * ENCRYPTED (dir/A256GCM with a key derived from JWT_SECRET), not just
+ * signed: it carries the Apple refresh token, and a derived key means it can
+ * never be mistaken for a session JWT.
+ */
+interface OAuthChoicePayload {
+  kind: 'oauth-player-choice'
+  provider: OAuthProfile['provider']
+  subject: string
+  email: string
+  userIds: string[]
+  refreshToken?: string | null
+  ctx: { claimToken?: string; teamInvite?: string; teamCode?: string; next?: string }
+}
+
+let oauthChoiceKey: Uint8Array | undefined
+function oauthChoiceKeyBytes(): Uint8Array {
+  if (!oauthChoiceKey) {
+    oauthChoiceKey = new Uint8Array(
+      createHmac('sha256', requireEnv('JWT_SECRET')).update('oauth-player-choice-v1').digest(),
+    )
+  }
+  return oauthChoiceKey
+}
+
+function displayFirstName(a: { first_name: string | null; nickname: string | null }, i: number): string {
+  return a.first_name?.trim() || a.nickname?.trim() || `Player ${i + 1}`
+}
+
+/** The cookie the web callback sets instead of a session when the person must choose. */
+export async function oauthPlayerChoiceCookie(
+  profile: OAuthProfile,
+  choice: { email: string; candidates: PlayerAccount[] },
+  ctx: OAuthChoicePayload['ctx'],
+) {
+  const payload: OAuthChoicePayload = {
+    kind: 'oauth-player-choice',
+    provider: profile.provider,
+    subject: profile.subject,
+    email: choice.email,
+    userIds: choice.candidates.map((c) => c.id),
+    refreshToken: profile.refreshToken ?? null,
+    ctx,
+  }
+  const value = await new EncryptJWT(payload as unknown as Record<string, unknown>)
+    .setProtectedHeader({ alg: 'dir', enc: 'A256GCM' })
+    .setIssuedAt()
+    .setExpirationTime(`${OAUTH_CHOICE_TTL}s`)
+    .encrypt(oauthChoiceKeyBytes())
+  return {
+    name: OAUTH_CHOICE_COOKIE,
+    value,
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax' as const,
+    path: OAUTH_CHOICE_PATH,
+    maxAge: OAUTH_CHOICE_TTL,
+  }
+}
+
+/** Expires the choice cookie (after use, or when it is no good). */
+export function clearOAuthPlayerChoiceCookie() {
+  return { name: OAUTH_CHOICE_COOKIE, value: '', httpOnly: true, path: OAUTH_CHOICE_PATH, maxAge: 0 }
+}
+
+async function readOAuthChoice(value: string | undefined): Promise<OAuthChoicePayload | null> {
+  if (!value) return null
+  try {
+    const { payload } = await jwtDecrypt(value, oauthChoiceKeyBytes())
+    const c = payload as unknown as OAuthChoicePayload
+    if (c.kind !== 'oauth-player-choice') return null
+    if (typeof c.subject !== 'string' || !c.subject || typeof c.email !== 'string' || !c.email) return null
+    if (!Array.isArray(c.userIds) || c.userIds.length === 0) return null
+    return c
+  } catch {
+    return null
+  }
+}
+
+/**
+ * The accounts the chooser shows, re-read (still on the address, still not
+ * linked to this provider). Null when the cookie is missing, expired or no
+ * longer offers at least one account.
+ */
+export async function oauthPlayerChoiceOptions(
+  cookieValue: string | undefined,
+): Promise<{ provider: string; players: Array<{ id: string; firstName: string }> } | null> {
+  const choice = await readOAuthChoice(cookieValue)
+  if (!choice) return null
+  const offered = (await playersByEmail(choice.email)).filter((p) => choice.userIds.includes(p.id))
+  const open = await unlinkedPlayers(offered, choice.provider)
+  if (open.length === 0) return null
+  return {
+    provider: choice.provider,
+    players: open.map((p, i) => ({ id: p.id, firstName: displayFirstName(p, i) })),
+  }
+}
+
+/**
+ * Links the provider identity in the choice cookie to the chosen account and
+ * signs it in. The chosen id must be one the cookie offered, still carry the
+ * verified address, and still have no identity from this provider; and this
+ * provider identity must not have been linked to a different account since.
+ * Returns null when any of that fails. Applies the carried signup context.
+ */
+export async function completeOAuthPlayerChoice(
+  cookieValue: string | undefined,
+  userId: string,
+): Promise<(OAuthSignInResult & { next: string }) | null> {
+  const choice = await readOAuthChoice(cookieValue)
+  if (!choice || !choice.userIds.includes(userId)) return null
+
+  const offered = (await playersByEmail(choice.email)).filter((p) => p.id === userId)
+  const [target] = await unlinkedPlayers(offered, choice.provider)
+  if (!target) return null
+
+  const [existing] = (await db`
+    SELECT user_id FROM user_oauth_identities
+    WHERE provider = ${choice.provider} AND subject = ${choice.subject}
+  `) as unknown as [{ user_id: string } | undefined]
+  if (existing && existing.user_id !== target.id) return null
+
+  const profile: OAuthProfile = {
+    provider: choice.provider,
+    subject: choice.subject,
+    email: choice.email,
+    emailVerified: true,
+    name: null,
+    refreshToken: choice.refreshToken ?? null,
+  }
+  const result = await linkAndSignIn(target, profile, choice.email)
+  await applySignupContext(target.id, { claimToken: choice.ctx.claimToken, teamInvite: choice.ctx.teamInvite })
+  const next = choice.ctx.teamCode
+    ? `/join/${encodeURIComponent(choice.ctx.teamCode.toUpperCase())}`
+    : choice.ctx.next && choice.ctx.next.startsWith('/') && !choice.ctx.next.startsWith('//')
+      ? choice.ctx.next
+      : '/dashboard'
+  return { ...result, next }
 }

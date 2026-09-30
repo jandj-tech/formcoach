@@ -10,7 +10,8 @@ export async function GET(req: NextRequest) {
     SELECT s.id, s.created_at, s.token, s.status, a.overall_score
     FROM submissions s
     LEFT JOIN analyses a ON a.submission_id = s.id
-    WHERE s.user_id = ${session.userId} OR s.email = ${session.email}
+    -- user_id only: an email match is not ownership (security audit item 1).
+    WHERE s.user_id = ${session.userId}
     ORDER BY s.created_at DESC
     LIMIT 100
   `) as unknown as Array<{

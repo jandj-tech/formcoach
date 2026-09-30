@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
 import { BCRYPT_COST } from '@/lib/password'
-import { rateLimitByIp } from '@/lib/rate-limit'
-import { isCleanDisplayText, BLOCKED_TEXT_ERROR } from '@/lib/moderation'
+import { rateLimitLogin } from '@/lib/rate-limit'
+import { cleanDisplayText } from '@/lib/moderation'
 import { verifyTurnstile } from '@/lib/turnstile'
+import { emailBelongsToCoachOrOrg } from '@/lib/team-auth'
 import {
   createPendingOrgSignup,
   pendingCookieOptions,
@@ -24,21 +25,23 @@ import {
  * to approve by hand.
  */
 export async function POST(req: NextRequest) {
-  // This endpoint runs bcrypt at cost 12 (~250ms of CPU) for an anonymous
-  // caller, so the limiter is load-bearing, not decoration. The route it
-  // replaced only did an INSERT and had none.
-  const limit = await rateLimitByIp(req, 'org-signup-start', 10, 3600)
-  if (!limit.ok) {
-    return NextResponse.json(
-      { error: 'Too many signup attempts. Please try again shortly.' },
-      { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } },
-    )
-  }
-
   try {
-    const body = await req.json()
-    const orgName = typeof body?.orgName === 'string' ? body.orgName.trim() : ''
+    const body = await req.json().catch(() => ({}))
+    const orgNameRaw = typeof body?.orgName === 'string' ? body.orgName.trim() : ''
     const emailRaw = typeof body?.email === 'string' ? body.email.trim() : ''
+
+    // This endpoint runs bcrypt at cost 12 (~250ms of CPU) for an anonymous
+    // caller, so the limiter is load-bearing, not decoration. Tight per email;
+    // the per-IP ceiling is looser so one office or gym network isn't blocked.
+    const limit = await rateLimitLogin(req, 'org-signup-start', emailRaw, {
+      perIp: 30, perEmail: 5, windowSeconds: 3600,
+    })
+    if (!limit.ok) {
+      return NextResponse.json(
+        { error: 'Too many signup attempts. Please try again shortly.' },
+        { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } },
+      )
+    }
     const password = typeof body?.password === 'string' ? body.password : ''
     const playerCountRaw = body?.playerCount
     const website = body?.website
@@ -57,12 +60,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: captcha.error }, { status: 400 })
     }
 
-    if (!orgName || !emailRaw) {
+    if (!orgNameRaw || !emailRaw) {
       return NextResponse.json({ error: 'Organization name and email are required' }, { status: 400 })
     }
-    if (!isCleanDisplayText(orgName)) {
-      return NextResponse.json({ error: BLOCKED_TEXT_ERROR }, { status: 400 })
-    }
+    const orgNameClean = cleanDisplayText(orgNameRaw, 255)
+    if (!orgNameClean.ok) return NextResponse.json({ error: orgNameClean.error }, { status: 400 })
+    const orgName = orgNameClean.value
     if (password.length < 6) {
       return NextResponse.json({ error: 'Password must be at least 6 characters' }, { status: 400 })
     }
@@ -82,6 +85,14 @@ export async function POST(req: NextRequest) {
     if (existing.length > 0) {
       return NextResponse.json(
         { error: 'An organization already uses that email. Log in instead.' },
+        { status: 409 },
+      )
+    }
+    // Nor may an unproven email become an org for an address that already
+    // coaches somewhere (see emailBelongsToCoachOrOrg).
+    if (await emailBelongsToCoachOrOrg(email)) {
+      return NextResponse.json(
+        { error: 'This email already belongs to a coach or organization. Log in instead.' },
         { status: 409 },
       )
     }

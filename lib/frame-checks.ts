@@ -75,12 +75,18 @@ export async function runFrameChecks(frames: string[], mimes: string[], model: s
 5. Is the shooting elbow INSIDE the outer line of the shoulder, under the ball?
 6. Is ONE hand under the ball with the other hand only on its side?
 Answer JSON only: {"ball_behind_or_above_head":true|false,"elbow_flared_shoulder_height":true|false,"ball_beside_head":true|false,"ball_in_front_of_forehead":true|false,"elbow_inside_shoulder_line":true|false,"one_hand_under_ball":true|false}`
-  const spFrames = [R - 1, R - 2, R - 3].filter((i) => i >= 0)
+  const spFrames = [R - 1, R - 2, R - 3, R - 4].filter((i) => i >= 0)
   const spAns = (await Promise.all(spFrames.map((i) => ask(model, frames, mimes, [i], spQ, spKeys)))).filter((a): a is Ask => !!a)
   if (spAns.length > 0) {
     const need = Math.ceil(spAns.length / 2)
     const n = (f: (a: Ask) => boolean) => spAns.filter(f).length
-    const catapult = n((a) => a.ball_behind_or_above_head && a.elbow_flared_shoulder_height) >= need
+    // ANY frame, not a majority. On identical frames the cue answers vary
+    // run to run (e51: the catapult on shot-196 lit 1 of 3 runs; e50: 3 of
+    // 3), and a fault SEEN is strong evidence - E35 measured a low reading's
+    // specificity at ~98% and the E45 controls never lit both cues on any
+    // frame. Recall over precision here, because the two cues together have
+    // not produced a false positive yet.
+    const catapult = n((a) => a.ball_behind_or_above_head && a.elbow_flared_shoulder_height) >= 1
     const flared = !catapult && n((a) => a.ball_beside_head && a.elbow_flared_shoulder_height) >= need
     const clean = !catapult && !flared && n((a) => a.ball_in_front_of_forehead && a.elbow_inside_shoulder_line && a.one_hand_under_ball && !a.elbow_flared_shoulder_height) >= need
     fc.elbow = { catapult, flared, clean, frames: spFrames }

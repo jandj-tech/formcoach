@@ -1807,7 +1807,12 @@ export async function analyzeShot(
   const fc = FRAME_CHECKS && checkable && typeof releaseFrame === 'number'
     ? await runFrameChecks(frameBase64Array, frameMimeTypes, model, releaseFrame)
     : null
-  const passHeader = [anchor.header, fc ? frameCheckFacts(fc) : spc ? setPointFacts(spc) : ''].filter(Boolean).join('\n\n')
+  // Frame-check facts are NOT injected into the passes. e51: a Feet cap on
+  // shot-156 dragged seven unrelated criteria from 8 to 5 - the injected
+  // header haloed the whole grade (E34's shape). Bounds are applied in code
+  // on the merged result and the affected criterion's reasoning gets a
+  // one-line note, so score and text still agree.
+  const passHeader = [anchor.header, spc ? setPointFacts(spc) : ''].filter(Boolean).join('\n\n')
 
   const firstSet = withAnchors(framesForPass(0))
   const firstPass = await onePass(firstSet.frames, firstSet.mimes, ctx, { ...opts, model, anchorHeader: passHeader })
@@ -1969,8 +1974,14 @@ export async function analyzeShot(
       const c = merged.criteria.find((x) => x.id === id)
       if (!c || c.score === null) continue
       const before = c.score as number
-      if (b.cap !== undefined && before > b.cap) { c.score = b.cap; applied.push(`${b.criterion}: ${before} -> cap ${b.cap}`) }
-      if (b.floor !== undefined && before < b.floor) { c.score = b.floor; applied.push(`${b.criterion}: ${before} -> floor ${b.floor}`) }
+      if (b.cap !== undefined && before > b.cap) {
+        c.score = b.cap; applied.push(`${b.criterion}: ${before} -> cap ${b.cap}`)
+        c.reasoning = `Looking closely at the key frame, ${b.why}. ${c.reasoning ?? ''}`.trim()
+      }
+      if (b.floor !== undefined && before < b.floor) {
+        c.score = b.floor; applied.push(`${b.criterion}: ${before} -> floor ${b.floor}`)
+        c.reasoning = `Looking closely at the key frame, ${b.why}, which is what matters most here. ${c.reasoning ?? ''}`.trim()
+      }
     }
     if (fc.elbow?.catapult) {
       merged.critical_flags.ball_behind_head = true

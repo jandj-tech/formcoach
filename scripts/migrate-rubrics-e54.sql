@@ -86,7 +86,7 @@ WHERE name = 'Square to the Basket'
   AND (grading_notes IS NULL OR grading_notes NOT LIKE 'SQUARE RUBRIC v8%');
 
 UPDATE criteria
-SET grading_notes = 'POWER RUBRIC v7 — did the ball ride up on the legs, or did the arms lift it?
+SET grading_notes = 'POWER RUBRIC v8 — did the ball ride up on the legs, or did the arms lift it?
 
 THIS CRITERION SCORES ORDER, NOT DEPTH. How far the knees bend is a weak signal — strong and older shooters shoot from a shallow bend and are still leg-driven (Cabarkapa 2022: professionals show no depth difference by proficiency). What separates a leg-driven shot from an arm shot is WHEN things happen, and that is a comparison between frames, readable at any distance.
 
@@ -110,6 +110,8 @@ SCORE ANCHORS — land between anchors when the shot sits between them.
   2-3  — Two-hand chest shove: the ball never loads above the chin and both arms push it out together, hands mirrored on its sides.
   1    — No lower-body movement at any point and a two-hand shove.
 
+THE PARK COUNTS HERE TOO. If the ball sits still at the top — same place in the picture — for THREE or more frames while the body finishes rising, the legs delivered and then the arm pushed on its own. The coach scores that against power: at most 6, whatever the dip and the rise looked like. (shot-193: the ball parked at the set point for about six frames; the coach scored power 3-6, the grader 9.)
+
 ONE NAMED DEDUCTION: if the guide hand is still on the ball in the release frame and visibly pushing or steering it, take 1 off. The coach''s own case for this scored 6: the guide hand was doing work that should come from the legs.
 
 WHAT IS NOT A FAULT: a shallow dip in a strong shooter; a set shot with the heels down as long as the head rises through the shot; releasing at the top of the jump on a close shot; a ball held high in front of the forehead with ONE elbow under it and the body still rising — a high set point, scored 8-10 here; landing ahead of the take-off spot; the guide hand on the ball at the set point; both arms finishing high.
@@ -120,7 +122,7 @@ IF THE HEAD IS HIDDEN OR THE CLIP ENDS BEFORE THE RELEASE, score what you can se
 
 PLAYER-FACING WORDING: tell them to let the ball ride up on the legs — keep it low until the legs start, and let it go while the body is still rising. Never mention frames, letters, angles, studies, the check, flags, the expert or scoring bands in the reasoning.'
 WHERE name = 'Source of Shot Power'
-  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'POWER RUBRIC v7%');
+  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'POWER RUBRIC v8%');
 
 UPDATE criteria
 SET grading_notes = 'CONNECTED SHOT RUBRIC v2 — does the motion flow from the legs to the fingertips, or does it stop and restart?

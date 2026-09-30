@@ -24,6 +24,12 @@ import { createHash } from 'crypto'
 
 const arg = (n, d) => Number(process.argv.find((a, i) => process.argv[i - 1] === n) ?? d)
 const PER_BAND = arg('--per-band', 60)
+// --criterion "Square to the Basket": measure ONE criterion's comparator. The
+// audit's advice on Square was to establish that the model can see whatever
+// the expert scores BEFORE writing a fourth rubric for it; r has been <= 0.07
+// in every version, and E36's 87% was a pooled number that said nothing per
+// criterion.
+const CRITERION = process.argv.find((a, i) => process.argv[i - 1] === '--criterion') ?? null
 const CONC = arg('--conc', 6)
 const BANDS = [[0.5, 1.5], [1.6, 2.5], [2.6, 4.0], [4.1, 99]]
 const ABST = new Set(['Two Finger Release', 'Shot Arc', 'Ball Rotation'])
@@ -48,6 +54,7 @@ for (const f of fixtures) {
   }
 }
 const allPairs = []
+if (CRITERION) for (const k of Object.keys(byCriterion)) if (k !== CRITERION) delete byCriterion[k]
 for (const [name, list] of Object.entries(byCriterion))
   for (let i = 0; i < list.length; i++)
     for (let j = i + 1; j < list.length; j++)
@@ -70,7 +77,7 @@ const framesOf = (fx) =>
 // ensemble arms earlier in this project, and because the bare catch below used
 // to turn a dropped connection into a silent "unusable" — which does not fail
 // the run, it just quietly computes the accuracy off a biased subset.
-const CACHE_FILE = '.eval-arms/curve-cache.json'
+const CACHE_FILE = CRITERION ? `.eval-arms/curve-cache-${CRITERION.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.json` : '.eval-arms/curve-cache.json'
 let cache = {}
 try { cache = JSON.parse(readFileSync(CACHE_FILE, 'utf8')) } catch {}
 let cacheDirty = 0
@@ -142,7 +149,7 @@ function wilson(k, n) {
   return [(c - m) / d, (c + m) / d]
 }
 
-console.log(`model=${analysisModel()}  per-band=${PER_BAND}  concurrency=${CONC}\n`)
+console.log(`model=${analysisModel()}  per-band=${PER_BAND}  concurrency=${CONC}${CRITERION ? `  criterion="${CRITERION}"` : ''}\n`)
 const rows = []
 for (const [lo, hi] of BANDS) {
   const inBand = allPairs.filter((p) => p.gap >= lo && p.gap <= hi)

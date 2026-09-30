@@ -34,7 +34,10 @@ export default async function TeamMemberShotsPage({ params }: { params: Promise<
     SELECT s.id, s.token, s.created_at, a.overall_score
     FROM submissions s
     LEFT JOIN analyses a ON a.submission_id = s.id
-    WHERE s.user_id = ${player.id} OR s.email = ${player.email}
+    -- Only shots filed to this team. The old filter (user_id OR email, any
+    -- team) showed a coach the player's whole history — personal self-paid
+    -- shots and other teams' / other organizations' shots included.
+    WHERE s.user_id = ${player.id} AND s.team_id = ${session.teamId}
     ORDER BY s.created_at DESC
     LIMIT 100
   `) as unknown as Array<{ id: string; token: string; created_at: string; overall_score: string | number | null }>

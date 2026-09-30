@@ -11,9 +11,16 @@ export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => ({}))) as { playerId?: string }
   if (!body.playerId) return NextResponse.json({ error: 'Missing playerId' }, { status: 400 })
 
-  await db`
+  const rows = (await db`
     DELETE FROM pending_team_members
     WHERE id = ${body.playerId} AND team_id = ${session.teamId}
-  `
+    RETURNING id
+  `) as unknown as Array<{ id: string }>
+  if (rows.length === 0) {
+    return NextResponse.json(
+      { error: 'That player isn’t waiting to join any more — they may have joined already. Refresh the page to see the current roster.' },
+      { status: 404 },
+    )
+  }
   return NextResponse.json({ removed: true })
 }

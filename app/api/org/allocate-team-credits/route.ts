@@ -51,12 +51,12 @@ export async function POST(req: NextRequest) {
     })
 
     if (result === null) {
-      return NextResponse.json({ error: 'Not enough tokens in your balance' }, { status: 400 })
+      return NextResponse.json({ error: 'Not enough organization tokens' }, { status: 400 })
     }
 
     return NextResponse.json({ success: true, ...result })
   } catch (err) {
     console.error('[org/allocate-team-credits] failed:', err instanceof Error ? err.message : err)
-    return NextResponse.json({ error: 'Could not allocate credits' }, { status: 500 })
+    return NextResponse.json({ error: 'Could not move tokens to this team' }, { status: 500 })
   }
 }

@@ -39,6 +39,8 @@ export interface RateLimitResult {
 
 /**
  * Records a hit against `bucket` and reports whether the caller is over budget.
+ * `cost` lets one call spend several units at once (e.g. one email send to 40
+ * recipients against a recipients-per-hour budget); it defaults to 1.
  *
  * Fails OPEN on a database error, deliberately: a limiter that is itself broken
  * must not take down login for everyone. Every endpoint it guards has its own
@@ -48,7 +50,8 @@ export interface RateLimitResult {
 export async function rateLimit(
   bucket: string,
   limit: number,
-  windowSeconds: number
+  windowSeconds: number,
+  cost = 1
 ): Promise<RateLimitResult> {
   try {
     await ensureTable()
@@ -61,11 +64,12 @@ export async function rateLimit(
         AND created_at > NOW() - (${windowSeconds} * INTERVAL '1 second')
     `) as unknown as [{ hits: number }]
 
-    if (row.hits >= limit) {
+    const units = Math.max(1, Math.floor(cost))
+    if (row.hits + units > limit) {
       return { ok: false, retryAfterSeconds: windowSeconds }
     }
 
-    await db`INSERT INTO rate_limit_hits (bucket) VALUES (${key})`
+    await db`INSERT INTO rate_limit_hits (bucket) SELECT ${key} FROM generate_series(1, ${units})`
 
     // Opportunistic cleanup so the table cannot grow without bound. Runs on
     // roughly 1% of calls; nothing depends on rows older than a day.
@@ -85,7 +89,31 @@ export async function rateLimitByIp(
   req: NextRequest,
   route: string,
   limit: number,
-  windowSeconds: number
+  windowSeconds: number,
+  cost = 1
 ): Promise<RateLimitResult> {
-  return rateLimit(`${route}:${clientIp(req)}`, limit, windowSeconds)
+  return rateLimit(`${route}:${clientIp(req)}`, limit, windowSeconds, cost)
+}
+
+/**
+ * Credential routes (login): the tight limit is per ACCOUNT, so brute force on
+ * one email stops at `perEmail` attempts, while a gym full of coaches or
+ * parents on one Wi-Fi (one IP) can all sign in. A looser per-IP ceiling still
+ * caps one address spraying many accounts.
+ *
+ * Also used by any route keyed on an email (registration, password reset):
+ * pass `windowSeconds` to change the default 15-minute window.
+ */
+export async function rateLimitLogin(
+  req: NextRequest,
+  route: string,
+  email: string | null | undefined,
+  opts: { perEmail?: number; perIp?: number; windowSeconds?: number } = {}
+): Promise<RateLimitResult> {
+  const windowSeconds = opts.windowSeconds ?? 900
+  const byIp = await rateLimit(`${route}:${clientIp(req)}`, opts.perIp ?? 60, windowSeconds)
+  if (!byIp.ok) return byIp
+  const e = (email ?? '').toString().trim().toLowerCase()
+  if (!e) return byIp
+  return rateLimit(`${route}:email:${e}`, opts.perEmail ?? 10, windowSeconds)
 }

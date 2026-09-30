@@ -31,7 +31,7 @@ export default function Section({
           {tip && <InfoTip label={tipLabel ?? `About ${title}`} align="left">{tip}</InfoTip>}
         </span>
         <span className="flex items-center gap-2 text-sm text-gray-600 dark:text-chalk-dim min-w-0">
-          {summary && <span className="truncate max-w-[12rem]">{summary}</span>}
+          {summary && <span className="truncate max-w-[12rem] sm:max-w-[22rem]">{summary}</span>}
           <svg
             className="w-4 h-4 text-gray-400 dark:text-chalk-dim transition-transform group-open:rotate-180 shrink-0"
             viewBox="0 0 20 20" fill="currentColor" aria-hidden

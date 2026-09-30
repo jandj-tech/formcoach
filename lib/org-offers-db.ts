@@ -190,8 +190,8 @@ export async function getOrgSellingState(orgId: string): Promise<OrgSellingState
 }
 
 /**
- * The offers a PLAYER may buy right now: active rows of an entitled org whose
- * selling hasn't been paused. Anything else returns [] so a results page can
+ * The offers a PLAYER may buy right now: active ball/class rows of an
+ * entitled org whose selling hasn't been paused. Anything else returns [] so a results page can
  * never show a dead-end buy button.
  */
 export async function getPurchasableOffers(orgId: string): Promise<OrgOffer[]> {
@@ -203,6 +203,9 @@ export async function getPurchasableOffers(orgId: string): Promise<OrgOffer[]> {
     FROM org_offers o
     JOIN organizations org ON org.id = o.org_id
     WHERE o.org_id = ${orgId} AND o.active = TRUE
+      -- Breakdown-only offers sell nothing now (team uploads always show the
+      -- full report); see isBreakdownOnlyOffer in lib/org-offers.ts.
+      AND (o.includes_ball OR o.includes_course)
       AND org.selling_disabled = FALSE
       AND org.subscription_status = ANY(${[...ENTITLED_STATUSES]}::text[])
     ORDER BY o.sort_order, o.created_at

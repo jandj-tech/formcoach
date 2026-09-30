@@ -32,6 +32,7 @@ async function resolveRecipients(audience: Audience, singleEmail?: string): Prom
   // copy of "unsubscribed_at IS NULL" and none of them knew about bounces.
   const sendable = db`
     el.unsubscribed_at IS NULL
+    AND el.marketing_unsubscribed_at IS NULL
     AND el.bounced_at IS NULL
     AND el.complained_at IS NULL
   `

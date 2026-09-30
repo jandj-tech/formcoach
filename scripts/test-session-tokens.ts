@@ -40,12 +40,15 @@ const COACH = 'coach@example.test'
 
 async function main() {
   // ── The happy paths still work ────────────────────────────────────
-  const teamToken = await signTeamSession({ teamId: TEAM_A, adminEmail: COACH })
+  const teamToken = await signTeamSession({ teamId: TEAM_A, adminEmail: COACH }, '$2a$10$fakehashfortests')
   const teamSession = await verifyTeamSession(teamToken)
   check('a real team session verifies', teamSession?.teamId === TEAM_A)
   check('and carries its coach email', teamSession?.adminEmail === COACH)
 
-  const choiceToken = await signTeamChoice(COACH, [TEAM_A, TEAM_B])
+  const choiceToken = await signTeamChoice(COACH, [
+    { teamId: TEAM_A, email: COACH, passwordHash: '$2a$10$fakehashfortests' },
+    { teamId: TEAM_B, email: COACH, passwordHash: '$2a$10$fakehashfortests' },
+  ])
   const choice = await verifyTeamChoice(choiceToken)
   check('a real team-choice token verifies', choice?.teamIds.length === 2)
   check('and names the coach', choice?.adminEmail === COACH)
@@ -66,8 +69,8 @@ async function main() {
     (await verifyTeamChoice(teamToken)) === null,
   )
 
-  const playerToken = await signSession({ userId: 'user-1', email: COACH })
-  const orgToken = await signOrgSession({ orgId: 'org-1', adminEmail: COACH })
+  const playerToken = await signSession({ userId: 'user-1', email: COACH }, null)
+  const orgToken = await signOrgSession({ orgId: 'org-1', adminEmail: COACH }, null)
 
   check('a player token is NOT a team session', (await verifyTeamSession(playerToken)) === null)
   check('an org token is NOT a team session', (await verifyTeamSession(orgToken)) === null)
@@ -107,6 +110,18 @@ async function main() {
     JSON.stringify({ teamId: TEAM_A, adminEmail: COACH, kind: 'team' }),
   ).toString('base64url')}.`
   check('an alg:none token is rejected', (await verifyTeamSession(unsigned)) === null)
+
+  // ── Credential binding ────────────────────────────────────────────
+  // A token minted before credential binding (no `cv`) is rejected outright:
+  // otherwise a password reset could never end it. (The DB half — `cv` vs the
+  // row's current hash — is exercised against a live DB, not here.)
+  const legacy = await new SignJWT({ teamId: TEAM_A, adminEmail: COACH, kind: 'team' })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime('1h')
+    .sign(new TextEncoder().encode(process.env.JWT_SECRET!))
+  check('a legacy team session without cv is rejected', (await verifyTeamSession(legacy)) === null)
+  check('a new team session carries cv', typeof teamSession?.cv === 'string' && teamSession.cv.length === 16)
 
   // ── Expiry ────────────────────────────────────────────────────────
   const expired = await new SignJWT({ teamId: TEAM_A, adminEmail: COACH, kind: 'team' })

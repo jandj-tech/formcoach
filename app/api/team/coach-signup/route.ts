@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
-import { signTeamSession, teamSessionCookieOptions } from '@/lib/team-auth'
+import { inviteAcceptPasswordHash, recordInviteInboxProof, signTeamSession, teamSessionCookieOptions } from '@/lib/team-auth'
 import { BCRYPT_COST } from '@/lib/password'
 
 // A newly-invited coach sets their password via the signup link, which logs
@@ -24,12 +23,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'This signup link is invalid or already used.' }, { status: 404 })
     }
 
-    const hash = await bcrypt.hash(password, BCRYPT_COST)
+    // The password is set on THIS invite row only — never on the email's
+    // other rows — so a new password is always accepted (a stranger's
+    // self-registered team under this address cannot block the real coach),
+    // and a shared link still cannot change the coach's other teams. Typing
+    // the password already used elsewhere reuses that credential.
+    const hash = await inviteAcceptPasswordHash(coach.email, password, BCRYPT_COST, { coachId: coach.id })
     await db`
       UPDATE team_coaches SET password_hash = ${hash}, invite_token = NULL WHERE id = ${coach.id}
     `
+    // Inbox proof only when the link went solely to this inbox (the inviter
+    // was never shown it — see recordInviteInboxProof).
+    await recordInviteInboxProof({ coachId: coach.id }, hash)
 
-    const sessionToken = await signTeamSession({ teamId: coach.team_id, adminEmail: coach.email })
+    const sessionToken = await signTeamSession({ teamId: coach.team_id, adminEmail: coach.email }, hash)
     const res = NextResponse.json({ success: true })
     res.cookies.set(teamSessionCookieOptions(sessionToken))
     return res

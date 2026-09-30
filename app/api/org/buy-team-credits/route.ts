@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
         price_data: {
           currency: currencyForRequest(req),
           unit_amount: unitAmount,
-          product_data: { name: `Coach upload credits — ${team.name}` },
+          product_data: { name: `Team tokens — ${team.name}` },
         },
       }],
       metadata: { plan: 'team-credits', teamId: team.id, quantity: String(quantity) },

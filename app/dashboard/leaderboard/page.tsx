@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getSession } from '@/lib/auth'
 import { db } from '@/lib/db'
+import { playerTeamBoard, type ImprovedRow } from '@/lib/team-shots'
 import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
 import PrintButton from '@/components/PrintButton'
@@ -53,53 +54,33 @@ export default async function TeamLeaderboardPage({
   // Not on a team — nothing to rank, send them back to the dashboard.
   if (!team) redirect('/dashboard')
 
-  // The leaderboard combines two kinds of shots: players who joined with an
-  // account (matched by submissions.user_id) and players a coach uploaded for
-  // by name (matched by submissions.team_player_id).
+  // Only shots filed to this team, each counted once (lib/team-shots.ts) — a
+  // teammate's personal or other-team shots are not this team's leaderboard.
+  // playerTeamBoard is the player-facing reader: when the coach keeps the
+  // board private it returns only this player's own row, so teammates' names
+  // and scores never reach this page.
   let leaderboard: LeaderboardRow[] = []
+  let mostImproved: ImprovedRow[] = []
+  let hidden = false
   try {
-    leaderboard = (await db`
-      WITH shots AS (
-        SELECT
-          u.id::text AS player_id,
-          COALESCE(NULLIF(tm.first_name, ''), u.email) AS name,
-          tm.last_name_initial,
-          a.overall_score,
-          s.id AS sid,
-          'member' AS kind
-        FROM team_memberships tm
-        JOIN users u ON u.id = tm.user_id
-        JOIN submissions s ON s.user_id = u.id
-        JOIN analyses a ON a.submission_id = s.id
-        WHERE tm.team_id = ${team.id} AND s.status = 'complete'
-        UNION ALL
-        SELECT
-          tp.id::text AS player_id,
-          tp.first_name AS name,
-          tp.last_name_initial,
-          a.overall_score,
-          s.id AS sid,
-          'player' AS kind
-        FROM team_players tp
-        JOIN submissions s ON s.team_player_id = tp.id AND s.team_id = tp.team_id
-        JOIN analyses a ON a.submission_id = s.id
-        WHERE tp.team_id = ${team.id} AND s.status = 'complete'
-      )
-      SELECT
-        player_id AS id,
-        name AS first_name,
-        last_name_initial,
-        kind,
-        MAX(overall_score) AS best_score,
-        ROUND(AVG(overall_score)::numeric, 1) AS avg_score,
-        COUNT(sid)::int AS upload_count
-      FROM shots
-      GROUP BY player_id, name, last_name_initial, kind
-      ORDER BY best_score DESC
-    `) as unknown as LeaderboardRow[]
+    const board = await playerTeamBoard(team.id, session.userId)
+    hidden = board.hidden
+    leaderboard = board.leaderboard
+    mostImproved = board.mostImproved
   } catch (err) {
     console.error('[dashboard/leaderboard] leaderboard query failed:', err)
   }
+
+  // Private view: the player's own numbers only.
+  const mine = hidden ? leaderboard[0] : undefined
+  const myImprovement = hidden ? mostImproved[0] : undefined
+  const fmt = (v: number | string | null | undefined) => {
+    const n = Number(v)
+    return v === null || v === undefined || !Number.isFinite(n) ? '—' : (Math.round(n * 10) / 10).toString()
+  }
+  const improvementDelta = myImprovement
+    ? Math.round((Number(myImprovement.latest_score) - Number(myImprovement.first_score)) * 10) / 10
+    : null
 
   // BIG team name, last word in the ember gradient — same hero treatment as
   // the team hub this page is linked from.
@@ -118,7 +99,9 @@ export default async function TeamLeaderboardPage({
             <Link href="/team" className="text-sm text-ember-400 hover:text-ember-500 font-medium print:hidden">
               ← Back to your team
             </Link>
-            <p className="eyebrow text-ember-400 select-none mt-4 print:text-black dark:print:text-chalk">Leaderboard</p>
+            <p className="eyebrow text-ember-400 select-none mt-4 print:text-black dark:print:text-chalk">
+              {hidden ? 'Your results' : 'Leaderboard'}
+            </p>
             {/* One line, always — long team names render smaller so the whole
                 name still fits, with an ellipsis as the last resort. */}
             <h1
@@ -132,13 +115,55 @@ export default async function TeamLeaderboardPage({
               <span className="text-gradient-ember print:text-black dark:print:text-chalk print:[background:none]">{lastWord}</span>
             </h1>
             <p className="text-chalk-dim text-sm mt-3 print:text-gray-500 dark:print:text-chalk-dim">
-              Every player ranked by their best shot score.
+              {hidden
+                ? 'Your coach keeps the leaderboard private.'
+                : 'Every player ranked by their best shot score.'}
             </p>
           </div>
-          {leaderboard.length > 0 && <PrintButton label="Print" />}
+          {!hidden && leaderboard.length > 0 && <PrintButton label="Print" />}
         </div>
 
-        {leaderboard.length === 0 ? (
+        {hidden ? (
+          !mine ? (
+            <div className="text-center py-12 text-chalk-dim border-2 border-dashed border-courtline rounded-2xl">
+              <p className="font-semibold text-chalk">No shots on this team yet</p>
+              <p className="text-sm mt-1">Your scores show up here once you analyze a shot with this team.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { label: 'Best score', value: fmt(mine.best_score) },
+                  { label: 'Average', value: fmt(mine.avg_score) },
+                  { label: mine.upload_count === 1 ? 'Shot' : 'Shots', value: String(mine.upload_count) },
+                ].map(stat => (
+                  <div key={stat.label} className="bg-ink-900 border border-courtline rounded-2xl px-4 py-5 text-center">
+                    <p className="font-display font-black text-3xl text-chalk tabular-nums">{stat.value}</p>
+                    <p className="text-xs uppercase tracking-wide text-chalk-dim mt-1">{stat.label}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="bg-ink-900 border border-courtline rounded-2xl px-5 py-4">
+                <p className="text-xs uppercase tracking-wide text-chalk-dim">Improvement</p>
+                {myImprovement && improvementDelta !== null ? (
+                  <p className="text-chalk mt-1">
+                    First shot <span className="font-semibold tabular-nums">{fmt(myImprovement.first_score)}</span>
+                    {' → '}latest <span className="font-semibold tabular-nums">{fmt(myImprovement.latest_score)}</span>
+                    <span
+                      className={`ml-2 font-bold tabular-nums ${
+                        improvementDelta > 0 ? 'text-green-400' : improvementDelta < 0 ? 'text-red-400' : 'text-chalk-dim'
+                      }`}
+                    >
+                      {improvementDelta > 0 ? '+' : ''}{improvementDelta}
+                    </span>
+                  </p>
+                ) : (
+                  <p className="text-chalk-dim text-sm mt-1">Analyze a second shot to see how much you&apos;ve improved.</p>
+                )}
+              </div>
+            </div>
+          )
+        ) : leaderboard.length === 0 ? (
           <div className="text-center py-12 text-chalk-dim border-2 border-dashed border-courtline rounded-2xl">
             <p className="font-semibold text-chalk">No shots analyzed yet</p>
             <p className="text-sm mt-1">Scores show up here once teammates analyze their shots.</p>

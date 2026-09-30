@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getTeamSessionFromRequest } from '@/lib/team-auth'
+import { getTeamSessionFromRequest, provenCoachCreditsEmail } from '@/lib/team-auth'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { db } from '@/lib/db'
+import { teamLeaderboard } from '@/lib/team-shots'
+import { teamResultsRoster } from '@/lib/org-results'
 
 // One batch call that renders the whole mobile Coach Console for a single team:
 // the spendable pool, the roster with each account-player's token balance and
@@ -48,8 +50,10 @@ export async function GET(req: NextRequest) {
     }
 
     const [team] = (await db`
-      SELECT id, name, access_code FROM teams WHERE id = ${teamId}
-    `) as unknown as [{ id: string; name: string; access_code: string | null } | undefined]
+      SELECT id, name, access_code, leaderboard_visibility FROM teams WHERE id = ${teamId}
+    `) as unknown as [{
+      id: string; name: string; access_code: string | null; leaderboard_visibility: string | null
+    } | undefined]
     if (!team) return NextResponse.json({ error: 'Team not found' }, { status: 404 })
 
     // Spendable pool. For a coach: personal coach_credits (default source) plus
@@ -64,10 +68,15 @@ export async function GET(req: NextRequest) {
       `) as unknown as [{ credits: number } | undefined]
       teamCredits = tc?.credits ?? 0
       if (teamSession) {
-        const [cc] = (await db`
-          SELECT COALESCE(credits, 0)::int AS credits
-          FROM coach_credits WHERE LOWER(email) = ${teamSession.adminEmail.toLowerCase()}
-        `) as unknown as [{ credits: number } | undefined]
+        // Only a session that proves its email sees (or can spend) that
+        // email's personal tokens — see provenCoachCreditsEmail.
+        const proven = await provenCoachCreditsEmail(teamSession, await getOrgSessionFromRequest(req))
+        const [cc] = proven
+          ? ((await db`
+              SELECT COALESCE(credits, 0)::int AS credits
+              FROM coach_credits WHERE LOWER(email) = ${proven}
+            `) as unknown as [{ credits: number } | undefined])
+          : [undefined]
         coachCredits = cc?.credits ?? 0
       } else {
         const [org] = (await db`
@@ -81,7 +90,8 @@ export async function GET(req: NextRequest) {
 
     // Account players (team_memberships) — the only players who can RECEIVE
     // credits (they have a users row with analysis_tokens). Aggregates match
-    // the coach dashboard: a member's shots are all their completed submissions.
+    // the coach dashboard: only shots filed to THIS team (lib/team-shots.ts) —
+    // never the player's personal or other-team history.
     const members = (await db`
       SELECT
         u.id::text AS player_id,
@@ -94,7 +104,7 @@ export async function GET(req: NextRequest) {
         MAX(s.created_at) AS last_upload_at
       FROM team_memberships tm
       JOIN users u ON u.id = tm.user_id
-      LEFT JOIN submissions s ON s.user_id = u.id AND s.status = 'complete'
+      LEFT JOIN submissions s ON s.user_id = u.id AND s.team_id = tm.team_id AND s.status = 'complete'
       LEFT JOIN analyses a ON a.submission_id = s.id
       WHERE tm.team_id = ${teamId}
       GROUP BY u.id, tm.first_name, tm.last_name_initial, u.analysis_tokens
@@ -105,27 +115,55 @@ export async function GET(req: NextRequest) {
       avg_score: number | string | null; last_upload_at: string | Date | null
     }>
 
-    // Coach-added players (team_players) have no account, so they cannot hold
-    // or receive credits — surfaced as "not joined" so the coach can still see
-    // them and is nudged to invite them.
-    const unjoined = (await db`
-      SELECT
-        tp.id::text AS player_id, tp.first_name, tp.last_name_initial,
-        COUNT(s.id)::int AS shots,
-        MAX(a.overall_score) AS best_score,
-        ROUND(AVG(a.overall_score)::numeric, 1) AS avg_score,
-        MAX(s.created_at) AS last_upload_at
-      FROM team_players tp
-      LEFT JOIN submissions s ON s.team_player_id = tp.id AND s.team_id = tp.team_id AND s.status = 'complete'
-      LEFT JOIN analyses a ON a.submission_id = s.id
-      WHERE tp.team_id = ${teamId}
-      GROUP BY tp.id, tp.first_name, tp.last_name_initial
-      ORDER BY tp.first_name ASC NULLS LAST
-    `) as unknown as Array<{
-      player_id: string; first_name: string; last_name_initial: string
+    // "Hasn't joined yet": players with no account, from the same roster the
+    // website's Results tab and email composer use (lib/org-results.ts) —
+    // name-only invites (pending_team_members) plus name-only rows
+    // (team_players) with no invite, where an invite and the row its uploads
+    // are filed on count as ONE player. A name-only row that has since joined
+    // with an account (a same-name member, no unowned shot) is not listed; it
+    // shows once, as the member above. This used to list every team_players
+    // row, which showed members twice and never showed name-only invites.
+    const unjoinedPlayers = (await teamResultsRoster(teamId)).filter((p) => p.kind !== 'member')
+    const shotRowIds = [...new Set(unjoinedPlayers.map((p) => p.teamPlayerId).filter((id): id is string => !!id))]
+    const shotStats = new Map<string, {
       shots: number; best_score: number | string | null
       avg_score: number | string | null; last_upload_at: string | Date | null
-    }>
+    }>()
+    if (shotRowIds.length) {
+      const rows = (await db`
+        SELECT
+          s.team_player_id::text AS team_player_id,
+          COUNT(s.id)::int AS shots,
+          MAX(a.overall_score) AS best_score,
+          ROUND(AVG(a.overall_score)::numeric, 1) AS avg_score,
+          MAX(s.created_at) AS last_upload_at
+        FROM submissions s
+        LEFT JOIN analyses a ON a.submission_id = s.id
+        WHERE s.team_player_id = ANY(${shotRowIds}::uuid[])
+          AND s.team_id = ${teamId}
+          AND s.status = 'complete'
+          -- Shots that carry an account's user id are that account's (counted
+          -- with the member), not the name-only row's.
+          AND s.user_id IS NULL
+        GROUP BY s.team_player_id
+      `) as unknown as Array<{
+        team_player_id: string; shots: number; best_score: number | string | null
+        avg_score: number | string | null; last_upload_at: string | Date | null
+      }>
+      for (const r of rows) shotStats.set(r.team_player_id, r)
+    }
+    const unjoined = unjoinedPlayers.map((p) => {
+      const st = p.teamPlayerId ? shotStats.get(p.teamPlayerId) : undefined
+      return {
+        // The invite's id for an invite, else the name-only row's id.
+        player_id: (p.pendingId ?? p.teamPlayerId)!,
+        name: p.name,
+        shots: st?.shots ?? 0,
+        best_score: st?.best_score ?? null,
+        avg_score: st?.avg_score ?? null,
+        last_upload_at: st?.last_upload_at ?? null,
+      }
+    })
 
     const roster = [
       ...members.map((m) => ({
@@ -141,7 +179,7 @@ export async function GET(req: NextRequest) {
       ...unjoined.map((p) => ({
         playerId: p.player_id,
         kind: 'unjoined' as const,
-        name: displayName(p.first_name, p.last_name_initial),
+        name: p.name,
         credits: null,
         shots: p.shots,
         bestScore: p.best_score != null ? Number(p.best_score) : null,
@@ -152,35 +190,7 @@ export async function GET(req: NextRequest) {
 
     // Leaderboard + most-improved across both player populations (same combined
     // shape as the coach dashboard), so the console is self-sufficient.
-    const leaderboard = (await db`
-      WITH shots AS (
-        SELECT u.id::text AS player_id,
-               COALESCE(NULLIF(tm.first_name, ''), u.email) AS first_name,
-               COALESCE(tm.last_name_initial, '') AS last_name_initial,
-               a.overall_score, s.id AS sid
-        FROM team_memberships tm
-        JOIN users u ON u.id = tm.user_id
-        JOIN submissions s ON s.user_id = u.id
-        JOIN analyses a ON a.submission_id = s.id
-        WHERE tm.team_id = ${teamId} AND s.status = 'complete'
-        UNION ALL
-        SELECT tp.id::text AS player_id, tp.first_name, tp.last_name_initial, a.overall_score, s.id AS sid
-        FROM team_players tp
-        JOIN submissions s ON s.team_player_id = tp.id AND s.team_id = tp.team_id
-        JOIN analyses a ON a.submission_id = s.id
-        WHERE tp.team_id = ${teamId} AND s.status = 'complete'
-      )
-      SELECT player_id AS id, first_name, last_name_initial,
-             MAX(overall_score) AS best_score,
-             ROUND(AVG(overall_score)::numeric, 1) AS avg_score,
-             COUNT(sid)::int AS upload_count
-      FROM shots
-      GROUP BY player_id, first_name, last_name_initial
-      ORDER BY best_score DESC
-    `) as unknown as Array<{
-      id: string; first_name: string; last_name_initial: string
-      best_score: number | string; avg_score: number | string | null; upload_count: number
-    }>
+    const leaderboard = await teamLeaderboard(teamId)
 
     return NextResponse.json({
       // accessCode powers the app's "Invite players" share sheet: the link it
@@ -188,6 +198,9 @@ export async function GET(req: NextRequest) {
       // dashboard hands out. Without it the app would have to make the coach
       // read the code off the website and retype it.
       team: { id: team.id, name: team.name, accessCode: team.access_code, role: 'coach' },
+      // Whether PLAYERS see the ranked board ('team') or only their own row
+      // ('hidden'). Coaches always get the full leaderboard below.
+      leaderboardVisibility: team.leaderboard_visibility === 'hidden' ? 'hidden' : 'team',
       pool: {
         type: teamSession ? 'coach' : 'org',
         coachCredits,

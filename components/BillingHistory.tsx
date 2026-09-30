@@ -21,9 +21,9 @@ function kindLabel(kind: string | null): string | null {
     case 'analysis_tokens':
       return 'Tokens'
     case 'team_credits':
-      return 'Team credits'
+      return 'Team tokens'
     case 'coach_credits':
-      return 'Coach credits'
+      return 'Coach tokens'
     case 'player_tokens':
       return 'Player tokens'
     case 'class_package':
@@ -99,7 +99,7 @@ export default function BillingHistory({
         <ReceiptIcon className="w-6 h-6 text-gray-300 dark:text-chalk-dim mx-auto" aria-hidden />
         <p className="text-sm font-medium text-gray-600 dark:text-chalk-dim mt-2">No purchases on this account yet</p>
         <p className="text-xs text-gray-400 dark:text-chalk-dim mt-1 max-w-sm mx-auto">
-          This is where your purchase history lives — every token, credit,
+          This is where your purchase history lives — every token,
           class-package, and shop checkout shows up here automatically, with
           the date, amount, and payment status.
         </p>

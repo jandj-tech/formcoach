@@ -12,7 +12,9 @@ import { rateLimitByIp } from '@/lib/rate-limit'
  * the visitor just made, so every error answers 204 like a success.
  */
 export async function POST(req: NextRequest) {
-  const limit = await rateLimitByIp(req, 'consent', 30, 3600)
+  // Per IP only (nothing identifies the visitor); loose enough for a school or
+  // gym network where hundreds of visitors share one address.
+  const limit = await rateLimitByIp(req, 'consent', 120, 3600)
   if (!limit.ok) return new NextResponse(null, { status: 204 })
 
   try {

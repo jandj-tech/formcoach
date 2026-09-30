@@ -12,9 +12,13 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { coachEmail, quantity } = await req.json()
-    const email = String(coachEmail || '').toLowerCase().trim()
-    const qty = typeof quantity === 'number' ? Math.floor(quantity) : 0
+    // The web Tokens panel and the app both send { coachEmail, quantity };
+    // { email, amount } is accepted too so a picker built on the
+    // /api/org/teams coach list can send its fields as-is.
+    const body = (await req.json().catch(() => ({}))) as Record<string, unknown>
+    const email = String(body.coachEmail || body.email || '').toLowerCase().trim()
+    const rawQty = body.quantity ?? body.amount
+    const qty = typeof rawQty === 'number' && Number.isFinite(rawQty) ? Math.floor(rawQty) : 0
     if (!email) {
       return NextResponse.json({ error: 'Coach is required' }, { status: 400 })
     }
@@ -35,27 +39,30 @@ export async function POST(req: NextRequest) {
     }
 
     // Deduct from the org balance and credit the coach atomically.
-    const remaining = await db.begin(async (sql) => {
+    const result = await db.begin(async (sql) => {
       const updated = (await sql`
         UPDATE organizations SET token_balance = token_balance - ${qty}
         WHERE id = ${session.orgId} AND COALESCE(token_balance, 0) >= ${qty}
         RETURNING token_balance
       `) as unknown as Array<{ token_balance: number }>
       if (updated.length === 0) return null
-      await sql`
+      const [coach] = (await sql`
         INSERT INTO coach_credits (email, credits) VALUES (${email}, ${qty})
         ON CONFLICT (email) DO UPDATE SET credits = coach_credits.credits + ${qty}
-      `
-      return updated[0].token_balance
+        RETURNING credits
+      `) as unknown as [{ credits: number }]
+      return { tokenBalance: updated[0].token_balance, coachCredits: coach.credits }
     })
 
-    if (remaining === null) {
-      return NextResponse.json({ error: 'Not enough tokens in your balance' }, { status: 400 })
+    if (result === null) {
+      return NextResponse.json({ error: 'Not enough organization tokens' }, { status: 400 })
     }
 
-    return NextResponse.json({ success: true, tokenBalance: remaining })
+    // tokenBalance = the org's remaining tokens; coachCredits = that coach's new
+    // personal balance (additive — older clients read only tokenBalance).
+    return NextResponse.json({ success: true, tokenBalance: result.tokenBalance, coachCredits: result.coachCredits, coachEmail: email })
   } catch (err) {
     console.error('Org give-coach-credits error:', err)
-    return NextResponse.json({ error: 'Could not give credits' }, { status: 500 })
+    return NextResponse.json({ error: 'Could not give tokens' }, { status: 500 })
   }
 }

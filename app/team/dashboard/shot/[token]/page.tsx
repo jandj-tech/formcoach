@@ -28,6 +28,10 @@ export default async function CoachShotPage({ params }: { params: Promise<{ toke
     SELECT s.id, s.token, s.created_at, s.is_free_preview
     FROM submissions s
     WHERE s.token = ${token}
+      -- Filed to this team, and the player is still on its roster. Roster
+      -- membership alone let a coach open (and annotate) any shot of a
+      -- linked player — personal or another team's.
+      AND s.team_id = ${session.teamId}
       AND (
         EXISTS (
           SELECT 1 FROM team_players tp

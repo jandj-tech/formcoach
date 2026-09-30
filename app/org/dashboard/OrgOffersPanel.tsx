@@ -4,11 +4,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { backendButton } from '@/components/backend/button-styles'
 import { useIsInApp } from '@/lib/useIsInApp'
 import { copyToClipboard } from '@/lib/copy'
-import { TIER_ORDER, TIER_LABELS, TIER_DESCRIPTIONS, tierRank, type VisibilityTier } from '@/lib/result-visibility'
 import {
   applyShareRule,
   effectivePriceCents,
   hasAnchorPrice,
+  isBreakdownOnlyOffer,
   offerUsd,
   shareRuleFor,
   shareRuleLabel,
@@ -16,9 +16,11 @@ import {
 } from '@/lib/org-offers'
 import { CopyIcon, ExternalLinkIcon, PencilIcon, PlusIcon, Trash2Icon } from 'lucide-react'
 
-// The Offers & Sales tab. One status bar, then three sections picked from a
-// segmented control — Offers · What players see · Sales & earnings — so the
-// page never shows more than one job at a time. Offers stay collapsed to a
+// The Offers & Sales tab. One status bar, then two sections picked from a
+// segmented control — Offers · Sales & earnings — so the page never shows
+// more than one job at a time. There is no "What players see" choice: every
+// report a team or org uploads shows the player the full report, so offers
+// sell real things only (the class, the ball, bundles of them). Offers stay collapsed to a
 // single summary row until Edit is pressed.
 //
 // Money is never hidden: every offer row shows "Families pay · LearnHoops
@@ -31,18 +33,13 @@ const INPUT =
   'w-full border border-gray-200 dark:border-courtline rounded-xl px-3 py-2 text-sm text-gray-900 dark:text-chalk dark:bg-ink-900 placeholder:text-gray-400 focus:outline-none focus:border-ember-500'
 const LABEL = 'block text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-chalk-dim mb-1'
 
-type Section = 'offers' | 'visibility' | 'sales'
+type Section = 'offers' | 'sales'
 
 interface Selling {
   enabled: boolean
   entitled: boolean
   disabled: boolean
   platformSharePercent: number
-}
-
-interface Settings {
-  freeTier: VisibilityTier
-  unlockTier: VisibilityTier
 }
 
 interface OffersResponse {
@@ -103,12 +100,11 @@ async function jsonFetch<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 async function fetchAll() {
-  const [o, s, sales] = await Promise.all([
+  const [o, sales] = await Promise.all([
     jsonFetch<OffersResponse>('/api/org/offers'),
-    jsonFetch<{ settings: Settings }>('/api/org/result-settings'),
     jsonFetch<{ sales: SaleRow[]; totals: Totals[] }>('/api/org/sales'),
   ])
-  return { ...o, settings: s.settings, sales: sales.sales, totals: sales.totals }
+  return { ...o, sales: sales.sales, totals: sales.totals }
 }
 
 /** "Families pay $300 · LearnHoops keeps $100 · You get $200" for one offer. */
@@ -208,11 +204,10 @@ function SectionPicker({
 }) {
   const items: Array<{ id: Section; label: string; hint: string; badge?: number }> = [
     { id: 'offers', label: 'Offers', hint: 'What families can buy', badge: counts.on },
-    { id: 'visibility', label: 'What players see', hint: 'Free vs. after buying' },
     { id: 'sales', label: 'Sales & earnings', hint: 'Who paid, what you get', badge: counts.sales },
   ]
   return (
-    <div role="tablist" aria-label="Offers & Sales sections" className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+    <div role="tablist" aria-label="Offers & Sales sections" className="grid grid-cols-1 sm:grid-cols-2 gap-2">
       {items.map((it) => {
         const active = value === it.id
         return (
@@ -243,145 +238,6 @@ function SectionPicker({
         )
       })}
     </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// What players see
-// ---------------------------------------------------------------------------
-
-function TierRadioGroup({
-  title,
-  hint,
-  value,
-  onChange,
-  disabledBelow,
-}: {
-  title: string
-  hint: string
-  value: VisibilityTier
-  onChange: (t: VisibilityTier) => void
-  disabledBelow?: VisibilityTier
-}) {
-  return (
-    <fieldset className="space-y-2">
-      <legend className="text-sm font-black text-black dark:text-chalk">{title}</legend>
-      <p className="text-xs text-gray-500 dark:text-chalk-dim -mt-1 mb-2">{hint}</p>
-      {TIER_ORDER.map((t) => {
-        const disabled = disabledBelow ? tierRank(t) < tierRank(disabledBelow) : false
-        return (
-          <label
-            key={t}
-            className={`flex items-start gap-3 rounded-xl border px-3 py-2.5 cursor-pointer transition-colors ${
-              value === t
-                ? 'border-ember-500 bg-ember-50 dark:bg-ember-500/10'
-                : 'border-gray-200 dark:border-courtline hover:border-gray-300 dark:hover:border-chalk-dim/40'
-            } ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
-          >
-            <input
-              type="radio"
-              name={title}
-              className="mt-0.5 accent-ember-500"
-              checked={value === t}
-              disabled={disabled}
-              onChange={() => onChange(t)}
-            />
-            <span>
-              <span className="block text-sm font-semibold text-gray-900 dark:text-chalk">{TIER_LABELS[t]}</span>
-              <span className="block text-xs text-gray-500 dark:text-chalk-dim">{TIER_DESCRIPTIONS[t]}</span>
-            </span>
-          </label>
-        )
-      })}
-    </fieldset>
-  )
-}
-
-function VisibilitySection({
-  settings,
-  onSaved,
-  sellingEnabled,
-  unlockOfferActive,
-}: {
-  settings: Settings
-  onSaved: (s: Settings) => void
-  sellingEnabled: boolean
-  unlockOfferActive: boolean
-}) {
-  // Remounted by the parent (keyed on the saved settings), so no syncing effect.
-  const [free, setFree] = useState<VisibilityTier>(settings.freeTier)
-  const [unlock, setUnlock] = useState<VisibilityTier>(settings.unlockTier)
-  const [saving, setSaving] = useState(false)
-  const [msg, setMsg] = useState<string | null>(null)
-
-  const paywalled = tierRank(free) < tierRank(unlock)
-  const dirty = free !== settings.freeTier || unlock !== settings.unlockTier
-
-  async function save() {
-    setSaving(true)
-    setMsg(null)
-    try {
-      await jsonFetch('/api/org/result-settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ freeTier: free, unlockTier: unlock }),
-      })
-      onSaved({ freeTier: free, unlockTier: unlock })
-      setMsg('Saved.')
-    } catch (e) {
-      setMsg(e instanceof Error ? e.message : 'Could not save')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <section className={`${CARD} p-5 space-y-5`}>
-      <div>
-        <h2 className="text-lg font-black text-black dark:text-chalk">What players see</h2>
-        <p className="text-sm text-gray-500 dark:text-chalk-dim mt-1">
-          Right now players get <span className="font-semibold text-gray-700 dark:text-chalk">{TIER_LABELS[settings.freeTier]}</span>{' '}
-          for free
-          {tierRank(settings.freeTier) < tierRank(settings.unlockTier) ? (
-            <>
-              , and buying unlocks <span className="font-semibold text-gray-700 dark:text-chalk">{TIER_LABELS[settings.unlockTier]}</span>.
-            </>
-          ) : (
-            <> — there is no paywall.</>
-          )}
-        </p>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <TierRadioGroup
-          title="1. Free with the email"
-          hint="What the link shows before anyone pays."
-          value={free}
-          onChange={(t) => {
-            setFree(t)
-            if (tierRank(t) > tierRank(unlock)) setUnlock(t)
-          }}
-        />
-        <TierRadioGroup
-          title="2. After they buy"
-          hint="What a purchase unlocks. At least as much as the free level."
-          value={unlock}
-          onChange={setUnlock}
-          disabledBelow={free}
-        />
-      </div>
-      {paywalled && !(sellingEnabled && unlockOfferActive) && (
-        <div className="rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
-          This hides part of the report, but nothing is for sale yet — players would have no way to unlock the rest.{' '}
-          {sellingEnabled ? 'Turn on an offer that includes the full breakdown in Offers.' : 'Selling needs an active plan first.'}
-        </div>
-      )}
-      <div className="flex items-center gap-3">
-        <button type="button" onClick={save} disabled={saving || !dirty} className={backendButton('primary')}>
-          {saving ? 'Saving…' : 'Save'}
-        </button>
-        {msg && <span className="text-xs text-gray-500 dark:text-chalk-dim">{msg}</span>}
-      </div>
-    </section>
   )
 }
 
@@ -435,7 +291,6 @@ function OfferRow({
   }
 
   const includes = [
-    offer.includesBreakdown ? 'Full breakdown' : null,
     offer.includesBall ? 'LearnHoops ball' : null,
     offer.includesCourse ? 'Shooting Class' : null,
   ].filter(Boolean) as string[]
@@ -533,10 +388,11 @@ function OfferEditor({
   const [club, setClub] = useState(dollars(offer.clubPriceCents))
   const [discount, setDiscount] = useState(dollars(offer.discountPriceCents))
   const [shipping, setShipping] = useState(dollars(offer.shippingCents))
-  const [incBreakdown, setIncBreakdown] = useState(offer.includesBreakdown)
+  // Kept as saved: the breakdown no longer changes what a player sees.
+  const incBreakdown = offer.includesBreakdown
   const [incBall, setIncBall] = useState(offer.includesBall)
   const [incCourse, setIncCourse] = useState(offer.includesCourse)
-  const [scope, setScope] = useState(offer.unlockScope)
+  const scope = offer.unlockScope
   const [joinTeamId, setJoinTeamId] = useState(offer.joinTeamId ?? '')
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
@@ -552,6 +408,12 @@ function OfferEditor({
   }, [regular, club, discount, offer, orgPercent])
 
   async function save() {
+    // Players already get their full report with every team upload, so an
+    // offer needs something real to sell (it would be hidden otherwise).
+    if (isBreakdownOnlyOffer({ includesBreakdown: incBreakdown, includesBall: incBall, includesCourse: incCourse })) {
+      setMsg('Include the LearnHoops ball or the Shooting Class — players already get their full report.')
+      return
+    }
     setSaving(true)
     setMsg(null)
     try {
@@ -609,7 +471,6 @@ function OfferEditor({
           <div className="sm:col-span-2 flex flex-wrap gap-3 text-sm">
             {(
               [
-                ['Full breakdown of their shot', incBreakdown, setIncBreakdown],
                 ['LearnHoops ball (LearnHoops ships it)', incBall, setIncBall],
                 ['Shooting Class sign-up', incCourse, setIncCourse],
               ] as Array<[string, boolean, (v: boolean) => void]>
@@ -682,25 +543,10 @@ function OfferEditor({
       </div>
 
       {/* 3. After purchase */}
-      {(incBreakdown || incCourse) && (
+      {incCourse && (
         <div className="space-y-3">
           <p className="text-sm font-black text-black dark:text-chalk">3. After they buy</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {incBreakdown && (
-              <div>
-                <p className={LABEL}>Unlock the full breakdown on</p>
-                <div className="flex flex-col gap-1.5 text-sm">
-                  <label className="inline-flex items-center gap-2 text-gray-800 dark:text-chalk">
-                    <input type="radio" className="accent-ember-500" checked={scope === 'submission'} onChange={() => setScope('submission')} />
-                    This report only
-                  </label>
-                  <label className="inline-flex items-center gap-2 text-gray-800 dark:text-chalk">
-                    <input type="radio" className="accent-ember-500" checked={scope === 'player'} onChange={() => setScope('player')} />
-                    Every report this player gets (all season)
-                  </label>
-                </div>
-              </div>
-            )}
             {incCourse && (
               <div>
                 <label className={LABEL}>Add a team join link to the receipt</label>
@@ -757,13 +603,16 @@ function OffersSection({
       const json = await jsonFetch<{ offer: OrgOffer }>('/api/org/offers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        // Starts as a class offer: an offer has to sell something real
+        // (players already get their full report with every team upload).
         body: JSON.stringify({
-          kind: 'bundle',
+          kind: 'course',
           title: 'New offer',
           includesBreakdown: true,
-          regularPriceCents: 9900,
-          clubPriceCents: 7900,
-          unlockScope: 'submission',
+          includesCourse: true,
+          regularPriceCents: 39900,
+          clubPriceCents: 30000,
+          unlockScope: 'player',
           sortOrder: offers.length + 1,
         }),
       })
@@ -966,7 +815,6 @@ export default function OrgOffersPanel() {
   const [teams, setTeams] = useState<Array<{ id: string; name: string }>>([])
   const [orgId, setOrgId] = useState<string | null>(null)
   const [selling, setSelling] = useState<Selling>({ enabled: false, entitled: false, disabled: false, platformSharePercent: 30 })
-  const [settings, setSettings] = useState<Settings>({ freeTier: 'full', unlockTier: 'full' })
   const [sales, setSales] = useState<SaleRow[]>([])
   const [totals, setTotals] = useState<Totals[]>([])
   const [loading, setLoading] = useState(true)
@@ -981,7 +829,6 @@ export default function OrgOffersPanel() {
         setSelling(r.selling)
         setTeams(r.teams)
         setOrgId(r.orgId)
-        setSettings(r.settings)
         setSales(r.sales)
         setTotals(r.totals)
         setLoading(false)
@@ -996,19 +843,10 @@ export default function OrgOffersPanel() {
     }
   }, [])
 
-  const unlockOfferActive = offers.some((o) => o.active && o.includesBreakdown)
-
   if (inApp) {
-    // Prices and checkout stay off the app (App Store 3.1.1); visibility is fine.
+    // Prices and checkout stay off the app (App Store 3.1.1).
     return (
       <div className="space-y-5">
-        <VisibilitySection
-          key={`${settings.freeTier}-${settings.unlockTier}`}
-          settings={settings}
-          onSaved={setSettings}
-          sellingEnabled={selling.enabled}
-          unlockOfferActive={unlockOfferActive}
-        />
         <section className={`${CARD} p-5`}>
           <p className="text-sm text-gray-500 dark:text-chalk-dim">Offers, pricing and sales are managed on the LearnHoops website.</p>
         </section>
@@ -1029,16 +867,6 @@ export default function OrgOffersPanel() {
       />
 
       {section === 'offers' && <OffersSection offers={offers} teams={teams} selling={selling} onOffersChange={(fn) => setOffers(fn)} />}
-
-      {section === 'visibility' && (
-        <VisibilitySection
-          key={`${settings.freeTier}-${settings.unlockTier}`}
-          settings={settings}
-          onSaved={setSettings}
-          sellingEnabled={selling.enabled}
-          unlockOfferActive={unlockOfferActive}
-        />
-      )}
 
       {section === 'sales' && <SalesSection sales={sales} totals={totals} loading={loading} />}
     </div>

@@ -26,16 +26,16 @@ export default function VolumeSavings({
   )
 
   return (
-    <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 space-y-2">
+    <div className="bg-gray-50 dark:bg-ink-950/60 border border-gray-200 dark:border-courtline rounded-xl px-4 py-3 space-y-2">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-gray-600 dark:text-chalk-dim">
           {quantity} {quantity === 1 ? label : `${label}s`} × {usd(unitCents)}
           {percentOff > 0 && (
             <span className="ml-1.5 text-xs text-gray-400 line-through">{usd(analysisBaseCents(tier))}</span>
           )}
         </p>
         <div className="text-right shrink-0">
-          <p className="text-lg font-black text-black leading-none">{usd(totalCents)}</p>
+          <p className="text-lg font-black text-black dark:text-chalk leading-none">{usd(totalCents)}</p>
           {percentOff > 0 && (
             <p className="text-xs text-gray-400 line-through mt-0.5">{usd(fullTotalCents)}</p>
           )}
@@ -43,7 +43,7 @@ export default function VolumeSavings({
       </div>
 
       {percentOff > 0 && (
-        <p className="text-sm font-bold text-green-700">
+        <p className="text-sm font-bold text-green-700 dark:text-green-400">
           {percentLabel(percentOff)}% bulk discount applied — you save {usd(savingsCents)}
         </p>
       )}
@@ -76,13 +76,13 @@ export function VolumeTierList({
   const onTeamRate = tier !== 'none'
   return (
     <div className={`flex flex-wrap items-center gap-1.5 ${className}`}>
-      <span className="text-[11px] text-gray-500">
+      <span className="text-[11px] text-gray-500 dark:text-chalk-dim">
         {onTeamRate ? `Bulk pricing on your ${usd(analysisBaseCents(tier))} rate:` : 'Bulk pricing:'}
       </span>
       {ascending.map((t) => (
         <span
           key={t.minQty}
-          className="text-[11px] font-semibold text-orange-700 bg-orange-50 border border-orange-200 rounded-full px-2 py-0.5"
+          className="text-[11px] font-semibold text-orange-700 dark:text-ember-400 bg-orange-50 dark:bg-ember-500/10 border border-orange-200 dark:border-ember-500/30 rounded-full px-2 py-0.5"
         >
           {t.minQty}+ save {percentLabel(t.percentOff)}%
         </span>

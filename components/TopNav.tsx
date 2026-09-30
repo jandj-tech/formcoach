@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import MobileNav from './MobileNav'
 import CartLink from './CartLink'
 import TokenBanner from './TokenBanner'
+import PlayerSwitcher from './PlayerSwitcher'
 import { useIsInApp } from '@/lib/useIsInApp'
 
 const tabs = [
@@ -109,17 +110,19 @@ export default function TopNav() {
       style={{ paddingTop: 'env(safe-area-inset-top)' }}
     >
       <div className="h-16 flex items-center justify-between px-4 sm:px-6 max-w-7xl mx-auto w-full">
-        <Link href="/" aria-label="LearnHoops.com home" className="flex items-center shrink-0">
+        {/* The logo may shrink a little on narrow phones so a shared login's
+            player switcher, the cart and the menu button still fit at 390px. */}
+        <Link href="/" aria-label="LearnHoops.com home" className="flex items-center min-w-0 shrink">
           <Image
             src="/learnhoops-logo.png"
             alt="LearnHoops.com"
             width={578}
             height={113}
-            style={{ height: '40px', width: 'auto' }}
+            style={{ height: 'auto', width: '205px', maxWidth: '100%' }}
             priority
           />
         </Link>
-        <div className="flex items-center gap-1 sm:gap-2">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           <div className="hidden md:flex items-center gap-1">
             {tabs.map((tab) => {
               const active = tab.href === '/' ? pathname === '/' : pathname.startsWith(tab.href)
@@ -156,6 +159,8 @@ export default function TopNav() {
               {accountLabel}
             </Link>
           </div>
+          {/* Shared login only: renders nothing unless the player has group members. */}
+          {account?.type === 'player' && <PlayerSwitcher />}
           <CartLink />
           <MobileNav tabs={mobileTabs} />
         </div>

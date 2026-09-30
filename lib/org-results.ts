@@ -3,14 +3,35 @@
 // so "which submissions belong to this team" is decided in exactly one place.
 
 import { db } from '@/lib/db'
+import { loadPendingShotLinks } from '@/lib/team-roster-refs'
 
 export interface RosterPlayer {
-  /** Stable row key: `member:<userId>` or `roster:<teamPlayerId>`. */
+  /** Stable row key: `member:<userId>`, `roster:<teamPlayerId>` or `pending:<pendingId>`. */
   key: string
+  kind: 'member' | 'roster' | 'pending'
   userId: string | null
+  /** For `roster:` rows, and for `pending:` rows whose uploads are filed on one. */
   teamPlayerId: string | null
+  pendingId: string | null
+  /** "Ava R." — one format for every kind of row. */
   name: string
+  /** First name only, for greetings. Null when the roster has none. */
+  firstName: string | null
   email: string | null
+  /**
+   * Where `email` comes from: the player's own account ('own'), or a family
+   * address shared with a sibling who owns it ('family', name-only players).
+   */
+  emailSource: 'own' | 'family' | null
+  /**
+   * For a family email: whose account(s) the address belongs to ("Olivia P.",
+   * or "Liam S. and Ava S." when several siblings each have one there).
+   */
+  familyOf: string | null
+  /** Another row on this team shows the same name. */
+  sameNameAsAnother: boolean
+  /** What tells this row apart from a same-name one (parent, email, kind). */
+  detail: string | null
   /** Latest COMPLETE submission on this team, if any. */
   submissionId: string | null
   token: string | null
@@ -25,24 +46,57 @@ export interface RosterPlayer {
   bounced: boolean
 }
 
+/** ["Liam S."] -> "Liam S."; ["Liam S.", "Ava S."] -> "Liam S. and Ava S." */
+function joinOwners(names: string[]): string {
+  return names.length <= 1 ? names[0] ?? '' : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+}
+
+/** "Ava" + "r" -> "Ava R."; "Ava" + "" / "?" -> "Ava". */
+function displayName(first: string | null | undefined, initial: string | null | undefined): string {
+  const f = (first ?? '').replace(/\s+/g, ' ').trim()
+  const i = (initial ?? '').trim().charAt(0).toUpperCase()
+  return i && i !== '?' ? `${f} ${i}.` : f
+}
+
 /**
  * Every player on a team with their latest complete submission and release
- * state. Account players come from team_memberships (reachable by email);
- * coach-added name-only players come from team_players (no email — the UI
- * flags them and offers the join link). A submission counts as this team's
- * when it is tagged with the team, attached to one of its roster players, or
- * uploaded by one of its account members.
+ * state, from all three roster sources:
+ *
+ *  - members (team_memberships): account players, emailed at their account.
+ *  - name-only invites (pending_team_members): no account. Emailable only
+ *    through a family contact email (a sibling's address, saved when the
+ *    import found it already in use). Their coach uploads live on the
+ *    team_players row made for them (see loadPendingShotLinks); that row is
+ *    folded into the invite so the player shows once, with their shots.
+ *  - other name-only rows (team_players): coach uploads with no invite.
+ *
+ * A member's submission counts for this team only when it is tagged with this
+ * team (`s.team_id = teamId`). A player's personal, self-paid shot (team_id
+ * NULL) or a shot on another team never appears here, so an org send can't
+ * create a release that paywalls a report the player bought themselves.
+ *
+ * A name-only row shows whenever it holds a graded shot that isn't attributed
+ * to any account (`s.user_id IS NULL`), even if a member shares the same first
+ * name + initial ("Jayden M." Miller vs member Jayden Moore). It is hidden only
+ * when it has no such shot and a same-name member exists (the row has since
+ * joined with an account and shows once, as the member).
  */
 export async function teamResultsRoster(teamId: string): Promise<RosterPlayer[]> {
+  const links = await loadPendingShotLinks(teamId)
+  const linkedRowOf = new Map(links.filter((l) => l.linked).map((l) => [l.pendingId, l.teamPlayerId!]))
+  const linkedRows = [...new Set(linkedRowOf.values())]
+
   const members = (await db`
     SELECT
       tm.user_id,
+      NULLIF(TRIM(tm.first_name), '') AS tm_first,
+      NULLIF(TRIM(tm.last_name_initial), '') AS tm_initial,
+      NULLIF(u.nickname, '') AS nickname,
       COALESCE(
-        NULLIF(TRIM(CONCAT(tm.first_name, ' ', tm.last_name_initial)), ''),
-        NULLIF(u.nickname, ''),
-        split_part(u.email, '@', 1)
-      ) AS name,
-      u.email,
+        NULLIF(TRIM(tm.first_name), ''),
+        NULLIF(split_part(TRIM(u.nickname), ' ', 1), '')
+      ) AS first_name,
+      u.email, u.parent_name,
       latest.id AS submission_id, latest.token, latest.overall_score, latest.graded_at,
       r.sent_at, r.resent_at, r.unlocked,
       el.unsubscribed_at, el.bounced_at, el.complained_at
@@ -54,18 +108,21 @@ export async function teamResultsRoster(teamId: string): Promise<RosterPlayer[]>
       JOIN analyses a ON a.submission_id = s.id
       WHERE s.status = 'complete'
         AND s.user_id = tm.user_id
-        AND (s.team_id = ${teamId} OR s.team_id IS NULL)
+        AND s.team_id = ${teamId}
       ORDER BY a.created_at DESC
       LIMIT 1
     ) latest ON TRUE
     LEFT JOIN result_releases r ON r.submission_id = latest.id
     LEFT JOIN email_list el ON el.email = LOWER(u.email)
     WHERE tm.team_id = ${teamId}
-    ORDER BY name
   `) as unknown as Array<{
     user_id: string
-    name: string
+    tm_first: string | null
+    tm_initial: string | null
+    nickname: string | null
+    first_name: string | null
     email: string
+    parent_name: string | null
     submission_id: string | null
     token: string | null
     overall_score: string | null
@@ -78,10 +135,11 @@ export async function teamResultsRoster(teamId: string): Promise<RosterPlayer[]>
     complained_at: Date | null
   }>
 
-  const rosterOnly = (await db`
+  const rosterRows = (await db`
     SELECT
       tp.id AS team_player_id,
-      TRIM(CONCAT(tp.first_name, ' ', tp.last_name_initial, '.')) AS name,
+      tp.first_name, TRIM(tp.last_name_initial) AS last_name_initial,
+      NULLIF(LOWER(TRIM(tp.contact_email)), '') AS contact_email,
       latest.id AS submission_id, latest.token, latest.overall_score, latest.graded_at,
       r.sent_at, r.resent_at, r.unlocked
     FROM team_players tp
@@ -89,23 +147,34 @@ export async function teamResultsRoster(teamId: string): Promise<RosterPlayer[]>
       SELECT s.id, s.token, a.overall_score, a.created_at AS graded_at
       FROM submissions s
       JOIN analyses a ON a.submission_id = s.id
-      WHERE s.status = 'complete' AND s.team_player_id = tp.id
+      WHERE s.status = 'complete'
+        AND s.team_player_id = tp.id
+        AND s.user_id IS NULL
       ORDER BY a.created_at DESC
       LIMIT 1
     ) latest ON TRUE
     LEFT JOIN result_releases r ON r.submission_id = latest.id
     WHERE tp.team_id = ${teamId}
-      -- A roster row that has since joined with an account shows once, as the member.
-      AND NOT EXISTS (
-        SELECT 1 FROM team_memberships tm
-        WHERE tm.team_id = tp.team_id
-          AND LOWER(tm.first_name) = LOWER(tp.first_name)
-          AND UPPER(tm.last_name_initial) = UPPER(tp.last_name_initial)
+      AND (
+        -- The shot row of a name-only invite: always read (it is shown as
+        -- that invite, below).
+        tp.id = ANY(${linkedRows}::uuid[])
+        -- A roster row with a graded shot no account owns always shows (else
+        -- that shot would vanish behind a same-name member). Without one, a
+        -- row that has since joined with an account shows once, as the member.
+        OR latest.id IS NOT NULL
+        OR NOT EXISTS (
+          SELECT 1 FROM team_memberships tm
+          WHERE tm.team_id = tp.team_id
+            AND LOWER(TRIM(tm.first_name)) = LOWER(TRIM(tp.first_name))
+            AND UPPER(tm.last_name_initial) = UPPER(tp.last_name_initial)
+        )
       )
-    ORDER BY name
   `) as unknown as Array<{
     team_player_id: string
-    name: string
+    first_name: string
+    last_name_initial: string
+    contact_email: string | null
     submission_id: string | null
     token: string | null
     overall_score: string | null
@@ -115,42 +184,176 @@ export async function teamResultsRoster(teamId: string): Promise<RosterPlayer[]>
     unlocked: boolean | null
   }>
 
-  const iso = (d: Date | null | undefined) => (d ? new Date(d).toISOString() : null)
+  const pending = (await db`
+    SELECT p.id AS pending_id, p.first_name, TRIM(p.last_name_initial) AS last_name_initial,
+           NULLIF(LOWER(TRIM(p.contact_email)), '') AS contact_email
+    FROM pending_team_members p
+    WHERE p.team_id = ${teamId}
+    ORDER BY p.created_at ASC
+  `) as unknown as Array<{
+    pending_id: string
+    first_name: string
+    last_name_initial: string | null
+    contact_email: string | null
+  }>
 
-  return [
+  // Family emails: suppression flags, and whose account the address is.
+  const rowById = new Map(rosterRows.map((r) => [r.team_player_id, r]))
+  const familyEmails = [
+    ...new Set(
+      [
+        ...pending.map((p) => p.contact_email ?? rowById.get(linkedRowOf.get(p.pending_id) ?? '')?.contact_email ?? null),
+        ...rosterRows.map((r) => r.contact_email),
+      ].filter((e): e is string => !!e)
+    ),
+  ]
+  // Several player accounts may share one family address (siblings, each
+  // with their own account — lib/player-accounts.ts), so an address can have
+  // several owners: every one is listed, oldest first, each once.
+  const familyInfo = new Map<string, { owners: string[]; unsubscribed: boolean; bounced: boolean }>()
+  if (familyEmails.length) {
+    const rows = (await db`
+      SELECT e.email, u.id AS user_id,
+             COALESCE(NULLIF(TRIM(u.first_name), ''), NULLIF(TRIM(fm.first_name), ''), NULLIF(split_part(TRIM(u.nickname), ' ', 1), '')) AS owner_first,
+             COALESCE(NULLIF(TRIM(u.last_initial), ''), NULLIF(TRIM(fm.last_name_initial), '')) AS owner_initial,
+             el.unsubscribed_at, el.bounced_at, el.complained_at
+      FROM UNNEST(${familyEmails}::text[]) AS e(email)
+      LEFT JOIN users u ON LOWER(u.email) = e.email
+      LEFT JOIN LATERAL (
+        SELECT first_name, last_name_initial FROM team_memberships
+        WHERE user_id = u.id AND COALESCE(TRIM(first_name), '') <> ''
+        ORDER BY joined_at ASC LIMIT 1
+      ) fm ON TRUE
+      LEFT JOIN email_list el ON el.email = e.email
+      ORDER BY e.email, u.created_at ASC NULLS LAST, u.id ASC
+    `) as unknown as Array<{
+      email: string
+      user_id: string | null
+      owner_first: string | null
+      owner_initial: string | null
+      unsubscribed_at: Date | null
+      bounced_at: Date | null
+      complained_at: Date | null
+    }>
+    for (const r of rows) {
+      const info = familyInfo.get(r.email) ?? {
+        owners: [],
+        // Suppression is per inbox: the same on every row of this address.
+        unsubscribed: !!r.unsubscribed_at || !!r.complained_at,
+        bounced: !!r.bounced_at,
+      }
+      const owner = r.owner_first ? displayName(r.owner_first, r.owner_initial) : null
+      if (owner && !info.owners.includes(owner)) info.owners.push(owner)
+      familyInfo.set(r.email, info)
+    }
+  }
+
+  const iso = (d: Date | null | undefined) => (d ? new Date(d).toISOString() : null)
+  type Shot = {
+    submission_id: string | null
+    token: string | null
+    overall_score: string | null
+    graded_at: Date | null
+    sent_at: Date | null
+    resent_at: Date | null
+    unlocked: boolean | null
+  }
+  const shot = (r: Shot | undefined) => ({
+    submissionId: r?.submission_id ?? null,
+    token: r?.token ?? null,
+    score: r?.overall_score != null ? Number(r.overall_score) : null,
+    gradedAt: iso(r?.graded_at),
+    sentAt: iso(r?.sent_at),
+    resentAt: iso(r?.resent_at),
+    unlocked: !!r?.unlocked,
+  })
+  // The owners named for a name-only row: everyone on the address except an
+  // account by this row's own first name (that is the same child, not whose
+  // email it is) — unless nobody else is left to name.
+  const family = (email: string | null, rowFirst?: string | null) => {
+    const info = email ? familyInfo.get(email) : undefined
+    const own = (rowFirst ?? '').trim().toLowerCase()
+    const others = (info?.owners ?? []).filter((o) => !own || o.split(' ')[0].toLowerCase() !== own)
+    const owners = others.length ? others : info?.owners ?? []
+    return {
+      email,
+      emailSource: email ? ('family' as const) : null,
+      familyOf: owners.length ? joinOwners(owners) : null,
+      unsubscribed: info?.unsubscribed ?? false,
+      bounced: info?.bounced ?? false,
+    }
+  }
+
+  const out: RosterPlayer[] = [
     ...members.map((m) => ({
       key: `member:${m.user_id}`,
+      kind: 'member' as const,
       userId: m.user_id,
       teamPlayerId: null,
-      name: m.name,
+      pendingId: null,
+      name: m.tm_first ? displayName(m.tm_first, m.tm_initial) : m.nickname ?? m.email.split('@')[0],
+      firstName: m.first_name,
       email: m.email,
-      submissionId: m.submission_id,
-      token: m.token,
-      score: m.overall_score !== null ? Number(m.overall_score) : null,
-      gradedAt: iso(m.graded_at),
-      sentAt: iso(m.sent_at),
-      resentAt: iso(m.resent_at),
-      unlocked: !!m.unlocked,
+      emailSource: 'own' as const,
+      familyOf: null,
+      sameNameAsAnother: false,
+      detail: m.parent_name ? `parent ${m.parent_name}` : m.email,
+      ...shot(m),
       unsubscribed: !!m.unsubscribed_at || !!m.complained_at,
       bounced: !!m.bounced_at,
     })),
-    ...rosterOnly.map((p) => ({
-      key: `roster:${p.team_player_id}`,
-      userId: null,
-      teamPlayerId: p.team_player_id,
-      name: p.name,
-      email: null,
-      submissionId: p.submission_id,
-      token: p.token,
-      score: p.overall_score !== null ? Number(p.overall_score) : null,
-      gradedAt: iso(p.graded_at),
-      sentAt: iso(p.sent_at),
-      resentAt: iso(p.resent_at),
-      unlocked: !!p.unlocked,
-      unsubscribed: false,
-      bounced: false,
-    })),
+    ...pending.map((p) => {
+      const row = rowById.get(linkedRowOf.get(p.pending_id) ?? '')
+      const contact = p.contact_email ?? row?.contact_email ?? null
+      const link = links.find((l) => l.pendingId === p.pending_id)
+      return {
+        key: `pending:${p.pending_id}`,
+        kind: 'pending' as const,
+        userId: null,
+        teamPlayerId: row?.team_player_id ?? null,
+        pendingId: p.pending_id,
+        name: displayName(p.first_name, p.last_name_initial),
+        firstName: p.first_name?.trim() || null,
+        ...family(contact, p.first_name),
+        sameNameAsAnother: false,
+        detail: link?.ambiguous
+          ? 'invited, no account · another invite has this name, so shots stay under the name-only entry'
+          : 'invited, no account',
+        ...shot(row),
+      }
+    }),
+    ...rosterRows
+      .filter((r) => !linkedRows.includes(r.team_player_id))
+      .map((r) => ({
+        key: `roster:${r.team_player_id}`,
+        kind: 'roster' as const,
+        userId: null,
+        teamPlayerId: r.team_player_id,
+        pendingId: null,
+        name: displayName(r.first_name, r.last_name_initial),
+        firstName: r.first_name?.trim() || null,
+        ...family(r.contact_email, r.first_name),
+        sameNameAsAnother: false,
+        detail: 'name only, no account',
+        ...shot(r),
+      })),
   ]
+
+  // Lookalike names ("Jayden M." twice) keep their detail line; everyone
+  // else's is dropped so the list stays quiet.
+  const byName = new Map<string, RosterPlayer[]>()
+  for (const p of out) {
+    const k = p.name.toLowerCase()
+    byName.set(k, [...(byName.get(k) ?? []), p])
+  }
+  for (const group of byName.values()) {
+    if (group.length > 1) for (const p of group) p.sameNameAsAnother = true
+    else group[0].detail = null
+  }
+
+  return out.sort(
+    (a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }) || a.kind.localeCompare(b.kind)
+  )
 }
 
 export interface SendableSubmission {
@@ -168,6 +371,10 @@ export interface SendableSubmission {
  * The subset of `submissionIds` that are complete and belong to `teamId`,
  * with the recipient resolved. Anything not returned was not this team's (or
  * not graded yet) and must not be sent.
+ *
+ * "Belongs" means tagged with the team or filed under one of its name-only
+ * roster rows. Being uploaded by someone who is ALSO a member is not enough:
+ * that let one team's send overwrite another team's (or org's) release.
  */
 export async function sendableSubmissions(
   teamId: string,
@@ -180,7 +387,7 @@ export async function sendableSubmissions(
       a.overall_score,
       u.email,
       COALESCE(
-        NULLIF(TRIM(CONCAT(tm.first_name, ' ', tm.last_name_initial)), ''),
+        NULLIF(TRIM(CONCAT(tm.first_name, ' ', NULLIF(TRIM(tm.last_name_initial), '') || '.')), ''),
         NULLIF(u.nickname, ''),
         NULLIF(TRIM(CONCAT(tp.first_name, ' ', tp.last_name_initial, '.')), '.')
       ) AS player_name,
@@ -195,7 +402,7 @@ export async function sendableSubmissions(
     LEFT JOIN email_list el ON u.email IS NOT NULL AND el.email = LOWER(u.email)
     WHERE s.id = ANY(${submissionIds}::uuid[])
       AND s.status = 'complete'
-      AND (s.team_id = ${teamId} OR tp.id IS NOT NULL OR tm.user_id IS NOT NULL)
+      AND (s.team_id = ${teamId} OR tp.id IS NOT NULL)
   `) as unknown as Array<{
     submission_id: string
     token: string

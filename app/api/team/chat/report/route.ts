@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { INTERNAL_INBOX, NOTIFICATION_FROM } from '@/lib/email-senders'
 import { db } from '@/lib/db'
-import { resolveChatActorFromRequest } from '@/lib/team-chat'
+import { resolveChatActorFromRequest, chatDeniedResponse } from '@/lib/team-chat'
 import { NO_PLAN_MESSAGE, tierCan } from '@/lib/team-features'
 
 // Report a chat message (App Store guideline 1.2). The message is flagged to
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     if (!msg) return NextResponse.json({ error: 'Message not found' }, { status: 404 })
 
     const actor = await resolveChatActorFromRequest(req, msg.team_id)
-    if (!actor) return NextResponse.json({ error: 'Login required' }, { status: 401 })
+    if (!actor) return chatDeniedResponse(req)
     if (!tierCan(actor.tier, 'chat')) {
       return NextResponse.json({ error: NO_PLAN_MESSAGE, upgradeRequired: true }, { status: 402 })
     }

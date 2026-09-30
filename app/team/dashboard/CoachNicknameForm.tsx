@@ -8,6 +8,7 @@ export default function CoachNicknameForm({ current }: { current: string | null 
   const router = useRouter()
   const [nickname, setNickname] = useState(current ?? '')
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [errorMsg, setErrorMsg] = useState('')
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
@@ -18,11 +19,18 @@ export default function CoachNicknameForm({ current }: { current: string | null 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nickname: nickname.trim() }),
       })
-      if (!res.ok) throw new Error('Failed')
+      if (!res.ok) {
+        // Show the server's reason (e.g. a character names can't include).
+        const data = await res.json().catch(() => ({}))
+        setErrorMsg(typeof data.error === 'string' ? data.error : '')
+        setStatus('error')
+        return
+      }
       setStatus('saved')
       router.refresh()
       setTimeout(() => setStatus('idle'), 2500)
     } catch {
+      setErrorMsg('')
       setStatus('error')
     }
   }
@@ -40,7 +48,7 @@ export default function CoachNicknameForm({ current }: { current: string | null 
           placeholder="e.g. Coach Mike"
           value={nickname}
           onChange={e => setNickname(e.target.value)}
-          className="flex-1 bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl px-4 py-2.5 text-black dark:text-chalk placeholder-gray-400 focus:outline-none focus:border-ember-500 transition-colors"
+          className="flex-1 min-w-0 bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl px-4 py-2.5 text-black dark:text-chalk placeholder-gray-400 focus:outline-none focus:border-ember-500 transition-colors"
         />
         <button
           type="submit"
@@ -51,7 +59,7 @@ export default function CoachNicknameForm({ current }: { current: string | null 
         </button>
       </div>
       {status === 'saved' && <p className="text-green-600 dark:text-green-400 text-sm font-semibold">Saved!</p>}
-      {status === 'error' && <p className="text-red-500 text-sm">Could not save. Please try again.</p>}
+      {status === 'error' && <p role="alert" className="text-red-500 text-sm">{errorMsg || 'Could not save. Please try again.'}</p>}
     </form>
   )
 }

@@ -4,6 +4,7 @@ import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { orgIsEntitledById, SUBSCRIPTION_ENDED_MESSAGE } from '@/lib/team-features'
 import { createOffer, ensureDefaultOffers, getOrgSellingState } from '@/lib/org-offers-db'
 import { parseOfferInput } from '@/lib/org-offer-input'
+import { isBreakdownOnlyOffer } from '@/lib/org-offers'
 
 // The offer builder's data: every offer (seeding the drafts on first visit),
 // the selling state, and the org's teams for the class join-link picker.
@@ -20,7 +21,9 @@ export async function GET(req: NextRequest) {
     ])
     return NextResponse.json({
       orgId: session.orgId,
-      offers,
+      // Breakdown-only offers have nothing to sell any more (players always
+      // get the full report); the rows are kept but left out of the builder.
+      offers: offers.filter((o) => !isBreakdownOnlyOffer(o)),
       selling: {
         enabled: selling.enabled,
         entitled: selling.entitled,

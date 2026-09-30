@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { db } from '@/lib/db'
-import { isCleanDisplayText, BLOCKED_TEXT_ERROR } from '@/lib/moderation'
+import { cleanDisplayText } from '@/lib/moderation'
 
 // Rename the organization (org owner).
 export async function POST(req: NextRequest) {
@@ -12,13 +12,13 @@ export async function POST(req: NextRequest) {
 
   try {
     const { name } = await req.json()
-    if (name && !isCleanDisplayText(name)) {
-      return NextResponse.json({ error: BLOCKED_TEXT_ERROR }, { status: 400 })
-    }
-    const trimmed = typeof name === 'string' ? name.trim() : ''
-    if (!trimmed) {
+    if (typeof name !== 'string' || !name.trim()) {
       return NextResponse.json({ error: 'Organization name is required' }, { status: 400 })
     }
+    // Cap one past the column width so an over-long name is refused, not cut.
+    const cleaned = cleanDisplayText(name, 256)
+    if (!cleaned.ok) return NextResponse.json({ error: cleaned.error }, { status: 400 })
+    const trimmed = cleaned.value
     if (trimmed.length > 255) {
       return NextResponse.json({ error: 'Name is too long' }, { status: 400 })
     }

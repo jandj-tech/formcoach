@@ -16,11 +16,22 @@ import { getSessionFromRequest } from '@/lib/auth'
  */
 export async function GET(req: NextRequest) {
   const session = await getSessionFromRequest(req)
-  if (!session?.email) {
+  if (!session?.email || !session.userId) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
   }
 
-  const email = session.email.toLowerCase().trim()
+  // email_list is keyed on an address, and anyone can register any address —
+  // so the comp or token balance parked there is only reported to an account
+  // that has proven it owns the inbox (users.email_verified_at). An unproven
+  // account sees nothing from email_list.
+  const [user] = (await db`
+    SELECT email, email_verified_at FROM users WHERE id = ${session.userId}
+  `) as unknown as [{ email: string; email_verified_at: string | null } | undefined]
+  if (!user?.email_verified_at) {
+    return NextResponse.json({ tokens: 0, subscribed: false })
+  }
+
+  const email = user.email.toLowerCase().trim()
 
   const [emailRow] = await db`
     SELECT subscription_type, subscription_expires_at, analysis_tokens

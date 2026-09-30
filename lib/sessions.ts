@@ -39,8 +39,8 @@ export function clearAllSessions(res: NextResponse) {
  * account therefore also drops admin mode — otherwise the browser would still
  * be treated as the owner while showing someone else's login.
  */
-export function clearOtherSessions(res: NextResponse, keep: string) {
+export function clearOtherSessions(res: NextResponse, ...keep: string[]) {
   for (const name of ALL_SESSION_COOKIES) {
-    if (name !== keep) expire(res, name)
+    if (!keep.includes(name)) expire(res, name)
   }
 }

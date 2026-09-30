@@ -19,7 +19,7 @@ export default function CoachSelfUploader({ credits, tier }: { credits: number; 
         <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
           <div>
             <p className="text-sm font-semibold text-black">
-              {credits} analysis credit{credits !== 1 ? 's' : ''} remaining
+              {credits} analysis token{credits !== 1 ? 's' : ''} remaining
             </p>
             <p className="text-xs text-gray-500 mt-0.5">
               {`${usd(discountedUnitCents(tier, 1))} per analysis, ${usd(discountedUnitCents(tier, TEAM_FULL_RATE_MIN_QTY))} when you buy ${TEAM_FULL_RATE_MIN_QTY} or more.`}

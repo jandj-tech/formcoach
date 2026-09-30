@@ -1,105 +1,127 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Resend } from 'resend'
-import { NOTIFICATION_FROM } from '@/lib/email-senders'
 import { db } from '@/lib/db'
 import { getTeamSessionFromRequest } from '@/lib/team-auth'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { rateLimit } from '@/lib/rate-limit'
-
-// Send at most this many emails concurrently, so a large roster can't fire
-// hundreds of Resend calls in one burst (→ provider rate-limit / 429).
-const SEND_CHUNK = 20
+import { coachSenderForTeam, orgSenderById, sendPlayerEmails, type PlayerEmailSender, type ResolvedRecipient } from '@/lib/player-email'
 
 // Coach announcement blast: emails every registered player on the team.
-// For urgent word — "practice is canceled" — typed by the coach verbatim.
+// For urgent word ("practice is cancelled") typed by the coach verbatim.
+// Kept for back-compat; the "Email players" composer (/api/player-email/*)
+// is the current UI. Rendering, escaping, suppression, the on-behalf From
+// and the send loop are shared with it.
 export async function POST(req: NextRequest) {
-  const p = await req.json().catch(() => ({})) as { teamId?: string; subject?: string; message?: string }
-  const message = (p.message ?? '').toString().trim().slice(0, 5000)
+  const p = (await req.json().catch(() => ({}))) as { teamId?: string; subject?: string; message?: string }
+  const message = (p.message ?? '').toString().replace(/\r\n?/g, '\n').trim().slice(0, 5000)
   if (!message) return NextResponse.json({ error: 'Message required' }, { status: 400 })
 
-  // Coach team session, or an org session that owns the team.
-  const teamSession = await getTeamSessionFromRequest(req)
-  const orgSession = teamSession ? null : await getOrgSessionFromRequest(req)
+  // Resolved independently: a stale team cookie for another team must not
+  // shadow a valid org session that owns this team (and vice versa).
+  const [teamSession, orgSession] = await Promise.all([
+    getTeamSessionFromRequest(req),
+    getOrgSessionFromRequest(req),
+  ])
   if (!teamSession && !orgSession) return NextResponse.json({ error: 'Coach login required' }, { status: 401 })
 
   const teamId = (p.teamId ?? teamSession?.teamId ?? '').toString()
   if (!teamId) return NextResponse.json({ error: 'teamId required' }, { status: 400 })
+  if (!/^[0-9a-f-]{36}$/i.test(teamId)) return NextResponse.json({ error: 'Team not found' }, { status: 404 })
 
   try {
     const [team] = (await db`
-      SELECT id, name, admin_email, coach_nickname, organization_id FROM teams WHERE id = ${teamId}
-    `) as unknown as [{ id: string; name: string; admin_email: string; coach_nickname: string | null; organization_id: string | null } | undefined]
+      SELECT id, name, admin_email, organization_id FROM teams WHERE id = ${teamId}
+    `) as unknown as [{ id: string; name: string; admin_email: string; organization_id: string | null } | undefined]
     if (!team) return NextResponse.json({ error: 'Team not found' }, { status: 404 })
 
-    const authorized =
-      (teamSession && (teamSession.teamId === teamId || teamSession.adminEmail === team.admin_email)) ||
-      (orgSession && team.organization_id === orgSession.orgId)
-    if (!authorized) return NextResponse.json({ error: 'Not your team' }, { status: 403 })
+    // Credit (and reply to) whoever actually sent it. A coach session on this
+    // team wins; a head coach who owns several teams may announce to any of
+    // them; otherwise an org session that owns the team sends as the org.
+    let sender: PlayerEmailSender | null = null
+    if (teamSession) {
+      const sameTeam = teamSession.teamId === teamId
+      const ownsTeam = teamSession.adminEmail.toLowerCase() === team.admin_email.toLowerCase()
+      if (sameTeam || ownsTeam) sender = await coachSenderForTeam(teamId, teamSession.adminEmail)
+    }
+    if (!sender && orgSession && team.organization_id === orgSession.orgId) {
+      sender = await orgSenderById(orgSession.orgId)
+    }
+    if (!sender) return NextResponse.json({ error: 'Not your team' }, { status: 403 })
 
-    // A blast reaches the whole roster, so cap how often one team can fire it —
-    // a compromised or careless coach account can't repeatedly spam every
-    // player (Resend cost + inbox abuse). Fails open on limiter error.
+    // A blast reaches the whole roster, so cap how often one team can fire it.
+    // Fails open on limiter error.
     const limit = await rateLimit(`team-announce:${teamId}`, 6, 3600)
     if (!limit.ok) {
       return NextResponse.json(
-        { error: 'You have sent several announcements recently — please wait a bit before sending another.' },
-        { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } },
+        { error: 'You have sent several announcements recently. Please wait a little before sending another.' },
+        { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } }
       )
     }
 
     const players = (await db`
-      SELECT DISTINCT u.email
-      FROM team_memberships tm JOIN users u ON u.id = tm.user_id
-      WHERE tm.team_id = ${teamId}
-    `) as unknown as Array<{ email: string }>
+      SELECT DISTINCT ON (LOWER(u.email))
+        LOWER(u.email) AS email, u.id AS user_id,
+        COALESCE(NULLIF(TRIM(tm.first_name), ''), NULLIF(split_part(TRIM(u.nickname), ' ', 1), '')) AS first_name,
+        COALESCE(NULLIF(TRIM(CONCAT(tm.first_name, ' ', NULLIF(TRIM(tm.last_name_initial), '') || '.')), ''), split_part(u.email, '@', 1)) AS name,
+        el.unsubscribed_at, el.bounced_at, el.complained_at
+      FROM team_memberships tm
+      JOIN users u ON u.id = tm.user_id
+      LEFT JOIN email_list el ON el.email = LOWER(u.email)
+      WHERE tm.team_id = ${teamId} AND u.email IS NOT NULL AND u.email <> ''
+      ORDER BY LOWER(u.email), tm.joined_at
+    `) as unknown as Array<{
+      email: string
+      user_id: string
+      first_name: string | null
+      name: string
+      unsubscribed_at: Date | null
+      bounced_at: Date | null
+      complained_at: Date | null
+    }>
     if (players.length === 0) {
       return NextResponse.json({ error: 'No registered players on this team yet' }, { status: 400 })
     }
 
-    const coachName = team.coach_nickname || 'Your coach'
-    const subject = (p.subject ?? '').toString().trim().slice(0, 150) || `📣 Message from ${coachName} — ${team.name}`
-    const resend = new Resend(process.env.RESEND_API_KEY!)
+    const coachName = sender.kind === 'org' ? sender.orgName : sender.coachName
+    const orgName = sender.orgName
+    const subject =
+      (p.subject ?? '')
+        .toString()
+        .replace(/[\r\n]+/g, ' ')
+        .trim()
+        .slice(0, 150) || `Message from ${coachName} · ${team.name}`
 
-    const text = [
-      `Message from ${coachName} (${team.name}):`,
-      '',
-      message,
-      '',
-      '—',
-      'Sent through LearnHoops team announcements. Reply to reach your coach.',
-    ].join('\n')
-    const html = `
-          <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
-            <div style="background:#000000;padding:20px 28px;">
-              <h1 style="color:#F97316;margin:0;font-size:20px;">LearnHoops — ${team.name}</h1>
-            </div>
-            <div style="padding:28px;">
-              <p style="color:#666;font-size:13px;margin:0 0 12px;">Message from <strong>${coachName}</strong>:</p>
-              <div style="color:#000;font-size:16px;line-height:1.6;white-space:pre-wrap;border-left:4px solid #F97316;padding-left:16px;">${message.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
-              <hr style="border:none;border-top:1px solid #E2E8F0;margin:24px 0;"/>
-              <p style="color:#999;font-size:11px;">Sent through LearnHoops team announcements. Reply to reach your coach.</p>
-            </div>
-          </div>`
+    const recipients: ResolvedRecipient[] = players.map((pl) => ({
+      teamId: team.id,
+      teamName: team.name,
+      key: `member:${pl.user_id}`,
+      name: pl.name,
+      firstName: pl.first_name,
+      email: pl.email,
+      emailSource: 'own',
+      userId: pl.user_id,
+      submissionId: null,
+      token: null,
+      score: null,
+      gradedAt: null,
+      orgId: team.organization_id,
+      orgName,
+      status: pl.bounced_at ? 'bounced' : pl.unsubscribed_at || pl.complained_at ? 'unsubscribed' : 'ok',
+    }))
 
-    // Send in bounded-concurrency chunks rather than firing the whole roster at
-    // once, so a big team doesn't trip Resend's rate limit in a single burst.
-    let sent = 0
-    for (let i = 0; i < players.length; i += SEND_CHUNK) {
-      const batch = players.slice(i, i + SEND_CHUNK)
-      const results = await Promise.allSettled(batch.map(({ email }) =>
-        resend.emails.send({
-          from: NOTIFICATION_FROM,
-          to: email,
-          replyTo: team.admin_email,
-          subject,
-          text,
-          html,
-        })
-      ))
-      sent += results.filter(r => r.status === 'fulfilled').length
-    }
+    const report = await sendPlayerEmails(
+      sender,
+      { template: 'message', subject, message, includeResults: false, includeOffers: false, includeShopLink: false },
+      recipients,
+      'team_announce'
+    )
 
-    return NextResponse.json({ success: true, sent, total: players.length })
+    return NextResponse.json({
+      success: true,
+      sent: report.sent.length,
+      total: players.length,
+      skippedSuppressed: report.skipped.map((s) => s.name),
+      failed: report.failed.map((f) => f.name),
+    })
   } catch (err) {
     console.error('[team/announce] failed:', err)
     return NextResponse.json({ error: 'Could not send the announcement' }, { status: 500 })

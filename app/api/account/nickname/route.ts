@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getSessionFromRequest } from '@/lib/auth'
-import { isCleanDisplayText, BLOCKED_TEXT_ERROR } from '@/lib/moderation'
+import { cleanOptionalDisplayText } from '@/lib/moderation'
 
 // Lets a signed-in user set or clear their display nickname.
 export async function POST(req: NextRequest) {
@@ -9,10 +9,9 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = (await req.json().catch(() => ({}))) as { nickname?: string }
-  const nickname = body.nickname?.trim().slice(0, 50) || null
-  if (nickname && !isCleanDisplayText(nickname)) {
-    return NextResponse.json({ error: BLOCKED_TEXT_ERROR }, { status: 400 })
-  }
+  const cleaned = cleanOptionalDisplayText(body.nickname, 50)
+  if (!cleaned.ok) return NextResponse.json({ error: cleaned.error }, { status: 400 })
+  const nickname = cleaned.value
 
   try {
     await db`UPDATE users SET nickname = ${nickname} WHERE id = ${session.userId}`

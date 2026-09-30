@@ -2,26 +2,55 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
 import { signSession, sessionCookieOptions } from '@/lib/auth'
-import { grantFreeOrgTokensIfEligible } from '@/lib/team-tokens'
 import { addToEmailList } from '@/lib/email-list'
 import { sendMetaEvent, makeRegistrationEvent, attributionFromRequest } from '@/lib/meta-server'
 import { BCRYPT_COST } from '@/lib/password'
-import { rateLimit, rateLimitByIp } from '@/lib/rate-limit'
+import { rateLimit, rateLimitByIp, rateLimitLogin } from '@/lib/rate-limit'
 import { verifyTurnstile, turnstileConfigured, isNativeAppRequestWithoutToken } from '@/lib/turnstile'
 import { checkEmailAbuse } from '@/lib/email-abuse'
+import { cleanOptionalDisplayText, capitalizeFirst } from '@/lib/moderation'
+import { MAX_PLAYERS_PER_EMAIL } from '@/lib/player-accounts'
+import { playerFirstName, siblingPasswordClash, SIBLING_PASSWORD_CODE } from '@/lib/password-reset'
+import { resendPlayerSetup, adoptLegacySubmissions, claimPendingInvite } from '@/lib/roster-players'
+import {
+  verifyCompSignupToken,
+  markEmailVerified,
+  applyEmailEntitlement,
+  hasPendingEntitlement,
+  sendEntitlementConfirmation,
+} from '@/lib/email-entitlements'
+
+interface ExistingRow {
+  id: string
+  email: string
+  password_hash: string | null
+  roster_pending: boolean | null
+  first_name: string | null
+  nickname: string | null
+  has_oauth: boolean
+}
 
 export async function POST(req: NextRequest) {
   try {
-    const limit = await rateLimitByIp(req, 'signup', 10, 3600)
+    const {
+      email, password, nickname, teamInviteToken, claimToken, compToken, website, turnstileToken, metaEventId,
+      anotherPlayer, firstName,
+    } = await req.json()
+
+    // Per email AND per IP (security audit item 8): a whole team of parents
+    // signing up from one gym Wi-Fi must all get through (60/IP/hour), while
+    // one address still can't be hammered (5/email/hour).
+    const limit = await rateLimitLogin(req, 'signup', typeof email === 'string' ? email : null, {
+      perIp: 60,
+      perEmail: 5,
+      windowSeconds: 3600,
+    })
     if (!limit.ok) {
       return NextResponse.json(
         { error: 'Too many attempts — try again later' },
         { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } }
       )
     }
-
-    const { email, password, nickname, teamInviteToken, claimToken, website, turnstileToken, metaEventId } =
-      await req.json()
 
     // Honeypot: a field hidden from real visitors. Bots fill every input they
     // find. Answer with a plain success so the operator cannot tell their
@@ -33,8 +62,8 @@ export async function POST(req: NextRequest) {
     if (turnstileConfigured() && isNativeAppRequestWithoutToken(req, turnstileToken)) {
       // The shipped iOS app has no Turnstile widget (see lib/turnstile.ts).
       // Its headers are spoofable, so exempt signups get far tighter budgets
-      // than the 10/hour above: per IP, and a global daily cap so a script
-      // rotating IPs is still bounded.
+      // than the general limit above: 5/hour per IP, and a global daily cap so
+      // a script rotating IPs is still bounded.
       const perIp = await rateLimitByIp(req, 'signup-app-exempt', 5, 3600)
       const global = perIp.ok ? await rateLimit('signup-app-exempt:global', 300, 86400) : perIp
       if (!global.ok) {
@@ -56,65 +85,179 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Email and password (6+ chars) required' }, { status: 400 })
     }
 
+    // Same display-text rule (and 50-char cap) as /api/account/nickname.
+    const nicknameClean = cleanOptionalDisplayText(nickname, 50)
+    if (!nicknameClean.ok) {
+      return NextResponse.json({ error: nicknameClean.error }, { status: 400 })
+    }
+    const nicknameTrimmed = nicknameClean.value
+
     const emailLower = email.toLowerCase().trim()
 
-    const [existing] = (await db`
-      SELECT id, email, password_hash, roster_pending FROM users WHERE email = ${emailLower}
-    `) as unknown as [{ id: string; email: string; password_hash: string | null; roster_pending: boolean | null } | undefined]
-    if (existing) {
-      // A player a coach/org added by email is a real but password-less stub
-      // (roster_pending). When that same person signs up, we complete THEIR
-      // record — keeping their team memberships and history — instead of
-      // rejecting them or making a duplicate. Any other existing account is a
-      // genuine "please log in" case.
-      if (existing.roster_pending && !existing.password_hash) {
-        const hash = await bcrypt.hash(password, BCRYPT_COST)
-        await db`
-          UPDATE users
-          SET password_hash = ${hash}, roster_pending = false,
-              nickname = COALESCE(NULLIF(nickname, ''), ${nickname?.trim() || null}),
-              reset_token = NULL, reset_token_expires = NULL
-          WHERE id = ${existing.id}
-        `
-        await addToEmailList(emailLower)
-        const token = await signSession({ userId: existing.id, email: existing.email })
-        const res = NextResponse.json({ success: true, token })
-        res.cookies.set(sessionCookieOptions(token))
-        return res
+    // "Adding another player on this email?" (the web signup page; the
+    // shipped iOS app never sends it). Several player accounts may share one
+    // address (siblings), told apart by their passwords — so this creates a
+    // NEW account for that first name. A plain signup on a known address keeps
+    // today's answer ("account exists — log in"), which the shipped app shows.
+    let siblingFirstName: string | null = null
+    if (anotherPlayer === true) {
+      const fn = cleanOptionalDisplayText(firstName, 50)
+      if (!fn.ok) return NextResponse.json({ error: fn.error }, { status: 400 })
+      if (!fn.value) {
+        return NextResponse.json({ error: "Enter the new player's first name." }, { status: 400 })
       }
-      return NextResponse.json({ error: 'Account already exists. Please log in.' }, { status: 409 })
+      siblingFirstName = capitalizeFirst(fn.value)
     }
-
-    // Signing up enrols the address in the marketing list, so an unverified
-    // signup is a way to mail a stranger. Alias variants of one Gmail inbox
-    // are the same account and must not each claim their own.
-    const abuse = await checkEmailAbuse(emailLower, 'users')
-    if (!abuse.ok) {
-      return NextResponse.json({ error: abuse.error }, { status: 409 })
-    }
-
-    // Signup is open to anyone. If this email already has subscription state
-    // (e.g. a legacy subscriber), carry it over — but it is not required.
-    const [sub] = await db`
-      SELECT subscription_type, subscription_expires_at
-      FROM email_list
-      WHERE email = ${emailLower}
-    `
 
     const hash = await bcrypt.hash(password, BCRYPT_COST)
 
-    const nicknameTrimmed = nickname?.trim() || null
+    // Signup is serialized per address: with users_email_key gone, nothing
+    // else stops a double submit (or two tabs) inserting two accounts. The
+    // advisory lock is held for the transaction; the second request then sees
+    // the first one's row and gets the normal "exists" answer.
+    const outcome = await db.begin(async (sql) => {
+      await sql`SELECT pg_advisory_xact_lock(hashtextextended(${'signup:' + emailLower}, 0))`
+      const existing = (await sql`
+        SELECT id, email, password_hash, roster_pending, first_name, nickname,
+               EXISTS (SELECT 1 FROM user_oauth_identities oi WHERE oi.user_id = users.id) AS has_oauth
+        FROM users WHERE LOWER(email) = ${emailLower}
+        ORDER BY created_at ASC NULLS LAST, id ASC
+        LIMIT ${MAX_PLAYERS_PER_EMAIL + 1}
+      `) as unknown as ExistingRow[]
 
-    // free_analysis_used = true: the free signup analysis has been
-    // discontinued, so new accounts start with no free upload.
-    const [user] = await db`
-      INSERT INTO users (email, password_hash, subscription_type, subscription_expires_at, nickname, free_analysis_used)
-      VALUES (${emailLower}, ${hash}, ${sub?.subscription_type ?? null}, ${sub?.subscription_expires_at ?? null}, ${nicknameTrimmed}, true)
-      RETURNING id, email
-    ` as unknown as [{ id: string; email: string }]
+      if (existing.length > 0 && siblingFirstName === null) {
+        return { kind: 'exists' as const, existing }
+      }
 
-    // Link any existing anonymous submissions for this email
-    await db`UPDATE submissions SET user_id = ${user.id} WHERE email = ${emailLower} AND user_id IS NULL`
+      if (existing.length === 0) {
+        // Signing up enrols the address in the marketing list, so an
+        // unverified signup is a way to mail a stranger. Alias variants of one
+        // Gmail inbox are the same account and must not each claim their own.
+        // (A sibling on an address that already has accounts is the same
+        // inbox, not an alias, so the check is for new addresses only.)
+        const abuse = await checkEmailAbuse(emailLower, 'users')
+        if (!abuse.ok) return { kind: 'abuse' as const, error: abuse.error }
+      }
+
+      if (siblingFirstName !== null && existing.length > 0) {
+        const want = siblingFirstName.toLowerCase()
+        const same = existing.find((r) => playerFirstName(r)?.toLowerCase() === want)
+        if (same) return { kind: 'same_name' as const, row: same, name: siblingFirstName }
+        if (existing.length >= MAX_PLAYERS_PER_EMAIL) return { kind: 'too_many' as const }
+        // Different-password rule: the password is what tells siblings apart.
+        const clash = await siblingPasswordClash(emailLower, password, null, sql)
+        if (clash) return { kind: 'clash' as const, error: clash }
+      }
+
+      // free_analysis_used = true: the free signup analysis has been
+      // discontinued, so new accounts start with no free upload.
+      const [user] = (await sql`
+        INSERT INTO users (email, password_hash, nickname, first_name, free_analysis_used)
+        VALUES (${emailLower}, ${hash}, ${nicknameTrimmed}, ${siblingFirstName}, true)
+        RETURNING id, email
+      `) as unknown as [{ id: string; email: string }]
+      return { kind: 'created' as const, user, sibling: existing.length > 0 }
+    })
+
+    if (outcome.kind === 'abuse') {
+      return NextResponse.json({ error: outcome.error }, { status: 409 })
+    }
+    if (outcome.kind === 'too_many') {
+      return NextResponse.json(
+        { error: `This email already has ${MAX_PLAYERS_PER_EMAIL} player accounts — the most one email can hold.` },
+        { status: 409 },
+      )
+    }
+    if (outcome.kind === 'clash') {
+      return NextResponse.json({ error: outcome.error, code: SIBLING_PASSWORD_CODE }, { status: 409 })
+    }
+    if (outcome.kind === 'same_name') {
+      const { row, name } = outcome
+      // A coach/org already added this child (password-less roster stub):
+      // same rule as below — the setup link goes to the inbox, never a
+      // password set from this form.
+      if (row.roster_pending && !row.password_hash) {
+        const out = await resendPlayerSetup(row.id)
+        const error = out.ok
+          ? `${name} was already added by a coach. We just sent ${name}'s setup link to that inbox — use it to finish ${name}'s account.`
+          : `${name} was already added by a coach. Use the setup link in that inbox to finish ${name}'s account, or use “Forgot password” on the login page.`
+        return NextResponse.json({ error, rosterPending: true, setupEmailSent: out.ok }, { status: 409 })
+      }
+      return NextResponse.json(
+        {
+          error: `${name} already has an account on this email. Log in with ${name}'s password, or use “Forgot password” on the login page.`,
+          accountExists: true,
+        },
+        { status: 409 },
+      )
+    }
+    if (outcome.kind === 'exists') {
+      const existing = outcome.existing
+      // Anyone on the address who can already sign in: the plain answer. The
+      // web page offers "Adding another player on this email?" on this flag;
+      // the shipped app ignores it and shows the message, as before.
+      if (existing.some((r) => r.password_hash || r.has_oauth)) {
+        return NextResponse.json({ error: 'Account already exists. Please log in.', accountExists: true }, { status: 409 })
+      }
+      // A player a coach/org added by email is a real but password-less stub
+      // (roster_pending). Signing up with that email must NOT set a password
+      // here: this form does not prove the person owns the inbox, and a
+      // stranger who knows a parent's email would take over the child's
+      // account (QA C2). Instead we (re)send the setup link to that inbox —
+      // one per child, each naming that child — and the owner finishes setup
+      // from there, keeping the same record.
+      const stubs = existing.filter((r) => r.roster_pending && !r.password_hash).slice(0, MAX_PLAYERS_PER_EMAIL)
+      if (stubs.length > 0) {
+        const outs = []
+        for (const stub of stubs) outs.push(await resendPlayerSetup(stub.id))
+        const anySent = outs.some((o) => o.ok)
+        const allLimited = outs.every((o) => !o.ok && o.reason === 'rate_limited')
+        const [t] = (await db`
+          SELECT t.name FROM team_memberships tm JOIN teams t ON t.id = tm.team_id
+          WHERE tm.user_id = ${stubs[0].id} ORDER BY tm.joined_at DESC LIMIT 1
+        `) as unknown as [{ name: string } | undefined]
+        const by = t?.name ? `This email was added by ${t.name}.` : 'A coach already added this email.'
+        const link = stubs.length > 1 ? 'setup links (one per player)' : 'setup link'
+        const error = anySent
+          ? `${by} We just sent the ${link} to that inbox — use it to finish setting up the account.`
+          : allLimited
+            ? `${by} We already sent the ${link} to that inbox — check it (and the spam folder) to finish setting up the account.`
+            : `${by} Use the setup link in that inbox to finish setting up the account, or use “Forgot password” on the login page to get a new one.`
+        return NextResponse.json({ error, rosterPending: true, setupEmailSent: anySent }, { status: 409 })
+      }
+      // An old admin "free account" stub: password-less, never set up, no
+      // provider identity. "Please log in" was a dead end — there is no
+      // password to log in with. Same rule as the roster stub above: the form
+      // proves nothing, so a setup link goes to the inbox (setting the password
+      // there verifies the address and activates any comp on it).
+      const out = await sendEntitlementConfirmation(existing[0].id, { requirePending: false })
+      const sent = out === 'setup_sent'
+      const error = sent
+        ? 'An account for this email is waiting to be set up. We just emailed a link to that inbox — use it to set your password.'
+        : out === 'rate_limited'
+          ? 'An account for this email is waiting to be set up. We already emailed a setup link — check that inbox (and the spam folder).'
+          : 'An account for this email is waiting to be set up. Use “Forgot password” on the login page to get a setup link.'
+      return NextResponse.json({ error, setupEmailSent: sent }, { status: 409 })
+    }
+
+    const { user } = outcome
+    const isSibling = outcome.sibling
+
+    // Signup is open to anyone and proves nothing about the inbox, so a comp
+    // (or any other email-keyed entitlement) on this address is NOT copied
+    // onto the new account here — that handed it to whoever typed the address
+    // first. It activates once the inbox is proven: either now, because they
+    // came through the signed /signup?comp= link that was emailed to this very
+    // address, or later from the confirmation link sent below.
+    const compEmail = await verifyCompSignupToken(compToken)
+    const inboxProven = compEmail !== null && compEmail === emailLower
+
+    // Adopt this address's earlier anonymous shots — but never a coach's or
+    // org admin's self-uploads (see adoptLegacySubmissions: this form does not
+    // prove the inbox, so an email match alone is not ownership).
+    // A sibling's account skips this: the address's earlier shots were
+    // already offered to the account(s) that came first.
+    if (!isSibling) await adoptLegacySubmissions(user.id, emailLower)
 
     // New accounts join the marketing list (they can unsubscribe any time;
     // a prior unsubscribe is preserved).
@@ -140,25 +283,14 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // If they registered via a coach invite link, claim their pending team spot
-    if (teamInviteToken) {
+    // If they registered via a coach invite link, claim their pending team
+    // spot — and the shots the coach already uploaded for that invite.
+    if (typeof teamInviteToken === 'string' && teamInviteToken) {
       try {
-        const [pending] = await db`
-          SELECT id, team_id, first_name, last_name_initial
-          FROM pending_team_members WHERE invite_token = ${teamInviteToken}
-        ` as unknown as [{ id: string; team_id: string; first_name: string; last_name_initial: string | null } | undefined]
-        if (pending) {
-          await db`
-            INSERT INTO team_memberships (user_id, team_id, first_name, last_name_initial)
-            VALUES (${user.id}, ${pending.team_id}, ${pending.first_name}, ${pending.last_name_initial})
-            ON CONFLICT (user_id, team_id) DO UPDATE
-              SET first_name = EXCLUDED.first_name, last_name_initial = EXCLUDED.last_name_initial
-          `
-          await db`DELETE FROM pending_team_members WHERE id = ${pending.id}`
-          await grantFreeOrgTokensIfEligible(pending.team_id)
-        }
-      } catch {
+        await claimPendingInvite(user.id, teamInviteToken)
+      } catch (err) {
         // Non-fatal: still create the account even if invite claim fails
+        console.warn('Signup team-invite claim failed:', err instanceof Error ? err.message : err)
       }
     }
 
@@ -182,8 +314,26 @@ export async function POST(req: NextRequest) {
       }))
     }
 
-    const token = await signSession({ userId: user.id, email: user.email })
-    const res = NextResponse.json({ success: true, token })
+    // Email-keyed entitlement: activate now if the inbox is proven, otherwise
+    // email the owner a confirmation link. Never fatal to signup.
+    let pendingEntitlement = false
+    try {
+      if (inboxProven) {
+        // Signing up through the comp link IS the family's choice of account
+        // (several may share the address): the comp lands here, no second click.
+        await markEmailVerified(user.id, emailLower)
+        await applyEmailEntitlement(user.id, { chosen: true })
+      } else if (await hasPendingEntitlement(user.id)) {
+        pendingEntitlement = true
+        await sendEntitlementConfirmation(user.id)
+      }
+    } catch (err) {
+      console.warn('Signup entitlement check failed:', err instanceof Error ? err.message : err)
+    }
+
+    const token = await signSession({ userId: user.id, email: user.email }, hash)
+    // pendingEntitlement is additive: already-shipped app builds ignore it.
+    const res = NextResponse.json(pendingEntitlement ? { success: true, token, pendingEntitlement: true } : { success: true, token })
     res.cookies.set(sessionCookieOptions(token))
     return res
   } catch (err) {

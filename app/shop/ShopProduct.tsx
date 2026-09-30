@@ -757,7 +757,7 @@ function BundleSection({ isInApp = false, currency = 'USD' }: { isInApp?: boolea
 
         {!isInApp && (
           <p className="text-chalk-dim text-xs">
-            10 shot analysis credits will be added to your account automatically after purchase.
+            10 shot analysis tokens will be added to your account automatically after purchase.
           </p>
         )}
       </div>

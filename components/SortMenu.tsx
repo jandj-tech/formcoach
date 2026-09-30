@@ -36,13 +36,13 @@ export default function SortMenu<T extends string>({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1.5 text-sm font-semibold text-gray-600 hover:text-black border border-gray-200 rounded-lg px-3 py-1.5 transition-colors"
+        className="flex items-center gap-1.5 text-sm font-semibold text-gray-600 dark:text-chalk-dim hover:text-black dark:hover:text-chalk bg-white dark:bg-ink-900 border border-gray-200 dark:border-courtline rounded-lg px-3 py-1.5 transition-colors"
       >
-        Sort by: <span className="text-black">{currentLabel}</span>
-        <span className={`text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`}>▾</span>
+        Sort by: <span className="text-black dark:text-chalk">{currentLabel}</span>
+        <span className={`text-gray-400 dark:text-chalk-dim transition-transform ${open ? 'rotate-180' : ''}`}>▾</span>
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-1 z-40 w-44 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden py-1">
+        <div className="absolute right-0 top-full mt-1 z-40 w-44 bg-white dark:bg-ink-900 border border-gray-200 dark:border-courtline rounded-xl shadow-lg overflow-hidden py-1">
           {options.map((opt) => (
             <button
               key={opt.value}
@@ -51,8 +51,8 @@ export default function SortMenu<T extends string>({
                 onChange(opt.value)
                 setOpen(false)
               }}
-              className={`block w-full text-left px-4 py-2 text-sm transition-colors hover:bg-orange-50 ${
-                opt.value === value ? 'font-bold text-orange-600' : 'text-gray-700'
+              className={`block w-full text-left px-4 py-2 text-sm transition-colors hover:bg-orange-50 dark:hover:bg-ember-500/10 ${
+                opt.value === value ? 'font-bold text-orange-600 dark:text-ember-400' : 'text-gray-700 dark:text-chalk'
               }`}
             >
               {opt.label}

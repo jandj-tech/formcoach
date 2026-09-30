@@ -1,6 +1,6 @@
 import { db } from './db'
 import { getSession } from './auth'
-import { getTeamSession, type TeamSessionPayload } from './team-auth'
+import { getTeamSession, coachEmailForTeam, type TeamSessionPayload } from './team-auth'
 import { getOrgSession } from './org-auth'
 import { isAdminSession } from '@/lib/admin-auth'
 
@@ -27,9 +27,10 @@ export interface NoteTarget {
 /**
  * Resolves a criterion score the given coach is allowed to annotate, or null.
  *
- * Both facts are re-checked from the database on every call: team sessions are
- * 30-day JWTs, so a coach removed from a team still holds a token asserting
- * that teamId.
+ * The coach's standing is re-checked from the database by getTeamSession()
+ * (lib/team-auth.ts) on every call — team sessions are 30-day JWTs, so a
+ * coach removed from a team still holds a token asserting that teamId — and
+ * the shot must be filed to that team (submissions.team_id).
  *
  * Deliberately does NOT include the `submissions.email = player.email` branch
  * used by the coach member page — that string match also reaches anonymous
@@ -40,29 +41,16 @@ export async function resolveNoteTarget(
   session: TeamSessionPayload,
   criterionScoreId: number,
 ): Promise<NoteTarget | null> {
+  // The caller may hand in any decoded payload, so re-prove standing here too.
+  if (!(await coachEmailForTeam(session.adminEmail, session.teamId))) return null
   const [row] = (await db`
     SELECT cs.id, cs.analysis_id, cs.ai_score
     FROM criterion_scores cs
     JOIN analyses a ON a.id = cs.analysis_id
     JOIN submissions s ON s.id = a.submission_id
     WHERE cs.id = ${criterionScoreId}
-      AND EXISTS (
-        SELECT 1 FROM teams t
-        WHERE t.id = ${session.teamId} AND t.admin_email = ${session.adminEmail}
-        UNION ALL
-        SELECT 1 FROM team_coaches tc
-        WHERE tc.team_id = ${session.teamId} AND tc.email = ${session.adminEmail}
-      )
-      AND (
-        EXISTS (
-          SELECT 1 FROM team_players tp
-          WHERE tp.id = s.team_player_id AND tp.team_id = ${session.teamId}
-        )
-        OR EXISTS (
-          SELECT 1 FROM team_memberships tm
-          WHERE tm.team_id = ${session.teamId} AND tm.user_id = s.user_id
-        )
-      )
+      -- Filed to this team (standing re-proved just above).
+      AND s.team_id = ${session.teamId}
   `) as unknown as [NoteTarget | undefined]
   return row ?? null
 }
@@ -124,24 +112,13 @@ export async function resolveNoteAuthorForAnalysis(analysisId: number): Promise<
       FROM analyses a
       JOIN submissions s ON s.id = a.submission_id
       WHERE a.id = ${analysisId}
-        AND EXISTS (
-          SELECT 1 FROM teams t
-          WHERE t.id = ${team.teamId} AND t.admin_email = ${team.adminEmail}
-          UNION ALL
-          SELECT 1 FROM team_coaches tc
-          WHERE tc.team_id = ${team.teamId} AND tc.email = ${team.adminEmail}
-        )
-        AND (
-          s.team_id = ${team.teamId}
-          OR EXISTS (
-            SELECT 1 FROM team_players tp
-            WHERE tp.id = s.team_player_id AND tp.team_id = ${team.teamId}
-          )
-          OR EXISTS (
-            SELECT 1 FROM team_memberships tm
-            WHERE tm.team_id = ${team.teamId} AND tm.user_id = s.user_id
-          )
-        )
+        -- Only shots filed to this team. getTeamSession() has already
+        -- re-checked in the database that the session's email still coaches
+        -- it (head, added coach, or the owning org's admin — the org
+        -- dashboard's "open team" sessions, which the old teams/team_coaches
+        -- check here rejected). Roster membership alone used to let a coach
+        -- annotate a linked player's personal or other-team shots.
+        AND s.team_id = ${team.teamId}
     `) as unknown as [{ ok: number } | undefined]
     if (ok) return { authorType: 'coach', teamId: team.teamId, authorEmail: team.adminEmail }
     return null
@@ -149,24 +126,15 @@ export async function resolveNoteAuthorForAnalysis(analysisId: number): Promise<
 
   const org = await getOrgSession()
   if (org) {
-    // File the note under whichever of the org's teams this player belongs to.
+    // File the note under the org team the shot was filed to.
     const [row] = (await db`
       SELECT t.id AS team_id
       FROM analyses a
       JOIN submissions s ON s.id = a.submission_id
-      JOIN teams t ON t.organization_id = ${org.orgId}
+      -- Filed to one of this organization's teams — never a player's
+      -- personal shots or another organization's.
+      JOIN teams t ON t.id = s.team_id AND t.organization_id = ${org.orgId}
       WHERE a.id = ${analysisId}
-        AND (
-          s.team_id = t.id
-          OR EXISTS (
-            SELECT 1 FROM team_players tp
-            WHERE tp.id = s.team_player_id AND tp.team_id = t.id
-          )
-          OR EXISTS (
-            SELECT 1 FROM team_memberships tm
-            WHERE tm.team_id = t.id AND tm.user_id = s.user_id
-          )
-        )
       ORDER BY t.created_at ASC
       LIMIT 1
     `) as unknown as [{ team_id: string } | undefined]

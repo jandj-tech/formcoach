@@ -12,7 +12,6 @@ import {
   ViewingScores,
   SendingResults,
   WhatPlayersSee,
-  LockingResults,
   Selling,
   Payments,
   CoachLedProgram,
@@ -24,7 +23,7 @@ import {
 export const metadata: Metadata = {
   title: 'Organization Guide — LearnHoops',
   description:
-    'Step-by-step manual for basketball clubs and coaches: set up your organization, add teams and players, upload shots, email results every week, choose what families see for free, and sell the full breakdown, a LearnHoops ball or your Shooting Class from the results page.',
+    'Step-by-step manual for basketball clubs and coaches: set up your organization, add teams and players, upload shots, email results every week (players always see their full report), and sell a LearnHoops ball or your Shooting Class from the results page.',
   alternates: { canonical: '/org/guide' },
 }
 
@@ -65,8 +64,8 @@ export default function OrgGuidePage() {
             </div>
             <p className="text-gray-700 leading-relaxed mt-4 max-w-2xl">
               Everything a club administrator or coach needs to run LearnHoops: set up your organization, get players on
-              rosters, upload one shot per player, and email every family their score each week. If you choose to sell the full
-              breakdown, a LearnHoops ball or your own Shooting Class, this guide shows you where every price and switch lives.
+              rosters, upload one shot per player, and email every family their score each week. If you choose to sell a LearnHoops
+              ball or your own Shooting Class, this guide shows you where every price and switch lives.
             </p>
             <p className="text-gray-500 text-sm mt-3">
               Every step names the exact tab or button in <b className="text-black">bold</b>. Nothing here needs technical knowledge.
@@ -101,7 +100,6 @@ export default function OrgGuidePage() {
           <ViewingScores />
           <SendingResults />
           <WhatPlayersSee />
-          <LockingResults />
           <Selling />
           <Payments />
           <CoachLedProgram />

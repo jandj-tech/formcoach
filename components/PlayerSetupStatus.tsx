@@ -4,25 +4,28 @@ import { useState } from 'react'
 
 export type PlayerStatus = 'active' | 'pending' | 'invited'
 
-// Small, consistent badge for a player's account-setup state.
+// Small, consistent badge for a player's account-setup state:
+//  active  — has an account and has set it up
+//  pending — added with an email; the setup link was (or can be) emailed
+//  invited — added by name only (no account); joins with their invite link
 export function PlayerStatusBadge({ status }: { status: PlayerStatus }) {
   if (status === 'active') {
     return (
       <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400 whitespace-nowrap">
-        Account complete
+        Account ready
       </span>
     )
   }
   if (status === 'invited') {
     return (
       <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-gray-100 dark:bg-ink-800 text-gray-500 dark:text-chalk-dim whitespace-nowrap">
-        Invite pending
+        Name only
       </span>
     )
   }
   return (
     <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-400 whitespace-nowrap">
-      Setup incomplete
+      Setup not finished
     </span>
   )
 }
@@ -65,10 +68,10 @@ export function ResendSetupButton({
     <button
       onClick={resend}
       disabled={state === 'sending'}
-      title="Resend the account setup email"
+      title="Email the setup link again (it goes to the player's inbox only)"
       className="text-xs font-semibold text-ember-600 dark:text-ember-400 hover:text-ember-500 disabled:opacity-50 transition-colors"
     >
-      {state === 'sending' ? 'Sending…' : state === 'error' ? (msg || 'Retry') : 'Resend setup'}
+      {state === 'sending' ? 'Sending…' : state === 'error' ? (msg || 'Retry') : 'Resend setup email'}
     </button>
   )
 }

@@ -73,6 +73,20 @@ export interface OrgOffer extends OrgOfferPricing {
   sortOrder: number
 }
 
+/**
+ * True for an offer whose only value is unlocking the breakdown. Every report
+ * a team or org uploads now shows the player the full report, so such an
+ * offer has nothing left to sell: it is never purchasable and is hidden from
+ * the org's offer builder (rows are kept, not deleted).
+ */
+export function isBreakdownOnlyOffer(o: {
+  includesBreakdown: boolean
+  includesBall: boolean
+  includesCourse: boolean
+}): boolean {
+  return !o.includesBall && !o.includesCourse
+}
+
 /** The price a player actually pays: the lowest defined rung. */
 export function effectivePriceCents(offer: OrgOfferPricing): number {
   return offer.discountPriceCents ?? offer.clubPriceCents ?? offer.regularPriceCents

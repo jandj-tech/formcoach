@@ -2,42 +2,43 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { CheckIcon } from 'lucide-react'
 import VideoUploader from '@/components/VideoUploader'
-
-interface Member {
-  id: string
-  email: string
-  tokens: number
-  first_name: string | null
-  last_name_initial: string | null
-}
+import type { TeamRosterEntry } from '@/lib/team-roster-refs'
 
 interface Props {
   accessCode: string
-  members: Member[]
+  /**
+   * Every player on the team as its own row (lib/team-roster-refs.ts):
+   * account members, name-only rows and invited players. Each carries the
+   * stable `ref` the upload is filed under, so two players with the same
+   * name can never be mixed up.
+   */
+  players: TeamRosterEntry[]
 }
 
-export default function CoachUploadForm({ accessCode, members }: Props) {
+export default function CoachUploadForm({ accessCode, players }: Props) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
-  const [selected, setSelected] = useState<Member | null>(null)
+  const [selected, setSelected] = useState<TeamRosterEntry | null>(null)
   const [step, setStep] = useState<'pick' | 'upload' | 'done'>('pick')
   const [resultToken, setResultToken] = useState('')
 
-  const filtered = members.filter(m => {
-    const q = search.toLowerCase()
-    const name = `${m.first_name ?? ''} ${m.last_name_initial ?? ''}`.toLowerCase()
-    return name.includes(q)
-  })
+  const q = search.trim().toLowerCase()
+  const filtered = q
+    ? players.filter(p => `${p.name} ${p.detail}`.toLowerCase().includes(q))
+    : players
 
-  function selectMember(m: Member) {
-    setSelected(m)
+  function selectPlayer(p: TeamRosterEntry) {
+    if (p.blockedReason) return
+    setSelected(p)
     setStep('upload')
   }
 
-  function handleSuccess(submissionId: string) {
-    setResultToken(submissionId)
+  function handleSuccess(_submissionId: string, token: string) {
+    // /results/<token> looks up by token; the submission id 404s there.
+    setResultToken(token)
     setStep('done')
   }
 
@@ -49,57 +50,55 @@ export default function CoachUploadForm({ accessCode, members }: Props) {
     setOpen(false)
   }
 
-  const displayName = selected
-    ? selected.first_name
-      ? `${selected.first_name} ${selected.last_name_initial ?? ''}.`
-      : selected.email
-    : ''
-
   if (!open) {
     return (
       <button
         onClick={() => setOpen(true)}
-        disabled={members.length === 0}
+        disabled={players.length === 0}
         className="w-full bg-ember-500 hover:bg-ember-400 disabled:bg-gray-200 dark:disabled:bg-ink-700 disabled:text-gray-400 dark:disabled:text-chalk-dim disabled:cursor-not-allowed text-ink-950 font-bold py-3 rounded-xl transition-colors"
       >
-        {members.length === 0 ? 'No players have joined yet' : 'Upload Shot for a Player'}
+        {players.length === 0 ? 'Add a player first' : 'Upload a shot for a player'}
       </button>
     )
   }
 
   return (
-    <div className="border border-ember-200 rounded-2xl p-6 space-y-5 bg-ember-50 dark:bg-ember-500/10">
+    <div className="border border-gray-200 dark:border-courtline rounded-2xl p-5 space-y-4 bg-white dark:bg-ink-900">
       <div className="flex items-center justify-between">
-        <h3 className="font-black text-black dark:text-chalk text-lg">Upload Shot for a Player</h3>
-        <button onClick={reset} className="text-gray-400 dark:text-chalk-dim hover:text-gray-600 dark:hover:text-chalk-dim text-sm">Cancel</button>
+        <h3 className="font-bold text-gray-900 dark:text-chalk">Upload a shot for a player</h3>
+        <button onClick={reset} className="text-sm font-semibold text-gray-500 dark:text-chalk-dim hover:text-gray-700 dark:hover:text-chalk">Cancel</button>
       </div>
 
       {step === 'pick' && (
         <div className="space-y-3">
           <input
-            type="text"
-            aria-label="Search by name..."
-            placeholder="Search by name..."
+            type="search"
+            aria-label="Search players"
+            placeholder="Search by name or email…"
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="w-full bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl px-4 py-2.5 text-black dark:text-chalk placeholder-gray-400 focus:outline-none focus:border-ember-500 transition-colors text-sm"
           />
-          <div className="space-y-2 max-h-60 overflow-y-auto">
+          <div className="space-y-2 max-h-72 overflow-y-auto">
             {filtered.length === 0 && (
               <p className="text-sm text-gray-400 dark:text-chalk-dim text-center py-4">No players found</p>
             )}
-            {filtered.map((m) => (
+            {filtered.map(p => (
               <button
-                key={m.id}
-                onClick={() => selectMember(m)}
-                className="w-full text-left border border-gray-200 dark:border-courtline hover:border-ember-400 bg-white dark:bg-ink-900 rounded-xl px-4 py-3 transition-colors"
+                key={p.ref}
+                onClick={() => selectPlayer(p)}
+                disabled={!!p.blockedReason}
+                className="w-full text-left border border-gray-200 dark:border-courtline hover:border-ember-400 disabled:hover:border-gray-200 dark:disabled:hover:border-courtline disabled:opacity-60 disabled:cursor-not-allowed bg-white dark:bg-ink-900 rounded-xl px-4 py-3 transition-colors"
               >
-                <p className="text-sm font-bold text-black dark:text-chalk">
-                  {m.first_name ? `${m.first_name} ${m.last_name_initial ?? ''}.` : m.email}
-                </p>
-                {m.first_name && (
-                  <p className="text-xs text-gray-400 dark:text-chalk-dim">{m.email}</p>
-                )}
+                <p className="text-sm font-semibold text-gray-900 dark:text-chalk">{p.name}</p>
+                <p className="text-xs text-gray-500 dark:text-chalk-dim">{p.detail}</p>
+                {p.blockedReason ? (
+                  <p className="text-xs font-semibold text-gray-600 dark:text-chalk-dim">{p.blockedReason}</p>
+                ) : p.sameNameAsAnother ? (
+                  <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">
+                    Same name as another player — check the details under the name
+                  </p>
+                ) : null}
               </button>
             ))}
           </div>
@@ -109,36 +108,42 @@ export default function CoachUploadForm({ accessCode, members }: Props) {
       {step === 'upload' && selected && (
         <div className="space-y-3">
           <p className="text-sm text-gray-600 dark:text-chalk-dim">
-            Uploading for <span className="font-bold text-black dark:text-chalk">{displayName}</span>
-            <button onClick={() => { setStep('pick'); setSelected(null) }} className="ml-2 text-ember-500 hover:underline text-xs">Change</button>
+            Uploading for <span className="font-semibold text-gray-900 dark:text-chalk">{selected.name}</span>
+            <span className="text-gray-500 dark:text-chalk-dim"> · {selected.detail}</span>
+            <button onClick={() => { setStep('pick'); setSelected(null) }} className="ml-2 text-ember-600 dark:text-ember-400 hover:underline text-xs font-semibold">Change</button>
           </p>
+          {/* Keyed to the player: VideoUploader's upload callback closes over
+              teamMode, so a fresh instance per pick guarantees the shot can
+              never go to a previously selected player. */}
           <VideoUploader
+            key={selected.ref}
             teamMode={{
               code: accessCode,
-              firstName: (selected.first_name ?? selected.email.split('@')[0]).trim(),
-              lastName: selected.last_name_initial ?? '?',
+              firstName: selected.firstName,
+              lastName: selected.lastInitial || '?',
+              playerRef: selected.ref,
               onSuccess: handleSuccess,
             }}
           />
         </div>
       )}
 
-      {step === 'done' && (
+      {step === 'done' && selected && (
         <div className="text-center space-y-4 py-4">
-          <div className="text-3xl font-black text-green-600 dark:text-green-400">✓</div>
-          <p className="font-black text-black dark:text-chalk text-lg">Shot uploaded for {displayName}</p>
+          <CheckIcon className="mx-auto h-8 w-8 text-green-600 dark:text-green-400" aria-hidden />
+          <p className="font-bold text-gray-900 dark:text-chalk text-lg">Shot uploaded for {selected.name}</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button
               onClick={() => router.push(`/results/${resultToken}`)}
               className="bg-ember-500 hover:bg-ember-400 text-ink-950 font-bold px-6 py-2.5 rounded-xl transition-colors text-sm"
             >
-              View Results
+              View results
             </button>
             <button
-              onClick={() => { setStep('pick'); setSelected(null); setSearch(''); setResultToken('') }}
-              className="bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline hover:border-ember-400 text-black dark:text-chalk font-bold px-6 py-2.5 rounded-xl transition-colors text-sm"
+              onClick={() => { setStep('pick'); setSelected(null); setSearch(''); setResultToken(''); router.refresh() }}
+              className="bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline hover:border-ember-400 text-black dark:text-chalk font-semibold px-6 py-2.5 rounded-xl transition-colors text-sm"
             >
-              Upload Another
+              Upload another
             </button>
           </div>
         </div>

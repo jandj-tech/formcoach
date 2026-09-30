@@ -22,11 +22,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Nothing to report' }, { status: 400 })
     }
 
-    const perIp = await rateLimitByIp(req, 'report', 5, 3600)
-    if (!perIp.ok) {
+    // Per IP (looser, so parents sharing a gym's Wi-Fi can each report) and per
+    // reported item (tighter, so one page can't be used to flood the inbox).
+    const perIp = await rateLimitByIp(req, 'report', 20, 3600)
+    const perItem = perIp.ok && contentUrl
+      ? await rateLimit(`report:item:${contentUrl.toLowerCase()}`, 5, 3600)
+      : perIp
+    if (!perIp.ok || !perItem.ok) {
       return NextResponse.json(
         { error: 'You have sent several reports recently — please try again later.' },
-        { status: 429, headers: { 'Retry-After': String(perIp.retryAfterSeconds) } },
+        { status: 429, headers: { 'Retry-After': String(perIp.retryAfterSeconds || perItem.retryAfterSeconds) } },
       )
     }
     const global = await rateLimit('report:global', 300, 3600)

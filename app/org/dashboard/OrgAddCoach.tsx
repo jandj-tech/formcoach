@@ -11,8 +11,13 @@ export default function OrgAddCoach({ teamId }: { teamId: string }) {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  // Which half of the form the error belongs to, so it shows under that half.
+  const [errorAt, setErrorAt] = useState<'invite' | 'self'>('invite')
   const [inviteUrl, setInviteUrl] = useState('')
   const [emailedTo, setEmailedTo] = useState('')
+  const [coachName, setCoachName] = useState('')
+  // Set when the email already had a coach password: added straight away.
+  const [addedExisting, setAddedExisting] = useState('')
   const [copied, setCopied] = useState(false)
   const [selfName, setSelfName] = useState('')
 
@@ -22,13 +27,15 @@ export default function OrgAddCoach({ teamId }: { teamId: string }) {
     setError('')
     setInviteUrl('')
     setEmailedTo('')
+    setAddedExisting('')
   }
 
   // mode: 'email' emails the coach the signup link; 'link' just returns it.
   async function addCoach(mode: 'email' | 'link') {
+    setErrorAt('invite')
     const value = email.trim()
-    if (!value || !value.includes('@')) {
-      setError('Enter a valid coach email')
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value)) {
+      setError('Enter the coach\u2019s email address (it should look like name@example.com).')
       return
     }
     setLoading(true)
@@ -37,7 +44,7 @@ export default function OrgAddCoach({ teamId }: { teamId: string }) {
       const res = await fetch('/api/org/add-coach', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ teamId, email: value, sendEmail: mode === 'email' }),
+        body: JSON.stringify({ teamId, email: value, name: coachName.trim() || undefined, sendEmail: mode === 'email' }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -45,9 +52,16 @@ export default function OrgAddCoach({ teamId }: { teamId: string }) {
         setLoading(false)
         return
       }
-      setInviteUrl(`${BASE_URL}/team/coach-signup?token=${data.inviteToken}`)
-      if (data.emailed) setEmailedTo(value)
+      if (data.existingAccount) {
+        setAddedExisting(value)
+      } else {
+        // No link for an address already used elsewhere: that coach is
+        // invited by email only (lib/roster-players.ts addCoachToTeam).
+        if (data.inviteToken) setInviteUrl(`${BASE_URL}/team/coach-signup?token=${data.inviteToken}`)
+        if (data.emailed) setEmailedTo(value)
+      }
       setEmail('')
+      setCoachName('')
       setLoading(false)
       router.refresh()
     } catch {
@@ -58,6 +72,7 @@ export default function OrgAddCoach({ teamId }: { teamId: string }) {
 
   // The org owner adds themselves as a coach — no email, no separate account.
   async function addSelf() {
+    setErrorAt('self')
     setLoading(true)
     reset()
     try {
@@ -102,6 +117,7 @@ export default function OrgAddCoach({ teamId }: { teamId: string }) {
 
   return (
     <div className="border border-gray-200 dark:border-courtline rounded-xl p-3 space-y-2">
+      <p className="text-sm font-semibold text-black dark:text-chalk">Invite a coach</p>
       <input
         type="email"
         aria-label="Coach email"
@@ -110,7 +126,18 @@ export default function OrgAddCoach({ teamId }: { teamId: string }) {
         onChange={e => setEmail(e.target.value)}
         className="w-full bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-lg px-3 py-2 text-black dark:text-chalk text-sm placeholder-gray-400 focus:outline-none focus:border-ember-500 transition-colors"
       />
-      <div className="flex gap-2">
+      <input
+        type="text"
+        aria-label="Coach name (optional)"
+        placeholder="Coach name (optional) — shown to players"
+        value={coachName}
+        onChange={e => setCoachName(e.target.value)}
+        className="w-full bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-lg px-3 py-2 text-black dark:text-chalk text-sm placeholder-gray-400 focus:outline-none focus:border-ember-500 transition-colors"
+      />
+      <p className="text-[11px] text-gray-400 dark:text-chalk-dim">
+        Already a coach on another team? They&rsquo;re added straight away and keep the password they use now.
+      </p>
+      <div className="flex flex-wrap gap-2">
         <button
           type="button"
           onClick={() => addCoach('email')}
@@ -132,19 +159,21 @@ export default function OrgAddCoach({ teamId }: { teamId: string }) {
           onClick={() => { setOpen(false); reset() }}
           className="shrink-0 text-gray-400 dark:text-chalk-dim hover:text-gray-600 dark:hover:text-chalk-dim text-xs font-semibold px-2"
         >
-          Cancel
+          Close
         </button>
       </div>
+      {error && errorAt === 'invite' && <p role="alert" className="text-red-500 text-xs">{error}</p>}
 
       <div className="flex items-center gap-2">
         <div className="flex-1 h-px bg-gray-200 dark:bg-ink-700" />
         <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-chalk-dim">or</span>
         <div className="flex-1 h-px bg-gray-200 dark:bg-ink-700" />
       </div>
+      <p className="text-sm font-semibold text-black dark:text-chalk">Coaching this team yourself?</p>
       <input
         type="text"
         aria-label="Your name"
-        placeholder="Your name"
+        placeholder="Your name — shown to players"
         value={selfName}
         onChange={e => setSelfName(e.target.value)}
         className="w-full bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-lg px-3 py-2 text-black dark:text-chalk text-sm placeholder-gray-400 focus:outline-none focus:border-ember-500 transition-colors"
@@ -155,12 +184,19 @@ export default function OrgAddCoach({ teamId }: { teamId: string }) {
         disabled={loading}
         className="w-full bg-gray-100 dark:bg-ink-800 hover:bg-gray-200 dark:hover:bg-ink-700 disabled:opacity-50 text-black dark:text-chalk font-bold px-3 py-2 rounded-lg text-xs transition-colors"
       >
-        {loading ? 'Working…' : 'Add myself as a coach'}
+        {loading ? 'Working…' : 'Add me as a coach'}
       </button>
 
-      {error && <p className="text-red-500 text-xs">{error}</p>}
+      {error && errorAt === 'self' && <p role="alert" className="text-red-500 text-xs">{error}</p>}
+      {addedExisting && (
+        <div className="bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-900 rounded-lg p-3">
+          <p className="text-xs font-semibold text-green-700 dark:text-green-400">
+            Coach added. {addedExisting} already coaches another team, so they log in with the password they already use. We emailed them to let them know.
+          </p>
+        </div>
+      )}
       {inviteUrl && (
-        <div className="bg-green-50 dark:bg-green-950/40 border border-green-200 rounded-lg p-3 space-y-1">
+        <div className="bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-900 rounded-lg p-3 space-y-1">
           <p className="text-xs font-semibold text-green-700 dark:text-green-400">
             {emailedTo ? `Coach added — invite emailed to ${emailedTo}.` : 'Coach added!'}
           </p>

@@ -11,7 +11,7 @@
 export const metadata = {
   title: 'Register your organization | LearnHoops',
   description:
-    'Register a basketball organization on LearnHoops to manage teams, coaches and shot analysis credits.',
+    'Register a basketball organization on LearnHoops to manage teams, coaches and shot analysis tokens.',
   alternates: { canonical: '/org/signup' },
 }
 

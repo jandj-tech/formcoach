@@ -86,3 +86,30 @@ export const SENDER_OPTIONS: ReadonlyArray<{ id: SenderId; from: string }> = [
 export function resolveSender(id: string | undefined): { id: SenderId; from: string } {
   return SENDER_OPTIONS.find((o) => o.id === id) ?? SENDER_OPTIONS[0]
 }
+
+/** The bare address inside NOTIFICATION_FROM (`Name <addr>` or just `addr`). */
+function notificationAddress(): string {
+  const m = NOTIFICATION_FROM.match(/<([^<>\s]+@[^<>\s]+)>/)
+  return (m ? m[1] : NOTIFICATION_FROM).trim()
+}
+
+/**
+ * From header for mail a coach or organization sends to players through us:
+ * `"Coach Dana via LearnHoops" <noreply@...>`. The address stays ours (it is
+ * the one our domain authenticates); only the display name names the sender,
+ * and Reply-To carries the person's real address.
+ *
+ * The name is user-typed (a coach nickname, an org name), so everything that
+ * could break out of the quoted display name or inject a header is removed:
+ * quotes, backslashes, angle brackets, CR/LF and other control characters.
+ */
+export function onBehalfFrom(name: string | null | undefined): string {
+  const clean = (name ?? '')
+    .replace(/[\u0000-\u001f\u007f"\\<>]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 60)
+    .trim()
+  if (!clean) return NOTIFICATION_FROM
+  return `"${clean} via LearnHoops" <${notificationAddress()}>`
+}

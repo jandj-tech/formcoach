@@ -5,9 +5,11 @@ import { getStripe } from '@/lib/stripe'
 import { checkoutSessionEvents, sendMetaEvent } from '@/lib/meta-server'
 import { db } from '@/lib/db'
 import { sendAbandonedCheckoutEmail, sendClaimCreditsEmail, sendClassPurchaseConfirmationEmail, sendOrderHoldEmail, sendTokenPurchaseConfirmationEmail } from '@/lib/email'
+import { isMarketingSuppressed } from '@/lib/email-list'
 import { isSizeInStock, SIZE_INCHES } from '@/lib/ball-inventory'
 import { randomBytes } from 'crypto'
 import { grantBallCreditsOnce } from '@/lib/grant-ball-credits'
+import { createPendingCreditClaim, playersByEmail, soleVerifiedPlayer } from '@/lib/player-accounts'
 import { claimStripeSession, releaseStripeSessionClaim } from '@/lib/stripe-idempotency'
 import { recordPurchase } from '@/lib/record-purchase'
 import { resolveBaseUrl } from '@/lib/base-url'
@@ -16,6 +18,8 @@ import { applyOrgReactivation, syncSubscriptionToOrg } from '@/lib/org-subscript
 import { applyPlayerSubscriptionCheckout, syncSubscriptionToUser } from '@/lib/player-subscription'
 import { isPlayerPlan, PLAYER_PLANS } from '@/lib/player-plans'
 import { fulfillOfferSession } from '@/lib/org-offer-fulfillment'
+import { applyMembershipRefund, completeMembershipOrder } from '@/lib/org-membership'
+import { fulfillTokenGrant } from '@/lib/token-grants'
 
 export async function POST(req: NextRequest) {
   try {
@@ -152,6 +156,27 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ received: true })
     }
 
+    // --- Org-sponsored player memberships (prepaid seats) ---
+    // Metadata is only { type, orderId }; the order, its seats and the players
+    // to assign live server-side. Idempotent and shared with
+    // /api/org/memberships/complete — whichever lands first applies it.
+    if (metaType === 'org_membership_purchase') {
+      try {
+        const result = await completeMembershipOrder(session)
+        console.log('[stripe webhook] org_membership_purchase', {
+          sessionId: session.id,
+          orderId: result.order?.id ?? null,
+          applied: result.applied,
+          reason: result.reason ?? null,
+        })
+      } catch (err) {
+        // The claim was released inside completeMembershipOrder; ask Stripe to retry.
+        console.error('[stripe webhook] org_membership_purchase failed:', session.id, err)
+        return NextResponse.json({ error: 'fulfilment failed' }, { status: 500 })
+      }
+      return NextResponse.json({ received: true })
+    }
+
     // --- Coach self-upload credits ---
     if (metaType === 'coach_self_credits') {
       const coachEmail = session.metadata?.coachEmail?.toLowerCase()
@@ -173,7 +198,7 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
         }
         await recordPurchase(session, {
           kind: 'coach_credits',
-          description: `${quantity} coach upload credit${quantity === 1 ? '' : 's'}`,
+          description: `${quantity} coach token${quantity === 1 ? '' : 's'}`,
           quantity,
           email: coachEmail,
           buyerKind: 'coach',
@@ -226,7 +251,17 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
     }
 
     // --- Token grant for team/org players ---
+    if (metaType === 'team_token_grant' && session.metadata?.grantId) {
+      // Current format: recipients are stored server-side in
+      // pending_token_grants (the old comma-joined id list overflowed Stripe's
+      // 500-char metadata limit at ~14 players).
+      const outcome = await fulfillTokenGrant(session)
+      console.log('[stripe webhook] team_token_grant', { sessionId: session.id, outcome })
+      if (outcome === 'failed') return NextResponse.json({ received: true, handled: false })
+      return NextResponse.json({ received: true })
+    }
     if (metaType === 'team_token_grant') {
+      // Legacy format (checkouts opened before pending_token_grants existed).
       const recipientIds = (session.metadata?.recipientUserIds || '').split(',').filter(Boolean)
       const tokensEach = parseInt(session.metadata?.tokensEach || '1', 10)
       if (recipientIds.length > 0 && tokensEach > 0) {
@@ -273,7 +308,7 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
         }
         await recordPurchase(session, {
           kind: 'team_credits',
-          description: `${quantity} team upload credit${quantity === 1 ? '' : 's'}`,
+          description: `${quantity} team token${quantity === 1 ? '' : 's'}`,
           quantity,
           buyerKind: 'team',
           buyerRef: teamId,
@@ -290,16 +325,41 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
       const quantity = Math.max(1, parseInt(session.metadata?.quantity || '1', 10) || 1)
       const claim = await claimStripeSession(session.id, quantity, userId ? `user:${userId}` : emailLower ?? null)
       if (claim === 'already_processed') return NextResponse.json({ received: true })
+      // Set when the tokens could not go to exactly one account: they wait on
+      // a one-time claim instead, and the buyer's inbox gets the claim link.
+      let heldClaimToken: string | null = null
       try {
         if (userId) {
           await db`UPDATE users SET analysis_tokens = COALESCE(analysis_tokens, 0) + ${quantity} WHERE id = ${userId}`
         } else if (emailLower) {
-          await db`UPDATE users SET analysis_tokens = COALESCE(analysis_tokens, 0) + ${quantity} WHERE email = ${emailLower}`
+          // No userId (legacy sessions; /api/buy-token always sets one). The
+          // address alone names the buyer, and several player accounts may
+          // share it (siblings). Credit EXACTLY ONE: the single account that
+          // has proven the inbox. Otherwise — none verified, or several —
+          // hold the tokens on a claim the family redeems by logging in to
+          // the account that should get them. (This used to credit every
+          // row carrying the address, verified or not.)
+          const target = await soleVerifiedPlayer(emailLower)
+          if (target) {
+            await db`UPDATE users SET analysis_tokens = COALESCE(analysis_tokens, 0) + ${quantity} WHERE id = ${target.id}`
+          } else {
+            heldClaimToken = await createPendingCreditClaim(quantity)
+            console.error('[stripe webhook] analysis_token without userId: no single verified account, tokens held on a claim', {
+              sessionId: session.id, claimToken: heldClaimToken, quantity,
+            })
+          }
         }
       } catch (err) {
         console.error('Failed to credit analysis token:', err)
         if (claim === 'claimed') await releaseStripeSessionClaim(session.id, 'analysis_token_failed')
         return NextResponse.json({ received: true, handled: false })
+      }
+      if (heldClaimToken && emailLower) {
+        try {
+          await sendClaimCreditsEmail(emailLower, session.customer_details?.name ?? null, quantity, heldClaimToken, { context: 'tokens' })
+        } catch (err) {
+          console.error('[stripe webhook] analysis_token claim email failed (claim still redeemable):', session.id, err)
+        }
       }
       await recordPurchase(session, {
         kind: 'analysis_tokens',
@@ -539,27 +599,42 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
     }
 
     let claimConsumed = false
+    let sharedGuestEmail = false
     if (tokensToGrant > 0 && isGuestClaim && emailLower) {
-      // If the guest's email already belongs to an account, land the credits
-      // there now and consume the claim in the same statement, so logging in
-      // later can't redeem it a second time.
+      // If the guest's email already belongs to an account that has PROVEN it
+      // owns that inbox, land the credits there now and consume the claim in
+      // the same statement, so logging in later can't redeem it a second time.
+      // An unproven account (anyone can sign up with any address) gets
+      // nothing here: the claim stays open and the claim email below goes to
+      // the buyer's inbox, whose link is the proof.
+      //
+      // Several player accounts may share the address (siblings): only the
+      // SINGLE verified account on it is credited. With several verified
+      // accounts nothing is credited here and the claim email below asks the
+      // family to pick one (by logging in to it). Crediting "every verified
+      // row on the address" — as this used to — multiplied the tokens.
       try {
-        const credited = (await db`
-          WITH claim AS (
-            UPDATE pending_credit_claims SET redeemed_at = NOW()
-            WHERE claim_token = ${claimToken}
-              AND redeemed_at IS NULL
-              AND EXISTS (SELECT 1 FROM users WHERE LOWER(email) = ${emailLower})
-            RETURNING tokens_to_grant
-          )
-          UPDATE users
-          SET analysis_tokens = COALESCE(analysis_tokens, 0) + (SELECT tokens_to_grant FROM claim)
-          WHERE LOWER(email) = ${emailLower} AND EXISTS (SELECT 1 FROM claim)
-          RETURNING id
-        `) as unknown as Array<{ id: string }>
-        claimConsumed = credited.length > 0
+        const target = await soleVerifiedPlayer(emailLower)
+        if (target) {
+          const credited = (await db`
+            WITH claim AS (
+              UPDATE pending_credit_claims SET redeemed_at = NOW()
+              WHERE claim_token = ${claimToken}
+                AND redeemed_at IS NULL
+                AND EXISTS (SELECT 1 FROM users WHERE id = ${target.id} AND email_verified_at IS NOT NULL)
+              RETURNING tokens_to_grant
+            )
+            UPDATE users
+            SET analysis_tokens = COALESCE(analysis_tokens, 0) + (SELECT tokens_to_grant FROM claim)
+            WHERE id = ${target.id} AND email_verified_at IS NOT NULL AND EXISTS (SELECT 1 FROM claim)
+            RETURNING id
+          `) as unknown as Array<{ id: string }>
+          claimConsumed = credited.length > 0
+        } else {
+          sharedGuestEmail = (await playersByEmail(emailLower)).filter((a) => !!a.email_verified_at).length > 1
+        }
         console.log('[stripe webhook] guest ball-order claim', {
-          sessionId: session.id, creditedExistingAccount: claimConsumed,
+          sessionId: session.id, creditedExistingAccount: claimConsumed, sharedEmail: sharedGuestEmail,
         })
       } catch (err) {
         console.error('[stripe webhook] guest claim auto-credit failed (claim still redeemable):', err)
@@ -570,7 +645,7 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
     // can still claim their credits. Skipped when the claim was just consumed.
     if (tokensToGrant > 0 && claimToken && !claimConsumed && !recipient.startsWith('user:') && !recipient.startsWith('team:') && emailLower) {
       try {
-        await sendClaimCreditsEmail(emailLower, name || null, tokensToGrant, claimToken)
+        await sendClaimCreditsEmail(emailLower, name || null, tokensToGrant, claimToken, { choose: sharedGuestEmail })
       } catch (err) {
         console.error('Failed to send claim credits email:', err)
       }
@@ -724,11 +799,8 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ received: true })
     }
 
-    // Respect unsubscribes.
-    const optedOut = await db`
-      SELECT 1 FROM email_list WHERE email = ${email} AND unsubscribed_at IS NOT NULL
-    `
-    if (optedOut.length > 0) {
+    // Respect unsubscribes — full or marketing-only (this is marketing mail).
+    if (await isMarketingSuppressed(email)) {
       console.log('[stripe webhook] abandoned checkout: unsubscribed, skipping', { sessionId: session.id })
       return NextResponse.json({ received: true })
     }
@@ -785,6 +857,13 @@ async function handleWebhook(req: NextRequest): Promise<NextResponse> {
       } catch (err) {
         // Bookkeeping only — never ask Stripe to retry a refund record.
         console.error('[stripe webhook] refund record failed:', err)
+      }
+      // Org membership orders: refunded seats stop covering players.
+      try {
+        const membership = await applyMembershipRefund(paymentIntent, charge.amount_refunded, charge.refunded)
+        if (membership) console.log('[stripe webhook] charge.refunded: membership order updated', { paymentIntent })
+      } catch (err) {
+        console.error('[stripe webhook] membership refund handling failed:', err)
       }
     }
     return NextResponse.json({ received: true })

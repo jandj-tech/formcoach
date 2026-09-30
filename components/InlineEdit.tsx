@@ -62,7 +62,7 @@ export default function InlineEdit({
   if (!editing) {
     return (
       <span className="inline-flex items-center gap-2">
-        <span className={value ? textClassName : 'text-gray-400 italic'}>
+        <span className={value ? textClassName : 'text-gray-400 dark:text-chalk-dim italic'}>
           {value || emptyLabel}
         </span>
         <button
@@ -88,7 +88,7 @@ export default function InlineEdit({
           if (e.key === 'Enter') save()
           if (e.key === 'Escape') { setEditing(false); setError('') }
         }}
-        className="bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-base text-black focus:outline-none focus:border-orange-500"
+        className="min-w-0 max-w-full bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-lg px-3 py-1.5 text-base text-black dark:text-chalk focus:outline-none focus:border-orange-500"
       />
       <button
         type="button"
@@ -101,11 +101,11 @@ export default function InlineEdit({
       <button
         type="button"
         onClick={() => { setEditing(false); setError('') }}
-        className="text-xs font-semibold text-gray-400 hover:text-gray-600 transition-colors"
+        className="text-xs font-semibold text-gray-400 dark:text-chalk-dim hover:text-gray-600 dark:hover:text-chalk transition-colors"
       >
         Cancel
       </button>
-      {error && <span className="text-red-500 text-xs">{error}</span>}
+      {error && <span role="alert" className="basis-full text-red-500 text-xs">{error}</span>}
     </span>
   )
 }

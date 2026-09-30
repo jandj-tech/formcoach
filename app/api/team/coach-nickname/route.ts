@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getTeamSessionFromRequest } from '@/lib/team-auth'
+import { cleanOptionalDisplayText } from '@/lib/moderation'
 
 // Lets the logged-in coach set their own display name. Stored on teams
 // (for the head coach) or team_coaches (for additional coaches).
@@ -9,7 +10,9 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = (await req.json().catch(() => ({}))) as { nickname?: string }
-  const nickname = body.nickname?.trim().slice(0, 100) || null
+  const cleaned = cleanOptionalDisplayText(body.nickname, 100)
+  if (!cleaned.ok) return NextResponse.json({ error: cleaned.error }, { status: 400 })
+  const nickname = cleaned.value
 
   try {
     const [team] = (await db`

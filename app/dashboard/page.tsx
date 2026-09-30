@@ -5,6 +5,7 @@ import { db } from '@/lib/db'
 import { userTier } from '@/lib/team-features'
 import { analysisBaseCents, REGULAR_VOLUME_MIN_QTY, REGULAR_VOLUME_PRICE_CENTS, usd } from '@/lib/team-pricing'
 import { getUsageSummary } from '@/lib/player-dashboard'
+import { getPlayerSubscription, subscriptionEntitled } from '@/lib/player-subscription'
 import { PLAYER_PLANS } from '@/lib/player-plans'
 import PlanControls from './PlanControls'
 import TopNav from '@/components/TopNav'
@@ -21,6 +22,7 @@ import JoinTeamForm from './JoinTeamForm'
 import LeaveTeamButton from './LeaveTeamButton'
 import NicknameForm from './NicknameForm'
 import NameForm from './NameForm'
+import FamilySettings from '@/components/FamilySettings'
 import TeamChatPanel from '@/components/TeamChatPanel'
 import TeamSchedulePanel from '@/components/TeamSchedulePanel'
 import AppearanceSection from '@/components/account/AppearanceSection'
@@ -93,7 +95,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         SELECT s.id, s.created_at, s.token, a.overall_score, a.frame_urls
         FROM submissions s
         LEFT JOIN analyses a ON a.submission_id = s.id
-        WHERE s.user_id = ${user.id} OR s.email = ${user.email}
+        -- user_id only: an email match is not ownership (security audit
+        -- item 1) — submissions.email holds coaches' self-upload addresses.
+        WHERE s.user_id = ${user.id}
         ORDER BY s.created_at DESC
         LIMIT 100
       `) as unknown as SubmissionRow[]
@@ -130,10 +134,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   // Teams the player has joined — a player can be on more than one (e.g. a
   // house league team and a summer league team).
-  let teams: Array<{ id: string; name: string; access_code: string; admin_email: string }> = []
+  let teams: Array<{ id: string; name: string; access_code: string; admin_email: string; leaderboard_visibility: string | null }> = []
   try {
     teams = (await db`
-      SELECT t.id, t.name, t.access_code, t.admin_email
+      SELECT t.id, t.name, t.access_code, t.admin_email, t.leaderboard_visibility
       FROM team_memberships tm
       JOIN teams t ON t.id = tm.team_id
       WHERE tm.user_id = ${user.id}
@@ -204,6 +208,25 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   // The Player/Pro plan + this week/month allowance, from the same service the
   // API and the iOS app read — one source of truth for what's left.
   const usage = await getUsageSummary(user.id)
+  // Club-covered (org-sponsored membership): the club pays, so there is
+  // nothing for the player to manage, cancel or upgrade here.
+  const orgSponsor = usage.billedVia === 'org' ? usage.sponsor : null
+  // The one exception: a club PLAYER seat can still be upgraded to Pro — the
+  // player pays for Pro themselves and the seat stays. With their own Stripe
+  // Player plan (paused under the seat) that plan changes in place; with no
+  // plan of their own it's a normal Pro checkout. An own App Store plan can't
+  // be changed here, and Pro seats offer nothing.
+  const ownSub = orgSponsor?.plan === 'player' ? await getPlayerSubscription(user.id) : null
+  const clubUpgradeSub =
+    subscriptionEntitled(ownSub) && ownSub.plan === 'player' && ownSub.stripeSubscriptionId ? ownSub : null
+  const clubUpgradeCheckout = orgSponsor?.plan === 'player' && !subscriptionEntitled(ownSub)
+  // "Mar 31" this year, "Mar 31, 2027" otherwise.
+  const longDate = (iso: string, exclusiveEnd = false) => {
+    // A membership's ends_at is exclusive; its last covered day is the one before.
+    const d = new Date(new Date(iso).getTime() - (exclusiveEnd ? 1 : 0))
+    const sameYear = d.getUTCFullYear() === new Date().getUTCFullYear()
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', ...(sameYear ? {} : { year: 'numeric' }), timeZone: 'UTC' })
+  }
 
   function scoreColor(score: number) {
     if (score >= 8) return 'text-green-600 dark:text-green-400'
@@ -289,7 +312,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       <AppearanceSection />
       {/* Only subscribers have a card and invoices to manage; token buyers and
           the iOS app (Apple-billed) never see this. */}
-      {usage.entitled && usage.plan && !isInApp && (
+      {usage.entitled && usage.plan && !isInApp && !orgSponsor && (
         <Section
           title="Billing"
           tipLabel="What is billing?"
@@ -307,7 +330,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       <Section
         title="Display name"
         tipLabel="What is my display name used for?"
-        tip="Shown on team rosters, leaderboards, and any certificates you earn. Just your first name and last initial — never your full name."
+        tip="Shown on team rosters, the team leaderboard if your coach shares it, and any certificates you earn. Just your first name and last initial — never your full name."
         summary={fullName || 'Not set'}
       >
         <NameForm
@@ -324,6 +347,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       >
         <NicknameForm current={user.nickname ?? null} />
       </Section>
+
+      {/* Renders nothing unless other players share this email. */}
+      <FamilySettings />
 
       <div className="border border-red-200 dark:border-red-900/60 rounded-2xl p-5 flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -383,7 +409,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 href={`/dashboard/leaderboard?team=${t.id}`}
                 className="inline-block text-sm font-semibold text-orange-600 dark:text-ember-400 hover:text-orange-500 transition-colors"
               >
-                View Team Leaderboard →
+                {t.leaderboard_visibility === 'hidden' ? 'Your team results →' : 'View Team Leaderboard →'}
               </Link>
 
               {/* Upcoming events — one-tap RSVP without leaving the dashboard.
@@ -452,7 +478,47 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         {usage.entitled && usage.plan ? (
           <>
             {/* Current plan */}
-            <section className="bg-orange-50 dark:bg-ember-500/10 border border-orange-200 rounded-2xl p-5 space-y-3">
+            {orgSponsor ? (
+            <section className="bg-orange-50 dark:bg-ember-500/10 border border-orange-200 dark:border-ember-500/30 rounded-2xl p-5 space-y-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h2 className="text-xs font-bold text-gray-500 dark:text-chalk-dim uppercase tracking-wide">Your Plan</h2>
+                  <p className="text-2xl font-black text-black dark:text-chalk mt-1">{usage.planName}</p>
+                  <p className="text-sm text-gray-700 dark:text-chalk mt-0.5">
+                    Membership provided by <span className="font-semibold">{orgSponsor.orgName}</span>
+                    {' · '}
+                    {orgSponsor.plan === 'pro' ? 'Pro' : 'Player'}
+                    {orgSponsor.endsAt ? ` · through ${longDate(orgSponsor.endsAt, true)}` : ''}
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-chalk-dim mt-0.5">{usage.allowanceLabel}</p>
+                  {usage.personalPlanPausedUntil && (
+                    <p className="text-xs text-gray-500 dark:text-chalk-dim mt-1">
+                      Your own plan is paused while {orgSponsor.orgName} covers you, and starts billing again
+                      on {longDate(usage.personalPlanPausedUntil)}.
+                    </p>
+                  )}
+                </div>
+                <Link
+                  href="/analyze"
+                  className="bg-orange-500 hover:bg-orange-400 text-ink-950 font-bold text-sm px-5 py-2.5 rounded-xl transition-colors"
+                >
+                  Analyze a Shot
+                </Link>
+              </div>
+              {!isInApp && orgSponsor.endsAt && (clubUpgradeSub || clubUpgradeCheckout) && (
+                <PlanControls
+                  plan="player"
+                  interval={clubUpgradeSub ? clubUpgradeSub.interval : 'monthly'}
+                  clubSeat={{
+                    orgName: orgSponsor.orgName,
+                    lastDay: longDate(orgSponsor.endsAt, true),
+                    ownPlan: !!clubUpgradeSub,
+                  }}
+                />
+              )}
+            </section>
+            ) : (
+            <section className="bg-orange-50 dark:bg-ember-500/10 border border-orange-200 dark:border-ember-500/30 rounded-2xl p-5 space-y-3">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h2 className="text-xs font-bold text-gray-500 dark:text-chalk-dim uppercase tracking-wide">Your Plan</h2>
@@ -493,13 +559,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 !isInApp && <PlanControls plan={usage.plan} interval={usage.billingFrequency ?? 'monthly'} />
               )}
             </section>
+            )}
 
             {/* Included usage — BOTH limits, tracked separately from tokens */}
             <section className="border border-gray-200 dark:border-courtline rounded-2xl p-5 space-y-4">
               <div className="flex items-center gap-2">
                 <h2 className="text-xs font-bold text-gray-500 dark:text-chalk-dim uppercase tracking-wide">Shot Analysis</h2>
                 <InfoTip label="How do included analyses work?" align="left">
-                  Your plan includes {usage.allowanceLabel} — both limits apply, and unused
+                  {orgSponsor ? 'Your membership' : 'Your plan'} includes {usage.allowanceLabel} — both limits apply, and unused
                   analyses don&apos;t roll over. When your included analyses are used up, any
                   purchased analysis tokens are used instead (we&apos;ll tell you first).
                 </InfoTip>
@@ -542,7 +609,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                   </div>
                 )
               })}
-              {usage.weeklyRemaining === 0 && usage.monthlyRemaining > 0 && usage.plan === 'player' && !isInApp && (
+              {usage.weeklyRemaining === 0 && usage.monthlyRemaining > 0 && usage.plan === 'player' && !isInApp && !orgSponsor && (
                 <p className="text-xs text-gray-600 dark:text-chalk-dim border-t border-gray-200 dark:border-courtline pt-3">
                   Hitting the weekly limit often? Pro includes up to {PLAYER_PLANS.pro.weeklyLimit} per
                   week and {PLAYER_PLANS.pro.monthlyLimit} per month.

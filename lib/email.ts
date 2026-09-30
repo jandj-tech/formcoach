@@ -1,5 +1,6 @@
 ﻿import { Resend } from 'resend'
 import { resolveBaseUrl } from './base-url'
+import { unsubscribeUrl } from './unsubscribe'
 
 function getResend() {
   return new Resend(process.env.RESEND_API_KEY!)
@@ -9,7 +10,7 @@ function getResend() {
 // transactional and marketing must not share a From address. The sending
 // domain must be verified in the Resend dashboard before an address will
 // deliver; until then, set EMAIL_FROM to `onboarding@resend.dev`.
-import { INTERNAL_INBOX, MARKETING_FROM, NOTIFICATION_FROM, SUPPORT_ADDRESS, SUPPORT_FROM } from './email-senders'
+import { INTERNAL_INBOX, MARKETING_FROM, NOTIFICATION_FROM, SUPPORT_ADDRESS, SUPPORT_FROM, onBehalfFrom } from './email-senders'
 
 export const BASE_URL = resolveBaseUrl()
 
@@ -19,7 +20,7 @@ export function orgSignupLink(signupToken: string) {
 
 export async function sendResultsEmail(to: string, token: string) {
   const link = `${BASE_URL}/results/${token}`
-  const unsubscribe = `${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}`
+  const unsubscribe = unsubscribeUrl(to)
 
   const { data, error } = await getResend().emails.send({
     from: NOTIFICATION_FROM,
@@ -82,7 +83,7 @@ export async function sendResultsEmail(to: string, token: string) {
           <p style="margin:0;color:#A1A1AA;font-size:11px;line-height:1.6;">
             You're getting this because you submitted a shot at <a href="${BASE_URL}" style="color:#71717A;text-decoration:none;font-weight:600;">LearnHoops.com</a>.
             &nbsp;·&nbsp;
-            <a href="${unsubscribe}" style="color:#71717A;text-decoration:underline;">Unsubscribe</a>
+            <a href="${escHtml(unsubscribe)}" style="color:#71717A;text-decoration:underline;">Unsubscribe</a>
           </p>
         </td></tr>
 
@@ -128,7 +129,7 @@ const MARKETING_EMAILS = [
       `Analyze another shot: ${BASE_URL}/analyze`,
       ``,
       `LearnHoops.com`,
-      `Unsubscribe: ${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}`,
+      `Unsubscribe: ${unsubscribeUrl(to)}`,
     ].join('\n'),
     getHtml: (to: string) => `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
@@ -149,7 +150,7 @@ const MARKETING_EMAILS = [
           </p>
           <hr style="border:none;border-top:1px solid #E2E8F0;margin:24px 0;"/>
           <p style="color:#000000;font-size:11px;text-align:center;">
-            LearnHoops.com &middot; <a href="${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}" style="color:#000000;">Unsubscribe</a>
+            LearnHoops.com &middot; <a href="${escHtml(unsubscribeUrl(to))}" style="color:#000000;">Unsubscribe</a>
           </p>
         </div>
       </div>
@@ -168,7 +169,7 @@ const MARKETING_EMAILS = [
       `Analyze your shot: ${BASE_URL}/analyze`,
       ``,
       `LearnHoops.com`,
-      `Unsubscribe: ${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}`,
+      `Unsubscribe: ${unsubscribeUrl(to)}`,
     ].join('\n'),
     getHtml: (to: string) => `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
@@ -189,7 +190,7 @@ const MARKETING_EMAILS = [
           </p>
           <hr style="border:none;border-top:1px solid #E2E8F0;margin:24px 0;"/>
           <p style="color:#000000;font-size:11px;text-align:center;">
-            LearnHoops.com &middot; <a href="${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}" style="color:#000000;">Unsubscribe</a>
+            LearnHoops.com &middot; <a href="${escHtml(unsubscribeUrl(to))}" style="color:#000000;">Unsubscribe</a>
           </p>
         </div>
       </div>
@@ -209,7 +210,7 @@ const MARKETING_EMAILS = [
       `Analyze your shot: ${BASE_URL}/analyze`,
       ``,
       `LearnHoops.com`,
-      `Unsubscribe: ${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}`,
+      `Unsubscribe: ${unsubscribeUrl(to)}`,
     ].join('\n'),
     getHtml: (to: string) => `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
@@ -231,7 +232,7 @@ const MARKETING_EMAILS = [
           </p>
           <hr style="border:none;border-top:1px solid #E2E8F0;margin:24px 0;"/>
           <p style="color:#000000;font-size:11px;text-align:center;">
-            LearnHoops.com &middot; <a href="${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}" style="color:#000000;">Unsubscribe</a>
+            LearnHoops.com &middot; <a href="${escHtml(unsubscribeUrl(to))}" style="color:#000000;">Unsubscribe</a>
           </p>
         </div>
       </div>
@@ -250,7 +251,7 @@ const MARKETING_EMAILS = [
       `See the ball: ${BASE_URL}/shop`,
       ``,
       `LearnHoops.com`,
-      `Unsubscribe: ${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}`,
+      `Unsubscribe: ${unsubscribeUrl(to)}`,
     ].join('\n'),
     getHtml: (to: string) => `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
@@ -271,7 +272,7 @@ const MARKETING_EMAILS = [
           </div>
           <hr style="border:none;border-top:1px solid #E2E8F0;margin:24px 0;"/>
           <p style="color:#000000;font-size:11px;text-align:center;">
-            LearnHoops.com &middot; <a href="${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}" style="color:#000000;">Unsubscribe</a>
+            LearnHoops.com &middot; <a href="${escHtml(unsubscribeUrl(to))}" style="color:#000000;">Unsubscribe</a>
           </p>
         </div>
       </div>
@@ -290,7 +291,7 @@ const MARKETING_EMAILS = [
       `See the ball: ${BASE_URL}/shop`,
       ``,
       `LearnHoops.com`,
-      `Unsubscribe: ${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}`,
+      `Unsubscribe: ${unsubscribeUrl(to)}`,
     ].join('\n'),
     getHtml: (to: string) => `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
@@ -313,7 +314,7 @@ const MARKETING_EMAILS = [
           </div>
           <hr style="border:none;border-top:1px solid #E2E8F0;margin:24px 0;"/>
           <p style="color:#000000;font-size:11px;text-align:center;">
-            LearnHoops.com &middot; <a href="${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}" style="color:#000000;">Unsubscribe</a>
+            LearnHoops.com &middot; <a href="${escHtml(unsubscribeUrl(to))}" style="color:#000000;">Unsubscribe</a>
           </p>
         </div>
       </div>
@@ -348,14 +349,19 @@ export async function sendCoachInviteEmail(to: string, orgName: string, teamName
         <div style="color:#F97316;font-size:20px;font-weight:800;">LearnHoops<span style="color:#71717A;">.com</span></div>
       </td></tr>
       <tr><td style="padding:36px 32px 8px;">
-        <h1 style="margin:0 0 10px;color:#111;font-size:22px;font-weight:800;">You've been added as a coach.</h1>
+        <h1 style="margin:0 0 10px;color:#111;font-size:22px;font-weight:800;">You've been added as a coach</h1>
         <p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;">
-          <strong>${orgName}</strong> has added you as head coach of <strong>${teamName}</strong> on LearnHoops.com.
+          <strong>${escHtml(orgName)}</strong> has added you as head coach of <strong>${escHtml(teamName)}</strong> on LearnHoops.com.
           Click below to set your password and access your team dashboard.
         </p>
       </td></tr>
       <tr><td style="padding:24px 32px 32px;">
         <a href="${link}" style="display:inline-block;background:#F97316;color:#fff;padding:13px 26px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">Set up my coach account</a>
+        <p style="margin:18px 0 0;color:#A1A1AA;font-size:13px;line-height:1.5;">
+          If the button doesn't work, copy this link into your browser:<br/>
+          <a href="${link}" style="color:#71717A;word-break:break-all;">${link}</a>
+        </p>
+        <p style="margin:10px 0 0;color:#A1A1AA;font-size:13px;line-height:1.5;">If you didn't expect this, you can ignore this email.</p>
       </td></tr>
     </table>
   </td></tr></table>
@@ -397,14 +403,19 @@ export async function sendCoachSignupEmail(to: string, teamName: string, inviteT
         <div style="color:#F97316;font-size:20px;font-weight:800;">LearnHoops<span style="color:#71717A;">.com</span></div>
       </td></tr>
       <tr><td style="padding:36px 32px 8px;">
-        <h1 style="margin:0 0 10px;color:#111;font-size:22px;font-weight:800;">You've been added as a coach.</h1>
+        <h1 style="margin:0 0 10px;color:#111;font-size:22px;font-weight:800;">You've been added as a coach</h1>
         <p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;">
-          You've been added as a coach of <strong>${teamName}</strong> on LearnHoops.com.
+          You've been added as a coach of <strong>${escHtml(teamName)}</strong> on LearnHoops.com.
           Click below to set your password and access the team dashboard.
         </p>
       </td></tr>
       <tr><td style="padding:24px 32px 32px;">
         <a href="${link}" style="display:inline-block;background:#F97316;color:#fff;padding:13px 26px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">Set up my coach account</a>
+        <p style="margin:18px 0 0;color:#A1A1AA;font-size:13px;line-height:1.5;">
+          If the button doesn't work, copy this link into your browser:<br/>
+          <a href="${link}" style="color:#71717A;word-break:break-all;">${link}</a>
+        </p>
+        <p style="margin:10px 0 0;color:#A1A1AA;font-size:13px;line-height:1.5;">If you didn't expect this, you can ignore this email.</p>
       </td></tr>
     </table>
   </td></tr></table>
@@ -420,28 +431,44 @@ export async function sendCoachSignupEmail(to: string, teamName: string, inviteT
 
 // Sent when a coach or organization adds a player by email. The player/parent
 // finishes the account by setting a password at the setup link (14-day token).
+// Names the child, who added them and the organization, so a parent knows
+// exactly why they got it ("Coach Derek added Harper Smith to U10 Girls").
 export async function sendPlayerSetupEmail(
   to: string,
   teamName: string | null,
   setupUrl: string,
   parentName?: string | null,
+  opts: { playerName?: string | null; addedBy?: string | null; orgName?: string | null } = {},
 ) {
-  const team = teamName ? `<strong>${teamName}</strong>` : 'their team'
-  const teamText = teamName ? teamName : 'their team'
+  const player = opts.playerName?.trim() || null
+  const addedBy = opts.addedBy?.trim() || null
+  const orgName = opts.orgName?.trim() || null
+  const who = addedBy ?? 'Your coach'
+  const playerText = player ?? 'your player'
+  const teamText = teamName ?? 'their team'
+  // Don't repeat the org when it is the one doing the adding.
+  const orgSuffix = orgName && orgName !== addedBy ? ` at ${orgName}` : ''
+  const lead = `${who} added ${playerText} to ${teamText}${orgSuffix} on LearnHoops.com.`
+  const leadHtml = `${escHtml(who)} added <strong>${escHtml(playerText)}</strong> to <strong>${escHtml(teamText)}</strong>${orgSuffix ? ` at ${escHtml(orgName!)}` : ''} on LearnHoops.com.`
   const greeting = parentName ? `Hi ${parentName},` : 'Hi there,'
+  const subject = player && teamName
+    ? `${player} was added to ${teamName} — finish setting up the account`
+    : teamName ? `Finish setting up your LearnHoops account for ${teamName}` : 'Finish setting up your LearnHoops account'
   const { data, error } = await getResend().emails.send({
     from: NOTIFICATION_FROM,
     to,
-    subject: teamName ? `Finish setting up your LearnHoops account for ${teamName}` : 'Finish setting up your LearnHoops account',
+    subject,
     text: [
       greeting,
       ``,
-      `A coach has added this player to ${teamText} on LearnHoops.com.`,
-      `Their profile is ready — finish the account by setting a password:`,
+      lead,
+      `The profile is ready — finish the account by setting a password:`,
       setupUrl,
       ``,
       `Once it's set up you can see every shot analysis and track progress.`,
-      `This link works for 14 days.`,
+      player
+        ? `This link works for 14 days and sets up ${player}'s account only — each player on this email gets their own link and password. If you didn't expect this email, you can ignore it.`
+        : `This link works for 14 days. If you didn't expect this email, you can ignore it.`,
       ``,
       `LearnHoops.com`,
     ].join('\n'),
@@ -456,20 +483,23 @@ export async function sendPlayerSetupEmail(
         <div style="color:#F97316;font-size:20px;font-weight:800;">LearnHoops<span style="color:#71717A;">.com</span></div>
       </td></tr>
       <tr><td style="padding:36px 32px 8px;">
-        <h1 style="margin:0 0 10px;color:#111;font-size:22px;font-weight:800;">Finish setting up your account</h1>
+        <h1 style="margin:0 0 10px;color:#111;font-size:22px;font-weight:800;">Finish setting up ${player ? escHtml(player) + '’s' : 'your'} account</h1>
         <p style="margin:0 0 10px;color:#52525B;font-size:15px;line-height:1.55;">
-          ${greeting}
+          ${escHtml(greeting)}
         </p>
         <p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;">
-          A coach has added this player to ${team} on LearnHoops.com and their profile is
-          ready to go. Set a password below to finish the account and follow every shot analysis.
+          ${leadHtml} The profile is ready to go. Set a password below to finish the account and follow every shot analysis.
         </p>
       </td></tr>
       <tr><td style="padding:24px 32px 8px;">
-        <a href="${setupUrl}" style="display:inline-block;background:#F97316;color:#fff;padding:13px 26px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">Set my password</a>
+        <a href="${setupUrl}" style="display:inline-block;background:#F97316;color:#fff;padding:13px 26px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">${player ? `Set ${escHtml(player)}’s password` : 'Set my password'}</a>
       </td></tr>
       <tr><td style="padding:8px 32px 32px;">
-        <p style="margin:0;color:#A1A1AA;font-size:13px;line-height:1.5;">This link works for 14 days. If you didn't expect this, you can ignore this email.</p>
+        <p style="margin:0 0 10px;color:#A1A1AA;font-size:13px;line-height:1.5;">
+          If the button doesn't work, copy this link into your browser:<br/>
+          <a href="${setupUrl}" style="color:#71717A;word-break:break-all;">${setupUrl}</a>
+        </p>
+        <p style="margin:0;color:#A1A1AA;font-size:13px;line-height:1.5;">This link works for 14 days${player ? ` and sets up ${escHtml(player)}’s account only — each player on this email gets their own link and password` : ''}. If you didn't expect this, you can ignore this email.</p>
       </td></tr>
     </table>
   </td></tr></table>
@@ -483,8 +513,32 @@ export async function sendPlayerSetupEmail(
   console.log('[email] player setup invite sent:', data?.id, 'to:', to)
 }
 
-// Sends a user a link to reset their account password.
-export async function sendPasswordResetEmail(to: string, token: string) {
+/** One player account's line in a family reset email (siblings on one address). */
+export interface ResetEmailAccount {
+  /** "Liam", or "Liam and Harper" for one shared login; null when unnamed. */
+  label: string | null
+  shared?: boolean
+}
+
+function resetAccountName(a: ResetEmailAccount, i: number): string {
+  return a.label?.trim() || `player account ${i + 1}`
+}
+
+function resetActionLabel(a: ResetEmailAccount, i: number): string {
+  const name = resetAccountName(a, i)
+  return a.shared ? `Reset ${name}'s shared password` : `Reset ${name}'s password`
+}
+
+// Sends a user a link to reset their account password. When several player
+// accounts share the address (siblings), `accounts` carries one link per
+// account ("Reset Liam's password" / "Reset Harper's password"); each resets
+// only that child. With one account the email is exactly as before.
+export async function sendPasswordResetEmail(
+  to: string,
+  token: string,
+  accounts?: Array<ResetEmailAccount & { token: string }>,
+) {
+  if (accounts && accounts.length > 1) return sendFamilyPasswordResetEmail(to, accounts)
   const link = `${BASE_URL}/reset-password?token=${token}`
   const { data, error } = await getResend().emails.send({
     from: NOTIFICATION_FROM,
@@ -539,7 +593,14 @@ export async function sendPasswordResetEmail(to: string, token: string) {
 
 // App variant of the reset email: a 6-digit code typed into the iOS app
 // instead of a link, so the whole reset happens without leaving the app.
-export async function sendPasswordResetCodeEmail(to: string, code: string) {
+// Siblings on one address get one code per account in the one email; the app
+// sends whichever code was typed and the server finds the account it names.
+export async function sendPasswordResetCodeEmail(
+  to: string,
+  code: string,
+  accounts?: Array<ResetEmailAccount & { code: string }>,
+) {
+  if (accounts && accounts.length > 1) return sendFamilyPasswordResetCodeEmail(to, accounts)
   const { data, error } = await getResend().emails.send({
     from: NOTIFICATION_FROM,
     to,
@@ -593,9 +654,111 @@ export async function sendPasswordResetCodeEmail(to: string, code: string) {
   console.log('[email] password reset code sent:', data?.id, 'to:', to)
 }
 
+const RESET_EMAIL_SHELL = (inner: string) => `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"/></head>
+<body style="margin:0;padding:0;background:#F4F4F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table role="presentation" width="100%" style="background:#F4F4F5;"><tr><td align="center" style="padding:32px 16px;">
+    <table role="presentation" width="100%" style="max-width:560px;background:#fff;border-radius:14px;border:1px solid #E4E4E7;">
+      <tr><td style="background:#000;padding:22px 32px;">
+        <div style="color:#F97316;font-size:20px;font-weight:800;">LearnHoops<span style="color:#71717A;">.com</span></div>
+      </td></tr>
+${inner}
+    </table>
+  </td></tr></table>
+</body>
+</html>`.trim()
+
+// Family variant of the reset email: one button per player account on the
+// address. Names are the family's own children (shown only to the inbox).
+async function sendFamilyPasswordResetEmail(to: string, accounts: Array<ResetEmailAccount & { token: string }>) {
+  const items = accounts.map((a, i) => ({
+    action: resetActionLabel(a, i),
+    link: `${BASE_URL}/reset-password?token=${a.token}`,
+  }))
+  const { data, error } = await getResend().emails.send({
+    from: NOTIFICATION_FROM,
+    to,
+    subject: 'Reset a LearnHoops password',
+    text: [
+      `Someone asked to reset a password on LearnHoops for this email. More than one player account uses it, so each has its own link — use the one for the player whose password you want to change (the links expire in 1 hour):`,
+      ``,
+      ...items.flatMap((it) => [`${it.action}:`, it.link, ``]),
+      `Each link changes only that player's password. If you didn't request this, you can safely ignore this email — no password will change.`,
+      ``,
+      `LearnHoops.com`,
+    ].join('\n'),
+    html: RESET_EMAIL_SHELL(`
+      <tr><td style="padding:36px 32px 8px;">
+        <h1 style="margin:0 0 10px;color:#111;font-size:22px;font-weight:800;">Reset a password</h1>
+        <p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;">
+          Someone asked to reset a password on LearnHoops for this email. More than one player account uses it,
+          so each has its own button — pick the player whose password you want to change. The links expire in 1 hour.
+        </p>
+      </td></tr>
+      <tr><td style="padding:20px 32px 4px;">
+        ${items.map((it) => `<div style="margin:0 0 12px;"><a href="${it.link}" style="display:inline-block;background:#F97316;color:#fff;padding:13px 26px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">${escHtml(it.action)}</a></div>`).join('\n        ')}
+      </td></tr>
+      <tr><td style="padding:6px 32px 32px;">
+        <p style="margin:0;color:#A1A1AA;font-size:12px;line-height:1.5;">
+          Each link changes only that player's password. If you didn't request this, ignore this email — no password will change.
+        </p>
+      </td></tr>`),
+  })
+  if (error) {
+    console.error('[email] family password reset failed:', error)
+    throw new Error(`Password reset email failed: ${error.message}`)
+  }
+  console.log('[email] family password reset sent:', data?.id, 'to:', to, 'accounts:', accounts.length)
+}
+
+// Family variant of the app reset-code email: one code per player account.
+async function sendFamilyPasswordResetCodeEmail(to: string, accounts: Array<ResetEmailAccount & { code: string }>) {
+  const items = accounts.map((a, i) => {
+    const name = resetAccountName(a, i)
+    return { who: a.shared ? `${name} (shared login)` : name, code: a.code }
+  })
+  const { data, error } = await getResend().emails.send({
+    from: NOTIFICATION_FROM,
+    to,
+    subject: 'Your LearnHoops reset codes',
+    text: [
+      `Someone asked to reset a password from the LearnHoops app for this email. More than one player account uses it, so each has its own code — enter the code for the player whose password you want to change (codes expire in 1 hour):`,
+      ``,
+      ...items.map((it) => `${it.who}: ${it.code}`),
+      ``,
+      `Each code changes only that player's password. If you didn't request this, you can safely ignore this email — no password will change.`,
+      ``,
+      `LearnHoops.com`,
+    ].join('\n'),
+    html: RESET_EMAIL_SHELL(`
+      <tr><td style="padding:36px 32px 8px;">
+        <h1 style="margin:0 0 10px;color:#111;font-size:22px;font-weight:800;">Your reset codes</h1>
+        <p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;">
+          More than one player account uses this email, so each has its own code. Enter the code for the
+          player whose password you want to change in the LearnHoops app. The codes expire in 1 hour.
+        </p>
+      </td></tr>
+      <tr><td style="padding:20px 32px 4px;">
+        ${items.map((it) => `<div style="margin:0 0 14px;"><div style="color:#52525B;font-size:14px;font-weight:700;margin:0 0 6px;">${escHtml(it.who)}</div><div style="display:inline-block;background:#F4F4F5;border:1px solid #E4E4E7;border-radius:10px;padding:12px 22px;font-size:26px;font-weight:800;letter-spacing:7px;color:#111;">${it.code}</div></div>`).join('\n        ')}
+      </td></tr>
+      <tr><td style="padding:6px 32px 32px;">
+        <p style="margin:0;color:#A1A1AA;font-size:12px;line-height:1.5;">
+          Each code changes only that player's password. If you didn't request this, ignore this email — no password will change.
+        </p>
+      </td></tr>`),
+  })
+  if (error) {
+    console.error('[email] family password reset code failed:', error)
+    throw new Error(`Password reset code email failed: ${error.message}`)
+  }
+  console.log('[email] family password reset codes sent:', data?.id, 'to:', to, 'accounts:', accounts.length)
+}
+
 // Biweekly promotional email — pitches the LearnHoops ball and the site.
 export async function sendPromoEmail(to: string) {
-  const unsubscribe = `${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}`
+  const unsubscribe = unsubscribeUrl(to)
   const { data, error } = await getResend().emails.send({
     from: MARKETING_FROM,
     to,
@@ -650,7 +813,7 @@ export async function sendPromoEmail(to: string) {
         <p style="margin:0;color:#A1A1AA;font-size:11px;line-height:1.6;">
           You're getting this because you signed up at <a href="${BASE_URL}" style="color:#71717A;text-decoration:none;font-weight:600;">LearnHoops.com</a>.
           &nbsp;·&nbsp;
-          <a href="${unsubscribe}" style="color:#71717A;text-decoration:underline;">Unsubscribe</a>
+          <a href="${escHtml(unsubscribe)}" style="color:#71717A;text-decoration:underline;">Unsubscribe</a>
         </p>
       </td></tr>
     </table>
@@ -666,14 +829,50 @@ export async function sendPromoEmail(to: string) {
 }
 
 export async function sendCoachAddedEmail(to: string, orgName: string, teamName: string) {
-  const link = `${BASE_URL}/login`
+  // Coaches sign in at /team/login (the player /login page can't open a team).
+  const link = `${BASE_URL}/team/login`
   await getResend().emails.send({
     from: NOTIFICATION_FROM,
     to,
     subject: `You've been added as coach of ${teamName}`,
-    text: `${orgName} has added you as head coach of ${teamName} on LearnHoops.com.\n\nLog in to manage your team:\n${link}\n\nLearnHoops.com`,
-    html: `<!DOCTYPE html><html><head><meta charset="utf-8"/></head><body style="margin:0;padding:0;background:#F4F4F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;"><table role="presentation" width="100%" style="background:#F4F4F5;"><tr><td align="center" style="padding:32px 16px;"><table role="presentation" width="100%" style="max-width:560px;background:#fff;border-radius:14px;border:1px solid #E4E4E7;"><tr><td style="background:#000;padding:22px 32px;"><div style="color:#F97316;font-size:20px;font-weight:800;">LearnHoops<span style="color:#71717A;">.com</span></div></td></tr><tr><td style="padding:36px 32px 8px;"><h1 style="margin:0 0 10px;color:#111;font-size:22px;font-weight:800;">You've been added as a coach.</h1><p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;"><strong>${orgName}</strong> has added you as head coach of <strong>${teamName}</strong>.</p></td></tr><tr><td style="padding:24px 32px 32px;"><a href="${link}" style="display:inline-block;background:#F97316;color:#fff;padding:13px 26px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">Go to my team dashboard</a></td></tr></table></td></tr></table></body></html>`,
+    text: `${orgName} has added you as head coach of ${teamName} on LearnHoops.com.\n\nLog in with the coach password you already use:\n${link}\n\nLearnHoops.com`,
+    html: `<!DOCTYPE html><html><head><meta charset="utf-8"/></head><body style="margin:0;padding:0;background:#F4F4F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;"><table role="presentation" width="100%" style="background:#F4F4F5;"><tr><td align="center" style="padding:32px 16px;"><table role="presentation" width="100%" style="max-width:560px;background:#fff;border-radius:14px;border:1px solid #E4E4E7;"><tr><td style="background:#000;padding:22px 32px;"><div style="color:#F97316;font-size:20px;font-weight:800;">LearnHoops<span style="color:#71717A;">.com</span></div></td></tr><tr><td style="padding:36px 32px 8px;"><h1 style="margin:0 0 10px;color:#111;font-size:22px;font-weight:800;">You've been added as a coach</h1><p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;"><strong>${escHtml(orgName)}</strong> has added you as head coach of <strong>${escHtml(teamName)}</strong>. Log in with the coach password you already use.</p></td></tr><tr><td style="padding:24px 32px 32px;"><a href="${link}" style="display:inline-block;background:#F97316;color:#fff;padding:13px 26px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">Log in to my team</a></td></tr></table></td></tr></table></body></html>`,
   })
+}
+
+// Sent when a coach who already has a coach password is added to another
+// team (as assistant or head coach). No new invite: their existing password
+// works for the new team too.
+export async function sendCoachAddedToTeamEmail(
+  to: string,
+  teamName: string,
+  opts: { orgName?: string | null; addedBy?: string | null; role?: 'head' | 'assistant' } = {},
+) {
+  const link = `${BASE_URL}/team/login`
+  const role = opts.role === 'head' ? 'head coach' : 'a coach'
+  const by = opts.addedBy?.trim() || opts.orgName?.trim() || 'A coach'
+  const orgPart = opts.orgName && opts.orgName !== by ? ` at ${opts.orgName}` : ''
+  const line = `${by} added you as ${role} of ${teamName}${orgPart} on LearnHoops.com.`
+  const lineHtml = `${escHtml(by)} added you as ${role} of <strong>${escHtml(teamName)}</strong>${orgPart ? ` at ${escHtml(opts.orgName!)}` : ''}.`
+  const { data, error } = await getResend().emails.send({
+    from: NOTIFICATION_FROM,
+    to,
+    subject: `You've been added to ${teamName}`,
+    text: [
+      line,
+      ``,
+      `Log in with the coach password you already use \u2014 you'll be able to pick ${teamName} after you sign in:`,
+      link,
+      ``,
+      `LearnHoops.com`,
+    ].join('\n'),
+    html: `<!DOCTYPE html><html><head><meta charset="utf-8"/></head><body style="margin:0;padding:0;background:#F4F4F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;"><table role="presentation" width="100%" style="background:#F4F4F5;"><tr><td align="center" style="padding:32px 16px;"><table role="presentation" width="100%" style="max-width:560px;background:#fff;border-radius:14px;border:1px solid #E4E4E7;"><tr><td style="background:#000;padding:22px 32px;"><div style="color:#F97316;font-size:20px;font-weight:800;">LearnHoops<span style="color:#71717A;">.com</span></div></td></tr><tr><td style="padding:36px 32px 8px;"><h1 style="margin:0 0 10px;color:#111;font-size:22px;font-weight:800;">You've been added to ${escHtml(teamName)}</h1><p style="margin:0 0 10px;color:#52525B;font-size:15px;line-height:1.55;">${lineHtml}</p><p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;">Log in with the coach password you already use. You'll be able to pick ${escHtml(teamName)} after you sign in.</p></td></tr><tr><td style="padding:24px 32px 32px;"><a href="${link}" style="display:inline-block;background:#F97316;color:#fff;padding:13px 26px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">Log in</a></td></tr></table></td></tr></table></body></html>`,
+  })
+  if (error) {
+    console.error('[email] coach added-to-team notice failed:', error)
+    throw new Error(`Coach notice email failed: ${error.message}`)
+  }
+  console.log('[email] coach added-to-team notice sent:', data?.id, 'to:', to)
 }
 
 export async function sendClaimCreditsEmail(
@@ -681,21 +880,39 @@ export async function sendClaimCreditsEmail(
   customerName: string | null,
   tokensToGrant: number,
   claimToken: string,
+  // Defaults reproduce the original ball-order email exactly.
+  //   choose  — several player accounts share this address, so nothing was
+  //             credited automatically: the link lets the family pick one by
+  //             logging in to it (the claim lands on whichever account does).
+  //   context — 'tokens' for a token purchase that could not be credited to
+  //             exactly one account: same claim link, no ball-order wording.
+  opts: { choose?: boolean; context?: 'ball' | 'tokens' } = {},
 ) {
   const name = customerName?.split(' ')[0] || 'there'
-  const signupLink = `${BASE_URL}/signup?claimToken=${claimToken}&credits=${tokensToGrant}`
+  const isTokens = opts.context === 'tokens'
+  const choose = !!opts.choose || isTokens
+  // Choosing means logging in to an existing account; the login page redeems
+  // the claim into whichever account signs in.
+  const signupLink = `${BASE_URL}/${choose ? 'login' : 'signup'}?claimToken=${claimToken}&credits=${tokensToGrant}`
+  const chooseLine = `More than one player account uses this email address, so we have not added ${tokensToGrant === 1 ? 'it' : 'them'} to any of them yet. Open the link and log in to the player's account that should get ${tokensToGrant === 1 ? 'it' : 'them'}.`
   const { data, error } = await getResend().emails.send({
     from: NOTIFICATION_FROM,
     to,
-    subject: `Your LearnHoops ball ships soon — claim your ${tokensToGrant} free shot ${tokensToGrant === 1 ? 'analysis' : 'analyses'}`,
+    subject: isTokens
+      ? `Claim your ${tokensToGrant} LearnHoops analysis token${tokensToGrant === 1 ? '' : 's'}`
+      : `Your LearnHoops ball ships soon — claim your ${tokensToGrant} free analysis token${tokensToGrant === 1 ? '' : 's'}`,
     text: [
       `Hey ${name},`,
       ``,
-      `Your LearnHoops basketball order is confirmed and will ship shortly.`,
+      isTokens ? `Thanks for your purchase.` : `Your LearnHoops basketball order is confirmed and will ship shortly.`,
       ``,
-      `Your order includes ${tokensToGrant} free shot ${tokensToGrant === 1 ? 'analysis' : 'analyses'} — but you need a LearnHoops account to use them.`,
-      ``,
-      `Create your free account here and the credits will be added automatically:`,
+      ...(choose
+        ? [`Your order includes ${tokensToGrant} ${isTokens ? '' : 'free '}analysis token${tokensToGrant === 1 ? '' : 's'} (one token = one shot analysis). ${chooseLine}`]
+        : [
+            `Your order includes ${tokensToGrant} free analysis token${tokensToGrant === 1 ? '' : 's'} (one token = one shot analysis), but you need a LearnHoops account to use ${tokensToGrant === 1 ? 'it' : 'them'}.`,
+            ``,
+            `Create your free account with this email address and your ${tokensToGrant === 1 ? 'token' : 'tokens'} will be added automatically:`,
+          ]),
       signupLink,
       ``,
       `LearnHoops.com`,
@@ -715,29 +932,29 @@ export async function sendClaimCreditsEmail(
         </td></tr>
 
         <tr><td style="padding:36px 32px 8px;">
-          <h1 style="margin:0 0 10px;color:#111111;font-size:24px;line-height:1.25;font-weight:800;">Your order is confirmed — and you have free credits waiting.</h1>
+          <h1 style="margin:0 0 10px;color:#111111;font-size:24px;line-height:1.25;font-weight:800;">${isTokens ? `You have ${tokensToGrant === 1 ? 'a token' : 'tokens'} waiting.` : `Your order is confirmed, and you have ${tokensToGrant === 1 ? 'a free token' : 'free tokens'} waiting.`}</h1>
           <p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;">
-            Hey ${name}, your LearnHoops basketball is on its way. Your order also includes
-            <strong>${tokensToGrant} free shot ${tokensToGrant === 1 ? 'analysis' : 'analyses'}</strong> — create a free account and they'll be added instantly.
+            Hey ${escHtml(name)}, ${isTokens ? 'thanks for your purchase. It includes' : 'your LearnHoops basketball is on its way. Your order also includes'}
+            <strong>${tokensToGrant} ${isTokens ? '' : 'free '}analysis token${tokensToGrant === 1 ? '' : 's'}</strong>, ${tokensToGrant === 1 ? 'good for one shot analysis' : 'each good for one shot analysis'}. ${choose ? escHtml(chooseLine) : `Create a free account and ${tokensToGrant === 1 ? 'it' : 'they'}'ll be added instantly.`}
           </p>
         </td></tr>
 
         <tr><td style="padding:20px 32px 4px;">
           <div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:10px;padding:14px 18px;display:inline-block;">
             <div style="color:#C2410C;font-size:13px;font-weight:600;margin-bottom:2px;">Waiting for you</div>
-            <div style="color:#9A3412;font-size:28px;font-weight:900;line-height:1;">${tokensToGrant} free shot ${tokensToGrant === 1 ? 'analysis' : 'analyses'}</div>
+            <div style="color:#9A3412;font-size:28px;font-weight:900;line-height:1;">${tokensToGrant} free token${tokensToGrant === 1 ? '' : 's'}</div>
           </div>
         </td></tr>
 
         <tr><td style="padding:20px 32px 8px;">
           <a href="${signupLink}" style="display:inline-block;background:#F97316;color:#ffffff;padding:13px 26px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">
-            Create my account &amp; claim credits
+            ${choose ? 'Log in' : 'Create my account'} &amp; claim my ${tokensToGrant === 1 ? 'token' : 'tokens'}
           </a>
         </td></tr>
 
         <tr><td style="padding:4px 32px 32px;">
           <p style="margin:0;color:#A1A1AA;font-size:12px;line-height:1.5;">
-            Sign up with this email address and your credits will be applied automatically.<br/>
+            ${choose ? `Log in to the player's account that should get ${tokensToGrant === 1 ? 'it' : 'them'}` : 'Sign up with this email address'} and your ${tokensToGrant === 1 ? 'token' : 'tokens'} will be added automatically.<br/>
             <a href="${signupLink}" style="color:#A1A1AA;word-break:break-all;text-decoration:underline;">${signupLink}</a>
           </p>
         </td></tr>
@@ -804,7 +1021,7 @@ export async function sendShippingEmail(
         <tr><td style="padding:36px 32px 8px;">
           <h1 style="margin:0 0 10px;color:#111111;font-size:24px;line-height:1.25;font-weight:800;">Your order is on its way!</h1>
           <p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;">
-            Hey ${name}, great news — your LearnHoops basketball has shipped and is headed your way.
+            Hey ${escHtml(name)}, great news — your LearnHoops basketball has shipped and is headed your way.
             Click the button below to track your package.
           </p>
         </td></tr>
@@ -900,7 +1117,7 @@ export async function sendOrderHoldEmail(
         <tr><td style="padding:36px 32px 8px;">
           <h1 style="margin:0 0 10px;color:#111111;font-size:24px;line-height:1.25;font-weight:800;">Your ${sizeLabel} ball isn't ready to ship yet</h1>
           <p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;">
-            Hi ${name}, straight talk: the ${sizeLabel} training ball from your order is out of stock,
+            Hi ${escHtml(name)}, straight talk: the ${sizeLabel} training ball from your order is out of stock,
             and we don't have a restock date yet. We're not going to have you wait on a guess. Pick one:
           </p>
         </td></tr>
@@ -988,7 +1205,7 @@ export async function sendOrderResolvedEmail(
         </td></tr>
         <tr><td style="padding:36px 32px 28px;">
           <h1 style="margin:0 0 10px;color:#111111;font-size:24px;line-height:1.25;font-weight:800;">${heading}</h1>
-          <p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;">Hi ${name}, ${bodyLine}</p>
+          <p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;">Hi ${escHtml(name)}, ${escHtml(bodyLine)}</p>
         </td></tr>
         <tr><td style="padding:18px 32px;background:#FAFAFA;border-top:1px solid #E4E4E7;">
           <p style="margin:0;color:#A1A1AA;font-size:11px;line-height:1.6;">
@@ -1040,10 +1257,10 @@ export async function sendOrgApprovalEmail(
           <span style="color:#fff;font-size:22px;font-weight:900;letter-spacing:-0.5px;">LearnHoops</span>
         </div>
         <div style="background:#fff;border:1px solid #e5e7eb;border-top:none;padding:32px;border-radius:0 0 12px 12px;">
-          <h2 style="font-size:20px;font-weight:900;color:#000;margin:0 0 12px;">Application approved 🎉</h2>
+          <h2 style="font-size:20px;font-weight:900;color:#000;margin:0 0 12px;">Application approved</h2>
           <p style="color:#374151;font-size:15px;margin:0 0 8px;">Hi,</p>
           <p style="color:#374151;font-size:15px;margin:0 0 20px;">
-            Your application for <strong>${orgName}</strong> has been approved.
+            Your application for <strong>${escHtml(orgName)}</strong> has been approved.
             Use the button below to set up your organization account.
           </p>
           <a href="${signupLink}" style="display:inline-block;background:#f97316;color:#fff;font-weight:900;font-size:15px;padding:14px 28px;border-radius:10px;text-decoration:none;margin-bottom:20px;">
@@ -1070,7 +1287,7 @@ export async function sendNextMarketingEmail(
   if (emailsSentSoFar >= MARKETING_EMAILS.length) return false
 
   const template = MARKETING_EMAILS[emailsSentSoFar]
-  const unsubscribe = `${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}`
+  const unsubscribe = unsubscribeUrl(to)
 
   // The drip is unambiguously marketing, so it leaves as MARKETING_FROM: a
   // complaint here must not touch the reputation that carries password resets.
@@ -1158,9 +1375,9 @@ export async function sendClassPurchaseConfirmationEmail(
 
       <tr><td style="padding:16px 32px 8px;">
         <p style="margin:0;color:#52525B;font-size:14px;line-height:1.6;">
-          ✅ <strong>Team created</strong> — "10 Week Shooting Class" is live on your dashboard<br/>
-          ✅ <strong>Balls shipping</strong> — to the address you entered at checkout<br/>
-          ✅ <strong>2 shot analyses per player</strong> — tokens are ready to assign
+          <span style="color:#16A34A;font-weight:700;">&#10003;</span>&nbsp; <strong>Team created</strong> — "10 Week Shooting Class" is live on your dashboard<br/>
+          <span style="color:#16A34A;font-weight:700;">&#10003;</span>&nbsp; <strong>Balls shipping</strong> — to the address you entered at checkout<br/>
+          <span style="color:#16A34A;font-weight:700;">&#10003;</span>&nbsp; <strong>2 shot analyses per player</strong> — tokens are ready to assign
         </p>
       </td></tr>
 
@@ -1540,7 +1757,7 @@ export async function sendAbandonedCheckoutEmail(
   name: string | null,
   recoveryUrl: string,
 ) {
-  const unsubscribe = `${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}`
+  const unsubscribe = unsubscribeUrl(to)
   const firstName = name ? name.split(' ')[0] : null
   const greeting = firstName ? `Hey ${firstName},` : 'Hey,'
 
@@ -1583,7 +1800,7 @@ export async function sendAbandonedCheckoutEmail(
         <tr><td style="padding:36px 32px 8px;">
           <h1 style="margin:0 0 10px;color:#111111;font-size:24px;line-height:1.25;font-weight:800;">Your training ball is still waiting.</h1>
           <p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;">
-            ${greeting} you were one step away from the LearnHoops Training Ball —
+            ${escHtml(greeting)} you were one step away from the LearnHoops Training Ball —
             hand-placement guides that build consistent shooting form, with free AI
             shot analyses included with every ball. Your cart is saved.
           </p>
@@ -1609,7 +1826,7 @@ export async function sendAbandonedCheckoutEmail(
           <p style="margin:0;color:#A1A1AA;font-size:11px;line-height:1.6;">
             You're getting this because you started an order at <a href="${BASE_URL}" style="color:#71717A;text-decoration:none;font-weight:600;">LearnHoops.com</a>.
             &nbsp;·&nbsp;
-            <a href="${unsubscribe}" style="color:#71717A;text-decoration:underline;">Unsubscribe</a>
+            <a href="${escHtml(unsubscribe)}" style="color:#71717A;text-decoration:underline;">Unsubscribe</a>
           </p>
         </td></tr>
 
@@ -1639,7 +1856,7 @@ export async function sendAbandonedCheckoutEmail(
  */
 export async function sendFilmingTipsEmail(to: string) {
   const guide = `${BASE_URL}/support#filming`
-  const unsubscribe = `${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}`
+  const unsubscribe = unsubscribeUrl(to)
 
   const { data, error } = await getResend().emails.send({
     from: SUPPORT_FROM,
@@ -1738,7 +1955,7 @@ export async function sendFilmingTipsEmail(to: string) {
         <tr><td style="background:#FAFAFA;border-top:1px solid #E4E4E7;padding:18px 32px;">
           <p style="margin:0;color:#A1A1AA;font-size:12px;line-height:1.6;">
             You are getting this once, after your first analysis.
-            <a href="${unsubscribe}" style="color:#A1A1AA;text-decoration:underline;">Unsubscribe</a>
+            <a href="${escHtml(unsubscribe)}" style="color:#A1A1AA;text-decoration:underline;">Unsubscribe</a>
           </p>
         </td></tr>
 
@@ -1787,68 +2004,152 @@ export interface OrgResultsEmailInput {
   teamName: string
   score: number
   token: string
-  /** Plain-language description of what the link shows for free. */
-  freeTierLabel: string
-  /** True when a purchase would reveal more than the free view. */
-  paywalled: boolean
   /** The org's purchasable offers (empty when selling is off). Max 4 rendered. */
   offers: OrgResultsEmailOffer[]
   recipientEmail: string
 }
 
+// ---------------------------------------------------------------------------
+// Player emails: one template for everything a coach or org sends a player
+// (results, programs, basketballs, plain messages). The org results email
+// below delegates here, so there is exactly one look and one footer.
+// ---------------------------------------------------------------------------
+
+export interface PlayerEmailResultsBlock {
+  score: number
+  /** The link always opens the full report (team uploads are never paywalled). */
+  token: string
+}
+
+export interface PlayerEmailOffersBlock {
+  /** Block title, e.g. "Available from Northside". */
+  heading: string
+  /** Max 4 rendered. */
+  items: OrgResultsEmailOffer[]
+  /** Where to buy. Omit when the results button above is the place to buy. */
+  href?: string | null
+  cta?: string | null
+  /** Small print under the block. */
+  note?: string | null
+}
+
+export interface PlayerEmailRenderInput {
+  recipientEmail: string
+  /** Final subject (tokens already replaced). CR/LF are stripped again here. */
+  subject: string
+  /** Final plain-text message (tokens already replaced). Blank line = new paragraph. */
+  message: string
+  /** Optional large heading above the message. */
+  heading?: string | null
+  orgName: string | null
+  teamName: string
+  sender: {
+    kind: 'org' | 'coach'
+    /** Coach display name or the org name. */
+    name: string
+    /** True when `name` is a generic fallback ("Your coach"). */
+    generic?: boolean
+  }
+  results?: PlayerEmailResultsBlock | null
+  offers?: PlayerEmailOffersBlock | null
+  /** A button to the LearnHoops basketball shop. */
+  shopLink?: boolean
+}
+
+/** Removes anything that could end a header line, and trims. */
+export function cleanSubject(subject: string): string {
+  return subject
+    .replace(/[\r\n\u2028\u2029]+/g, ' ')
+    .replace(/[\u0000-\u001f\u007f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 200)
+}
+
+function paragraphsOf(message: string): string[] {
+  return message
+    .replace(/\r\n?/g, '\n')
+    .split(/\n[ \t]*\n/)
+    .map((p) => p.replace(/^\n+|\n+$/g, '').trimEnd())
+    .filter((p) => p.trim().length > 0)
+}
+
 /**
- * The weekly score email an organization sends its players. Rendered
- * separately from sending so the Results tab can show an exact preview.
- *
- * Transactional in shape (your score, your link) but it carries the org's
- * offers, so it follows the bulk rules: List-Unsubscribe pair, suppression
- * honored by the caller, text twin always present.
+ * Renders a player email. Every string that came from a person (subject,
+ * message, names, org/team names, offer text) is HTML-escaped here, so
+ * callers pass raw text.
  */
-export function renderOrgResultsEmail(input: OrgResultsEmailInput): {
+export function renderPlayerEmail(input: PlayerEmailRenderInput): {
   subject: string
   text: string
   html: string
 } {
-  const link = `${BASE_URL}/results/${input.token}`
-  const unsubscribe = `${BASE_URL}/unsubscribe?email=${encodeURIComponent(input.recipientEmail)}`
-  const { letter, label } = gradeLetter(input.score)
-  const first = input.playerName?.trim() || 'there'
-  const scoreText = input.score.toFixed(1)
-  const offers = input.offers.slice(0, 4)
-  const subject = `${first === 'there' ? 'Your' : `${first}, your`} shot score from ${input.orgName}: ${scoreText}/10`
+  const subject = cleanSubject(input.subject)
+  const unsubscribe = unsubscribeUrl(input.recipientEmail)
+  const org = input.orgName?.trim() || null
+  const team = input.teamName.trim()
+  const senderName = input.sender.name.trim() || (input.sender.kind === 'org' ? org ?? team : 'Your coach')
+  const generic = !!input.sender.generic
+  const reachName = generic ? senderName.charAt(0).toLowerCase() + senderName.slice(1) : senderName
+
+  const fromLine =
+    input.sender.kind === 'org'
+      ? ['From ' + (org ?? senderName), team].join(' · ')
+      : ['From ' + (generic ? reachName : senderName), team, org].filter(Boolean).join(' · ')
+  const headerSub = [org, team].filter(Boolean).join(' · ')
+  const footerWhy = `You're getting this because you're on ${team}${org ? ` with ${org}` : ''}.`
+  const footerWho = `${senderName} sent it through LearnHoops. Reply to this email to reach ${reachName}.`
+
+  const paragraphs = paragraphsOf(input.message)
+  const results = input.results ?? null
+  const resultsLink = results ? `${BASE_URL}/results/${results.token}` : null
+  const grade = results ? gradeLetter(results.score) : null
+  const scoreText = results ? results.score.toFixed(1) : ''
+  const offers = input.offers && input.offers.items.length ? { ...input.offers, items: input.offers.items.slice(0, 4) } : null
+  const shopUrl = `${BASE_URL}/shop`
 
   const text = [
-    `Hi ${first},`,
+    fromLine,
     ``,
-    `${input.orgName} (${input.teamName}) has your latest shot evaluation.`,
-    ``,
-    `Overall score: ${scoreText} / 10  (${letter} — ${label})`,
-    ``,
-    `See your results: ${link}`,
-    input.paywalled ? `Your link shows: ${input.freeTierLabel}.` : ``,
-    ...(offers.length
+    ...(input.heading ? [input.heading, ``] : []),
+    ...paragraphs.flatMap((p) => [p, ``]),
+    ...(results && grade
       ? [
+          `Overall score: ${scoreText} / 10  (${grade.letter}, ${grade.label})`,
+          `See your results: ${resultsLink}`,
           ``,
-          input.paywalled ? `Unlock more:` : `Available from ${input.orgName}:`,
-          ...offers.map(
-            (o) =>
-              `- ${o.title} — ${money(o.priceCents)}${o.priceCents < o.regularPriceCents ? ` (regular ${money(o.regularPriceCents)})` : ''}`
-          ),
-          `Buy from your results page: ${link}`,
         ]
       : []),
-    ``,
-    `Reply to this email to reach your coach.`,
-    ``,
-    `LearnHoops.com`,
+    ...(offers
+      ? [
+          `${offers.heading}:`,
+          ...offers.items.map(
+            (o) =>
+              `- ${o.title}: ${money(o.priceCents)}${o.priceCents < o.regularPriceCents ? ` (regular ${money(o.regularPriceCents)})` : ''}`
+          ),
+          ...(offers.href ? [`${offers.cta || 'See the details'}: ${offers.href}`] : []),
+          ...(offers.note ? [offers.note] : []),
+          ``,
+        ]
+      : []),
+    ...(input.shopLink ? [`Shop LearnHoops basketballs: ${shopUrl}`, ``] : []),
+    `--`,
+    footerWhy,
+    footerWho,
     `Unsubscribe: ${unsubscribe}`,
-  ]
-    .filter((line) => line !== null)
-    .join('\n')
+  ].join('\n')
+
+  const paragraphHtml = paragraphs
+    .map(
+      (p) =>
+        `<p style="margin:0 0 14px;color:#27272A;font-size:15px;line-height:1.6;">${escHtml(p).replace(/\n/g, '<br/>')}</p>`
+    )
+    .join('')
 
   const offerRows = offers
-    .map(
-      (o) => `
+    ? offers.items
+        .map(
+          (o) => `
         <tr><td style="padding:0 0 10px;">
           <table role="presentation" width="100%" style="border:1px solid #E4E4E7;border-radius:10px;">
             <tr>
@@ -1863,51 +2164,64 @@ export function renderOrgResultsEmail(input: OrgResultsEmailInput): {
             </tr>
           </table>
         </td></tr>`
-    )
-    .join('')
+        )
+        .join('')
+    : ''
 
   const html = `
-<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/></head>
+<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>${escHtml(subject)}</title></head>
 <body style="margin:0;padding:0;background:#F4F4F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#111;">
   <table role="presentation" width="100%" style="background:#F4F4F5;"><tr><td align="center" style="padding:32px 16px;">
     <table role="presentation" width="100%" style="max-width:560px;background:#fff;border-radius:14px;overflow:hidden;border:1px solid #E4E4E7;">
       <tr><td style="background:#000;padding:22px 32px;">
         <div style="color:#FF5C1A;font-size:20px;font-weight:800;letter-spacing:-0.3px;line-height:1;">LearnHoops<span style="color:#71717A;">.com</span></div>
-        <div style="color:#A1A1AA;font-size:12px;margin-top:5px;">${escHtml(input.orgName)} · ${escHtml(input.teamName)}</div>
+        <div style="color:#A1A1AA;font-size:12px;margin-top:5px;">${escHtml(headerSub)}</div>
       </td></tr>
-      <tr><td style="padding:36px 32px 8px;">
-        <h1 style="margin:0 0 10px;color:#111;font-size:24px;line-height:1.25;font-weight:800;">Hi ${escHtml(first)}, your shot has been graded.</h1>
-        <p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;">
-          ${escHtml(input.orgName)} reviewed your latest shot. Here is your overall score.
-        </p>
+      <tr><td style="padding:24px 32px 0;">
+        <div style="color:#71717A;font-size:13px;line-height:1.5;">${escHtml(fromLine)}</div>
       </td></tr>
-      <tr><td align="center" style="padding:24px 32px 8px;">
+      <tr><td style="padding:16px 32px 4px;">
+        ${input.heading ? `<h1 style="margin:0 0 12px;color:#111;font-size:24px;line-height:1.25;font-weight:800;">${escHtml(input.heading)}</h1>` : ''}
+        ${paragraphHtml}
+      </td></tr>
+      ${
+        results && grade
+          ? `<tr><td align="center" style="padding:16px 32px 8px;">
         <table role="presentation" style="border-collapse:separate;">
-          <tr><td align="center" style="width:132px;height:132px;border-radius:66px;border:3px solid #FF5C1A;background:#FAFAFA;">
+          <tr><td align="center" style="width:132px;height:132px;padding:0;border-radius:50%;border:3px solid #FF5C1A;background:#FAFAFA;">
             <div style="color:#111;font-size:42px;font-weight:900;line-height:1;">${scoreText}</div>
             <div style="color:#52525B;font-size:12px;margin-top:4px;">out of 10</div>
           </td></tr>
         </table>
-        <div style="color:#111;font-size:26px;font-weight:900;margin-top:12px;">${letter}</div>
-        <div style="color:#52525B;font-size:14px;">${escHtml(label)}</div>
+        <div style="color:#111;font-size:26px;font-weight:900;margin-top:12px;">${grade.letter}</div>
+        <div style="color:#52525B;font-size:14px;">${escHtml(grade.label)}</div>
       </td></tr>
       <tr><td align="center" style="padding:20px 32px 8px;">
-        <a href="${link}" style="display:inline-block;background:#FF5C1A;color:#111;padding:14px 28px;border-radius:10px;text-decoration:none;font-weight:800;font-size:15px;">See your results</a>
-        ${input.paywalled ? `<div style="color:#71717A;font-size:12px;margin-top:10px;">Your link shows: ${escHtml(input.freeTierLabel)}.</div>` : ''}
-      </td></tr>
+        <a href="${resultsLink}" style="display:inline-block;background:#FF5C1A;color:#111;padding:14px 28px;border-radius:10px;text-decoration:none;font-weight:800;font-size:15px;">See your results</a>
+      </td></tr>`
+          : ''
+      }
       ${
-        offers.length
+        offers
           ? `<tr><td style="padding:24px 32px 8px;">
-        <div style="color:#111;font-size:16px;font-weight:800;margin-bottom:12px;">${input.paywalled ? 'Unlock more' : `Available from ${escHtml(input.orgName)}`}</div>
+        <div style="color:#111;font-size:16px;font-weight:800;margin-bottom:12px;">${escHtml(offers.heading)}</div>
         <table role="presentation" width="100%">${offerRows}</table>
-        <div style="color:#71717A;font-size:12px;">Buy any of these from your results page — the link above.</div>
+        ${offers.href ? `<div style="padding:6px 0 4px;"><a href="${escHtml(offers.href)}" style="display:inline-block;background:#FF5C1A;color:#111;padding:12px 22px;border-radius:10px;text-decoration:none;font-weight:800;font-size:14px;">${escHtml(offers.cta || 'See the details')}</a></div>` : ''}
+        ${offers.note ? `<div style="color:#71717A;font-size:12px;margin-top:6px;">${escHtml(offers.note)}</div>` : ''}
+      </td></tr>`
+          : ''
+      }
+      ${
+        input.shopLink
+          ? `<tr><td align="center" style="padding:20px 32px 8px;">
+        <a href="${shopUrl}" style="display:inline-block;background:#111;color:#fff;padding:13px 24px;border-radius:10px;text-decoration:none;font-weight:800;font-size:14px;">Shop LearnHoops basketballs</a>
       </td></tr>`
           : ''
       }
       <tr><td style="padding:24px 32px 32px;">
-        <p style="margin:0;color:#71717A;font-size:12px;line-height:1.6;">
-          This link is private to you. Reply to this email to reach your coach.<br/>
-          <a href="${unsubscribe}" style="color:#71717A;">Unsubscribe</a> from score emails.
+        <p style="margin:0;border-top:1px solid #E4E4E7;padding-top:16px;color:#71717A;font-size:12px;line-height:1.6;">
+          ${escHtml(footerWhy)} ${escHtml(footerWho)}<br/>
+          ${results ? 'Your results link is private to you. ' : ''}<a href="${escHtml(unsubscribe)}" style="color:#71717A;">Unsubscribe</a>
         </p>
       </td></tr>
     </table>
@@ -1917,12 +2231,86 @@ export function renderOrgResultsEmail(input: OrgResultsEmailInput): {
   return { subject, text, html }
 }
 
+/**
+ * Sends a rendered player email on behalf of a coach or organization:
+ * `"<name> via LearnHoops" <noreply@...>`, Reply-To the actual sender.
+ * Resend 6 returns `{ error }` instead of throwing, so an error is thrown
+ * here and callers only need a try/catch.
+ */
+export async function sendPlayerEmail(args: {
+  to: string
+  fromName: string
+  replyTo: string
+  subject: string
+  text: string
+  html: string
+}): Promise<string | null> {
+  const unsubscribe = unsubscribeUrl(args.to)
+  const { data, error } = await getResend().emails.send({
+    from: onBehalfFrom(args.fromName),
+    to: args.to,
+    replyTo: args.replyTo,
+    subject: cleanSubject(args.subject),
+    text: args.text,
+    html: args.html,
+    headers: {
+      'List-Unsubscribe': `<${unsubscribe}>`,
+      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+    },
+  })
+  if (error) {
+    throw new Error(`Player email failed: ${typeof error === 'object' && error && 'message' in error ? String((error as { message: unknown }).message) : String(error)}`)
+  }
+  return data?.id ?? null
+}
+
+/**
+ * The score email an organization sends its players from the legacy Results
+ * send route. Rendered separately from sending so the Results tab can show an
+ * exact preview. Delegates to renderPlayerEmail so there is one template.
+ *
+ * Transactional in shape (your score, your link) but it carries the org's
+ * offers, so it follows the bulk rules: List-Unsubscribe pair, suppression
+ * honored by the caller, text twin always present.
+ */
+export function renderOrgResultsEmail(input: OrgResultsEmailInput): {
+  subject: string
+  text: string
+  html: string
+} {
+  const first = input.playerName?.trim() || 'there'
+  const scoreText = input.score.toFixed(1)
+  const offers = input.offers.slice(0, 4)
+  const subject = `${first === 'there' ? 'Your' : `${first}, your`} shot score from ${input.orgName}: ${scoreText}/10`
+  const rendered = renderPlayerEmail({
+    recipientEmail: input.recipientEmail,
+    subject,
+    heading: `Hi ${first}, your shot has been graded.`,
+    message: `Your latest shot with ${input.teamName} has been graded by LearnHoops. Your overall score is below, and your full report shows what to work on next.`,
+    orgName: input.orgName,
+    teamName: input.teamName,
+    sender: { kind: 'org', name: input.orgName },
+    results: {
+      score: input.score,
+      token: input.token,
+    },
+    offers: offers.length
+      ? {
+          heading: `Available from ${input.orgName}`,
+          items: offers,
+          note: 'Buy any of these from your results page, using the button above.',
+        }
+      : null,
+  })
+  return rendered
+}
+
 export async function sendOrgResultsEmail(
   input: OrgResultsEmailInput,
   replyTo: string
 ): Promise<void> {
   const { subject, text, html } = renderOrgResultsEmail(input)
-  const unsubscribe = `${BASE_URL}/unsubscribe?email=${encodeURIComponent(input.recipientEmail)}`
+  const unsubscribe = unsubscribeUrl(input.recipientEmail)
   const { error } = await getResend().emails.send({
     from: NOTIFICATION_FROM,
     to: input.recipientEmail,
@@ -2104,4 +2492,118 @@ export async function sendOffersRequestedEmail(orgName: string, adminEmail: stri
   } catch (err) {
     console.error('[email] offers requested notification failed:', err)
   }
+}
+
+// A complimentary membership (or other email-keyed entitlement) only lands on
+// an account whose inbox is proven, so the entitlement email IS the proof: the
+// button carries a signed, single-purpose link. Three shapes:
+//   'confirm' — an account exists; the link confirms the address and activates
+//   'setup'   — a password-less account exists; the link sets a password (and
+//               in doing so confirms the address and activates)
+//   'signup'  — no account yet; the link opens signup bound to this address
+// Transactional, so no unsubscribe footer. Every interpolated value is escaped.
+export async function sendEntitlementConfirmEmail(
+  to: string,
+  actionUrl: string,
+  mode: 'confirm' | 'setup' | 'signup' | 'choose' = 'confirm',
+  // mode 'choose' only: several player accounts share this address, so the
+  // email carries one confirm link per account and the family picks which
+  // account gets the membership. `actionUrl` is then unused.
+  choices: Array<{ label: string; url: string }> = [],
+) {
+  const copy = {
+    confirm: {
+      subject: 'Confirm your email to activate your free membership',
+      heading: 'Confirm your email to activate your free membership',
+      body: 'You have been given a complimentary LearnHoops membership. Confirm this email address and it will be switched on for your account right away.',
+      note: 'If you are not signed in to LearnHoops on this device, the button asks you to set your password first. Someone may have created this account with your email. Set your password to take control and activate your free membership.',
+      button: 'Confirm and activate',
+      expiry: 'This link works for 7 days.',
+    },
+    setup: {
+      subject: 'Set your password to activate your free membership',
+      heading: 'Set your password to activate your free membership',
+      body: 'You have been given a complimentary LearnHoops membership. Your account has no password yet: set one below and the membership will be switched on straight away.',
+      note: '',
+      button: 'Set my password',
+      expiry: 'This link works for 24 hours. You can ask for a new one from the login page with “Forgot password”.',
+    },
+    choose: {
+      subject: 'Choose which account gets your free membership',
+      heading: 'Choose which account gets your free membership',
+      body: 'You have been given a complimentary LearnHoops membership. More than one player account uses this email address, so pick the one it should go to. It goes to one account only.',
+      note: 'If you are not signed in to that account on this device, the button asks you to set its password first.',
+      button: '',
+      expiry: 'These links work for 7 days.',
+    },
+    signup: {
+      subject: 'You have a free LearnHoops membership',
+      heading: 'You have a free LearnHoops membership',
+      body: 'You have been given a complimentary LearnHoops membership with unlimited shot analysis. Create your account with this email address to activate it.',
+      note: '',
+      button: 'Create my account',
+      expiry: 'This link works for 30 days. After that, sign up with this email address and we will send a fresh confirmation link.',
+    },
+  }[mode]
+  const url = escHtml(actionUrl)
+  const isChoose = mode === 'choose' && choices.length > 0
+
+  const { data, error } = await getResend().emails.send({
+    from: NOTIFICATION_FROM,
+    to,
+    subject: copy.subject,
+    text: [
+      copy.heading,
+      ``,
+      copy.body,
+      ...(copy.note ? [``, copy.note] : []),
+      ``,
+      ...(isChoose ? choices.flatMap((c) => [`${c.label}:`, c.url, ``]) : [actionUrl, ``]),
+      copy.expiry,
+      `If you didn't expect this email, you can ignore it — nothing changes unless the link is used.`,
+      ``,
+      `LearnHoops.com`,
+    ].join('\n'),
+    html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/></head>
+<body style="margin:0;padding:0;background:#F4F4F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table role="presentation" width="100%" style="background:#F4F4F5;"><tr><td align="center" style="padding:32px 16px;">
+    <table role="presentation" width="100%" style="max-width:560px;background:#fff;border-radius:14px;border:1px solid #E4E4E7;">
+      <tr><td style="background:#000;padding:22px 32px;">
+        <div style="color:#F97316;font-size:20px;font-weight:800;">LearnHoops<span style="color:#71717A;">.com</span></div>
+      </td></tr>
+      <tr><td style="padding:36px 32px 8px;">
+        <h1 style="margin:0 0 10px;color:#111;font-size:22px;font-weight:800;">${escHtml(copy.heading)}</h1>
+        <p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;">${escHtml(copy.body)}</p>
+        ${copy.note ? `<p style="margin:12px 0 0;color:#52525B;font-size:14px;line-height:1.55;">${escHtml(copy.note)}</p>` : ''}
+      </td></tr>
+      <tr><td style="padding:24px 32px 8px;">
+        ${isChoose
+          ? choices.map((c) => `<div style="margin:0 0 10px;"><a href="${escHtml(c.url)}" style="display:inline-block;background:#F97316;color:#fff;padding:13px 26px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">${escHtml(c.label)}</a></div>`).join('')
+          : `<a href="${url}" style="display:inline-block;background:#F97316;color:#fff;padding:13px 26px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">${escHtml(copy.button)}</a>`}
+      </td></tr>
+      <tr><td style="padding:8px 32px 32px;">
+        ${isChoose ? '' : `<p style="margin:0 0 10px;color:#A1A1AA;font-size:13px;line-height:1.5;">
+          If the button doesn't work, copy this link into your browser:<br/>
+          <a href="${url}" style="color:#71717A;word-break:break-all;">${url}</a>
+        </p>`}
+        <p style="margin:0;color:#A1A1AA;font-size:13px;line-height:1.5;">${escHtml(copy.expiry)} If you didn't expect this email, you can ignore it — nothing changes unless the link is used.</p>
+      </td></tr>
+      <tr><td style="padding:18px 32px;background:#FAFAFA;border-top:1px solid #E4E4E7;border-radius:0 0 14px 14px;">
+        <p style="margin:0;color:#A1A1AA;font-size:11px;line-height:1.6;">
+          Questions? <a href="${escHtml(BASE_URL)}/support" style="color:#71717A;text-decoration:none;font-weight:600;">Contact us here</a>.
+        </p>
+      </td></tr>
+    </table>
+  </td></tr></table>
+</body>
+</html>`.trim(),
+  })
+  if (error) {
+    console.error('[email] entitlement confirmation failed:', error)
+    throw new Error(`Entitlement confirmation email failed: ${error.message}`)
+  }
+  console.log('[email] entitlement confirmation sent:', data?.id, 'mode:', mode, 'to:', to)
 }

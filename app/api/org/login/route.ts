@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
 import { signOrgSession, orgSessionCookieOptions } from '@/lib/org-auth'
-import { rateLimitByIp } from '@/lib/rate-limit'
+import { rateLimitLogin } from '@/lib/rate-limit'
 
 export async function POST(req: NextRequest) {
   try {
-    const limit = await rateLimitByIp(req, 'org-login', 10, 900)
+    const { email, password } = await req.json()
+    // Tight per-account limit, looser per-IP ceiling (a gym shares one IP).
+    const limit = await rateLimitLogin(req, 'org-login', typeof email === 'string' ? email : null)
     if (!limit.ok) {
       return NextResponse.json(
         { error: 'Too many attempts — try again later' },
@@ -14,7 +16,6 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const { email, password } = await req.json()
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password required' }, { status: 400 })
     }
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
     }
 
-    const token = await signOrgSession({ orgId: org.id, adminEmail: org.admin_email })
+    const token = await signOrgSession({ orgId: org.id, adminEmail: org.admin_email }, org.password_hash)
     const res = NextResponse.json({ success: true })
     res.cookies.set(orgSessionCookieOptions(token))
     return res

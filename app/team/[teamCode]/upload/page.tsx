@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { db } from '@/lib/db'
+import { provenTeamCoachCreditsEmail } from '@/lib/team-auth'
 import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
 import TeamUploadClient from './TeamUploadClient'
@@ -12,17 +13,22 @@ export default async function TeamUploadPage({
   const { teamCode } = await params
 
   const [team] = await db`
-    SELECT name, access_code, admin_email, credits
+    SELECT id, name, access_code, admin_email, credits
     FROM teams WHERE access_code = ${teamCode.toUpperCase()}
-  ` as unknown as [{ name: string; access_code: string; admin_email: string; credits: number } | undefined]
+  ` as unknown as [{ id: string; name: string; access_code: string; admin_email: string; credits: number } | undefined]
 
   if (!team) return notFound()
 
-  // Team uploads spend the coach's personal credits first, then the legacy
-  // team budget — show the combined total so the count matches what's usable.
-  const [cc] = await db`
-    SELECT COALESCE(credits, 0)::int AS credits FROM coach_credits WHERE LOWER(email) = ${team.admin_email.toLowerCase()}
-  ` as unknown as [{ credits: number } | undefined]
+  // Team uploads spend the head coach's personal credits first (only when the
+  // head-coach row provably holds that email — provenTeamCoachCreditsEmail),
+  // then the legacy team budget — show the combined total so the count
+  // matches what's usable.
+  const headCreditsEmail = await provenTeamCoachCreditsEmail(team.id)
+  const [cc] = headCreditsEmail
+    ? await db`
+        SELECT COALESCE(credits, 0)::int AS credits FROM coach_credits WHERE LOWER(email) = ${headCreditsEmail}
+      ` as unknown as [{ credits: number } | undefined]
+    : [undefined]
   const availableCredits = (cc?.credits ?? 0) + team.credits
 
   return (

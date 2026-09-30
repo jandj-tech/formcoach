@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getOrgSession } from '@/lib/org-auth'
 import { db } from '@/lib/db'
+import { teamLeaderboard } from '@/lib/team-shots'
 import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
 import InlineEdit from '@/components/InlineEdit'
@@ -56,6 +57,7 @@ interface TeamData {
   coachNickname: string | null
   tokenPool: number
   leaderboard: LeaderboardRow[]
+  leaderboardVisibility: 'team' | 'hidden'
 }
 
 export default async function OrgDashboardPage() {
@@ -174,7 +176,7 @@ export default async function OrgDashboardPage() {
         let pendingPlayers: PendingPlayer[] = []
         try {
           pendingPlayers = (await db`
-            SELECT id, first_name, last_name_initial
+            SELECT id, first_name, last_name_initial, contact_email
             FROM pending_team_members
             WHERE team_id = ${t.id}
             ORDER BY created_at ASC
@@ -197,6 +199,17 @@ export default async function OrgDashboardPage() {
 
         let coachNickname: string | null = null
         let tokenPool = 0
+        // Whether players see the whole leaderboard; its own query so a
+        // database without the column still renders (defaults to shown).
+        let leaderboardVisibility: 'team' | 'hidden' = 'team'
+        try {
+          const [v] = (await db`
+            SELECT leaderboard_visibility FROM teams WHERE id = ${t.id}
+          `) as unknown as [{ leaderboard_visibility: string | null } | undefined]
+          if (v?.leaderboard_visibility === 'hidden') leaderboardVisibility = 'hidden'
+        } catch {
+          // leaderboard_visibility column may not exist yet
+        }
         try {
           const [r] = (await db`
             SELECT coach_nickname,
@@ -208,36 +221,13 @@ export default async function OrgDashboardPage() {
         } catch {
           // coach_nickname / token_pool columns may not exist yet
         }
-        // Leaderboard: account players (by user_id) + coach-added players (by team_player_id).
+        // Leaderboard: only shots filed to this (org-owned) team, each counted
+        // once — see lib/team-shots.ts. The old query joined a member's shots
+        // by user_id alone (personal + other teams' + other orgs' shots) and
+        // double-counted coach uploads that carried both ids.
         let leaderboard: LeaderboardRow[] = []
         try {
-          leaderboard = (await db`
-            WITH shots AS (
-              SELECT u.id::text AS player_id,
-                     COALESCE(NULLIF(tm.first_name, ''), u.email) AS first_name,
-                     COALESCE(tm.last_name_initial, '') AS last_name_initial,
-                     a.overall_score, s.id AS sid, 'member' AS kind
-              FROM team_memberships tm
-              JOIN users u ON u.id = tm.user_id
-              JOIN submissions s ON s.user_id = u.id
-              JOIN analyses a ON a.submission_id = s.id
-              WHERE tm.team_id = ${t.id} AND s.status = 'complete'
-              UNION ALL
-              SELECT tp.id::text AS player_id, tp.first_name, tp.last_name_initial,
-                     a.overall_score, s.id AS sid, 'player' AS kind
-              FROM team_players tp
-              JOIN submissions s ON s.team_player_id = tp.id AND s.team_id = tp.team_id
-              JOIN analyses a ON a.submission_id = s.id
-              WHERE tp.team_id = ${t.id} AND s.status = 'complete'
-            )
-            SELECT player_id AS id, first_name, last_name_initial, kind,
-                   MAX(overall_score) AS best_score,
-                   ROUND(AVG(overall_score)::numeric, 1) AS avg_score,
-                   COUNT(sid)::int AS upload_count
-            FROM shots
-            GROUP BY player_id, first_name, last_name_initial, kind
-            ORDER BY best_score DESC
-          `) as unknown as LeaderboardRow[]
+          leaderboard = await teamLeaderboard(t.id)
         } catch (err) {
           console.error('[org/dashboard] leaderboard query failed:', err)
         }
@@ -256,6 +246,7 @@ export default async function OrgDashboardPage() {
           coachNickname,
           tokenPool,
           leaderboard,
+          leaderboardVisibility,
         }
       })
     )
@@ -335,6 +326,9 @@ export default async function OrgDashboardPage() {
             value={org.access_code}
             mono
             accent
+            // Three cards on a two-column phone grid: the code takes the
+            // full first row so Teams and Players pair up underneath.
+            className={teams.length > 0 ? 'col-span-2 sm:col-span-1' : ''}
             note={
               <span className="text-gray-500 dark:text-chalk-dim">
                 Coaches enter this when registering a team
@@ -354,7 +348,7 @@ export default async function OrgDashboardPage() {
             hint={
               <InfoTip label="What counts as a team?" align="left">
                 Every team a coach registered with your organization code.
-                Open one to manage its roster, credits and schedule.
+                Open one to manage its roster, tokens and schedule.
               </InfoTip>
             }
           />
@@ -368,17 +362,21 @@ export default async function OrgDashboardPage() {
               </InfoTip>
             }
           />
-          <StatCard
-            label="Org credits"
-            value={orgTokenBalance}
-            hint={
-              <InfoTip label="What are organization credits?" align="right">
-                A pool your organization owns. Hand credits to any team or
-                coach from the Credits section below — 1 credit = 1 AI shot
-                analysis.
-              </InfoTip>
-            }
-          />
+          {/* Once there's a team, the balance card just below shows this same
+              number with its Send and Buy actions, so it isn't repeated here. */}
+          {teams.length === 0 && (
+            <StatCard
+              label="Organization tokens"
+              value={orgTokenBalance}
+              hint={
+                <InfoTip label="What are organization tokens?" align="right">
+                  Tokens your organization owns. Send them to players or
+                  coaches from the Tokens tab once you&apos;ve added a team
+                  &mdash; 1 token = 1 AI shot analysis.
+                </InfoTip>
+              }
+            />
+          )}
         </StatGrid>
 
         {orgEntitled && billing.hasBilling && (

@@ -3,6 +3,7 @@
 // import them without a cycle back into its own parent.
 
 import type { LeaderboardRow } from '@/components/LeaderboardTable'
+import type { LeaderboardVisibility } from '@/components/LeaderboardVisibilitySwitch'
 
 export interface Member {
   id: string
@@ -19,6 +20,12 @@ export interface PendingPlayer {
   id: string
   first_name: string
   last_name_initial: string | null
+  /**
+   * A sibling's family address this name-only player is emailed at (older
+   * entries only — new siblings get their own account on that email). The
+   * roster offers "Give own account" for these.
+   */
+  contact_email?: string | null
 }
 
 export interface Coach {
@@ -42,6 +49,8 @@ export interface TeamData {
   coachNickname: string | null
   tokenPool: number
   leaderboard: LeaderboardRow[]
+  /** 'team' = players see the ranked board; 'hidden' = only their own scores. */
+  leaderboardVisibility: LeaderboardVisibility
 }
 
 // The account-setup state shown on a roster row.
@@ -82,6 +91,16 @@ export type PlayerSortMode = 'name' | 'score-desc' | 'score-asc'
 
 // Players are listed by first name plus a last initial; players who signed up
 // without a name fall back to the email they registered with.
+/**
+ * Picker label: the display name, plus the email when another member in
+ * `all` shows the same name (two "Jayden M." must be told apart).
+ */
+export function memberPickLabel(m: Member, all: readonly Member[]): string {
+  const name = memberDisplayName(m)
+  const twin = all.some(o => o.id !== m.id && memberDisplayName(o).toLowerCase() === name.toLowerCase())
+  return twin && m.email && name !== m.email ? `${name} (${m.email})` : name
+}
+
 export function memberDisplayName(m: Member): string {
   if (m.first_name) {
     return `${m.first_name}${m.last_name_initial ? ' ' + m.last_name_initial + '.' : ''}`

@@ -67,12 +67,12 @@ export async function POST(req: NextRequest) {
     })
 
     if (result === null) {
-      return NextResponse.json({ error: 'Not enough credits on this team' }, { status: 400 })
+      return NextResponse.json({ error: 'Not enough team tokens' }, { status: 400 })
     }
 
     return NextResponse.json({ success: true, ...result })
   } catch (err) {
     console.error('[org/assign-from-team-credits] failed:', err instanceof Error ? err.message : err)
-    return NextResponse.json({ error: 'Could not assign credits' }, { status: 500 })
+    return NextResponse.json({ error: 'Could not send tokens' }, { status: 500 })
   }
 }

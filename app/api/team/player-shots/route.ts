@@ -9,7 +9,8 @@ import { db } from '@/lib/db'
 //
 // Auth: team session scopes to its own team; org session must pass a teamId the
 // org owns. `playerId` is a users.id when kind=member, a team_players.id when
-// kind=unjoined. Both are verified to belong to the resolved team.
+// kind=unjoined. Both are verified to belong to the resolved team, and only
+// submissions filed to that team (submissions.team_id) are returned.
 export async function GET(req: NextRequest) {
   const teamSession = await getTeamSessionFromRequest(req)
   const orgSession = teamSession ? null : await getOrgSessionFromRequest(req)
@@ -51,7 +52,9 @@ export async function GET(req: NextRequest) {
         SELECT s.token, s.created_at, a.overall_score, a.frame_urls
         FROM submissions s
         JOIN analyses a ON a.submission_id = s.id
-        WHERE s.user_id = ${playerId} AND s.status = 'complete'
+        -- This team's shots only. Being on the roster does not open the
+        -- player's personal (self-paid) or other-team history to the coach.
+        WHERE s.user_id = ${playerId} AND s.team_id = ${teamId} AND s.status = 'complete'
         ORDER BY s.created_at DESC
         LIMIT 100
       `) as unknown as ShotRow[]

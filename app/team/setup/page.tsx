@@ -2,6 +2,7 @@
 
 import { Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { KeyRoundIcon, LoaderCircleIcon } from 'lucide-react'
 import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
 import PasswordInput from '@/components/PasswordInput'
@@ -51,18 +52,23 @@ function TeamSetupForm() {
   }
 
   return (
-    <main className="min-h-screen bg-white flex flex-col">
+    <main className="min-h-screen bg-white dark:bg-ink-950 flex flex-col">
       <TopNav />
       <div className="flex-1 flex items-center justify-center px-6 py-20">
         <div className="w-full max-w-sm space-y-6">
           <div className="text-center space-y-2">
-            <div className="text-4xl">🏀</div>
-            <h1 className="text-2xl font-black text-black">Set up your coach account</h1>
-            <p className="text-gray-500 text-sm">Choose a password to access your team dashboard</p>
+            <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-ember-50 dark:bg-ember-500/10 text-ember-600 dark:text-ember-400">
+              <KeyRoundIcon className="h-6 w-6" aria-hidden />
+            </span>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-chalk">Set up your coach account</h1>
+            <p className="text-gray-500 dark:text-chalk-dim text-sm">Choose a password to access your team dashboard</p>
+            <p className="text-gray-500 dark:text-chalk-dim text-xs">
+              Already coach another team on LearnHoops? Use the same password — one password works for all your teams.
+            </p>
           </div>
 
           {!token ? (
-            <p className="text-center text-red-500 text-sm font-medium">Invalid setup link.</p>
+            <p className="text-center text-red-600 dark:text-red-400 text-sm font-medium">Invalid setup link.</p>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-3">
               <PasswordInput
@@ -78,13 +84,13 @@ function TeamSetupForm() {
                 value={confirm}
                 onChange={e => setConfirm(e.target.value)}
               />
-              {error && <p className="text-red-500 text-sm">{error}</p>}
+              {error && <p role="alert" className="text-red-600 dark:text-red-400 text-sm">{error}</p>}
               <button
                 type="submit"
                 disabled={status === 'loading' || status === 'success'}
-                className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold py-3 rounded-xl transition-colors"
+                className="w-full bg-ember-500 hover:bg-ember-400 disabled:bg-ember-300 text-ink-950 font-bold py-3 rounded-xl transition-colors"
               >
-                {status === 'loading' || status === 'success' ? 'Setting up...' : 'Set Password'}
+                {status === 'loading' || status === 'success' ? 'Setting up…' : 'Set password'}
               </button>
             </form>
           )}
@@ -98,10 +104,10 @@ function TeamSetupForm() {
 export default function TeamSetupPage() {
   return (
     <Suspense fallback={
-      <main className="min-h-screen bg-white flex flex-col">
+      <main className="min-h-screen bg-white dark:bg-ink-950 flex flex-col">
         <TopNav />
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-5xl animate-bounce">🏀</div>
+          <LoaderCircleIcon className="h-8 w-8 animate-spin text-gray-400 dark:text-chalk-dim" aria-label="Loading" />
         </div>
       </main>
     }>

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 
 export type AccountTab = {
   id: string
-  label: string
+  label: ReactNode
   content: ReactNode
   // Optional count bubble shown next to the label (e.g. number of teams).
   count?: number

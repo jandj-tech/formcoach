@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import crypto from 'crypto'
 import bcrypt from 'bcryptjs'
-import { consumeResetToken, peekResetTokenByEmail, resetCodeFromToken } from '@/lib/password-reset'
+import {
+  consumeResetToken,
+  peekResetTokenByEmail,
+  playerForResetToken,
+  playerFirstName,
+  siblingPasswordClash,
+  SIBLING_PASSWORD_CODE,
+} from '@/lib/password-reset'
+import { verifyChosenAccountToken } from '@/lib/email-entitlements'
 import { signSession, sessionCookieOptions } from '@/lib/auth'
 import { signTeamSession, teamSessionCookieOptions } from '@/lib/team-auth'
 import { signOrgSession, orgSessionCookieOptions } from '@/lib/org-auth'
@@ -14,9 +21,27 @@ import { rateLimit, rateLimitByIp } from '@/lib/rate-limit'
 // matching account (player, coach, or organization), and logs them in. The web
 // flow sends the token from the emailed link; the iOS app sends email + the
 // 6-digit code from the app-variant email instead.
+//
+// Several player accounts may share one address (siblings): every token and
+// code names ONE account, and the new password may not be one that already
+// opens a sibling's account (lib/password-reset.ts siblingPasswordClash).
+
+// GET ?token= — which player the link is for, so the page can say "Reset
+// Harper's password" when a family email holds several. Only the token's
+// holder (the inbox) learns the name; nothing is consumed.
+export async function GET(req: NextRequest) {
+  const limit = await rateLimitByIp(req, 'reset-password-peek', 120, 3600)
+  if (!limit.ok) return NextResponse.json({ valid: false }, { status: 429 })
+  const token = req.nextUrl.searchParams.get('token') ?? ''
+  const player = token ? await playerForResetToken(token) : null
+  // Only a family email needs the name; a one-account link reads as before.
+  if (!player || player.siblings === 0) return NextResponse.json({ valid: null })
+  return NextResponse.json({ valid: true, firstName: playerFirstName(player), setup: player.setup })
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const limit = await rateLimitByIp(req, 'reset-password', 10, 3600)
+    const limit = await rateLimitByIp(req, 'reset-password', 60, 3600)
     if (!limit.ok) {
       return NextResponse.json(
         { error: 'Too many attempts — try again later' },
@@ -24,11 +49,12 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const { token: bodyToken, email, code, password } = (await req.json().catch(() => ({}))) as {
+    const { token: bodyToken, email, code, password, chosen } = (await req.json().catch(() => ({}))) as {
       token?: string
       email?: string
       code?: string
       password?: string
+      chosen?: string
     }
     if (!password || typeof password !== 'string' || password.length < 6) {
       return NextResponse.json({ error: 'Password (6+ characters) required' }, { status: 400 })
@@ -51,12 +77,10 @@ export async function POST(req: NextRequest) {
           { status: 429, headers: { 'Retry-After': String(codeLimit.retryAfterSeconds) } }
         )
       }
-      const stored = await peekResetTokenByEmail(emailLower)
-      const expected = stored ? resetCodeFromToken(stored) : null
-      const matches =
-        !!expected &&
-        crypto.timingSafeEqual(Buffer.from(codeDigits), Buffer.from(expected))
-      if (!stored || !matches) {
+      // Siblings on one address each have their own code: whichever
+      // account's code this is gets reset.
+      const stored = await peekResetTokenByEmail(emailLower, codeDigits)
+      if (!stored) {
         return NextResponse.json(
           { error: 'That code is incorrect or has expired. Request a new one.' },
           { status: 400 }
@@ -69,8 +93,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid reset link' }, { status: 400 })
     }
 
+    // Different-password rule: checked before anything is consumed, so the
+    // same link / code works again with another password.
+    const player = await playerForResetToken(token)
+    if (player) {
+      const clash = await siblingPasswordClash(player.email, password, player.id)
+      if (clash) return NextResponse.json({ error: clash, code: SIBLING_PASSWORD_CODE }, { status: 400 })
+    }
+
+    const chosenUserId = player ? await verifyChosenAccountToken(chosen, token) : null
     const hash = await bcrypt.hash(password, BCRYPT_COST)
-    const target = await consumeResetToken(token, hash)
+    const target = await consumeResetToken(token, hash, { chosenUserId })
 
     if (!target) {
       return NextResponse.json(
@@ -79,26 +112,30 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Non-fatal security notification
-    try { await sendPasswordChangedEmail(target.email) } catch {}
+    // Non-fatal security notification — for a real password change only.
+    // Finishing a coach/org-added account from its setup link sets the first
+    // password; telling that parent their password "was changed" alarms them.
+    if (!target.firstPassword) {
+      try { await sendPasswordChangedEmail(target.email) } catch {}
+    }
 
     // `token` in the JSON is for the mobile app (Bearer auth), matching login;
     // the web ignores it and follows the cookie + redirect.
     let sessionToken: string
     let res: NextResponse
     if (target.kind === 'user') {
-      sessionToken = await signSession({ userId: target.userId!, email: target.email })
+      sessionToken = await signSession({ userId: target.userId!, email: target.email }, hash)
       res = NextResponse.json({ success: true, redirect: target.redirect, token: sessionToken })
       res.cookies.set(sessionCookieOptions(sessionToken))
       clearOtherSessions(res, PLAYER_COOKIE)
     } else if (target.kind === 'org') {
-      sessionToken = await signOrgSession({ orgId: target.orgId!, adminEmail: target.email })
+      sessionToken = await signOrgSession({ orgId: target.orgId!, adminEmail: target.email }, hash)
       res = NextResponse.json({ success: true, redirect: target.redirect, token: sessionToken })
       res.cookies.set(orgSessionCookieOptions(sessionToken))
       clearOtherSessions(res, ORG_COOKIE)
     } else {
       // 'team' (founding coach) or 'team_coach' (additional coach)
-      sessionToken = await signTeamSession({ teamId: target.teamId!, adminEmail: target.email })
+      sessionToken = await signTeamSession({ teamId: target.teamId!, adminEmail: target.email }, hash)
       res = NextResponse.json({ success: true, redirect: target.redirect, token: sessionToken })
       res.cookies.set(teamSessionCookieOptions(sessionToken))
       clearOtherSessions(res, TEAM_COOKIE)

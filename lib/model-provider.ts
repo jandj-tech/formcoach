@@ -206,7 +206,12 @@ async function callGatewayModelOnce(params: {
     // 180s was too tight once reasoning is in the budget — one fixture in the
     // sweep aborted here, which reads as DID NOT RUN and silently shrinks the
     // suite. Reasoning over 28 images is simply slow.
-    signal: AbortSignal.timeout(300_000),
+    // MODEL_FETCH_TIMEOUT_MS: 2026-09-30 the same provider that answered a
+    // 28-frame call in ~30s in the morning took 259s in the afternoon (the
+    // reasoning ran to 16000 tokens at ~60 tok/s). At 300s the call is
+    // aborted and re-run from scratch, and an arm that graded 14 runs in 35
+    // minutes graded 0 in 3 hours. Eval arms set it to 900000.
+    signal: AbortSignal.timeout(Number(process.env.MODEL_FETCH_TIMEOUT_MS) || 300_000),
   })
 
   if (!res.ok) {

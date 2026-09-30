@@ -107,7 +107,7 @@ const newResults = {}
 // does not resolve) are NOT retried: those are real findings and hiding them
 // behind a retry is exactly the kind of test-gaming this suite is meant to
 // catch.
-const TRANSPORT = /ENOTFOUND|ECONNRESET|EHOSTUNREACH|ETIMEDOUT|ENETDOWN|ENETUNREACH|EAI_AGAIN|socket hang up|fetch failed|aborted due to timeout|gateway unreachable|terminated/i
+const TRANSPORT = /ENOTFOUND|ECONNRESET|EHOSTUNREACH|ETIMEDOUT|ENETDOWN|ENETUNREACH|EAI_AGAIN|socket hang up|fetch failed|aborted due to timeout|gateway unreachable|terminated|CONNECT_TIMEOUT|ECONNREFUSED/i
 const FIXTURE_ATTEMPTS = Number(process.env.EVAL_FIXTURE_ATTEMPTS ?? 3)
 
 // CIRCUIT BREAKER - the arm cancels ITSELF when money would be wasted, so

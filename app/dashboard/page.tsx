@@ -7,6 +7,7 @@ import { analysisBaseCents, REGULAR_VOLUME_MIN_QTY, REGULAR_VOLUME_PRICE_CENTS, 
 import { getUsageSummary } from '@/lib/player-dashboard'
 import { getPlayerSubscription, subscriptionEntitled } from '@/lib/player-subscription'
 import { PLAYER_PLANS } from '@/lib/player-plans'
+import { planRank } from '@/lib/player-entitlement'
 import PlanControls from './PlanControls'
 import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
@@ -556,7 +557,24 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                   Settings → Subscriptions.
                 </p>
               ) : (
-                !isInApp && <PlanControls plan={usage.plan} interval={usage.billingFrequency ?? 'monthly'} />
+                !isInApp && (
+                  <PlanControls
+                    plan={usage.plan}
+                    interval={usage.billingFrequency ?? 'monthly'}
+                    coveringClub={
+                      usage.coveringSeat
+                        ? {
+                            planName: usage.coveringSeat.plan === 'pro' ? 'Pro' : 'Player',
+                            lastDay: longDate(usage.coveringSeat.endsAt, true),
+                            // Same rule as the server (personalPlanVsClub): no
+                            // personal plan at or below the club seat's plan.
+                            blocksOtherPlan:
+                              planRank(usage.plan === 'player' ? 'pro' : 'player') <= planRank(usage.coveringSeat.plan),
+                          }
+                        : undefined
+                    }
+                  />
+                )
               )}
             </section>
             )}

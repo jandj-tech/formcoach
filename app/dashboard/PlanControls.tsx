@@ -23,6 +23,7 @@ export default function PlanControls({
   plan,
   interval,
   clubSeat,
+  coveringClub,
 }: {
   plan: PlayerPlan
   interval: PlayerBillingInterval
@@ -34,6 +35,15 @@ export default function PlanControls({
    * through /api/subscribe, which allows a plan above the seat.
    */
   clubSeat?: { orgName: string; lastDay: string; ownPlan: boolean }
+  /**
+   * Set while a club seat covers this player but their OWN higher plan is the
+   * one in use (club Player seat + personal Pro). Switching the personal plan
+   * to the seat's plan or lower is never offered — /api/player/change-plan
+   * refuses it (personalPlanVsClub) because the club already pays for it.
+   * `planName` is the seat's plan; `blocksOtherPlan` is computed server-side
+   * with the same rank rule. Interval switches and the portal stay.
+   */
+  coveringClub?: { planName: string; lastDay: string; blocksOtherPlan: boolean }
 }) {
   const router = useRouter()
   const [busy, setBusy] = useState<string | null>(null)
@@ -132,10 +142,12 @@ export default function PlanControls({
   const otherPlan: PlayerPlan = plan === 'player' ? 'pro' : 'player'
   const otherInterval: PlayerBillingInterval = interval === 'monthly' ? 'annual' : 'monthly'
   const upgrade = otherPlan === 'pro'
+  const offerOtherPlan = !coveringClub?.blocksOtherPlan
 
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-2">
+        {offerOtherPlan && (
         <button
           onClick={() => changePlan(otherPlan, interval, upgrade ? 'Upgrade' : 'Switch plan')}
           disabled={busy !== null}
@@ -149,6 +161,7 @@ export default function PlanControls({
             ? `Upgrade to Pro — ${PLAYER_PLANS.pro.weeklyLimit}/week, up to ${PLAYER_PLANS.pro.monthlyLimit}/month`
             : 'Switch to Player'}
         </button>
+        )}
         <button
           onClick={() =>
             changePlan(plan, otherInterval, otherInterval === 'annual' ? 'Switch to yearly billing' : 'Switch to monthly billing')
@@ -168,6 +181,12 @@ export default function PlanControls({
           {busy === 'portal' ? 'Opening…' : 'Manage subscription'}
         </button>
       </div>
+      {coveringClub && (
+        <p className="text-xs text-gray-500 dark:text-chalk-dim">
+          Your club&apos;s {coveringClub.planName} membership stays until {coveringClub.lastDay}. If you cancel{' '}
+          {plan === 'pro' ? 'Pro' : 'Player'}, you&apos;ll keep the club&apos;s {coveringClub.planName} membership.
+        </p>
+      )}
       {error && <p className="text-red-500 text-xs">{error}</p>}
     </div>
   )

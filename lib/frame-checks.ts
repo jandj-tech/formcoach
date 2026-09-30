@@ -25,7 +25,7 @@ import { callVisionModel } from '@/lib/model-provider'
 export interface FrameChecks {
   release: number
   /** Set point (majority of R-1..R-3). */
-  elbow: null | { catapult: boolean; flared: boolean; clean: boolean; frames: number[]; v_top?: boolean }
+  elbow: null | { catapult: boolean; flared: boolean; clean: boolean; frames: number[]; v_top?: boolean; elbow_out?: boolean; counts?: Record<string, number>; answers?: number }
   /** Dip frame R-6 vs release R. */
   power: null | { ball_low_at_dip: boolean; knees_bent_at_dip: boolean; head_higher_at_release: boolean }
   /** Release R (shoulders) and landing R+4 vs R. */
@@ -53,11 +53,12 @@ async function ask(model: string, frames: string[], mimes: string[], idx: number
       maxTokens: 8000,
     })
     const m = res.text.match(/\{[\s\S]*\}/)
-    if (!m) return null
+    if (!m) { console.log(`[framechecks] no JSON for frames ${idx.join(',')}: ${res.text.slice(0, 80)}`); return null }
     const raw = JSON.parse(m[0]) as Record<string, unknown>
-    if (!keys.every((k) => typeof raw[k] === 'boolean')) return null
+    if (!keys.every((k) => typeof raw[k] === 'boolean')) { console.log(`[framechecks] missing keys for frames ${idx.join(',')}: ${m[0].slice(0, 120)}`); return null }
     return Object.fromEntries(keys.map((k) => [k, raw[k] === true]))
-  } catch {
+  } catch (err) {
+    console.log(`[framechecks] ask failed for frames ${idx.join(',')}: ${(err as Error).message.slice(0, 160)}`)
     return null
   }
 }
@@ -105,15 +106,18 @@ async function locateShooter(model: string, frames: string[], mimes: string[], R
       maxTokens: 4000,
     })
     const m = res.text.match(/\{[\s\S]*\}/)
-    if (!m) return null
+    if (!m) { console.log(`[framechecks] locate: no JSON: ${res.text.slice(0, 80)}`); return null }
     const b = JSON.parse(m[0]) as Record<string, unknown>
     const x0 = Number(b.x0), y0 = Number(b.y0), x1 = Number(b.x1), y1 = Number(b.y1)
     const w = x1 - x0, h = y1 - y0
     // Same validation as crop-boxes.mjs: a wrong crop is worse than a wide frame.
-    if (b.confident === false || !(w > 0 && h > 0) || w * h > 0.8 || w * h < 0.01 || h < 0.15) return null
-    if (x0 < 0 || y0 < 0 || x1 > 1 || y1 > 1) return null
+    if (b.confident === false || !(w > 0 && h > 0) || w * h > 0.8 || w * h < 0.01 || h < 0.15 || x0 < 0 || y0 < 0 || x1 > 1 || y1 > 1) {
+      console.log(`[framechecks] locate: box rejected ${m[0].replace(/\s+/g, ' ').slice(0, 120)}`)
+      return null
+    }
     return { x0, y0, x1, y1 }
-  } catch {
+  } catch (err) {
+    console.log(`[framechecks] locate failed: ${(err as Error).message.slice(0, 160)}`)
     return null
   }
 }
@@ -201,10 +205,19 @@ Answer JSON only: {"ball_behind_or_above_head":true|false,"elbow_flared_shoulder
     // both hands. The expert scored this shape a 3. The old rule also
     // demanded the elbows at shoulder height, which a V does not need - the
     // elbows are wide but low - so it never fired. Majority on the one cue.
-    const vTop = !catapult && n((a) => a.both_hands_mirrored_elbows_out) >= need
+    // Guarded by the one-hand cue on the SAME answer: the cropped probe
+    // (2026-09-30) fired the bare mirrored cue once in three on shot-206, a
+    // normal one-hand shot with the guide hand on the side.
+    const vTop = !catapult && n((a) => a.both_hands_mirrored_elbows_out && !a.one_hand_under_ball) >= need
     const flared = !catapult && !vTop && n((a) => a.ball_beside_head && a.elbow_flared_shoulder_height) >= need
-    const clean = !catapult && !flared && n((a) => a.ball_in_front_of_forehead && a.elbow_inside_shoulder_line && a.one_hand_under_ball && !a.elbow_flared_shoulder_height) >= need
-    fc.elbow = { catapult, flared, clean: clean && !vTop, frames: spFrames, v_top: vTop }
+    // The elbow out at shoulder height with the ball still IN FRONT (shot-198
+    // at 2x: ball above the forehead on the shooting side, upper arm near
+    // horizontal). The rubric's own anchor for exactly this is 5. Without it
+    // the clean floor fired on 198 (expert [3,5]) and lifted it to 6.
+    const elbowOut = !catapult && !vTop && !flared && n((a) => a.elbow_flared_shoulder_height && !a.elbow_inside_shoulder_line) >= need
+    const clean = !catapult && !flared && !elbowOut && n((a) => a.ball_in_front_of_forehead && a.elbow_inside_shoulder_line && a.one_hand_under_ball && !a.elbow_flared_shoulder_height) >= need
+    const counts = Object.fromEntries(spKeys.map((k) => [k, n((a) => a[k])]))
+    fc.elbow = { catapult, flared, clean: clean && !vTop, frames: spFrames, v_top: vTop, elbow_out: elbowOut, counts, answers: spAns.length }
   }
 
   // --- POWER: dip frame vs release ---------------------------------------------
@@ -269,10 +282,20 @@ export function frameCheckBounds(fc: FrameChecks): Array<{ criterion: string; ca
   const b: Array<{ criterion: string; cap?: number; floor?: number; why: string }> = []
   const ELBOW = 'Elbow L-Shape — Under the Ball', POWER = 'Source of Shot Power', POCKET = 'Shot Pocket — Elbow'
   const SQUARE = 'Square to the Basket', FEET = 'Feet Shoulder Width Apart'
+  const ONEHAND = 'Shooting Through Guide Hand / One Hand Release', GHFT = 'Guide Hand Follow Through', SHFT = 'Shooting Hand Follow Through'
   if (fc.elbow) {
     if (fc.elbow.catapult) { b.push({ criterion: ELBOW, cap: 3, why: 'the ball went over or behind the head with the elbow flared' }); b.push({ criterion: POCKET, cap: 4, why: 'the ball was loaded over the head, not in a pocket' }); b.push({ criterion: POWER, cap: 4, why: 'the ball was slung from over the head' }) }
-    else if (fc.elbow.v_top) { b.push({ criterion: ELBOW, cap: 4, why: 'both hands were on the sides of the ball with both elbows out, and the ball was thrown from that two-handed V' }); b.push({ criterion: POCKET, cap: 4, why: 'the ball was held in a two-handed V rather than loaded in a one-hand pocket' }); b.push({ criterion: POWER, cap: 4, why: 'the ball was pushed out of a two-handed V by the arms' }) }
+    // shot-202 (the expert's own two-hand V): Elbow [3,5], Pocket [3,5], Power [5,7], One-Hand [3,5].
+    // V-AT-TOP: RECORDED, NOT ACTED ON. Cropped probe 2026-09-30 (3 reps each):
+    // fired 3/3 on shot-202 (the real V) but 2/3 on shot-198 and 1/3 on
+    // shot-125, both one-hand finishes the expert scored 3-5 and 6.5-8. The
+    // mirrored-hands cue at the set point reads 4/8 on a one-hand shot whose
+    // guide hand is still on the ball, and 5-6/8 on the V: too thin to cap
+    // three criteria on. Needs a release-side cue (both arms extending
+    // together) before it can act. The counts stay in the dump.
+    else if (fc.elbow.v_top && process.env.FRAME_CHECK_VTOP === '1') { b.push({ criterion: ELBOW, cap: 4, why: 'both hands were on the sides of the ball with both elbows out, and the ball was thrown from that two-handed V' }); b.push({ criterion: POCKET, cap: 4, why: 'the ball was held in a two-handed V rather than loaded in a one-hand pocket' }); b.push({ criterion: POWER, cap: 6, why: 'the ball was pushed out of a two-handed V by the arms' }); b.push({ criterion: ONEHAND, cap: 5, why: 'the ball left off both hands rather than through the guide hand' }) }
     else if (fc.elbow.flared) b.push({ criterion: ELBOW, cap: 4, why: 'the elbow was out at the shoulder with the ball beside the head' })
+    else if (fc.elbow.elbow_out) b.push({ criterion: ELBOW, cap: 5, why: 'the elbow was out at shoulder height, outside the line of the shoulder, even though the ball stayed in front' })
     else if (fc.elbow.clean) b.push({ criterion: ELBOW, floor: 6, why: 'the ball was in front of the forehead with the elbow inside the shoulder line and one hand under it' })
   }
   if (fc.power) {
@@ -292,12 +315,11 @@ export function frameCheckBounds(fc: FrameChecks): Array<{ criterion: string; ca
   // Feet: RECORDED, NOT ACTED ON. e53 measured the Feet caps at 4 -> 8
   // misses against baseline; at ~80px the shin-gap and shoulder-line cues
   // are not reliable enough to cap on. The answers stay in the dump.
-  const ONEHAND = 'Shooting Through Guide Hand / One Hand Release', GHFT = 'Guide Hand Follow Through', SHFT = 'Shooting Hand Follow Through'
   // Hands: RECORDED, NOT ACTED ON. e53: Guide Hand caps fired on 11 of 27
   // fixtures for 5 -> 6 misses, One-Hand 5 -> 5. Neutral at best, and a
   // false cap on a clean release is exactly the miss we are removing. The
   // cues stay in the dump for the next design pass.
-  void ONEHAND; void GHFT; void SHFT
+  void GHFT; void SHFT; void FEET
   // A cap always beats a floor on the same criterion: a detected fault
   // outranks a detected virtue. (E50 run 1 on shot-196: the catapult cap put
   // Power at 4 and the rise floor then lifted it to 7.)

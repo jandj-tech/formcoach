@@ -1995,3 +1995,53 @@ moves). NOT set: ANALYSIS_MODEL - pointing production at the gateway before the
 OpenRouter key is in the env would fail every analysis. The key must be added
 by the owner (a fresh one; the old one is in a transcript). Then
 ANALYSIS_MODEL=qwen/qwen3.7-flash, then the branch goes out.
+
+## E57 — Crop the frame checks to the shooter · PROBE PASSED for the catapult; V-at-top NOT actionable · mini-arm pending
+
+**Trigger.** e55 mini-arm (7 fixtures x 2 runs, FRAME_CHECKS=1 + drafts) FAILED:
+shot-196 Elbow 9 / Power 9 vs [2,4], shot-200 6 / 6.5 vs [2,4], shot-202 Elbow 8.5
+vs [3,5], shot-198 Elbow 9 vs [3,5]; controls 125/189/206 within 0.5. Two facts:
+shot-196 and shot-200 carry the SAME frames_hash (one clip, two fixtures), and the
+catapult cap fired on 1 of the 4 runs of those identical frames. At 2x zoom the
+clip is a plain catapult (ball over and behind the head, both elbows wide, frames
+12-15). The shooter is ~70px tall in a 464x832 frame: a shape the token grid
+cannot express is a coin flip, and no majority rule fixes a coin flip.
+
+Also found: 0bde0db added the v_top rule on `both_hands_mirrored_elbows_out` but
+never added that QUESTION to the set-point prompt, so it read undefined and could
+never fire. And the drafts still say "never write catapult unless a SET-POINT
+CHECK block reports it" — that block is no longer shown, which is why the drafts
+alone (e54d) score catapult shots 9 where base7 scored 4-5. Not changed here.
+
+**Change.** lib/frame-checks.ts locates the shooter once (the crop-boxes.mjs
+four-frame fractional prompt, same validation) and crops the frames the yes/no
+checks address, aspect kept, upscaled; the grading passes never see the crop
+(E25: it biases grading low). FRAME_CHECK_CROP=0 disables; salted in prompt_sha.
+The V question added; per-cue counts logged.
+
+**Free probe** (checks only, no grading passes, reextract frames, R=18, 3 reps
+per fixture, run twice = 6 reps; ~$0.10 total):
+
+```
+                          catapult   v_top    clean floor   note
+shot-196  exp Elbow [2,4]   6/6       0/6        0/6        was 1/4 uncropped (e55)
+shot-202  exp Elbow [3,5]   0/3       3/3        0/3        (probe 1: locator timed out 3/3, nothing ran)
+shot-198  exp Elbow [3,5]   0/6       2/3        3/6        flared cue 0/8 even cropped; NOT solved
+shot-206  exp Elbow [6.5,8.5] 0/6     1/3 -> 0/3 after the one-hand guard   clean 4/6
+shot-125  exp Elbow [6.5,8]  0/6      2/3 -> 1/3 after the one-hand guard   clean 2/6
+```
+Mirrored-hands count at the set point: 202 = 5,6,5 of 8; 198 = 4,4,2; 125 = 2,4,1;
+206 = 0,0,0. A one-hand shot whose guide hand is still on the ball reads 4/8;
+the V reads 5-6/8. Too thin to cap three criteria on — a false cap on a good
+shot is the miss this project exists to remove. DECISION: V-at-top RECORDED, NOT
+ACTED ON (FRAME_CHECK_VTOP=1 to act); it needs a release-side cue (both arms
+extending together) before it can act. The catapult cap is kept: 6/6 on the
+real one, 0/18 on the controls.
+
+The tail of probe 2 was all gateway timeouts ("aborted due to timeout",
+"terminated") — the two probes overlapped, i.e. my own load, the same lesson as
+ANALYSIS_PASS_CONCURRENCY. Cleared before the arm (models 200 in 1s, chat 1s).
+
+**Mini-arm e57** (same 7 fixtures, 2 runs): pending. PASS = 196 and 200 Elbow and
+Power <= 4 on both runs, controls unchanged. 202 and 198 are expected to still
+miss and are accepted for this round.

@@ -1,5 +1,6 @@
 import { Resend } from 'resend'
 import { resolveBaseUrl } from './base-url'
+import { unsubscribeUrl } from './unsubscribe'
 
 // One-off broadcast emails composed in the admin (admin/emails → Send Email).
 // Renders the branded template and sends via Resend's batch API in chunks of
@@ -48,7 +49,7 @@ function personalizeContent(content: BroadcastContent, name?: string | null): Br
 export function renderBroadcastHtml(rawContent: BroadcastContent, recipient: BroadcastRecipient): string {
   const to = recipient.email
   const content = personalizeContent(rawContent, recipient.name)
-  const unsubscribe = `${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}`
+  const unsubscribe = unsubscribeUrl(to)
   const paragraphs = content.body
     .split(/\n\s*\n/)
     .map(p => p.trim())
@@ -83,7 +84,7 @@ export function renderBroadcastHtml(rawContent: BroadcastContent, recipient: Bro
         <p style="margin:0;color:#A1A1AA;font-size:11px;line-height:1.6;">
           You're getting this because you have an account at <a href="${BASE_URL}" style="color:#71717A;text-decoration:none;font-weight:600;">LearnHoops.com</a>.
           &nbsp;·&nbsp;
-          <a href="${unsubscribe}" style="color:#71717A;text-decoration:underline;">Unsubscribe</a>
+          <a href="${escHtml(unsubscribe)}" style="color:#71717A;text-decoration:underline;">Unsubscribe</a>
         </p>
       </td></tr>
     </table>
@@ -95,7 +96,7 @@ export function renderBroadcastHtml(rawContent: BroadcastContent, recipient: Bro
 export function renderBroadcastText(rawContent: BroadcastContent, recipient: BroadcastRecipient): string {
   const to = recipient.email
   const content = personalizeContent(rawContent, recipient.name)
-  const unsubscribe = `${BASE_URL}/unsubscribe?email=${encodeURIComponent(to)}`
+  const unsubscribe = unsubscribeUrl(to)
   return [
     content.headline,
     '',
@@ -151,7 +152,7 @@ export async function sendBroadcast(
       ...(bulk
         ? {
             headers: {
-              'List-Unsubscribe': `<${BASE_URL}/unsubscribe?email=${encodeURIComponent(r.email)}>`,
+              'List-Unsubscribe': `<${unsubscribeUrl(r.email)}>`,
               'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
             },
           }

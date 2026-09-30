@@ -4,18 +4,18 @@ import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { orgIsEntitledById, SUBSCRIPTION_ENDED_MESSAGE } from '@/lib/team-features'
 import { rateLimit } from '@/lib/rate-limit'
 import { orgTeam, sendableSubmissions } from '@/lib/org-results'
-import { getOrgResultSettings, getPurchasableOffers } from '@/lib/org-offers-db'
+import { getPurchasableOffers } from '@/lib/org-offers-db'
 import { effectivePriceCents } from '@/lib/org-offers'
-import { TIER_LABELS, tierRank } from '@/lib/result-visibility'
 import { renderOrgResultsEmail, sendOrgResultsEmail, type OrgResultsEmailInput } from '@/lib/email'
 
 // Send at most this many emails concurrently (announce-route convention).
 const SEND_CHUNK = 20
 
 // Emails selected players their latest score with a link to their report,
-// creating (or refreshing) the result_releases row that decides how much of
-// the report the link shows. `action: 'preview'` renders the first player's
-// email and sends nothing.
+// creating (or refreshing) the result_releases row. Team uploads always show
+// the player the full report, so every release is stored with free_tier
+// 'full'. `action: 'preview'` renders the first player's email and sends
+// nothing.
 export async function POST(req: NextRequest) {
   const session = await getOrgSessionFromRequest(req)
   if (!session) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
@@ -51,12 +51,10 @@ export async function POST(req: NextRequest) {
     ]
     if (!org) return NextResponse.json({ error: 'Organization not found' }, { status: 404 })
 
-    const [settings, offers, subs] = await Promise.all([
-      getOrgResultSettings(session.orgId),
+    const [offers, subs] = await Promise.all([
       getPurchasableOffers(session.orgId),
       sendableSubmissions(teamId, submissionIds),
     ])
-    const paywalled = tierRank(settings.freeTier) < tierRank(settings.unlockTier)
     const emailOffers = offers.map((o) => ({
       title: o.title,
       description: o.description,
@@ -70,8 +68,6 @@ export async function POST(req: NextRequest) {
       teamName: team.name,
       score: s.score,
       token: s.token,
-      freeTierLabel: TIER_LABELS[settings.freeTier],
-      paywalled,
       offers: emailOffers,
       recipientEmail: email,
     })
@@ -116,18 +112,18 @@ export async function POST(req: NextRequest) {
       const results = await Promise.allSettled(
         batch.map(async (s) => {
           const email = s.email!.toLowerCase()
-          // The release row decides what the link shows. Created on first
-          // send; a resend refreshes the free-tier snapshot and stamps
-          // resent_at. Never touches `unlocked` — a paid unlock survives.
-          // It goes in BEFORE the email so the link can never be opened
-          // ungated; if the email then fails on a first send, the fresh row
-          // is removed again so the roster doesn't claim "Sent".
+          // The release row records the send (always free_tier 'full').
+          // Created on first send; a resend re-stamps 'full' (repairing any
+          // older lower snapshot) and resent_at. Never touches `unlocked`.
+          // It goes in BEFORE the email; if the email then fails on a first
+          // send, the fresh row is removed again so the roster doesn't claim
+          // "Sent".
           const [release] = (await db`
             INSERT INTO result_releases (
               org_id, team_id, submission_id, recipient_user_id, recipient_email, free_tier, sent_at
             ) VALUES (
               ${session.orgId}, ${teamId}, ${s.submissionId}, ${s.userId}, ${email},
-              ${settings.freeTier}, NOW()
+              'full', NOW()
             )
             ON CONFLICT (submission_id) DO UPDATE
               SET free_tier = EXCLUDED.free_tier,

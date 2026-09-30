@@ -17,7 +17,7 @@ import CategoryScores from '@/components/CategoryScores'
 import { resolveResultAccess, splitOffersForDisplay } from '@/lib/result-access'
 import { categoryScores } from '@/lib/criteria-categories'
 import { effectivePriceCents, hasAnchorPrice, type OrgOffer } from '@/lib/org-offers'
-import { TIER_ORDER, TIER_LABELS, type VisibilityTier } from '@/lib/result-visibility'
+import { TIER_LABELS, type VisibilityTier } from '@/lib/result-visibility'
 import { getStripe } from '@/lib/stripe'
 import { fulfillOfferSession } from '@/lib/org-offer-fulfillment'
 import { getSession } from '@/lib/auth'
@@ -125,9 +125,9 @@ export default async function ResultsPage({
   // and the org-release visibility gate below.
   const coachAuthor = await resolveNoteAuthorForAnalysis(analysis.id as number)
 
-  // Org-release visibility: when an organization sent this result to a player,
-  // a release row decides how much of the report a non-staff viewer sees —
-  // and ?tier= lets staff preview any level without granting anything.
+  // Org-release visibility: a result an organization or team sent to a player
+  // always shows the full report (lib/result-access.ts); the release still
+  // supplies the "Shared with you by" line and the org's ball/class offers.
   const access = await resolveResultAccess({
     submissionId: submission.id as string,
     isStaff: coachAuthor !== null,
@@ -139,8 +139,7 @@ export default async function ResultsPage({
   // signup analysis shows only the overall score. The moment the owner's
   // account holds a token (or an active subscription/comp), the report
   // unlocks permanently — unlocking does NOT consume the token, buying it is
-  // enough. Deliberately NOT applied to org releases: an org's paywall is the
-  // org's, and a player's personal token balance doesn't override it.
+  // enough. Never applied to org/team releases: those always show in full.
   let locked = !access && !!submission.is_free_preview
   if (locked && submission.user_id) {
     const [owner] = (await db`
@@ -348,11 +347,6 @@ export default async function ResultsPage({
             <p className="text-xs text-indigo-900/70">
               Only you see this bar and the editors — your player sees the notes you save.
             </p>
-            {access && (
-              <p className="text-xs font-semibold text-indigo-900/80">
-                Players see: {TIER_LABELS[access.playerTier]}
-              </p>
-            )}
             <Link
               href={`/results/${token}?as=player`}
               className="text-xs font-bold text-indigo-700 hover:text-indigo-900 underline underline-offset-2 ml-auto"
@@ -382,31 +376,6 @@ export default async function ResultsPage({
             <p className="text-xs text-gray-400">Shared with you by {access.release.orgName}</p>
           )}
         </section>
-
-        {/* Staff preview toolbar: step through every visibility level. */}
-        {access && previewAsPlayer && coachAuthor && (
-          <div className="flex flex-wrap items-center gap-2 bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-2.5">
-            <p className="text-xs font-bold text-indigo-900 mr-1">Preview a level:</p>
-            {TIER_ORDER.map((t) => (
-              <Link
-                key={t}
-                href={`/results/${token}?as=player&tier=${t}`}
-                className={`text-xs font-semibold rounded-full px-2.5 py-1 border transition-colors ${
-                  tier === t
-                    ? 'bg-indigo-600 text-white border-indigo-600'
-                    : 'bg-white text-indigo-800 border-indigo-200 hover:border-indigo-400'
-                }`}
-              >
-                {TIER_LABELS[t]}
-              </Link>
-            ))}
-            <p className="text-[11px] text-indigo-900/70 basis-full">
-              {access.release.synthetic
-                ? 'Not sent yet — this preview uses your organization’s current visibility settings.'
-                : `Right now this player sees: ${TIER_LABELS[access.playerTier]}.`}
-            </p>
-          </div>
-        )}
 
         {/* Category rollup — the 'categories' tier */}
         {tier === 'categories' && (

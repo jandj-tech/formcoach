@@ -214,7 +214,9 @@ export default function OfferCta({
                 </div>
               </div>
             )}
-            {o.includesBreakdown && (
+            {/* Only the (legacy) unlock card talks about unlocking: reports
+                a team sends are already shown in full. */}
+            {o.includesBreakdown && mode === 'unlock' && (
               <p className="mt-2 text-[11px] text-gray-500">
                 {o.unlockScope === 'player'
                   ? `Unlocks the full breakdown on every report ${orgName} sends you.`

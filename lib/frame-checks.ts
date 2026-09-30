@@ -140,16 +140,25 @@ export function frameCheckBounds(fc: FrameChecks): Array<{ criterion: string; ca
     if (!fc.power.head_higher_at_release) b.push({ criterion: POWER, cap: 5, why: 'the body had not risen between the gather and the release' })
     else if (fc.power.ball_low_at_dip && fc.power.knees_bent_at_dip) b.push({ criterion: POWER, floor: 7, why: 'the ball was low in a bent-knee gather and the body rose into the release' })
   }
+  // Square and Feet are CAP-ONLY. E50 arm: every remaining big miss was a
+  // floor fired on a distant shooter where the cue lied - "both shoulders
+  // visible" is true of a chest facing the camera while the ball leaves
+  // sideways (shot-208, expert 3-5 -> 9), and "floor between the shins" read
+  // true on feet the expert scored 1-5 (shot-156, 187). Caps only need the
+  // fault to be seen; floors need the absence of a fault to be seen, and at
+  // 80px these two cues cannot see that.
   if (fc.square) {
     if (fc.square.one_shoulder_hidden && !fc.square.both_shoulders_visible) b.push({ criterion: SQUARE, cap: 5, why: 'the torso was side-on at the release' })
-    else if (fc.square.both_shoulders_visible && fc.square.lands_same_direction) b.push({ criterion: SQUARE, floor: 7, why: 'both shoulders faced the target at the release and the landing faced the same way' })
   }
   if (fc.feet) {
     if (!fc.feet.floor_between_shins) b.push({ criterion: FEET, cap: 5, why: 'the feet were together with no floor between the shins' })
     else if (fc.feet.shoes_outside_shoulders) b.push({ criterion: FEET, cap: 5, why: 'the shoes were planted well outside the shoulders' })
-    else b.push({ criterion: FEET, floor: 7, why: 'the feet were apart and inside the shoulder lines' })
   }
-  return b
+  // A cap always beats a floor on the same criterion: a detected fault
+  // outranks a detected virtue. (E50 run 1 on shot-196: the catapult cap put
+  // Power at 4 and the rise floor then lifted it to 7.)
+  const capped = new Set(b.filter((x) => x.cap !== undefined).map((x) => x.criterion))
+  return b.filter((x) => x.floor === undefined || !capped.has(x.criterion))
 }
 
 /** Facts for the grading pass, scoped per criterion so nothing haloes. */

@@ -1878,3 +1878,36 @@ the passes - which is the best case: score and reasoning agree.
 Cost: 8 small single-image calls, ~+$0.003 per analysis (est. $0.0102 total).
 Arm e50 (FRAME_CHECKS=1, live rubrics, E46b prompt) launched 12:2x alongside
 e46b; e50 - e46b isolates the checks; base7 is the common baseline.
+
+## E50 — FRAME_CHECKS arm · SIGNIFICANT, the first in the log. KEPT with two fixes.
+28 fixtures x 3 runs x 3 passes, both arms on the same prompt (E46b), same
+session. base7 lost shot-198 (provider 400), e50 lost nothing; 26 common.
+```
+PAIRED on 117 expert cells across 26 fixtures
+base          miss 54/117 = 46.2%  CI [37.4, 55.2]
+frame checks  miss 40/117 = 34.2%  CI [26.2, 43.2]
+FIXED 27, BROKE 13        McNemar exact p = 0.0385   SIGNIFICANT
+
+BIG MISSES (>=3 points)   base 11  ->  frame checks 5
+mean abs error outside band   0.79  ->  0.46
+```
+The four catastrophic cells: 196 Elbow 4->3, 196 Power 5->3, 200 Elbow 5->3,
+200 Power 6->4 - all in band. shot-189 Power (the "good shot scored 4" case,
+missed in three earlier arms) 4->8, in band. shot-195 Square 5->8, in band.
+Catapult verdicts: 6 of 78 runs - exactly 196 and 200, three runs each, none
+elsewhere. Zero false catapults.
+
+Direction flipped. Every base big miss was TOO HARSH (-3 to -4.5); the
+floors fixed them. Every remaining big miss is TOO GENEROUS, and every one is
+a FLOOR that fired on a distant shooter where the cue lied:
+  156 Feet 9 vs [1,5], 187 Feet 7 vs [2,4]  - "floor between the shins" read true
+  208 Square 9 vs [3,5]                     - chest faces camera, ball leaves sideways
+  202 Elbow 9 vs [3,5]                      - "clean" set point on a flared elbow
+  156 Guide Hand 9 vs [3,6]                 - not a frame-check criterion
+Feet got worse (4 -> 7 misses) for that reason. Fixes applied before the next
+arm: Square and Feet are cap-only; a cap beats a floor on the same criterion
+(run 1 on 196 had the catapult cap at 4 lifted to 7 by the rise floor).
+
+Cost, metered: $2.80 for both arms (168 analyses) - the arms cost the SAME per
+analysis; the eight single-image checks are lost in the noise of gate
+retries. All-in about $0.017 per analysis on this model, ~$17 per 1,000.

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getTeamSessionFromRequest } from '@/lib/team-auth'
+import { getTeamSessionFromRequest, provenCoachCreditsEmail } from '@/lib/team-auth'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { getStripe } from '@/lib/stripe'
 import { discountedUnitCents } from '@/lib/team-tokens'
@@ -32,7 +32,17 @@ export async function POST(req: NextRequest) {
 
     // Coaches and org owners alike get the team rate, unless their plan has
     // lapsed — then new credits cost the regular rate.
-    const coachEmail = teamSession?.adminEmail ?? orgSession!.adminEmail
+    // A team coach's purchase lands in coach_credits under their email, which
+    // only a session that proves that email may fund or later spend.
+    const coachEmail = teamSession
+      ? await provenCoachCreditsEmail(teamSession, await getOrgSessionFromRequest(req))
+      : orgSession!.adminEmail
+    if (!coachEmail) {
+      return NextResponse.json(
+        { error: 'Coach tokens can’t be bought from this login. Reset your coach password to unlock them.' },
+        { status: 403 },
+      )
+    }
     const tier = teamSession
       ? await teamTier(teamSession.teamId)
       : await orgTierById(orgSession!.orgId)
@@ -50,7 +60,7 @@ export async function POST(req: NextRequest) {
             currency: currencyForRequest(req),
             unit_amount: unitAmount,
             product_data: {
-              name: `${qty} Shot Analysis Credit${qty > 1 ? 's' : ''}`,
+              name: `${qty} Shot Analysis Token${qty > 1 ? 's' : ''}`,
               description: 'For analyzing your own shots on the Analyze page.',
             },
           },

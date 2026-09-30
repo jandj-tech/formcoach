@@ -3,7 +3,8 @@
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useIsInApp } from '@/lib/useIsInApp'
-import { ChevronRightIcon, SearchIcon, UsersIcon, UserIcon } from 'lucide-react'
+import { SearchIcon, UsersIcon, UserIcon } from 'lucide-react'
+import OrgPlayerPicker from '@/components/OrgPlayerPicker'
 import VolumeSavings, { VolumeTierList } from '@/components/VolumeSavings'
 import {
   orderPricing,
@@ -48,7 +49,7 @@ const SEND_MODES: Array<{ id: SendMode; label: string; blurb: string }> = [
   {
     id: 'coach',
     label: 'A coach',
-    blurb: 'Credits go to the coach personally, for analyzing their own shots or uploading for players.',
+    blurb: 'Tokens go to the coach personally, for analyzing their own shots or uploading for players.',
   },
 ]
 
@@ -84,65 +85,23 @@ export default function OrgTokenPanel({
   // ── Send ─────────────────────────────────────────────────────────
   const [mode, setMode] = useState<SendMode>('players')
   const [search, setSearch] = useState('')
+  // The picker owns its own team/search state; it tells us the team so the
+  // confirmation can name it.
   const [playerTeamId, setPlayerTeamId] = useState(teams.length === 1 ? teams[0].id : '')
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(new Set())
   const [tokensEach, setTokensEach] = useState(1)
-  const [sendCoachEmail, setSendCoachEmail] = useState(coaches[0]?.email ?? '')
+  const [sendCoachEmail, setSendCoachEmail] = useState('') // No preselection: sending credits to the wrong coach is easy to miss.
   const [sendQty, setSendQty] = useState(1)
 
   // Every organization gets the team rate — no roster minimum, nothing to unlock.
   const buyTotal = usd(orderPricing(tier, buyQty).totalCents)
 
-  // Team-first player flow: pick the team, then choose players on it.
   const pickedTeam = teams.find(t => t.id === playerTeamId) ?? null
-  const teamPlayersAll = useMemo(
-    () => players.filter(p => p.teamId === playerTeamId),
-    [players, playerTeamId],
-  )
-  const teamPlayers = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    return q ? teamPlayersAll.filter(p => p.label.toLowerCase().includes(q)) : teamPlayersAll
-  }, [teamPlayersAll, search])
-
-  const visiblePlayerIds = useMemo(() => teamPlayers.map(p => p.id), [teamPlayers])
-
-  const filteredTeams = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    return q ? teams.filter(t => t.name.toLowerCase().includes(q)) : teams
-  }, [teams, search])
 
   const filteredCoaches = useMemo(() => {
     const q = search.trim().toLowerCase()
     return q ? coaches.filter(c => c.label.toLowerCase().includes(q)) : coaches
   }, [coaches, search])
-
-  function pickTeam(id: string) {
-    setPlayerTeamId(id)
-    setSelectedPlayerIds(new Set())
-    setSearch('')
-    setMsg(null)
-  }
-
-  function togglePlayer(id: string) {
-    setSelectedPlayerIds(prev => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
-
-  function toggleGroup(ids: string[]) {
-    setSelectedPlayerIds(prev => {
-      const next = new Set(prev)
-      const allOn = ids.every(id => next.has(id))
-      for (const id of ids) {
-        if (allOn) next.delete(id)
-        else next.add(id)
-      }
-      return next
-    })
-  }
 
   const sendTotal = mode === 'players' ? selectedPlayerIds.size * Math.max(1, tokensEach) : Math.max(1, sendQty)
   const notEnough = sendTotal > balance
@@ -200,7 +159,7 @@ export default function OrgTokenPanel({
       post(
         '/api/org/give-coach-credits',
         { coachEmail: sendCoachEmail, quantity: Math.max(1, sendQty) },
-        `Sent ${Math.max(1, sendQty)} personal credits to ${coach?.label ?? 'the coach'}.`,
+        `Sent ${Math.max(1, sendQty)} token${Math.max(1, sendQty) === 1 ? '' : 's'} to ${coach?.label ?? 'the coach'}.`,
       )
     }
   }
@@ -214,7 +173,7 @@ export default function OrgTokenPanel({
         <div>
           <h3 className="text-base font-semibold text-gray-900 dark:text-chalk">Send tokens</h3>
           <p className="text-sm text-gray-500 dark:text-chalk-dim mt-0.5">
-            Move tokens from your balance to the people who&apos;ll use them.
+            Move your organization tokens to the people who&apos;ll use them.
           </p>
         </div>
 
@@ -245,15 +204,14 @@ export default function OrgTokenPanel({
         <p className="text-xs text-gray-500 dark:text-chalk-dim -mt-1">{activeBlurb}</p>
 
         {/* Search — shown whenever the list can grow long */}
-        {((mode === 'players' && (playerTeamId ? teamPlayersAll.length > 6 : teams.length > 6)) ||
-          (mode === 'coach' && coaches.length > 6)) && (
+        {mode === 'coach' && coaches.length > 6 && (
           <div className="relative">
             <SearchIcon className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" aria-hidden />
             <input
               type="search"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder={mode === 'coach' ? 'Search coaches…' : playerTeamId ? 'Search players…' : 'Search teams…'}
+              placeholder="Search coaches…"
               className="w-full border border-gray-200 dark:border-courtline rounded-xl pl-9 pr-3 py-2.5 text-sm text-gray-900 dark:text-chalk dark:bg-ink-900 placeholder:text-gray-400 focus:outline-none focus:border-ember-500"
             />
           </div>
@@ -261,84 +219,13 @@ export default function OrgTokenPanel({
 
         {/* Recipient list */}
         {mode === 'players' && (
-          teams.length === 0 ? (
-            <p className="text-sm text-gray-400 dark:text-chalk-dim">No teams yet — add one in the Teams tab.</p>
-          ) : !playerTeamId ? (
-            /* Step 1 — pick the team */
-            <div className="border border-gray-200 dark:border-courtline rounded-xl max-h-72 overflow-y-auto divide-y divide-gray-100 dark:divide-courtline">
-              {filteredTeams.length === 0 && (
-                <p className="text-sm text-gray-400 dark:text-chalk-dim px-4 py-4">No teams match &ldquo;{search}&rdquo;.</p>
-              )}
-              {filteredTeams.map(t => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => pickTeam(t.id)}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-ink-800 transition-colors"
-                >
-                  <span className="flex-1 min-w-0">
-                    <span className="block text-sm font-medium text-gray-900 dark:text-chalk truncate">
-                      {t.name}{t.ageGroup ? ` · ${t.ageGroup}` : ''}
-                    </span>
-                    <span className="block text-xs text-gray-400 dark:text-chalk-dim truncate">
-                      {t.memberCount} player{t.memberCount !== 1 ? 's' : ''} · coach {t.coachName}
-                    </span>
-                  </span>
-                  <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" aria-hidden />
-                </button>
-              ))}
-            </div>
-          ) : (
-            /* Step 2 — pick players on that team */
-            <div className="border border-gray-200 dark:border-courtline rounded-xl overflow-hidden">
-              <div className="flex items-center justify-between gap-3 px-4 py-2 bg-gray-50 dark:bg-ink-950/60 border-b border-gray-200 dark:border-courtline">
-                <span className="text-xs font-medium text-gray-500 dark:text-chalk-dim truncate">
-                  {pickedTeam?.name ?? 'Team'} · {selectedPlayerIds.size} of {teamPlayersAll.length} selected
-                </span>
-                <div className="flex items-center gap-3 shrink-0">
-                  {teamPlayersAll.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => toggleGroup(visiblePlayerIds)}
-                      className="text-xs font-semibold text-ember-600 hover:text-ember-500 dark:text-ember-400"
-                    >
-                      {visiblePlayerIds.length > 0 && visiblePlayerIds.every(id => selectedPlayerIds.has(id))
-                        ? 'Deselect all'
-                        : 'Select all'}
-                    </button>
-                  )}
-                  {teams.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => pickTeam('')}
-                      className="text-xs font-semibold text-gray-500 hover:text-gray-700 dark:text-chalk-dim dark:hover:text-chalk"
-                    >
-                      Change team
-                    </button>
-                  )}
-                </div>
-              </div>
-              <div className="max-h-72 overflow-y-auto divide-y divide-gray-100 dark:divide-courtline">
-                {teamPlayersAll.length === 0 && (
-                  <p className="text-sm text-gray-400 dark:text-chalk-dim px-4 py-4">No players have joined this team yet.</p>
-                )}
-                {teamPlayersAll.length > 0 && teamPlayers.length === 0 && (
-                  <p className="text-sm text-gray-400 dark:text-chalk-dim px-4 py-4">No players match &ldquo;{search}&rdquo;.</p>
-                )}
-                {teamPlayers.map(p => (
-                  <label key={p.id} className="flex items-center gap-3 px-4 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-ink-800">
-                    <input
-                      type="checkbox"
-                      checked={selectedPlayerIds.has(p.id)}
-                      onChange={() => togglePlayer(p.id)}
-                      className="w-4 h-4 accent-ember-500 shrink-0"
-                    />
-                    <span className="text-sm text-gray-900 dark:text-chalk">{p.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          )
+          <OrgPlayerPicker
+            teams={teams}
+            players={players}
+            selected={selectedPlayerIds}
+            onChange={setSelectedPlayerIds}
+            onTeamChange={id => { setPlayerTeamId(id); setMsg(null) }}
+          />
         )}
 
         {mode === 'coach' && (
@@ -388,10 +275,11 @@ export default function OrgTokenPanel({
           </label>
           <span className="text-sm text-gray-500 dark:text-chalk-dim flex-1 min-w-0">
             {mode === 'players' && selectedPlayerIds.size > 0 && (
-              <>Total <span className="font-semibold text-gray-900 dark:text-chalk tabular-nums">{sendTotal}</span> of your {balance}</>
+              <>Total <span className="font-semibold text-gray-900 dark:text-chalk tabular-nums">{sendTotal}</span> of your {balance} organization tokens</>
             )}
-            {mode !== 'players' && (
-              <>From your balance of <span className="font-semibold text-gray-900 dark:text-chalk tabular-nums">{balance}</span></>
+            {mode !== 'players' && !sendCoachEmail && coaches.length > 0 && <>Pick a coach above</>}
+            {mode !== 'players' && !!sendCoachEmail && (
+              <>From your <span className="font-semibold text-gray-900 dark:text-chalk tabular-nums">{balance}</span> organization tokens</>
             )}
           </span>
           <button
@@ -411,7 +299,7 @@ export default function OrgTokenPanel({
         )}
         {balance === 0 && !notEnough && (
           <p className="text-sm text-gray-500 dark:text-chalk-dim">
-            Your balance is empty{inApp ? '.' : ' — buy tokens below first.'}
+            You have no organization tokens{inApp ? '.' : ' — buy tokens below first.'}
           </p>
         )}
         {msg && (
@@ -425,7 +313,7 @@ export default function OrgTokenPanel({
           <div>
             <h3 className="text-base font-semibold text-gray-900 dark:text-chalk">Buy tokens</h3>
             <p className="text-sm text-gray-500 dark:text-chalk-dim mt-0.5">
-              Purchases land in your unassigned balance — send them out whenever you&apos;re ready.
+              Purchases land in your organization tokens — send them out whenever you&apos;re ready.
               Card, Apple Pay, and Google Pay are accepted at checkout.
             </p>
           </div>

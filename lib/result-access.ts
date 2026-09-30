@@ -3,27 +3,26 @@
 // (app/results/[token]/page.tsx and app/api/results/[token]/route.ts) consume
 // this so their gating can never drift apart.
 //
-// A result_releases row exists for submissions an organization has sent to a
-// player. Without one, callers fall back to the legacy is_free_preview
-// behavior unchanged — EXCEPT for staff previewing as the player, who get a
-// synthesized view from the org's current settings so the "preview before you
-// send" flow works before the first send. With a release:
+// A result_releases row exists for submissions an organization or team has
+// sent to a player. Without one, callers fall back to the legacy
+// is_free_preview behavior unchanged — EXCEPT for staff previewing as the
+// player, who get a synthesized view so the "preview before you send" flow
+// works before the first send.
 //
-//   staff (admin / the analysis's team coach / its org admin) → 'full', always;
-//     ?as=player&tier=X lets staff preview any tier without granting anything
-//   everyone else → the release's snapshotted free tier, raised by any unlock:
-//     the release's own purchase (tier stamped at purchase), or a player-scoped
-//     unlock the same person bought on another report from this org
-//
-// The legacy owner-has-tokens auto-unlock (submissions.is_free_preview) is
-// deliberately NOT consulted here: an org's paywall is the org's, and a
-// player's personal token balance doesn't override it.
+// Product rule (owner, final): any shot a team/coach/org uploads shows the
+// FULL report to the player, always. Team uploads are paid with purchased
+// tokens, so there is no per-report paywall any more: every release resolves
+// to 'full' for staff, the player and anyone holding the link — including
+// old releases whose snapshotted free_tier is lower (that column and the
+// org_result_settings row are kept but no longer gate anything). Ball/class
+// offers are still returned for player-facing renders so the results page can
+// keep selling real products under the full report.
 
 import { db } from '@/lib/db'
 import type { VisibilityTier } from '@/lib/result-visibility'
-import { isVisibilityTier, tierRank, TIER_ORDER } from '@/lib/result-visibility'
+import { isVisibilityTier, TIER_ORDER } from '@/lib/result-visibility'
 import type { OrgOffer } from '@/lib/org-offers'
-import { getOrgResultSettings, getPurchasableOffers } from '@/lib/org-offers-db'
+import { getPurchasableOffers } from '@/lib/org-offers-db'
 
 export interface ResultRelease {
   /** null when synthesized for a staff preview before the first send. */
@@ -45,9 +44,9 @@ export interface ResultAccess {
   isStaff: boolean
   /** Staff is previewing the player's view at `tier`. */
   previewTier: VisibilityTier | null
-  /** What a non-staff viewer sees right now (shown to staff in the coach bar). */
+  /** What a non-staff viewer sees right now — always 'full'. */
   playerTier: VisibilityTier
-  /** What a qualifying purchase raises the viewer to. */
+  /** Kept for callers' shape; nothing is gated, so always 'full'. */
   unlockTier: VisibilityTier
   /**
    * Offers this viewer could buy — active rows of a selling-enabled org,
@@ -55,12 +54,8 @@ export interface ResultAccess {
    * Empty means the page must not render any buy UI.
    */
   offers: OrgOffer[]
-  /** True when a purchasable offer would raise the player's tier. */
+  /** True when a purchasable offer would raise the player's tier — always false now. */
   unlockPathAvailable: boolean
-}
-
-function maxTier(a: VisibilityTier, b: VisibilityTier): VisibilityTier {
-  return tierRank(a) >= tierRank(b) ? a : b
 }
 
 /**
@@ -93,32 +88,6 @@ export async function orgForSubmission(
 }
 
 /**
- * Player-scoped unlocks this person holds with the org (class / ball buyers),
- * matched by user id or, failing that, by email. Returns the highest tier.
- */
-async function playerUnlockTier(
-  orgId: string,
-  userId: string | null,
-  email: string | null
-): Promise<VisibilityTier | null> {
-  if (!userId && !email) return null
-  const rows = await db`
-    SELECT unlocked_tier FROM org_player_unlocks
-    WHERE org_id = ${orgId}
-      AND (
-        (${userId}::uuid IS NOT NULL AND user_id = ${userId}::uuid)
-        OR (${email}::text IS NOT NULL AND LOWER(email) = LOWER(${email}::text))
-      )
-  `
-  let best: VisibilityTier | null = null
-  for (const r of rows as unknown as Array<{ unlocked_tier: string }>) {
-    if (!isVisibilityTier(r.unlocked_tier)) continue
-    best = best ? maxTier(best, r.unlocked_tier) : r.unlocked_tier
-  }
-  return best
-}
-
-/**
  * Resolve access for a submission. Returns null when there is no release and
  * the viewer is not a staff member previewing — the caller keeps its legacy
  * behavior in that case.
@@ -137,11 +106,9 @@ export async function resolveResultAccess(opts: {
 
   const rows = await db`
     SELECT r.id, r.org_id, r.team_id, r.free_tier, r.unlocked, r.unlocked_tier,
-           r.recipient_user_id, r.recipient_email, s.user_id AS submission_user_id,
            org.name AS org_name
     FROM result_releases r
     JOIN organizations org ON org.id = r.org_id
-    JOIN submissions s ON s.id = r.submission_id
     WHERE r.submission_id = ${opts.submissionId}
   `
   const row = rows[0] as
@@ -152,16 +119,11 @@ export async function resolveResultAccess(opts: {
         free_tier: string
         unlocked: boolean
         unlocked_tier: string | null
-        recipient_user_id: string | null
-        recipient_email: string | null
-        submission_user_id: string | null
         org_name: string
       }
     | undefined
 
   let release: ResultRelease
-  let recipientUserId: string | null = null
-  let recipientEmail: string | null = null
 
   if (row) {
     release = {
@@ -174,20 +136,17 @@ export async function resolveResultAccess(opts: {
       unlockedTier: isVisibilityTier(row.unlocked_tier) ? row.unlocked_tier : null,
       synthetic: false,
     }
-    recipientUserId = row.recipient_user_id ?? row.submission_user_id
-    recipientEmail = row.recipient_email
   } else if (previewing) {
     // Nothing sent yet — synthesize what a send RIGHT NOW would produce, so
     // the coach can preview before the first send.
     const org = await orgForSubmission(opts.submissionId)
     if (!org) return null
-    const settings = await getOrgResultSettings(org.orgId)
     release = {
       id: null,
       orgId: org.orgId,
       orgName: org.orgName,
       teamId: org.teamId,
-      freeTier: settings.freeTier,
+      freeTier: 'full',
       unlocked: false,
       unlockedTier: null,
       synthetic: true,
@@ -196,34 +155,19 @@ export async function resolveResultAccess(opts: {
     return null
   }
 
-  const settings = await getOrgResultSettings(release.orgId)
-
-  // The player's tier: the free snapshot, raised by any unlock they hold.
-  let playerTier: VisibilityTier = release.freeTier
-  if (release.unlocked) {
-    playerTier = maxTier(playerTier, release.unlockedTier ?? settings.unlockTier)
-  }
-  if (!release.synthetic) {
-    const held = await playerUnlockTier(release.orgId, recipientUserId, recipientEmail)
-    if (held) playerTier = maxTier(playerTier, held)
-  }
-
-  let tier: VisibilityTier
-  if (opts.isStaff && !previewing) {
-    tier = 'full'
-  } else if (previewing) {
-    tier = isVisibilityTier(opts.requestedTier) ? opts.requestedTier : playerTier
-  } else {
-    tier = playerTier
-  }
+  // Everyone — staff, the player, a staff preview of the player, a share-link
+  // holder — sees the full report. `requestedTier` is accepted for old
+  // preview links but no longer lowers anything.
+  const playerTier: VisibilityTier = 'full'
+  const tier: VisibilityTier = 'full'
 
   // Offers only exist on player-facing renders. Staff reviewing their own
   // report full-size gets none; a staff preview shows exactly what the player
-  // gets, buy buttons included.
+  // gets, buy buttons included. Only ball/class offers are purchasable, and
+  // nothing is gated, so no offer is ever an "unlock".
   const playerFacing = !opts.isStaff || previewing
   const offers = playerFacing ? await getPurchasableOffers(release.orgId) : []
-  const unlockPathAvailable =
-    offers.some((o) => o.includesBreakdown) && tierRank(settings.unlockTier) > tierRank(tier)
+  const unlockPathAvailable = false
 
   return {
     tier,
@@ -231,7 +175,7 @@ export async function resolveResultAccess(opts: {
     isStaff: opts.isStaff,
     previewTier: previewing ? tier : null,
     playerTier,
-    unlockTier: settings.unlockTier,
+    unlockTier: 'full',
     offers,
     unlockPathAvailable,
   }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { signSession, sessionCookieOptions } from '@/lib/auth'
+import { currentUserPasswordHash, signSession, sessionCookieOptions } from '@/lib/auth'
 import { redeemLoginCode } from '@/lib/oauth-account'
 import { rateLimitByIp } from '@/lib/rate-limit'
 
@@ -13,7 +13,9 @@ export const dynamic = 'force-dynamic'
  * returned over HTTPS, in a response body, to whoever holds the code.
  */
 export async function POST(req: NextRequest) {
-  const limit = await rateLimitByIp(req, 'oauth-exchange', 20, 900)
+  // Loose on purpose: a whole gym signing in on one Wi-Fi shares an IP, and
+  // every request still needs a valid one-time code / provider-signed token.
+  const limit = await rateLimitByIp(req, 'oauth-exchange', 60, 900)
   if (!limit.ok) {
     return NextResponse.json(
       { error: 'Too many attempts — try again later' },
@@ -32,7 +34,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'That sign-in link has expired. Please try again.' }, { status: 400 })
     }
 
-    const token = await signSession({ userId: user.id, email: user.email })
+    const token = await signSession({ userId: user.id, email: user.email }, await currentUserPasswordHash(user.id))
     const res = NextResponse.json({ success: true, token })
     // The app reads `token`; the cookie is set as well so the same endpoint
     // works from a browser without a second round trip.

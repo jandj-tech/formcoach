@@ -6,10 +6,12 @@ import { useRouter } from 'next/navigation'
 import { useIsInApp } from '@/lib/useIsInApp'
 import Link from 'next/link'
 import OrgTeamCard from './OrgTeamCard'
-import OrgResultsPanel from './OrgResultsPanel'
+import OrgRosterImport from '@/components/OrgRosterImport'
+import PlayerEmailComposer from '@/components/player-email/PlayerEmailComposer'
 import OrgOffersPanel from './OrgOffersPanel'
 import {
   memberDisplayName,
+  memberPickLabel,
   type ClassPackage,
   type PlayerSortMode,
   type TeamData,
@@ -22,6 +24,7 @@ import LeaderboardTable, { type LeaderboardRow } from '@/components/LeaderboardT
 import SortMenu, { type SortOption } from '@/components/SortMenu'
 import type { OrgTier } from '@/lib/team-pricing'
 import OrgTokenPanel from '@/components/OrgTokenPanel'
+import OrgMembershipPanel from '@/components/OrgMembershipPanel'
 import OrgTokenDistribution from '@/components/OrgTokenDistribution'
 import PlayerShotList, { type Shot } from '@/components/PlayerShotList'
 import PrintButton from '@/components/PrintButton'
@@ -140,28 +143,6 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
     }
   }
 
-  async function removeHeadCoach(teamId: string) {
-    if (!confirm('Remove the head coach? The next coach in line is promoted to head coach.')) return
-    setRemovingCoach(`head-${teamId}`)
-    try {
-      const res = await fetch('/api/org/remove-head-coach', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ teamId }),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        setRemovingCoach(null)
-        alert(data.error || 'Could not remove the head coach.')
-        return
-      }
-      router.refresh()
-    } catch {
-      setRemovingCoach(null)
-      alert('Something went wrong. Please try again.')
-    }
-  }
-
   async function removePlayer(teamId: string, userId: string) {
     if (!confirm('Remove this player from the team?')) return
     setRemovingPlayer(userId)
@@ -181,7 +162,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
 
   async function deleteTeam(team: TeamData) {
     const leftover = team.tokenPool > 0 || team.credits > 0
-      ? `\n\nHeads up: this team still has ${team.tokenPool} pool token${team.tokenPool !== 1 ? 's' : ''} and ${team.credits} coach credit${team.credits !== 1 ? 's' : ''} — these will be lost.`
+      ? `\n\nHeads up: this team still has ${team.tokenPool} unassigned team token${team.tokenPool !== 1 ? 's' : ''} and ${team.credits} team token${team.credits !== 1 ? 's' : ''} — these will be lost.`
       : ''
     if (!confirm(
       `Delete "${team.name}"? This permanently removes the team, its ${team.members.length} player${team.members.length !== 1 ? 's' : ''}, and its coaches. Players keep their own shot history.${leftover}`,
@@ -203,6 +184,18 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
 
   async function addTeam(e: React.FormEvent) {
     e.preventDefault()
+    // The server rejects these characters too, but its message can't say
+    // which of the four boxes was wrong.
+    const badField = [
+      ['team name', newName],
+      ['age group', newAgeGroup],
+      ['coach name', newCoachName],
+    ].find(([, v]) => /[<>`]/.test(v))
+    if (badField) {
+      setAddError(`The ${badField[0]} can only use letters, numbers, spaces and simple punctuation like - ' . Please remove any other symbols and try again.`)
+      setAddStatus('error')
+      return
+    }
     setAddStatus('loading')
     setAddError('')
     try {
@@ -230,7 +223,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
     }
   }
 
-  async function openTeam(teamId: string) {
+  async function openTeam(teamId: string, dest: string = '/team/dashboard') {
     try {
       const res = await fetch('/api/org/open-team', {
         method: 'POST',
@@ -241,12 +234,17 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
         alert('Could not open that team. Please try again.')
         return
       }
-      router.push('/team/dashboard')
+      router.push(dest)
     } catch {
       alert('Something went wrong. Please try again.')
     }
   }
 
+
+  // Set by a team card's "Email this team's players": the composer ticks
+  // that team's players. The nonce makes a second click on the same team
+  // apply again.
+  const [emailFocus, setEmailFocus] = useState<{ teamId: string; nonce: number } | null>(null)
 
   // AccountTabs keys off data-tab buttons, so switching tab is a click.
   function goToTab(tabId: string, anchor?: string) {
@@ -272,8 +270,9 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   }
 
   // Every player and coach across the org — feeds the token-distribution panel.
+  const allMembers = teams.flatMap(t => t.members)
   const orgPlayers = teams.flatMap(t =>
-    t.members.map(m => ({ id: m.id, label: memberDisplayName(m), team: t.name, teamId: t.id })),
+    t.members.map(m => ({ id: m.id, label: memberPickLabel(m, allMembers), team: t.name, teamId: t.id })),
   )
   const orgCoachMap = new Map<string, string>()
   for (const t of teams) {
@@ -302,11 +301,11 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
         body: JSON.stringify({ teamId, playerUserIds, tokensEach }),
       })
       const data = await res.json()
-      if (!res.ok) return { ok: false, text: data.error || 'Could not give credits.' }
+      if (!res.ok) return { ok: false, text: data.error || 'Could not give tokens.' }
       router.refresh()
       return {
         ok: true,
-        text: `Gave ${tokensEach} credit${tokensEach !== 1 ? 's' : ''} to ${playerUserIds.length} player${playerUserIds.length !== 1 ? 's' : ''}.`,
+        text: `Gave ${tokensEach} token${tokensEach !== 1 ? 's' : ''} to ${playerUserIds.length} player${playerUserIds.length !== 1 ? 's' : ''}.`,
       }
     } catch {
       return { ok: false, text: 'Something went wrong. Please try again.' }
@@ -559,16 +558,16 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   const addTeamSection = (
     <div className="border border-gray-200 dark:border-courtline rounded-2xl p-5 space-y-3">
       <div className="flex items-center justify-between gap-4">
-        <h2 className="text-xl font-black text-black dark:text-chalk">Add a Team</h2>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-chalk">Add a Team</h2>
         <button
           onClick={() => {
             setAddOpen(o => !o)
             setAddStatus('idle')
             setAddError('')
           }}
-          className="bg-ember-500 hover:bg-ember-400 text-ink-950 font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+          className={backendButton(addOpen ? 'quiet' : 'primary', 'shrink-0')}
         >
-          {addOpen ? 'Cancel' : 'Add Team'}
+          {addOpen ? (addStatus === 'success' ? 'Close' : 'Cancel') : 'Add team'}
         </button>
       </div>
 
@@ -580,31 +579,31 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
             aria-label="Team name (e.g. Westside Hawks)"
             placeholder="Team name (e.g. Westside Hawks)"
             value={newName}
-            onChange={e => setNewName(e.target.value)}
+            onChange={e => { setNewName(e.target.value); if (addStatus === 'success') setAddStatus('idle') }}
             className="w-full bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl px-4 py-3 text-black dark:text-chalk placeholder-gray-400 focus:outline-none focus:border-ember-500 transition-colors"
           />
           <input
             type="text"
             aria-label="Age group (optional) — e.g. U14, Varsity, JV"
-            placeholder="Age group (optional) — e.g. U14, Varsity, JV"
+            placeholder="Age group (optional), e.g. U14"
             value={newAgeGroup}
-            onChange={e => setNewAgeGroup(e.target.value)}
+            onChange={e => { setNewAgeGroup(e.target.value); if (addStatus === 'success') setAddStatus('idle') }}
             className="w-full bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl px-4 py-3 text-black dark:text-chalk placeholder-gray-400 focus:outline-none focus:border-ember-500 transition-colors"
           />
           <input
             type="email"
             aria-label="Coach email — leave blank to coach it yourself"
-            placeholder="Coach email — leave blank to coach it yourself"
+            placeholder="Coach email (optional)"
             value={newCoachEmail}
-            onChange={e => setNewCoachEmail(e.target.value)}
+            onChange={e => { setNewCoachEmail(e.target.value); if (addStatus === 'success') setAddStatus('idle') }}
             className="w-full bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl px-4 py-3 text-black dark:text-chalk placeholder-gray-400 focus:outline-none focus:border-ember-500 transition-colors"
           />
           <input
             type="text"
-            aria-label="Coach name (shown as the coach)"
-            placeholder="Coach name (shown as the coach)"
+            aria-label="Coach name (optional) — shown to players"
+            placeholder="Coach name (optional) — shown to players"
             value={newCoachName}
-            onChange={e => setNewCoachName(e.target.value)}
+            onChange={e => { setNewCoachName(e.target.value); if (addStatus === 'success') setAddStatus('idle') }}
             className="w-full bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl px-4 py-3 text-black dark:text-chalk placeholder-gray-400 focus:outline-none focus:border-ember-500 transition-colors"
           />
           <p className="text-xs text-gray-400 dark:text-chalk-dim">
@@ -653,7 +652,13 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   const totalTokenPool = teams.reduce((s, t) => s + t.tokenPool, 0)
   const totalCoachCredits = coachCreditBalances.reduce((s, c) => s + c.credits, 0)
   const totalDistributed = totalPlayerTokens + totalTeamCredits + totalTokenPool + totalCoachCredits
-  const uniquePlayerCount = new Set(teams.flatMap(t => t.members.map(m => m.id))).size
+  // Counted the way the team cards count (accounts + name-only invites), but
+  // a player with an account on two teams once. The Players tab lists the
+  // accounts; name-only invites live on their team card.
+  const uniqueAccountCount = new Set(teams.flatMap(t => t.members.map(m => m.id))).size
+  const nameOnlyCount = teams.reduce((n, t) => n + t.pendingPlayers.length, 0)
+  const uniquePlayerCount = uniqueAccountCount + nameOnlyCount
+  const onSeveralTeams = teams.reduce((n, t) => n + t.members.length, 0) - uniqueAccountCount
 
   // Org-wide standings: every team's leaderboard merged, with a Team column.
   // A player on two teams appears once per team — LeaderboardTable keys rows
@@ -672,7 +677,12 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
     <div className="space-y-4">
       {addTeamSection}
 
-      <h2 className="text-xl font-black text-black dark:text-chalk">Your Teams</h2>
+      {/* Heading and the import button share a row; the open import panel
+          takes the full width below (it carries basis-full). */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-chalk">Your Teams</h2>
+        <OrgRosterImport teams={teams.map(t => ({ id: t.id, name: t.name }))} />
+      </div>
 
       <div className="space-y-3">
         {teams.map(team => (
@@ -688,10 +698,14 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
             onToggleEmailMember={toggleEmailMember}
             onDraftEmail={() => setEmailDraftTeam(team.id)}
             onOpenTeam={() => openTeam(team.id)}
+            onBulkUpload={() => openTeam(team.id, '/team/dashboard/bulk')}
             onGoToClassTab={() => goToTab('class')}
+            onEmailPlayers={() => {
+              setEmailFocus(prev => ({ teamId: team.id, nonce: (prev?.nonce ?? 0) + 1 }))
+              goToTab('results', 'email-players')
+            }}
             onOpenScheduleModal={() => setScheduleModal(team.id)}
             onOpenLeaderboardModal={() => setTeamLbModal(team.id)}
-            onRemoveHeadCoach={() => removeHeadCoach(team.id)}
             onRemoveCoach={removeCoach}
             onRemovePlayer={userId => removePlayer(team.id, userId)}
             onDeleteTeam={() => deleteTeam(team)}
@@ -715,7 +729,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
       <div>
         <h2 className="text-xl font-bold text-gray-900 dark:text-chalk">Purchase history</h2>
         <p className="text-sm text-gray-500 dark:text-chalk-dim mt-1">
-          Every purchase on this organization — tokens, team credits, class
+          Every purchase on this organization — tokens, team tokens, class
           packages, and shop orders. Payment happens at checkout (card, Apple
           Pay, or Google Pay); receipts are emailed automatically.
         </p>
@@ -743,7 +757,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   const scheduleTab = (
     <div className="space-y-4">
       <div>
-        <h2 className="text-xl font-black text-black dark:text-chalk">Schedule</h2>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-chalk">Schedule</h2>
         <p className="text-sm text-gray-500 dark:text-chalk-dim mt-1">
           Practices and games for your teams. Switch between the week and the
           month, and subscribe the schedule to Apple Calendar or Google so it
@@ -799,7 +813,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   const leaderboardTab = (
     <div className="space-y-4">
       <div>
-        <h2 className="text-xl font-black text-black dark:text-chalk">Organization Leaderboard</h2>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-chalk">Organization Leaderboard</h2>
         <p className="text-sm text-gray-500 dark:text-chalk-dim mt-1">
           Every player across your teams, ranked by their best analyzed score.
           Each team&apos;s own board is inside its panel in the Teams tab.
@@ -822,7 +836,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
     <div className="space-y-5">
       <div>
         <div className="flex items-center gap-2">
-          <h2 className="text-xl font-black text-black dark:text-chalk">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-chalk">
             {hasClass ? 'Program Manager' : 'Coach-Led Development Program'}
           </h2>
           <InfoTip label="What does the 10-week program include?" align="left">
@@ -880,19 +894,19 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   const tokensTab = (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <h2 className="text-xl font-black text-black dark:text-chalk">Tokens &amp; Credits</h2>
-        <InfoTip label="What is the difference between tokens and credits?" align="left">
-          <strong>Player tokens</strong> live on a player&rsquo;s own account —
-          1 token = 1 shot analysis. <strong>Team credits</strong> are a shared
-          pool on a team that you or its coach can spend or assign to that
-          team&rsquo;s players. Your <strong>org balance</strong> holds tokens
-          you&rsquo;ve bought but not yet handed out.
+        <h2 className="text-xl font-bold text-gray-900 dark:text-chalk">Tokens</h2>
+        <InfoTip label="Where can tokens be?" align="left">
+          1 token = 1 shot analysis, wherever it sits. <strong>Player tokens</strong> live
+          on a player&rsquo;s own account. <strong>Team tokens</strong> are shared on a
+          team: you or its coach can spend them or give them to that
+          team&rsquo;s players. <strong>Organization tokens</strong> are ones
+          you&rsquo;ve bought but not yet sent anywhere.
         </InfoTip>
       </div>
       {/* The org's own, undistributed tokens — always front and center. */}
       <div className="bg-ember-50 dark:bg-ember-500/10 border border-ember-200 dark:border-courtline rounded-2xl px-5 py-4 flex items-center justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-xs font-semibold text-gray-600 dark:text-chalk-dim uppercase tracking-wide">Your balance</p>
+          <p className="text-xs font-semibold text-gray-600 dark:text-chalk-dim uppercase tracking-wide">Organization tokens</p>
           <p className="text-sm text-gray-500 dark:text-chalk-dim mt-0.5">
             Tokens you&apos;ve bought but not sent anywhere yet &mdash; 1 token = 1 shot analysis.
           </p>
@@ -910,7 +924,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
           ageGroup: t.ageGroup,
           credits: t.credits,
           tokenPool: t.tokenPool,
-          players: t.members.map(m => ({ id: m.id, label: memberDisplayName(m), tokens: m.tokens })),
+          players: t.members.map(m => ({ id: m.id, label: memberPickLabel(m, t.members), tokens: m.tokens })),
         }))}
         coaches={coachCreditBalances.map(c => ({
           email: c.email,
@@ -980,6 +994,11 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
             <p className="text-xs text-gray-500 dark:text-chalk-dim mt-0.5">
               Every player across the organization, with their best score and team
             </p>
+            <p className="text-xs text-gray-500 dark:text-chalk-dim mt-0.5">
+              {uniquePlayerCount} player{uniquePlayerCount !== 1 ? 's' : ''}: {uniqueAccountCount} with an account (listed here, once each
+              {onSeveralTeams > 0 ? ` — ${onSeveralTeams} ${onSeveralTeams === 1 ? 'is' : 'are'} on more than one team` : ''})
+              {nameOnlyCount > 0 ? ` and ${nameOnlyCount} added by name only (shown on their team card)` : ''}.
+            </p>
           </div>
           <span className="text-gray-400 dark:text-chalk-dim text-lg">{showAllPlayers ? '−' : '+'}</span>
         </button>
@@ -1037,7 +1056,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                 <>
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-xs text-gray-400 dark:text-chalk-dim">
-                      {rows.length} player{rows.length !== 1 ? 's' : ''}
+                      {rows.length} player{rows.length !== 1 ? 's' : ''} with an account
                     </p>
                     <SortMenu
                       value={allPlayersSort}
@@ -1094,7 +1113,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                                 <span className="text-xs text-gray-400 dark:text-chalk-dim">No shots</span>
                               ) : (
                                 <span
-                                  className={`font-black text-base ${
+                                  className={`font-bold text-base tabular-nums ${
                                     score >= 8
                                       ? 'text-green-600 dark:text-green-400'
                                       : score >= 6
@@ -1138,10 +1157,10 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
       <section className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="bg-ember-50 dark:bg-ember-500/10 border border-ember-200 dark:border-courtline rounded-2xl px-4 py-3">
           <div className="flex items-center gap-1.5">
-            <p className="text-xs font-medium text-gray-600 dark:text-chalk-dim">Your balance</p>
-            <InfoTip label="How does my balance work?" align="left">
-              Credits you&apos;ve bought that haven&apos;t been sent anywhere
-              yet &mdash; these are yours alone. 1 credit = 1 AI shot analysis. Send
+            <p className="text-xs font-medium text-gray-600 dark:text-chalk-dim">Organization tokens</p>
+            <InfoTip label="What are organization tokens?" align="left">
+              Tokens you&apos;ve bought that haven&apos;t been sent anywhere
+              yet &mdash; these are yours alone. 1 token = 1 AI shot analysis. Send
               them straight to players or to a coach from the Tokens tab.
             </InfoTip>
           </div>
@@ -1170,7 +1189,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
           <div className="flex items-center gap-1.5">
             <p className="text-xs font-medium text-gray-500 dark:text-chalk-dim">In your organization</p>
             <InfoTip label="What does 'in your organization' mean?" align="right">
-              Credits you&apos;ve already distributed &mdash; held by your teams,
+              Tokens you&apos;ve already sent out &mdash; held by your teams,
               players, and coaches. They&apos;re counted separately so they
               never blur into your own balance.
             </InfoTip>
@@ -1195,18 +1214,11 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
           { id: 'teams', label: 'Teams', count: teams.length, content: teamsTab },
           {
             id: 'results',
-            label: 'Results',
+            label: 'Email & Results',
             content: (
-              <OrgResultsPanel
-                teams={teams.map(t => ({
-                  id: t.id,
-                  name: t.name,
-                  ageGroup: t.ageGroup,
-                  memberCount: t.members.length,
-                  coachName: t.coachNickname || t.adminEmail,
-                }))}
-                onGoToOffers={() => goToTab('offers')}
-              />
+              <div id="email-players" className="scroll-mt-24">
+                <PlayerEmailComposer as="org" onGoToOffers={() => goToTab('offers')} focusTeam={emailFocus} />
+              </div>
             ),
           },
           { id: 'offers', label: 'Offers & Sales', content: <OrgOffersPanel /> },
@@ -1218,6 +1230,27 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
             ? []
             : [{ id: 'class', label: hasClass ? 'Program Manager' : 'Coach-Led Program', content: classTab }]),
           { id: 'tokens', label: 'Tokens', content: tokensTab },
+          // Club memberships are sold and managed on the website only.
+          ...(inApp
+            ? []
+            : [{
+                id: 'memberships',
+                label: 'Memberships',
+                content: (
+                  <OrgMembershipPanel
+                    orgEntitled={orgTier !== 'none'}
+                    teams={teams.map(t => ({
+                      id: t.id,
+                      name: t.name,
+                      ageGroup: t.ageGroup,
+                      coachName: t.coachNickname || t.adminEmail,
+                      memberCount: t.members.length,
+                      members: t.members.map(m => ({ id: m.id, label: memberPickLabel(m, t.members), rosterPending: !!m.roster_pending })),
+                      pendingPlayers: t.pendingPlayers.map(p => ({ id: p.id, label: `${p.first_name}${p.last_name_initial ? ` ${p.last_name_initial}.` : ''}` })),
+                    }))}
+                  />
+                ),
+              }]),
           { id: 'leaderboard', label: 'Leaderboard', count: orgLeaderboard.length, content: leaderboardTab },
           { id: 'players', label: 'Players', count: uniquePlayerCount, content: playersTab },
           { id: 'billing', label: 'Purchases', content: billingTab },
@@ -1269,7 +1302,7 @@ Please reach out if you have any questions. We look forward to helping you impro
               onClick={e => e.stopPropagation()}
             >
               <div className="flex items-center justify-between gap-4">
-                <h2 className="text-xl font-black text-black dark:text-chalk">Outreach Email Draft</h2>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-chalk">Outreach Email Draft</h2>
                 <button onClick={() => setEmailDraftTeam(null)} className="text-gray-400 dark:text-chalk-dim hover:text-black dark:hover:text-chalk text-2xl leading-none">×</button>
               </div>
 
@@ -1336,7 +1369,7 @@ Please reach out if you have any questions. We look forward to helping you impro
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between gap-4">
-                <h2 className="text-xl font-black text-black dark:text-chalk">{t.name} Schedule</h2>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-chalk">{t.name} Schedule</h2>
                 <button
                   onClick={() => setScheduleModal(null)}
                   className="shrink-0 text-sm font-semibold text-gray-400 dark:text-chalk-dim hover:text-red-500 transition-colors"
@@ -1369,7 +1402,7 @@ Please reach out if you have any questions. We look forward to helping you impro
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between gap-4">
-                <h2 className="text-xl font-black text-black dark:text-chalk">{t.name} Leaderboard</h2>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-chalk">{t.name} Leaderboard</h2>
                 <div className="flex items-center gap-2 print:hidden">
                   <PrintButton label="Print" />
                   <button

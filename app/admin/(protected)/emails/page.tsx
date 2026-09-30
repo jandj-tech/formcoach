@@ -5,7 +5,7 @@ import SendEmailPanel from './SendEmailPanel'
 
 export default async function EmailsPage() {
   const emails = (await db`
-    SELECT id, email, created_at, unsubscribed_at, bounced_at, complained_at, marketing_emails_sent
+    SELECT id, email, created_at, unsubscribed_at, marketing_unsubscribed_at, bounced_at, complained_at, marketing_emails_sent
     FROM email_list
     ORDER BY created_at DESC
     LIMIT 500
@@ -14,6 +14,7 @@ export default async function EmailsPage() {
     email: string
     created_at: string
     unsubscribed_at: string | null
+    marketing_unsubscribed_at: string | null
     bounced_at: string | null
     complained_at: string | null
     marketing_emails_sent: number
@@ -22,8 +23,14 @@ export default async function EmailsPage() {
   // "Active" means mailable. An address that hard-bounced or reported us is
   // neither active nor unsubscribed -- it is suppressed, and counting it as
   // active would overstate the list every send.
-  const active = emails.filter((e) => !e.unsubscribed_at && !e.bounced_at && !e.complained_at)
-  const unsub = emails.filter((e) => e.unsubscribed_at && !e.bounced_at && !e.complained_at)
+  // A marketing-only opt-out (old unsigned link) still gets team mail, but
+  // no marketing, so for this list it counts as unsubscribed.
+  const active = emails.filter(
+    (e) => !e.unsubscribed_at && !e.marketing_unsubscribed_at && !e.bounced_at && !e.complained_at
+  )
+  const unsub = emails.filter(
+    (e) => (e.unsubscribed_at || e.marketing_unsubscribed_at) && !e.bounced_at && !e.complained_at
+  )
   const suppressed = emails.filter((e) => e.bounced_at || e.complained_at)
 
   return (
@@ -84,6 +91,8 @@ export default async function EmailsPage() {
                       <span className="text-xs bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full">Bounced</span>
                     ) : e.unsubscribed_at ? (
                       <span className="text-xs bg-gray-100 dark:bg-zinc-800 text-black dark:text-white px-2 py-0.5 rounded-full">Unsubscribed</span>
+                    ) : e.marketing_unsubscribed_at ? (
+                      <span className="text-xs bg-gray-100 dark:bg-zinc-800 text-black dark:text-white px-2 py-0.5 rounded-full">No marketing</span>
                     ) : (
                       <span className="text-xs bg-green-500/10 text-orange-500 px-2 py-0.5 rounded-full">Active</span>
                     )}

@@ -236,7 +236,7 @@ export default function ClassManager({ packages, canManage = false, onStartAnoth
                 },
                 { label: 'Baseline filmed', value: started, sub: 'Week 1 analysis' },
                 { label: 'Finished', value: done, sub: 'certificate ready' },
-                { label: 'Credits left', value: pkg.teamCredits ?? '—', sub: 'on the class team' },
+                { label: 'Team tokens left', value: pkg.teamCredits ?? '—', sub: 'on the class team' },
               ].map(s => (
                 <div
                   key={s.label}

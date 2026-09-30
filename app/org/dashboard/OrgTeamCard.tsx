@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ArrowRightIcon, MailIcon } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { ArrowRightIcon, CheckIcon, CircleCheckIcon, CopyIcon, MailIcon, XIcon } from 'lucide-react'
 import Section from '@/components/account/Section'
 import PanelTabs from '@/components/account/PanelTabs'
 import InfoTip from '@/components/InfoTip'
@@ -11,15 +12,22 @@ import SortMenu, { type SortOption } from '@/components/SortMenu'
 import TokenBalances from '@/components/TokenBalances'
 import GiveTokensForm from '@/components/GiveTokensForm'
 import LeaderboardTable from '@/components/LeaderboardTable'
+import LeaderboardVisibilitySwitch, { leaderboardTabLabel, type LeaderboardVisibility } from '@/components/LeaderboardVisibilitySwitch'
 import TeamSchedulePanel from '@/components/TeamSchedulePanel'
 import TeamChatPanel from '@/components/TeamChatPanel'
-import EmailTeamPanel from '@/components/EmailTeamPanel'
 import { StatGrid, StatCard } from '@/components/backend/StatGrid'
 import { backendButton } from '@/components/backend/button-styles'
 import { copyToClipboard } from '@/lib/copy'
 import OrgAddCoach from './OrgAddCoach'
+import ChangeHeadCoachPanel, { type HeadCoachChange } from '@/components/ChangeHeadCoachPanel'
+import AddPlayerForm from '@/components/AddPlayerForm'
+import CsvPlayerImport from '@/components/CsvPlayerImport'
+import { PlayerStatusBadge, ResendSetupButton } from '@/components/PlayerSetupStatus'
+import GiveOwnAccountButton, { SharedEmailNote, membersSharingEmail } from '@/components/GiveOwnAccountButton'
 import {
   memberDisplayName,
+  memberPickLabel,
+  memberStatus,
   type ClassPackage,
   type Member,
   type PlayerSortMode,
@@ -47,17 +55,19 @@ interface Props {
   onToggleEmailMember: (userId: string) => void
   onDraftEmail: () => void
   onOpenTeam: () => void
+  onBulkUpload: () => void
   onGoToClassTab: () => void
+  /** Opens the Email & Results tab with this team's players ticked. */
+  onEmailPlayers: () => void
   onOpenScheduleModal: () => void
   onOpenLeaderboardModal: () => void
-  onRemoveHeadCoach: () => void
   onRemoveCoach: (coachId: string, pending: boolean) => void
   onRemovePlayer: (userId: string) => void
   onDeleteTeam: () => void
   removingCoach: string | null
   removingPlayer: string | null
   deletingTeam: boolean
-  /** Spends this team's shared credits. Shape is GiveTokensForm's contract. */
+  /** Spends this team's shared team tokens. Shape is GiveTokensForm's contract. */
   onGiveCredits: (playerUserIds: string[], tokensEach: number) => Promise<{ ok: boolean; text: string }>
   /**
    * Sends the org to checkout. dest is 'team' (shared credits) or 'all' /
@@ -66,6 +76,57 @@ interface Props {
    */
   onBuy: (dest: string, quantity: number, playerUserIds: string[]) => Promise<string>
   buying: boolean
+}
+
+interface TeamExtras {
+  headCoach: 'ready' | 'invite_sent' | 'org'
+  pendingPlayers: Array<{ id: string; inviteUrl: string | null }>
+}
+
+// Re-sends a coach's setup invite (head coach, or an added coach by id).
+function ResendCoachInvite({ teamId, coachId }: { teamId: string; coachId?: string }) {
+  const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+  const [msg, setMsg] = useState('')
+  async function resend() {
+    setState('sending'); setMsg('')
+    try {
+      const res = await fetch('/api/org/resend-coach-invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teamId, coachId }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) { setState('error'); setMsg(data.error || 'Could not send'); return }
+      setState('sent')
+      setTimeout(() => setState('idle'), 4000)
+    } catch {
+      setState('error'); setMsg('Could not send')
+    }
+  }
+  if (state === 'sent') return <span className="text-xs font-semibold text-green-600 dark:text-green-400">Invite sent</span>
+  return (
+    <button
+      onClick={resend}
+      disabled={state === 'sending'}
+      title={state === 'error' ? msg : 'Email the setup invite again'}
+      className="text-xs font-semibold text-ember-600 dark:text-ember-400 hover:text-ember-500 disabled:opacity-50 transition-colors"
+    >
+      {state === 'sending' ? 'Sending\u2026' : state === 'error' ? (msg || 'Retry') : 'Resend invite'}
+    </button>
+  )
+}
+
+function CopyInviteButton({ url }: { url: string }) {
+  const [copied, setCopied] = useState(false)
+  return (
+    <button
+      onClick={() => copyToClipboard(url, 'Invite link copied!').then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000) })}
+      className="inline-flex items-center gap-1 text-xs font-semibold text-ember-600 dark:text-ember-400 hover:text-ember-500 transition-colors"
+    >
+      {copied ? <CheckIcon aria-hidden className="w-3.5 h-3.5" /> : <CopyIcon aria-hidden className="w-3.5 h-3.5" />}
+      {copied ? 'Copied' : 'Copy invite link'}
+    </button>
+  )
 }
 
 // One team on the org dashboard. Collapsed it is a single scannable row; open,
@@ -88,10 +149,11 @@ export default function OrgTeamCard({
   onToggleEmailMember,
   onDraftEmail,
   onOpenTeam,
+  onBulkUpload,
   onGoToClassTab,
+  onEmailPlayers,
   onOpenScheduleModal,
   onOpenLeaderboardModal,
-  onRemoveHeadCoach,
   onRemoveCoach,
   onRemovePlayer,
   onDeleteTeam,
@@ -102,8 +164,56 @@ export default function OrgTeamCard({
   onBuy,
   buying,
 }: Props) {
+  const router = useRouter()
   const [tab, setTab] = useState('roster')
+  const [leaderboardVisibility, setLeaderboardVisibility] = useState<LeaderboardVisibility>(team.leaderboardVisibility)
   const [copiedLink, setCopiedLink] = useState(false)
+  const [extras, setExtras] = useState<TeamExtras | null>(null)
+  const [removingPending, setRemovingPending] = useState<string | null>(null)
+  // "Change head coach" panel, and the banner it leaves behind on success.
+  const [changingHead, setChangingHead] = useState(false)
+  const [headChange, setHeadChange] = useState<HeadCoachChange | null>(null)
+
+  // Known once the card's extras load: the org itself is this team's head coach.
+  const orgIsHead = extras?.headCoach === 'org'
+
+  function onHeadCoachChanged(change: HeadCoachChange) {
+    setChangingHead(false)
+    setHeadChange(change)
+    router.refresh()
+  }
+
+  // Head-coach setup state and name-only players' join links, loaded when the
+  // card opens (and again after the roster changes).
+  const pendingKey = team.pendingPlayers.map(p => p.id).join(',')
+  useEffect(() => {
+    if (!isOpen) return
+    let cancelled = false
+    fetch(`/api/org/team-extras?teamId=${encodeURIComponent(team.id)}`)
+      .then(r => (r.ok ? r.json() : null))
+      .then((d: TeamExtras | null) => { if (!cancelled && d) setExtras(d) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [isOpen, team.id, pendingKey, team.adminEmail])
+
+  async function removePending(pendingId: string) {
+    if (!confirm('Remove this player from the team? Their invite link will stop working.')) return
+    setRemovingPending(pendingId)
+    try {
+      const res = await fetch('/api/org/remove-player', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teamId: team.id, pendingId }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) alert(data.error || 'Could not remove that player. Please try again.')
+      router.refresh()
+    } catch {
+      alert('Could not remove that player. Please try again.')
+    } finally {
+      setRemovingPending(null)
+    }
+  }
   const [sort, setSort] = useState<PlayerSortMode>('name')
 
   // Buy-tokens form. dest is 'all' (whole roster), 'players' (the picks
@@ -114,10 +224,18 @@ export default function OrgTeamCard({
   const [buySearch, setBuySearch] = useState('')
   const [buyError, setBuyError] = useState('')
 
-  const signupLink = `${baseUrl}/signup?teamCode=${team.accessCode}`
+  // The invite front door (app/join/[code]) — the same link the coach
+  // dashboard shares: it shows the team first, then signs the player up or
+  // logs them in and puts them on the roster.
+  const signupLink = `${baseUrl}/join/${team.accessCode}`
+  // Everyone on the roster, including players added by name only — the same
+  // number the Players list shows, so the header, stat and tab never disagree.
+  const rosterCount = team.members.length + team.pendingPlayers.length
+  // Siblings on this team with their own accounts on one family email.
+  const sharedEmailIds = membersSharingEmail(team.members)
 
   function copyLink() {
-    copyToClipboard(signupLink, 'Signup link copied!').then(() => {
+    copyToClipboard(signupLink, 'Invite link copied!').then(() => {
       setCopiedLink(true)
       setTimeout(() => setCopiedLink(false), 2000)
     })
@@ -161,50 +279,93 @@ export default function OrgTeamCard({
 
   const rosterPanel = (
     <div className="space-y-3">
+      {headChange && (
+        <div
+          role="status"
+          className="flex items-start gap-3 rounded-xl border border-green-200 dark:border-green-900/60 bg-green-50 dark:bg-green-950/30 px-4 py-3"
+        >
+          <CircleCheckIcon aria-hidden className="w-4 h-4 mt-0.5 shrink-0 text-green-600 dark:text-green-400" />
+          <p className="flex-1 min-w-0 text-sm text-gray-800 dark:text-chalk">
+            {headChange.isOrg
+              ? 'You now coach this team.'
+              : `${headChange.newHeadName} is now head coach.`}
+            {headChange.removedName && ` ${headChange.removedName} no longer has access.`}
+            {headChange.tokensReturned > 0 &&
+              ` ${headChange.tokensReturned} token${headChange.tokensReturned !== 1 ? 's' : ''} returned to your organization tokens.`}
+            {headChange.tokensKept > 0 &&
+              ` Their ${headChange.tokensKept} token${headChange.tokensKept !== 1 ? 's' : ''} stayed with them.`}
+          </p>
+          <button
+            type="button"
+            onClick={() => setHeadChange(null)}
+            aria-label="Dismiss"
+            className="shrink-0 text-gray-400 dark:text-chalk-dim hover:text-black dark:hover:text-chalk transition-colors"
+          >
+            <XIcon aria-hidden className="w-4 h-4" />
+          </button>
+        </div>
+      )}
       <Section
         title="Coaches"
         tipLabel="What can coaches do?"
-        tip="Coaches manage this team from their own coach dashboard: they upload shots for players and can spend the team's credits. Invited coaches show as pending until they finish setting up their account."
+        tip="Coaches manage this team from their own coach dashboard: they upload shots for players and can spend the team's tokens. Invited coaches show as pending until they finish setting up their account."
         summary={`${team.coaches.length + 1} coach${team.coaches.length > 0 ? 'es' : ''}`}
       >
         <div className="mt-1 border border-gray-100 dark:border-courtline rounded-xl divide-y divide-gray-100 dark:divide-courtline">
-          <div className="flex items-center justify-between gap-3 px-3 py-2">
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-black dark:text-chalk truncate">{team.coachNickname || team.adminEmail}</p>
-              {team.coachNickname && <p className="text-xs text-gray-400 dark:text-chalk-dim truncate">{team.adminEmail}</p>}
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3 py-2">
+            <div className="min-w-[11rem] flex-1">
+              <p className="text-sm font-semibold text-black dark:text-chalk truncate">{team.coachNickname || (orgIsHead ? 'You' : team.adminEmail)}</p>
+              {(team.coachNickname || orgIsHead) && <p className="text-xs text-gray-400 dark:text-chalk-dim truncate">{team.adminEmail}</p>}
             </div>
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-x-2 gap-y-1 flex-wrap justify-end ml-auto max-w-full">
               <span className="text-xs bg-ember-100 dark:bg-ember-500/15 text-ember-700 dark:text-ember-400 font-bold px-2 py-0.5 rounded-full">Head coach</span>
+              {extras?.headCoach === 'invite_sent' && (
+                <>
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-gray-100 dark:bg-ink-800 text-gray-500 dark:text-chalk-dim whitespace-nowrap">Invite sent &mdash; not set up yet</span>
+                  <ResendCoachInvite teamId={team.id} />
+                </>
+              )}
               <button
-                onClick={onRemoveHeadCoach}
-                disabled={removingCoach === `head-${team.id}`}
-                className="text-xs font-semibold text-gray-400 dark:text-chalk-dim hover:text-red-500 disabled:opacity-50 transition-colors"
+                type="button"
+                onClick={() => { setHeadChange(null); setChangingHead(v => !v) }}
+                aria-expanded={changingHead}
+                className="text-xs font-semibold text-ember-600 dark:text-ember-400 hover:text-ember-500 transition-colors"
               >
-                {removingCoach === `head-${team.id}` ? '…' : 'Remove'}
+                Change head coach
               </button>
             </div>
           </div>
           {team.coaches.map(c => (
-            <div key={c.id} className="flex items-center justify-between gap-3 px-3 py-2">
-              <div className="min-w-0">
+            <div key={c.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3 py-2">
+              <div className="min-w-[11rem] flex-1">
                 <p className="text-sm font-semibold text-black dark:text-chalk truncate">{c.nickname || c.email}</p>
                 {c.nickname && <p className="text-xs text-gray-400 dark:text-chalk-dim truncate">{c.email}</p>}
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${c.pending ? 'bg-gray-100 dark:bg-ink-800 text-gray-500 dark:text-chalk-dim' : 'bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400'}`}>
-                  {c.pending ? 'Invite pending' : 'Coach'}
+              <div className="flex items-center gap-x-2 gap-y-1 flex-wrap justify-end ml-auto max-w-full">
+                <span className={`text-xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${c.pending ? 'bg-gray-100 dark:bg-ink-800 text-gray-500 dark:text-chalk-dim' : 'bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400'}`}>
+                  {c.pending ? 'Invite sent \u2014 not set up yet' : 'Coach'}
                 </span>
+                {c.pending && <ResendCoachInvite teamId={team.id} coachId={c.id} />}
                 <button
                   onClick={() => onRemoveCoach(c.id, c.pending)}
                   disabled={removingCoach === c.id}
                   className="text-xs font-semibold text-gray-400 dark:text-chalk-dim hover:text-red-500 disabled:opacity-50 transition-colors"
                 >
-                  {removingCoach === c.id ? '…' : c.pending ? 'Cancel' : 'Remove'}
+                  {removingCoach === c.id ? '\u2026' : c.pending ? 'Cancel invite' : 'Remove'}
                 </button>
               </div>
             </div>
           ))}
         </div>
+        {changingHead && (
+          <div className="mt-2">
+            <ChangeHeadCoachPanel
+              teamId={team.id}
+              onDone={onHeadCoachChanged}
+              onCancel={() => setChangingHead(false)}
+            />
+          </div>
+        )}
         <div className="mt-2">
           <OrgAddCoach teamId={team.id} />
         </div>
@@ -212,38 +373,58 @@ export default function OrgTeamCard({
 
       <Section
         title="Players"
-        tipLabel="How do players join?"
-        tip="Players join with the signup link below. Tick the boxes next to players to draft an outreach email to just those players."
-        summary={`${team.members.length} player${team.members.length !== 1 ? 's' : ''}`}
+        tipLabel="How do I add players?"
+        tip="Add players directly (name, and an email if you have one), import a whole roster from a CSV, or share the invite link below. Players you add with an email get their own account and are matched automatically if they sign up later. Tick the boxes to email just those players."
+        summary={`${rosterCount} player${rosterCount !== 1 ? 's' : ''}`}
       >
-        {team.members.length > 1 && (
-          <div className="flex items-center justify-end gap-3">
-            <SortMenu value={sort} options={PLAYER_SORT_OPTIONS} onChange={setSort} />
-          </div>
-        )}
-        {team.members.length === 0 ? (
-          <p className="text-sm text-gray-400 dark:text-chalk-dim mt-0.5">No players have joined yet.</p>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pb-1">
+          <AddPlayerForm endpoint="/api/org/add-player" extra={{ teamId: team.id }} />
+          <CsvPlayerImport
+            endpoint="/api/org/import-players"
+            extra={{ teamId: team.id }}
+            teamName={team.name}
+            multiTeamHint="To add one file to several teams at once, use Import players from a spreadsheet at the top of the Teams tab."
+          />
+          {team.members.length > 1 && (
+            <div className="ml-auto">
+              <SortMenu value={sort} options={PLAYER_SORT_OPTIONS} onChange={setSort} />
+            </div>
+          )}
+        </div>
+
+        {team.members.length === 0 && team.pendingPlayers.length === 0 ? (
+          <p className="text-sm text-gray-400 dark:text-chalk-dim mt-0.5">No players yet. Add one above, or share the invite link below.</p>
         ) : (
           <>
             <div className="mt-1 border border-gray-100 dark:border-courtline rounded-xl divide-y divide-gray-100 dark:divide-courtline">
               {sortedMembers().map(m => (
-                <div key={m.id} className="flex items-center justify-between gap-3 px-3 py-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <input
-                      type="checkbox"
-                      checked={!!emailSelected[m.id]}
-                      onChange={() => onToggleEmailMember(m.id)}
-                      className="w-4 h-4 accent-ember-500 shrink-0"
-                    />
-                    <Link
-                      href={`/org/dashboard/member/${m.id}`}
-                      className="text-sm font-semibold text-black dark:text-chalk truncate hover:text-ember-600 dark:hover:text-ember-400 hover:underline transition-colors"
-                    >
-                      {memberDisplayName(m)}
-                    </Link>
+                <div key={m.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2">
+                  <input
+                    type="checkbox"
+                    aria-label={`Select ${memberDisplayName(m)} for the outreach email`}
+                    checked={!!emailSelected[m.id]}
+                    onChange={() => onToggleEmailMember(m.id)}
+                    className="w-4 h-4 accent-ember-500 shrink-0"
+                  />
+                  {/* Name + email stacked (as in the Coaches list) so the badge
+                      and actions line up down the list however long the email. */}
+                  <div className="min-w-[11rem] flex-1">
+                    <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                      <Link
+                        href={`/org/dashboard/member/${m.id}`}
+                        className="min-w-0 truncate text-sm font-semibold text-black dark:text-chalk hover:text-ember-600 dark:hover:text-ember-400 hover:underline transition-colors"
+                      >
+                        {memberDisplayName(m)}
+                      </Link>
+                      <PlayerStatusBadge status={memberStatus(m)} />
+                      {sharedEmailIds.has(m.id) && <SharedEmailNote />}
+                    </div>
+                    {m.email && <p className="text-xs text-gray-400 dark:text-chalk-dim truncate mt-0.5">{m.email}</p>}
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-xs text-gray-400 dark:text-chalk-dim truncate max-w-[9rem]">{m.email}</span>
+                  <div className="flex items-center gap-3 shrink-0 ml-auto">
+                    {memberStatus(m) === 'pending' && (
+                      <ResendSetupButton endpoint="/api/org/resend-player-setup" userId={m.id} extra={{ teamId: team.id }} />
+                    )}
                     <button
                       onClick={() => onRemovePlayer(m.id)}
                       disabled={removingPlayer === m.id}
@@ -254,6 +435,46 @@ export default function OrgTeamCard({
                   </div>
                 </div>
               ))}
+              {team.pendingPlayers.map(p => {
+                const inviteUrl = extras?.pendingPlayers.find(x => x.id === p.id)?.inviteUrl ?? null
+                return (
+                  <div key={p.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2">
+                    <span className="w-4 shrink-0" aria-hidden />
+                    <div className="min-w-[11rem] flex-1">
+                      <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                        <span className="min-w-0 truncate text-sm font-semibold text-gray-600 dark:text-chalk-dim">
+                          {p.first_name}{p.last_name_initial ? ` ${p.last_name_initial}.` : ''}
+                        </span>
+                        <PlayerStatusBadge status="invited" />
+                      </div>
+                      {p.contact_email && (
+                        <p className="text-xs text-gray-500 dark:text-chalk-dim [overflow-wrap:anywhere] mt-0.5">
+                          Family email {p.contact_email} (shared with a sibling)
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0 ml-auto">
+                      {p.contact_email && (
+                        <GiveOwnAccountButton
+                          endpoint="/api/org/give-own-account"
+                          pendingId={p.id}
+                          playerName={p.first_name}
+                          email={p.contact_email}
+                          extra={{ teamId: team.id }}
+                        />
+                      )}
+                      {inviteUrl && <CopyInviteButton url={inviteUrl} />}
+                      <button
+                        onClick={() => removePending(p.id)}
+                        disabled={removingPending === p.id}
+                        className="text-xs font-semibold text-gray-400 dark:text-chalk-dim hover:text-red-500 disabled:opacity-50 transition-colors"
+                      >
+                        {removingPending === p.id ? '\u2026' : 'Remove'}
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
             {team.members.some(m => emailSelected[m.id]) && (
               <button
@@ -270,10 +491,10 @@ export default function OrgTeamCard({
 
       <div className="border border-gray-200 dark:border-courtline rounded-2xl px-5 py-4">
         <p className="text-xs font-bold text-gray-500 dark:text-chalk-dim uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
-          Player signup link
-          <InfoTip label="What is the player signup link?" align="left">
-            Send this to players (or their parents). It opens the signup page
-            with this team&rsquo;s code pre-filled, so they land on the roster
+          Invite link
+          <InfoTip label="What is the invite link?" align="left">
+            Send this to players (or their parents). It shows them this team,
+            then signs them up or logs them in and puts them on the roster
             automatically.
           </InfoTip>
         </p>
@@ -287,7 +508,7 @@ export default function OrgTeamCard({
           </button>
         </div>
         <p className="text-xs text-gray-400 dark:text-chalk-dim mt-1.5">
-          Players open this link, sign up with the code pre-filled, then enter their name to join.
+          One tap and they&rsquo;re on the roster — it works whether or not they already have an account.
         </p>
       </div>
     </div>
@@ -295,34 +516,34 @@ export default function OrgTeamCard({
 
   const tokensPanel = (
     <div className="space-y-3">
-      {/* Class teams already show Players / Enrolled / Completed / Credits left
+      {/* Class teams already show Players / Enrolled / Completed / Team tokens left
           in the class panel, so this block would only repeat them — and its
           "N tokens total" line misleads in a coach-uploads-for-players model. */}
       {!team.classPackageId && (
         <TokenBalances
-          players={team.members.map(m => ({ id: m.id, label: memberDisplayName(m), tokens: m.tokens }))}
+          players={team.members.map(m => ({ id: m.id, label: memberPickLabel(m, team.members), tokens: m.tokens }))}
           teamCredits={team.credits}
           tokenPool={team.tokenPool}
         />
       )}
 
-      {/* Spends teams.credits on this team's roster. Same pool the coach uses
+      {/* Spends teams.credits (team tokens) on this team's roster. Same balance the coach uses
           via Open team dashboard; lets the org act without hopping into the
           team's coach view. */}
       <Section
-        title="Give team credits to players"
-        summary={`${team.credits} credit${team.credits !== 1 ? 's' : ''}`}
+        title="Give team tokens to players"
+        summary={`${team.credits} team token${team.credits !== 1 ? 's' : ''}`}
       >
         <div className="pt-2">
           {team.members.length === 0 ? (
             <p className="text-sm text-gray-400 dark:text-chalk-dim">No players have joined this team yet.</p>
           ) : team.credits === 0 ? (
-            <p className="text-sm text-gray-500 dark:text-chalk-dim">No credits on this team yet &mdash; send some from the Tokens tab first.</p>
+            <p className="text-sm text-gray-500 dark:text-chalk-dim">No team tokens yet. Buy some below (pick Team tokens), or send your organization tokens straight to players from the Tokens tab at the top of the page.</p>
           ) : (
             <GiveTokensForm
-              players={team.members.map(m => ({ id: m.id, label: memberDisplayName(m), tokens: m.tokens }))}
+              players={team.members.map(m => ({ id: m.id, label: memberPickLabel(m, team.members), tokens: m.tokens }))}
               available={team.credits}
-              availableLabel="team credits"
+              availableLabel="team tokens"
               onGive={onGiveCredits}
             />
           )}
@@ -344,7 +565,7 @@ export default function OrgTeamCard({
                 {([
                   ['all', `All players (${team.members.length})`],
                   ['players', 'Specific players'],
-                  ['team', 'Team credits'],
+                  ['team', 'Team tokens'],
                 ] as Array<[string, string]>).map(([value, label]) => (
                   <button
                     key={value}
@@ -365,7 +586,7 @@ export default function OrgTeamCard({
               <p className="text-xs text-gray-500 dark:text-chalk-dim">
                 {dest === 'all' && 'Every player on the roster gets the amount below on their own account.'}
                 {dest === 'players' && 'Pick who gets tokens — each selected player gets the amount below.'}
-                {dest === 'team' && `Funds the shared balance coaches spend (${team.credits} there now).`}
+                {dest === 'team' && `Adds to the team tokens coaches spend (${team.credits} there now).`}
               </p>
             </div>
 
@@ -416,7 +637,7 @@ export default function OrgTeamCard({
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-1.5">
                 <span className="text-sm text-gray-600 dark:text-chalk-dim mr-1">
-                  {dest === 'team' ? 'Credits' : 'Tokens each'}
+                  {dest === 'team' ? 'Tokens' : 'Tokens each'}
                 </span>
                 {[1, 5, 10].map(n => (
                   <button
@@ -461,7 +682,7 @@ export default function OrgTeamCard({
               {buying
                 ? 'Redirecting to checkout…'
                 : dest === 'team'
-                  ? `Buy ${qty} team credit${qty !== 1 ? 's' : ''}`
+                  ? `Buy ${qty} team token${qty !== 1 ? 's' : ''}`
                   : recipients === 0
                     ? 'Select players first'
                     : `Buy ${recipients * qty} token${recipients * qty !== 1 ? 's' : ''}`}
@@ -488,7 +709,12 @@ export default function OrgTeamCard({
   )
 
   const leaderboardPanel = (
-    <div className="space-y-2">
+    <div className="space-y-3">
+      <LeaderboardVisibilitySwitch
+        teamId={team.id}
+        visibility={leaderboardVisibility}
+        onChange={setLeaderboardVisibility}
+      />
       {team.leaderboard.length > 0 && (
         <div className="flex justify-end">
           <button
@@ -510,8 +736,14 @@ export default function OrgTeamCard({
   const messagesPanel = (
     <div className="space-y-4">
       <TeamChatPanel teamId={team.id} />
-      <div className="border-t border-gray-100 dark:border-courtline pt-4">
-        <EmailTeamPanel teamId={team.id} playerCount={team.members.length} />
+      <div className="border-t border-gray-100 dark:border-courtline pt-4 flex flex-wrap items-center gap-3">
+        <p className="flex-1 min-w-[12rem] text-sm text-gray-500 dark:text-chalk-dim">
+          Email {team.name}&rsquo;s players or parents — results, program news or a quick message — from the Email &amp; Results tab.
+        </p>
+        <button type="button" onClick={onEmailPlayers} className={backendButton('secondary', 'shrink-0')}>
+          <MailIcon aria-hidden />
+          Email this team&rsquo;s players
+        </button>
       </div>
     </div>
   )
@@ -561,8 +793,8 @@ export default function OrgTeamCard({
           <p className="font-bold text-black dark:text-chalk">{team.name}</p>
           <p className="text-xs text-gray-500 dark:text-chalk-dim mt-0.5">
             {team.ageGroup ? `${team.ageGroup} · ` : ''}
-            {team.members.length} player{team.members.length !== 1 ? 's' : ''}
-            {team.credits > 0 ? ` · ${team.credits} team credit${team.credits !== 1 ? 's' : ''}` : ''}
+            {rosterCount} player{rosterCount !== 1 ? 's' : ''}
+            {team.credits > 0 ? ` · ${team.credits} team token${team.credits !== 1 ? 's' : ''}` : ''}
           </p>
         </div>
         {/* The same rotating chevron the Sections inside use, so the card and
@@ -582,9 +814,9 @@ export default function OrgTeamCard({
           <div className="space-y-3">
             <div className="flex items-start justify-between gap-3 flex-wrap">
               <div className="min-w-0">
-                <p className="text-lg font-black text-black dark:text-chalk truncate">{team.name}</p>
+                <p className="text-lg font-bold text-black dark:text-chalk truncate">{team.name}</p>
                 <p className="text-xs text-gray-500 dark:text-chalk-dim mt-0.5 truncate">
-                  Head coach: {team.coachNickname || team.adminEmail}
+                  Head coach: {team.coachNickname || (orgIsHead ? 'You' : team.adminEmail)}
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -602,9 +834,11 @@ export default function OrgTeamCard({
             </div>
 
             <StatGrid>
-              <StatCard label="Players" value={team.members.length} />
-              <StatCard label="Team credits" value={team.credits} accent />
-              <StatCard label="Team pool" value={team.tokenPool} />
+              <StatCard label="Players" value={rosterCount} />
+              <StatCard label="Team tokens" value={team.credits} accent />
+              <StatCard label="Coaches" value={team.coaches.length + 1} />
+              {/* Legacy shared pool — only worth a card while it still holds tokens. */}
+              {team.tokenPool > 0 && <StatCard label="Unassigned team tokens" value={team.tokenPool} />}
               <StatCard label="Ranked" value={team.leaderboard.length} />
             </StatGrid>
 
@@ -612,6 +846,9 @@ export default function OrgTeamCard({
               <button onClick={onOpenTeam} className={backendButton('primary')}>
                 Open team dashboard
                 <ArrowRightIcon aria-hidden className="w-4 h-4" />
+              </button>
+              <button onClick={onBulkUpload} className={backendButton('secondary')} title="Upload several shot videos at once and tag each to a player">
+                Upload videos
               </button>
               <button onClick={copyLink} className={backendButton('quiet')}>
                 {copiedLink ? 'Copied!' : 'Copy invite link'}
@@ -629,11 +866,11 @@ export default function OrgTeamCard({
               className="w-full text-left border border-ember-500/30 bg-ember-500/5 hover:bg-ember-500/10 rounded-2xl px-4 py-3 flex items-center justify-between gap-4 transition-colors"
             >
               <div className="min-w-0">
-                <p className="text-sm font-black text-black dark:text-chalk">Coach-Led Development Program</p>
+                <p className="text-sm font-bold text-black dark:text-chalk">Coach-Led Development Program</p>
                 <p className="text-xs text-gray-500 dark:text-chalk-dim mt-0.5">
                   {classPackage.enrollments.length}/{classPackage.player_count} enrolled &middot;{' '}
                   {classPackage.enrollments.filter(en => en.has_final).length} finished &middot;{' '}
-                  {team.credits} credit{team.credits !== 1 ? 's' : ''} left
+                  {team.credits} team token{team.credits !== 1 ? 's' : ''} left
                 </p>
               </div>
               <span className="shrink-0 text-xs font-bold text-ember-600 dark:text-ember-400">Open Class Manager &rarr;</span>
@@ -646,10 +883,10 @@ export default function OrgTeamCard({
             value={tab}
             onChange={setTab}
             tabs={[
-              { id: 'roster', label: 'Roster', count: team.members.length, content: rosterPanel },
+              { id: 'roster', label: 'Roster', count: rosterCount, content: rosterPanel },
               { id: 'tokens', label: 'Tokens', content: tokensPanel },
               { id: 'schedule', label: 'Schedule', content: schedulePanel },
-              { id: 'leaderboard', label: 'Leaderboard', count: team.leaderboard.length, content: leaderboardPanel },
+              { id: 'leaderboard', label: leaderboardTabLabel(leaderboardVisibility), count: team.leaderboard.length, content: leaderboardPanel },
               { id: 'messages', label: 'Messages', content: messagesPanel },
               { id: 'settings', label: 'Settings', content: settingsPanel },
             ]}

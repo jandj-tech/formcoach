@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getOrgSessionFromRequest } from '@/lib/org-auth'
+import { currentOrgPasswordHash, getOrgSessionFromRequest } from '@/lib/org-auth'
 import { signTeamSession, teamSessionCookieOptions } from '@/lib/team-auth'
 import { db } from '@/lib/db'
 
@@ -27,7 +27,11 @@ export async function POST(req: NextRequest) {
 
     // Sign with the org owner's email so the team dashboard shows them as the
     // viewer (resolving to their own coach name), not the team's head coach.
-    const token = await signTeamSession({ teamId: team.id, adminEmail: session.adminEmail })
+    // Bound to the org's own password: an org password reset ends it too.
+    const token = await signTeamSession(
+      { teamId: team.id, adminEmail: session.adminEmail },
+      await currentOrgPasswordHash(session.orgId),
+    )
     const res = NextResponse.json({ success: true })
     res.cookies.set(teamSessionCookieOptions(token))
     return res

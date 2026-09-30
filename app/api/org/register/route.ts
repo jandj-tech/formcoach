@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
 import { signOrgSession, orgSessionCookieOptions } from '@/lib/org-auth'
-import { isCleanDisplayText, BLOCKED_TEXT_ERROR } from '@/lib/moderation'
+import { cleanDisplayText } from '@/lib/moderation'
 import { addToEmailList } from '@/lib/email-list'
 import { randomInt } from 'crypto'
 import { BCRYPT_COST } from '@/lib/password'
-import { rateLimitByIp } from '@/lib/rate-limit'
+import { rateLimitLogin } from '@/lib/rate-limit'
 import { verifyTurnstile } from '@/lib/turnstile'
+import { emailBelongsToCoachOrOrg } from '@/lib/team-auth'
 
 function generateAccessCode(): string {
   // randomInt, not Math.random: an access code is a bearer credential (it lets
@@ -23,9 +24,16 @@ function generateAccessCode(): string {
 
 export async function POST(req: NextRequest) {
   try {
+    const { name, email, password, token, turnstileToken } = (await req.json().catch(() => ({}))) as {
+      name?: unknown; email?: unknown; password?: unknown; token?: unknown; turnstileToken?: unknown
+    }
+
     // Already gated by a one-time approval token, so this only blunts someone
-    // brute-forcing tokens against the endpoint.
-    const limit = await rateLimitByIp(req, 'org-register', 10, 3600)
+    // brute-forcing tokens against the endpoint. Tight per email, looser per
+    // IP so several directors on one network can still register.
+    const limit = await rateLimitLogin(req, 'org-register', typeof email === 'string' ? email : null, {
+      perIp: 30, perEmail: 5, windowSeconds: 3600,
+    })
     if (!limit.ok) {
       return NextResponse.json(
         { error: 'Too many attempts — try again later' },
@@ -33,24 +41,25 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const { name, email, password, token, turnstileToken } = await req.json()
-
     const captcha = await verifyTurnstile(req, turnstileToken)
     if (!captcha.ok) {
       return NextResponse.json({ error: captcha.error }, { status: 400 })
     }
 
-    if (name && !isCleanDisplayText(name)) {
-      return NextResponse.json({ error: BLOCKED_TEXT_ERROR }, { status: 400 })
-    }
-    if (!name || !email || !password || password.length < 6) {
+    if (
+      typeof name !== 'string' || !name.trim() ||
+      typeof email !== 'string' || !email.trim() ||
+      typeof password !== 'string' || password.length < 6
+    ) {
       return NextResponse.json({ error: 'Organization name, email, and password (6+ chars) required' }, { status: 400 })
     }
+    const orgName = cleanDisplayText(name, 255)
+    if (!orgName.ok) return NextResponse.json({ error: orgName.error }, { status: 400 })
 
     const emailLower = email.toLowerCase().trim()
 
     // Require a valid approval token
-    if (!token) {
+    if (typeof token !== 'string' || !token) {
       return NextResponse.json({ error: 'Invalid or missing approval token.' }, { status: 403 })
     }
     const [application] = await db`
@@ -61,9 +70,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'This signup link is invalid or has already been used.' }, { status: 403 })
     }
 
-    const existing = await db`SELECT id FROM organizations WHERE admin_email = ${emailLower}`
+    const existing = await db`SELECT id FROM organizations WHERE LOWER(admin_email) = ${emailLower}`
     if (existing.length > 0) {
       return NextResponse.json({ error: 'An organization already exists for this email. Please log in.' }, { status: 409 })
+    }
+    // The email here is typed, not proven: it must not become a second
+    // identity for an existing coach (an org session under a coach's address
+    // would list that coach's own uploads).
+    if (await emailBelongsToCoachOrOrg(emailLower)) {
+      return NextResponse.json(
+        { error: 'This email already belongs to a coach or organization. Log in instead.' },
+        { status: 409 },
+      )
     }
 
     const hash = await bcrypt.hash(password, BCRYPT_COST)
@@ -77,7 +95,7 @@ export async function POST(req: NextRequest) {
 
     const [org] = await db`
       INSERT INTO organizations (name, admin_email, password_hash, access_code, subscription_status)
-      VALUES (${name.trim()}, ${emailLower}, ${hash}, ${accessCode}, 'comp')
+      VALUES (${orgName.value}, ${emailLower}, ${hash}, ${accessCode}, 'comp')
       RETURNING id, admin_email
     ` as unknown as [{ id: string; admin_email: string }]
 
@@ -87,7 +105,7 @@ export async function POST(req: NextRequest) {
     // New accounts join the marketing list (unsubscribe honored/preserved).
     await addToEmailList(emailLower)
 
-    const sessionToken = await signOrgSession({ orgId: org.id, adminEmail: org.admin_email })
+    const sessionToken = await signOrgSession({ orgId: org.id, adminEmail: org.admin_email }, hash)
     const res = NextResponse.json({ success: true })
     res.cookies.set(orgSessionCookieOptions(sessionToken))
     return res

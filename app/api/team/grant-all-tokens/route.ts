@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
 
     if (result === null) {
       return NextResponse.json(
-        { error: `Need ${total} team credits but the team doesn't have enough.` },
+        { error: `Need ${total} team tokens but the team doesn't have enough.` },
         { status: 400 },
       )
     }

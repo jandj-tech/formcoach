@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getTeamSessionFromRequest } from '@/lib/team-auth'
+import { getTeamSessionFromRequest, provenCoachCreditsEmail } from '@/lib/team-auth'
+import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { db } from '@/lib/db'
 
 // A coach on an org-linked team sends credits back to the organization's
@@ -34,7 +35,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'This team is not linked to an organization' }, { status: 400 })
     }
 
-    const coachEmail = session.adminEmail.toLowerCase()
+    // Personal coach tokens are keyed only by email: spend them only when this
+    // session proves it holds that email's credential (provenCoachCreditsEmail)
+    // — a stranger's legacy team under a real coach's address must not.
+    const coachEmail = from === 'personal'
+      ? await provenCoachCreditsEmail(session, await getOrgSessionFromRequest(req))
+      : null
+    if (from === 'personal' && !coachEmail) {
+      return NextResponse.json(
+        { error: 'Your coach tokens can’t be used from this login. Reset your coach password to unlock them.' },
+        { status: 403 },
+      )
+    }
 
     // Deduct from the chosen balance and credit the org atomically.
     const remaining = await db.begin(async (sql) => {
@@ -59,7 +71,7 @@ export async function POST(req: NextRequest) {
 
     if (remaining === null) {
       return NextResponse.json(
-        { error: from === 'team' ? 'Not enough team credits' : 'Not enough personal credits' },
+        { error: from === 'team' ? 'Not enough team tokens' : "You don't have enough tokens" },
         { status: 400 },
       )
     }
@@ -67,6 +79,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, remaining, orgName: team.org_name })
   } catch (err) {
     console.error('Team return-credits error:', err)
-    return NextResponse.json({ error: 'Could not return credits' }, { status: 500 })
+    return NextResponse.json({ error: 'Could not return tokens' }, { status: 500 })
   }
 }

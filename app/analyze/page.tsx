@@ -7,7 +7,7 @@ import PremiumCTA from '@/components/PremiumCTA'
 import UsageNotice from '@/components/UsageNotice'
 import { getUsageSummary, type UsageSummary } from '@/lib/player-dashboard'
 import { getSession } from '@/lib/auth'
-import { getTeamSession } from '@/lib/team-auth'
+import { getTeamSession, provenCoachCreditsEmail } from '@/lib/team-auth'
 import { getOrgSession } from '@/lib/org-auth'
 import { userTier, teamTier, orgTierById } from '@/lib/team-features'
 import type { OrgTier } from '@/lib/team-pricing'
@@ -52,9 +52,14 @@ export default async function AnalyzePage() {
         `) as unknown as [{ token_balance: number } | undefined]
         credits = o?.token_balance ?? 0
       } else {
-        const [c] = (await db`
-          SELECT credits FROM coach_credits WHERE email = ${coachEmail}
-        `) as unknown as [{ credits: number } | undefined]
+        // Only a team session that proves its email sees that email's tokens
+        // (the same gate /api/analyze applies before spending them).
+        const proven = teamSession ? await provenCoachCreditsEmail(teamSession, await getOrgSession()) : null
+        const [c] = proven
+          ? ((await db`
+              SELECT credits FROM coach_credits WHERE email = ${proven}
+            `) as unknown as [{ credits: number } | undefined])
+          : [undefined]
         credits = c?.credits ?? 0
       }
     } catch {

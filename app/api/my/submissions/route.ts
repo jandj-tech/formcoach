@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSessionFromRequest } from '@/lib/auth'
-import { getTeamSessionFromRequest } from '@/lib/team-auth'
+import { getTeamSessionFromRequest, provenSelfUploadEmail } from '@/lib/team-auth'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { db } from '@/lib/db'
 
@@ -29,13 +29,24 @@ export async function GET(req: NextRequest) {
         SELECT s.id, s.token, s.created_at, a.overall_score, a.frame_urls
         FROM submissions s
         JOIN analyses a ON a.submission_id = s.id
-        WHERE (s.user_id = ${session.userId} OR s.email = ${session.email})
+        -- user_id only: an email match is not ownership (security audit
+        -- item 1). Legacy anonymous shots were given a user_id at signup and
+        -- by the one-time backfill (migrate-email-list-legacy-sub.sql).
+        WHERE s.user_id = ${session.userId}
           AND s.status = 'complete'
         ORDER BY s.created_at DESC
         LIMIT 50
       `) as unknown as typeof rows
     } else {
-      const adminEmail = (teamSession?.adminEmail ?? orgSession!.adminEmail).toLowerCase()
+      // Self-uploads are keyed by email alone, so the email has to be PROVEN
+      // for this session: an org login is, but a team session is only when
+      // its row holds that email's one credential (provenSelfUploadEmail —
+      // a legacy self-registered team that copied a coach's address must not
+      // list that coach's shots). Unproven → an empty feed, not an error.
+      const adminEmail = teamSession
+        ? await provenSelfUploadEmail(teamSession, await getOrgSessionFromRequest(req))
+        : orgSession!.adminEmail.toLowerCase()
+      if (!adminEmail) return NextResponse.json({ submissions: [] })
       rows = (await db`
         SELECT s.id, s.token, s.created_at, a.overall_score, a.frame_urls
         FROM submissions s

@@ -21,7 +21,14 @@ export default async function AccountsPage() {
       u.created_at,
       COUNT(DISTINCT s.id)::int AS shot_count
     FROM users u
-    LEFT JOIN submissions s ON s.user_id = u.id OR s.email = u.email
+    -- An account's shots: its own, plus anonymous (pre-account) uploads under
+    -- its address — those only when no other account shares the address, or
+    -- every sibling on a family email would count the same anonymous shots
+    -- (and each other's). A shot owned by another account never counts.
+    LEFT JOIN submissions s ON s.user_id = u.id OR (
+      s.user_id IS NULL AND s.email = u.email
+      AND NOT EXISTS (SELECT 1 FROM users o WHERE LOWER(o.email) = LOWER(u.email) AND o.id <> u.id)
+    )
     GROUP BY u.id
     ORDER BY u.created_at DESC
     LIMIT 500

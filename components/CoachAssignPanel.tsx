@@ -14,9 +14,9 @@ type Source = 'personal' | 'team' | 'pool'
 type Mode = 'team' | 'players'
 
 const SOURCES: Array<{ id: Source; label: string; hint: string }> = [
-  { id: 'personal', label: 'My credits', hint: 'Your own balance' },
-  { id: 'team', label: 'Team credits', hint: 'Shared with the org' },
-  { id: 'pool', label: 'Token pool', hint: 'Unassigned team tokens' },
+  { id: 'personal', label: 'My tokens', hint: 'Your own balance' },
+  { id: 'team', label: 'Team tokens', hint: 'Shared with the org' },
+  { id: 'pool', label: 'Unassigned team tokens', hint: 'Not given out yet' },
 ]
 
 // One place for a coach to hand out tokens: pick which balance pays, pick
@@ -51,9 +51,9 @@ export default function CoachAssignPanel({
     pool: tokenPool,
   }
   const sourceLabels: Record<Source, string> = {
-    personal: 'my credits',
-    team: 'team credits',
-    pool: 'the token pool',
+    personal: 'your tokens',
+    team: 'team tokens',
+    pool: 'unassigned team tokens',
   }
 
   const filteredPlayers = useMemo(() => {

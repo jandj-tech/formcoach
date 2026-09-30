@@ -12,8 +12,7 @@ export const GUIDE_SECTIONS = [
   { id: 'uploading', title: 'Uploading & evaluating shots' },
   { id: 'viewing-scores', title: 'Viewing scores' },
   { id: 'sending-results', title: 'Sending results to players (the weekly routine)' },
-  { id: 'what-players-see', title: 'Choosing what players see' },
-  { id: 'locking-results', title: 'Locking results behind payment' },
+  { id: 'what-players-see', title: 'What players see' },
   { id: 'selling', title: 'Selling to families — products & pricing' },
   { id: 'payments', title: 'Payments, sales & your earnings' },
   { id: 'coach-led-program', title: 'The Coach-Led Development Program' },
@@ -278,7 +277,7 @@ export function GettingStarted() {
             { k: 'Organization code', v: 'MAPLE24' },
             { k: 'Teams', v: '3' },
             { k: 'Players', v: '41' },
-            { k: 'Org credits', v: '120' },
+            { k: 'Organization tokens', v: '120' },
           ].map(c => (
             <div key={c.k} className="rounded-lg bg-white border border-gray-200 px-2 py-1.5 text-center">
               <p className="text-[9px] font-black uppercase tracking-wide text-gray-400 truncate">{c.k}</p>
@@ -294,12 +293,12 @@ export function GettingStarted() {
             {[
               ['Teams', 'Add teams, add coaches, open a team’s own dashboard.'],
               ['Schedule', 'Practice and game schedule for your teams.'],
-              ['Coach-Led Program', 'The separate 10-week coach-run package (see section 11).'],
+              ['Coach-Led Program', 'The separate 10-week coach-run package (see section 10).'],
               ['Tokens', 'Buy analysis tokens and hand them out to teams, coaches or players.'],
               ['Leaderboard', 'Every graded player across the whole club, ranked.'],
               ['Players', 'Every player on every roster.'],
               ['Results', 'New. Email each player their latest score and a private link.'],
-              ['Offers & Sales', 'New. Three sections at the top: Offers, What players see, Sales & earnings.'],
+              ['Offers & Sales', 'New. Two sections at the top: Offers and Sales & earnings.'],
               ['Purchases', 'Your token and plan purchases.'],
               ['My Uploads', 'Shots you uploaded yourself.'],
               ['Settings', 'Appearance (light or dark).'],
@@ -487,19 +486,19 @@ export function Uploading() {
       />
 
       <Sub>Tokens — what an upload costs</Sub>
-      <P>Every analysis costs <b>1 token</b> (also called a credit). Your club buys tokens once and hands them out.</P>
+      <P>Every analysis costs <b>1 token</b>. Your club buys tokens once and hands them out.</P>
       <Steps
         items={[
           <>Open the <b>Tokens</b> tab.</>,
           <>Click <b>Buy tokens</b>. Buying 10 or more gets the organization bulk rate of <b>$2.49 each</b>. Tokens are bought on the website only, not in the iOS app.</>,
-          <>Hand tokens out with the <b>Send</b> panel: send them to a player, or to a coach&apos;s credits so the coach can upload for anyone on their roster.</>,
+          <>Hand tokens out with the <b>Send</b> panel: send them to a player, or to a coach so the coach can upload for anyone on their roster.</>,
           <>Or click <b>Allocate to team</b> to give a team a block of tokens.</>,
         ]}
       />
       <Figure caption="The Tokens tab: balance, Buy tokens, and the Send panel.">
         <div className="flex items-center justify-between gap-3 mb-2">
           <div>
-            <p className="text-[9px] font-black uppercase tracking-wide text-gray-400">Org credits</p>
+            <p className="text-[9px] font-black uppercase tracking-wide text-gray-400">Organization tokens</p>
             <p className="text-lg font-black font-numeric text-black">120</p>
           </div>
           <MockButton primary>Buy tokens</MockButton>
@@ -599,7 +598,7 @@ export function SendingResults() {
           <>You see every player, their latest score, when it was graded, and a status chip (explained below).</>,
           <>Tick the players you want to email, or click <b>Select all</b>.</>,
           <>Click <b>Preview email</b>. This shows the exact email a player will get.</>,
-          <>Click <b>Open the player&apos;s view</b>. The report opens exactly as the player will see it. A bar at the top lets you step through each visibility level, so you can see what is free and what is locked.</>,
+          <>Click <b>Open the player&apos;s view</b>. The report opens exactly as the player will see it: the full report, with your ball and class offers below it.</>,
           <>Click <b>Send results to N players</b> (N is how many you ticked).</>,
           <>Confirm. Each player gets an email with their score and a private link to their report.</>,
         ]}
@@ -611,15 +610,11 @@ export function SendingResults() {
           </div>
           <MockButton primary>Send results to 3 players</MockButton>
         </div>
-        <p className="text-[10px] text-gray-500 mb-2">
-          Players see: <b>Main score only</b> &middot; Unlock: <b>Full results including comments</b> &middot; <span className="underline">Change in Offers</span>
-        </p>
         <div className="rounded-lg bg-white border border-gray-200 divide-y divide-gray-100">
           {[
             { name: 'Ava R.', score: '7.4', when: 'Sep 3', chip: <Chip tone="green">Sent Sep 1</Chip>, checked: true },
             { name: 'Jordan P.', score: '6.1', when: 'Sep 3', chip: <Chip tone="gray">Not sent</Chip>, checked: true },
             { name: 'Marcus T.', score: '8.0', when: 'Sep 2', chip: <Chip tone="orange">No email — share join link</Chip>, checked: false },
-            { name: 'Sam K.', score: '7.9', when: 'Sep 3', chip: <Chip tone="blue">Unlocked</Chip>, checked: true },
           ].map(r => (
             <div key={r.name} className="flex items-center gap-2 px-3 py-1.5">
               <span className={`print-color w-3.5 h-3.5 rounded border ${r.checked ? 'bg-orange-500 border-orange-500' : 'bg-white border-gray-300'}`} />
@@ -640,7 +635,6 @@ export function SendingResults() {
             {[
               { chip: <Chip tone="gray">Not sent</Chip>, text: 'This player has a graded shot you have not emailed yet.' },
               { chip: <Chip tone="green">Sent Sep 1</Chip>, text: 'The email went out on that date.' },
-              { chip: <Chip tone="blue">Unlocked</Chip>, text: 'The family bought an upgrade. They see the unlocked level.' },
               { chip: <Chip tone="orange">No email — share join link</Chip>, text: 'Name-only player. Send the join link (section 3) so they can get emails.' },
               { chip: <Chip tone="red">Unsubscribed</Chip>, text: 'They opted out of LearnHoops email. We cannot email them; tell them in person.' },
               { chip: <Chip tone="red">Bounced</Chip>, text: 'Their email address rejected a message. The address must be fixed on their account.' },
@@ -658,144 +652,51 @@ export function SendingResults() {
       <Steps
         items={[
           <>Find the player&apos;s row in the <b>Results</b> tab.</>,
-          <>Click <b>Resend</b>. The same private link is sent again, and the free-visibility level is refreshed to your current setting.</>,
+          <>Click <b>Resend</b>. The same private link is sent again.</>,
         ]}
       />
       <Callout kind="important">
         There is a limit of about <b>20 sends per hour per organization</b>. If you hit it, the tab tells you. Wait an hour and send the rest.
       </Callout>
       <Callout kind="tip">
-        The line <b>Players see: … · Unlock: …</b> above the list shows your current visibility settings. Click <b>Change in Offers</b> to adjust them before you send (section 7).
+        Every player sees their <b>full report</b> from the link — nothing to set before you send (section 7).
       </Callout>
     </Section>
   )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 7. Choosing what players see
+// 7. What players see
 // ─────────────────────────────────────────────────────────────────────────────
-const LEVELS = [
-  ['Main score only', 'The overall score out of 10 and the letter grade. Nothing else.'],
-  ['Score + category scores', 'Adds the five area scores (Base & Balance, Grip & Set, Release, Follow-Through, Power & Flow).'],
-  ['Full score breakdown', 'Adds all 18 individual check scores.'],
-  ['Full results including comments', 'Everything: written feedback per check, coach notes, tips and frames.'],
-] as const
-
 export function WhatPlayersSee() {
   return (
     <Section
       id="what-players-see"
-      what="Decides how much of the report a family sees for free from the email, and how much they see if they buy an upgrade."
-    >
-      <Steps
-        items={[
-          <>Open the <b>Offers &amp; Sales</b> tab.</>,
-          <>Click <b>What players see</b> at the top of the tab.</>,
-          <>Under <b>Free with the email</b>, choose one of the four levels below.</>,
-          <>Under <b>After they buy</b>, choose one of the same four levels.</>,
-          <>Click <b>Save</b>.</>,
-          <>Check it: go to the <b>Results</b> tab and click <b>Open the player&apos;s view</b>. Use the bar at the top to step through the levels.</>,
-        ]}
-      />
-      <div className="rounded-xl border border-gray-200 overflow-hidden mb-5">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-[10px] font-black uppercase tracking-wide text-gray-400 text-left bg-gray-50">
-              <th className="py-2 px-3">Level</th>
-              <th className="py-2 px-3">What the family sees</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {LEVELS.map(([k, v]) => (
-              <tr key={k}>
-                <td className="py-2 px-3 font-black text-black whitespace-nowrap align-top">{k}</td>
-                <td className="py-2 px-3 text-gray-600 align-top">{v}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <Figure caption="The What players see card.">
-        <div className="rounded-lg bg-white border border-gray-200 p-3">
-          <p className="font-black text-sm text-black mb-2">What players see</p>
-          <div className="grid grid-cols-2 gap-2 mb-2">
-            <MockField label="Free with the email" value="Full results including comments" />
-            <MockField label="After they buy" value="Full results including comments" />
-          </div>
-          <MockButton primary>Save</MockButton>
-        </div>
-      </Figure>
-      <Callout kind="tip">
-        The default is <b>Full</b> for both. That means <b>no paywall</b>: families get the whole report for free. Leave it that way if you do not plan to sell anything.
-      </Callout>
-    </Section>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 8. Locking results behind payment
-// ─────────────────────────────────────────────────────────────────────────────
-export function LockingResults() {
-  return (
-    <Section
-      id="locking-results"
-      what="Creates a paywall: families see part of the report for free and can pay to unlock the rest."
+      what="Explains what a family sees when they open the private link from a results email."
     >
       <P>
-        A paywall exists whenever the <b>Free with the email</b> level is <b>lower</b> than the <b>After they buy</b> level.
-        The gap between the two is what a family is paying for.
+        Every shot your club, a team or a coach uploads shows the player their <b>full report</b>, always: the score and grade, the
+        five area scores, all 18 checks with written feedback, coach notes, tips and the shot frames. There is nothing to choose and
+        nothing locked. Each upload is paid for with your analysis tokens, so families never pay to see a report.
       </P>
       <Steps
         items={[
-          <>Make sure at least one offer is turned <b>On</b> (section 9). Otherwise families would see less and have nothing to buy.</>,
-          <>Open the <b>Offers &amp; Sales</b> tab and click <b>What players see</b> at the top.</>,
-          <>Set <b>Free with the email</b> to a lower level, for example <b>Main score only</b> or <b>Score + category scores</b>.</>,
-          <>Set <b>After they buy</b> to <b>Full results including comments</b>.</>,
-          <>Click <b>Save</b>.</>,
-          <>Go to the <b>Results</b> tab and click <b>Open the player&apos;s view</b>. Step through the bar at the top to confirm what is free and what is locked.</>,
-          <>Send results as usual (section 6). Below the free part of the report, families now see your offers with a <b>Buy</b> button.</>,
+          <>Check it any time: in the <b>Results</b> tab, click <b>Open the player&apos;s view</b>.</>,
+          <>Below the report, families see any <b>ball</b> or <b>Shooting Class</b> offers you have turned <b>On</b> (section 8).</>,
         ]}
       />
-      <Figure caption="How a family sees a locked report: score is free, the rest sits behind the offers.">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="print-color w-12 h-12 rounded-xl bg-black text-white flex flex-col items-center justify-center leading-none">
-            <span className="text-lg font-black font-numeric">7.4</span>
-            <span className="text-[9px] font-bold text-orange-400 mt-0.5">B</span>
-          </div>
-          <div>
-            <p className="font-black text-sm text-black">Your score</p>
-            <p className="text-[10px] text-gray-500">Free with the email</p>
-          </div>
-        </div>
-        <div className="rounded-lg border border-dashed border-gray-300 bg-white p-2.5 mb-2 text-center text-gray-400">
-          18 checks &middot; written feedback &middot; tips &middot; frames &mdash; <b>locked</b>
-        </div>
-        <div className="rounded-lg bg-white border border-gray-200 p-2.5 flex items-center justify-between gap-2">
-          <div>
-            <p className="font-black text-black">Full Shot Breakdown</p>
-            <p className="text-[10px] text-gray-500"><s>$49.99</s> <b className="text-black">$29.99</b> club price</p>
-          </div>
-          <MockButton primary>Buy</MockButton>
-        </div>
-      </Figure>
-      <Callout kind="important">
-        An offer must be turned <b>On</b> (section 9) before lowering the free level does anything but hide information — otherwise players see the lower level with nothing to buy.
-      </Callout>
-      <Callout kind="tip">
-        <b>Score + category scores</b> is a good free level. Families see the number and where the shot is strong or weak, and the detail behind it is what they buy.
-      </Callout>
     </Section>
   )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 9. Selling to families — products & pricing
+// 8. Selling to families — products & pricing
 // ─────────────────────────────────────────────────────────────────────────────
 export function Selling() {
   return (
     <Section
       id="selling"
-      what="Lets families buy things from their results page: the full breakdown, a LearnHoops ball, your Shooting Class, or bundles, at prices you set."
+      what="Lets families buy things from their results page: a LearnHoops ball, your Shooting Class, or bundles, at prices you set."
     >
       <Sub>How the money works</Sub>
       <P>
@@ -818,11 +719,11 @@ export function Selling() {
         ]}
       />
       <Callout kind="tip">
-        Visibility settings and sending results work right away too. Every offer starts <b>Off</b> until you flip it on.
+        Sending results works right away too. Every offer starts <b>Off</b> until you flip it on.
       </Callout>
 
-      <Sub>Step 2 — Review the four draft offers</Sub>
-      <P>Four offers are pre-created for you, all switched <b>Off</b>, with draft prices. Review every price before you turn anything on. Nothing is final until you say so.</P>
+      <Sub>Step 2 — Review the three draft offers</Sub>
+      <P>Three offers are pre-created for you, all switched <b>Off</b>, with draft prices. Review every price before you turn anything on. Nothing is final until you say so.</P>
       <div className="rounded-xl border border-gray-200 overflow-hidden mb-5">
         <table className="w-full text-sm">
           <thead>
@@ -835,7 +736,6 @@ export function Selling() {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {[
-              ['Full Shot Breakdown', 'Unlocks the full report for that one shot.', '$29.99', '$49.99'],
               ['LearnHoops Ball + Full Analysis', 'A LearnHoops ball shipped to the family by LearnHoops, plus the full report.', '$50', '$79.99'],
               ['Shooting Class', 'Registration for your own shooting class.', '$300', '$399'],
               ['Shooting Class + Ball', 'The class and the ball together.', 'You set it', 'You set it'],
@@ -859,8 +759,7 @@ export function Selling() {
           <>Set the <b>Regular price</b>. Families see this crossed out.</>,
           <>Set the <b>Club price</b>. This is what your families actually pay.</>,
           <>Optionally set a <b>Discount price</b> for a short promotion. It must beat the club price.</>,
-          <>Tick what the offer <b>Includes</b>: <b>Full breakdown</b>, <b>LearnHoops ball</b>, <b>Shooting Class</b>.</>,
-          <>Under <b>After purchase, unlock</b>, pick <b>This report only</b> or <b>All this player&apos;s reports</b>.</>,
+          <>Tick what the offer <b>Includes</b>: <b>LearnHoops ball</b>, <b>Shooting Class</b>, or both.</>,
           <>Check the line <b>Families pay · LearnHoops keeps · You get</b> under the prices — that is exactly how each sale splits.</>,
           <>Click <b>Save</b>.</>,
           <>Flip the switch to <b>On</b>.</>,
@@ -882,12 +781,10 @@ export function Selling() {
           </p>
           <div className="flex flex-wrap gap-x-3 gap-y-1 mb-2 text-[11px] text-gray-700">
             <span className="font-black text-gray-400 uppercase text-[10px] tracking-wide w-full">Includes</span>
-            <span>&#9744; Full breakdown</span>
             <span>&#9744; LearnHoops ball</span>
             <span>&#9745; Shooting Class</span>
           </div>
           <div className="grid grid-cols-2 gap-2 mb-2">
-            <MockField label="After purchase, unlock" value="All this player’s reports" />
             <MockField label="Team join link" value="U13 Girls" />
           </div>
           <div className="flex gap-1.5">
@@ -932,7 +829,6 @@ export function Selling() {
           <>Open the <b>Shooting Class</b> offer.</>,
           <>Set the <b>Club price</b> (and a <b>Regular price</b> to show crossed out).</>,
           <>Under <b>Team join link</b>, pick the team a class player should join. The buyer&apos;s receipt includes that team&apos;s join link.</>,
-          <>Set <b>After purchase, unlock</b> to <b>All this player&apos;s reports</b>, so class players stay unlocked every week.</>,
           <>Click <b>Save</b>, then turn it <b>On</b>.</>,
         ]}
       />
@@ -946,9 +842,6 @@ export function Selling() {
           <>Click <b>Save</b>, then turn it <b>On</b>.</>,
         ]}
       />
-      <Callout kind="important">
-        For anything that includes the <b>Shooting Class</b> or the <b>LearnHoops ball</b>, set <b>After purchase, unlock</b> to <b>All this player&apos;s reports</b>. A family who paid for a class should never hit a paywall on next week&apos;s shot.
-      </Callout>
       <Callout kind="tip">
         Do not need an offer? Click <b>Delete</b> on its card. You can always click <b>Add offer</b> later.
       </Callout>
@@ -971,7 +864,7 @@ export function Payments() {
           <>The family opens the private link from their results email.</>,
           <>Below the score they see your offer cards with prices and a <b>Buy</b> button.</>,
           <>They click <b>Buy</b> and pay by card.</>,
-          <>The report unlocks within seconds. A ball buyer also picks a size and shooting hand and enters a shipping address.</>,
+          <>A ball buyer also picks a size and shooting hand and enters a shipping address.</>,
           <>You get an email for every sale.</>,
         ]}
       />
@@ -1060,7 +953,7 @@ export function CoachLedProgram() {
       what="Describes the separate, older program in the Coach-Led Program tab, so you do not mix it up with the Shooting Class you sell to families."
     >
       <P>
-        The <b>Coach-Led Development Program</b> is a different product from the offers in section 9. Here <b>your club prepays</b>
+        The <b>Coach-Led Development Program</b> is a different product from the offers in section 8. Here <b>your club prepays</b>
         LearnHoops <b>$40 per player</b> for a 10-week package, and your coach runs the sessions from a ready-made curriculum.
         Families do not buy anything from a results page. The <b>Shooting Class</b> offer, by contrast, is your own class that
         families pay for directly.
@@ -1188,7 +1081,7 @@ const TROUBLE: Array<{ problem: ReactNode; fix: ReactNode }> = [
     fix: (
       <>
         Check the filming angle first: from the front, whole body in frame, not from across the gym. See <b>learnhoops.com/support#filming</b>.
-        Add a coach note on the report with your own suggested score (section 12).
+        Add a coach note on the report with your own suggested score (section 11).
       </>
     ),
   },
@@ -1201,26 +1094,10 @@ const TROUBLE: Array<{ problem: ReactNode; fix: ReactNode }> = [
     ),
   },
   {
-    problem: 'A family paid but the report is still locked.',
-    fix: (
-      <>
-        Ask them to wait 30 seconds and refresh the page. If it is still locked, email <b>support@learnhoops.com</b> with the buyer&apos;s email address.
-      </>
-    ),
-  },
-  {
     problem: 'A player is on the roster but has no email.',
     fix: (
       <>
         They were added name-only from an upload. Send the family the team join link (<b>learnhoops.com/signup?teamCode=XXXXXX</b>). Once they create an account, results can be emailed.
-      </>
-    ),
-  },
-  {
-    problem: 'I want to change how much families see for free.',
-    fix: (
-      <>
-        <b>Offers &amp; Sales</b> tab, click <b>What players see</b> at the top, change <b>Free with the email</b>, click <b>Save</b>. Then <b>Resend</b> to anyone already sent, which refreshes their free level.
       </>
     ),
   },

@@ -4,8 +4,9 @@ import { db } from '@/lib/db'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { orgCanAddTeam, orgIsEntitledById, SUBSCRIPTION_ENDED_MESSAGE, TEAM_LIMIT_MESSAGE } from '@/lib/team-features'
 import { sendCoachInviteEmail, sendCoachAddedEmail, sendTeamCreatedEmail } from '@/lib/email'
-import { isCleanDisplayText, BLOCKED_TEXT_ERROR } from '@/lib/moderation'
+import { cleanDisplayText, cleanOptionalDisplayText } from '@/lib/moderation'
 import { resolveBaseUrl } from '@/lib/base-url'
+import { sameOrgCoachCredential } from '@/lib/team-auth'
 
 function generateAccessCode(): string {
   // randomInt, not Math.random: an access code is a bearer credential (it lets
@@ -45,13 +46,17 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const { name, ageGroup, coachEmail, coachName } = await req.json()
-    if (!isCleanDisplayText(`${name ?? ''} ${coachName ?? ''}`)) {
-      return NextResponse.json({ error: BLOCKED_TEXT_ERROR }, { status: 400 })
-    }
-    if (!name || typeof name !== 'string' || !name.trim()) {
+    const { name: rawName, ageGroup: rawAgeGroup, coachEmail, coachName } = await req.json()
+    if (!rawName || typeof rawName !== 'string' || !rawName.trim()) {
       return NextResponse.json({ error: 'Team name is required' }, { status: 400 })
     }
+    const teamName = cleanDisplayText(rawName, 255)
+    if (!teamName.ok) return NextResponse.json({ error: teamName.error }, { status: 400 })
+    const coach = cleanOptionalDisplayText(coachName, 100)
+    if (!coach.ok) return NextResponse.json({ error: coach.error }, { status: 400 })
+    const ageGroup = cleanOptionalDisplayText(rawAgeGroup, 50)
+    if (!ageGroup.ok) return NextResponse.json({ error: ageGroup.error }, { status: 400 })
+    const name = teamName.value
 
     // Coach email is optional — if blank, the org owner coaches the team itself.
     const emailLower = typeof coachEmail === 'string' ? coachEmail.toLowerCase().trim() : ''
@@ -63,8 +68,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Organization not found' }, { status: 404 })
     }
 
-    const ageGroupValue =
-      typeof ageGroup === 'string' && ageGroup.trim() ? ageGroup.trim() : null
+    const ageGroupValue = ageGroup.value
 
     // Generate a unique access code (retry on rare collision)
     let accessCode = generateAccessCode()
@@ -77,44 +81,48 @@ export async function POST(req: NextRequest) {
     // --- Self-coached: the org owner is the coach. No invite, no separate
     // account — the org opens this team from the org dashboard. ---
     if (!emailLower) {
-      const nickname =
-        typeof coachName === 'string' && coachName.trim() ? coachName.trim().slice(0, 100) : null
+      const nickname = coach.value
       await db`
         INSERT INTO teams (name, admin_email, password_hash, access_code, organization_id, age_group, coach_nickname)
-        VALUES (${name.trim()}, ${session.adminEmail}, ${null}, ${accessCode}, ${org.id}, ${ageGroupValue}, ${nickname})
+        VALUES (${name}, ${session.adminEmail}, ${null}, ${accessCode}, ${org.id}, ${ageGroupValue}, ${nickname})
       `
       const baseUrl = resolveBaseUrl()
       try {
-        await sendTeamCreatedEmail(session.adminEmail, org.name, name.trim(), accessCode, `${baseUrl}/org/dashboard`)
+        await sendTeamCreatedEmail(session.adminEmail, org.name, name, accessCode, `${baseUrl}/org/dashboard`)
       } catch {}
       return NextResponse.json({ success: true, teamCode: accessCode, selfCoached: true })
     }
 
-    // If this coach already has a set-up account (a team with a password),
-    // add the new team using that same password — no invite needed.
-    const [existingCoach] = await db`
-      SELECT password_hash FROM teams
-      WHERE admin_email = ${emailLower} AND password_hash IS NOT NULL
-      LIMIT 1
-    ` as unknown as [{ password_hash: string } | undefined]
+    // The coach's display name is kept for every kind of team, not only
+    // self-coached ones (it used to be dropped when an email was given).
+    const coachNickname = coach.value
+
+    // A coach who already coaches on another team of THIS organization (a
+    // row there with a password) gets the new team on that same password —
+    // no invite needed. Anyone else, including an address that has a
+    // password only on another org's team or on a self-registered team, gets
+    // the normal emailed invite: copying a hash from any row with this email
+    // let a stranger who registered a team under the coach's address first
+    // walk into the org's new team with their own password.
+    const existingCoach = await sameOrgCoachCredential(emailLower, org.id)
 
     if (existingCoach) {
       await db`
-        INSERT INTO teams (name, admin_email, password_hash, access_code, organization_id, age_group)
-        VALUES (${name.trim()}, ${emailLower}, ${existingCoach.password_hash}, ${accessCode}, ${org.id}, ${ageGroupValue})
+        INSERT INTO teams (name, admin_email, password_hash, access_code, organization_id, age_group, coach_nickname)
+        VALUES (${name}, ${emailLower}, ${existingCoach.hash}, ${accessCode}, ${org.id}, ${ageGroupValue}, ${coachNickname})
       `
-      await sendCoachAddedEmail(emailLower, org.name, name.trim())
+      await sendCoachAddedEmail(emailLower, org.name, name)
       return NextResponse.json({ success: true, teamCode: accessCode })
     }
 
     const inviteToken = crypto.randomBytes(32).toString('hex')
 
     await db`
-      INSERT INTO teams (name, admin_email, password_hash, access_code, organization_id, age_group, coach_invite_token, invite_sent_at)
-      VALUES (${name.trim()}, ${emailLower}, ${null}, ${accessCode}, ${org.id}, ${ageGroupValue}, ${inviteToken}, NOW())
+      INSERT INTO teams (name, admin_email, password_hash, access_code, organization_id, age_group, coach_invite_token, invite_sent_at, coach_nickname)
+      VALUES (${name}, ${emailLower}, ${null}, ${accessCode}, ${org.id}, ${ageGroupValue}, ${inviteToken}, NOW(), ${coachNickname})
     `
 
-    await sendCoachInviteEmail(emailLower, org.name, name.trim(), inviteToken)
+    await sendCoachInviteEmail(emailLower, org.name, name, inviteToken)
 
     return NextResponse.json({ success: true, teamCode: accessCode })
   } catch (err) {

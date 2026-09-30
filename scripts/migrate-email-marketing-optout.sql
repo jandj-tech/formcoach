@@ -1,0 +1,15 @@
+-- Marketing-only opt-out (security audit 2026-09-28, item 3 / QA D4).
+--
+-- unsubscribed_at is the FULL opt-out: it stops marketing AND the team
+-- announcement / results / player emails a family's coach sends through us.
+-- Old emails in people's inboxes carry an UNSIGNED /unsubscribe link, and a
+-- mail provider's RFC 8058 one-click on such a link arrives server-to-server
+-- with no Origin -- indistinguishable from a script. So an unsigned request
+-- may only set this column, which marketing senders (promo, drip, abandoned
+-- checkout, admin broadcasts) honour alongside unsubscribed_at, while team
+-- mail keeps checking unsubscribed_at alone. Only a signed request sets
+-- unsubscribed_at.
+--
+-- Additive and idempotent; no backfill (every existing opt-out is already the
+-- stronger unsubscribed_at).
+ALTER TABLE email_list ADD COLUMN IF NOT EXISTS marketing_unsubscribed_at TIMESTAMPTZ;

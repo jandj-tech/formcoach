@@ -1,5 +1,6 @@
 'use client'
 
+import { BasketballIcon } from '@/components/backend/BasketballIcon'
 import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import TopNav from '@/components/TopNav'
@@ -118,7 +119,7 @@ function OrgSignupInner() {
         <div className="flex-1 flex items-center justify-center px-6 py-12">
           <div className="w-full max-w-sm space-y-6">
             <div className="text-center space-y-2">
-              <div className="text-4xl">🏀</div>
+              <BasketballIcon aria-hidden className="w-10 h-10 mx-auto text-ember-500" />
               <h1 className="text-2xl font-black text-black">Set up your organization</h1>
               <p className="text-gray-500 text-sm">Your application was approved — create your account below.</p>
             </div>
@@ -177,7 +178,7 @@ function OrgSignupInner() {
       <div className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-sm space-y-6">
           <div className="text-center space-y-2">
-            <div className="text-4xl">🏀</div>
+            <BasketballIcon aria-hidden className="w-10 h-10 mx-auto text-ember-500" />
             <h1 className="text-2xl font-black text-black">Start your organization</h1>
             <p className="text-gray-500 text-sm">Tell us about your club and pick a plan — you&apos;ll be set up in a couple of minutes.</p>
           </div>

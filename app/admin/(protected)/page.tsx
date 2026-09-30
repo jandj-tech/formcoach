@@ -8,6 +8,7 @@ export default async function AdminDashboard() {
       -- address is excluded here exactly as the send crons exclude it.
       (SELECT COUNT(*) FROM email_list
         WHERE unsubscribed_at IS NULL
+          AND marketing_unsubscribed_at IS NULL
           AND bounced_at IS NULL
           AND complained_at IS NULL) as active_emails,
       (SELECT COUNT(*) FROM criterion_scores WHERE admin_score IS NOT NULL) as learn_corrections,

@@ -1,7 +1,8 @@
+// Usage: FRAME_CHECKS=1 npx tsx --env-file=.env.local scripts/eval/frame-checks-probe.ts  (SLUGS=, REPS=, R=)
 // Free test: run ONLY the frame checks (no grading passes) on the reextracted
 // frames, several times per fixture, and print what fired.
 import fs from 'fs'
-import { runFrameChecks, frameCheckBounds } from '../lib/frame-checks'
+import { runFrameChecks, frameCheckBounds } from '../../lib/frame-checks'
 const model = process.env.ANALYSIS_MODEL || 'qwen/qwen3.7-flash'
 const R = Number(process.env.R || 18)   // reextract window is release-0.6s..+0.3s over 28 frames
 const REPS = Number(process.env.REPS || 3)

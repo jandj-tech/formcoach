@@ -14,32 +14,46 @@ export default async function OrgMemberShotsPage({ params }: { params: Promise<{
 
   const { userId } = await params
 
-  const [player] = (await db`
+  // Every team of this org the player is on (a player can be on several).
+  const memberships = (await db`
     SELECT u.id, u.email, u.nickname, tm.first_name, tm.last_name_initial, t.name AS team_name
     FROM team_memberships tm
     JOIN users u ON u.id = tm.user_id
     JOIN teams t ON t.id = tm.team_id
     WHERE tm.user_id = ${userId} AND t.organization_id = ${session.orgId}
-    LIMIT 1
-  `) as unknown as [{
+    ORDER BY t.name, t.id
+  `) as unknown as Array<{
     id: string
     email: string
     nickname: string | null
     first_name: string | null
     last_name_initial: string | null
     team_name: string
-  } | undefined]
+  }>
 
+  // The name as a roster spells it (the first team with one), else the account's.
+  const player = memberships.find((m) => m.first_name) ?? memberships[0]
   if (!player) return notFound()
 
   const shots = (await db`
-    SELECT s.id, s.token, s.created_at, a.overall_score
+    SELECT s.id, s.token, s.created_at, a.overall_score, t.name AS team_name
     FROM submissions s
     LEFT JOIN analyses a ON a.submission_id = s.id
-    WHERE s.user_id = ${player.id} OR s.email = ${player.email}
+    JOIN teams t ON t.id = s.team_id
+    -- Only shots filed to one of this organization's teams — never the
+    -- player's personal self-paid shots or another organization's.
+    WHERE s.user_id = ${player.id}
+      AND t.organization_id = ${session.orgId}
     ORDER BY s.created_at DESC
     LIMIT 100
-  `) as unknown as Array<{ id: string; token: string; created_at: string; overall_score: string | number | null }>
+  `) as unknown as Array<{
+    id: string
+    token: string
+    created_at: string
+    overall_score: string | number | null
+    team_name: string
+  }>
+  const teamNames = [...new Set(memberships.map((m) => m.team_name))]
 
   const playerName = player.first_name
     ? `${player.first_name}${player.last_name_initial ? ` ${player.last_name_initial}.` : ''}`
@@ -52,7 +66,7 @@ export default async function OrgMemberShotsPage({ params }: { params: Promise<{
         <DashboardHeader
           eyebrow="Player"
           title={<h1 className="text-2xl sm:text-3xl font-black text-black dark:text-chalk">{playerName}</h1>}
-          meta={`${player.team_name} · ${shots.length} shot${shots.length !== 1 ? 's' : ''} analyzed`}
+          meta={`${teamNames.join(' · ')} · ${shots.length} shot${shots.length !== 1 ? 's' : ''} analyzed`}
           back={{ href: '/org/dashboard', label: 'Back to organization dashboard' }}
         />
 

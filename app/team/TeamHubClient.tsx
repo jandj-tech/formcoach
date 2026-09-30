@@ -20,6 +20,8 @@ export interface HubTeam {
   memberCount: number
   coaches: string[]
   players: string[]
+  /** The coach keeps the leaderboard private — the link opens the player's own results. */
+  leaderboardHidden?: boolean
 }
 
 function TeamHubBody({
@@ -98,7 +100,9 @@ function TeamHubBody({
       >
         <span className="flex items-center gap-3">
           <TrophyIcon aria-hidden className="w-5 h-5 text-ember-400 shrink-0" />
-          <span className="font-display font-bold uppercase text-chalk tracking-wide">Leaderboard</span>
+          <span className="font-display font-bold uppercase text-chalk tracking-wide">
+            {team.leaderboardHidden ? 'Your team results' : 'Leaderboard'}
+          </span>
         </span>
         <ArrowRightIcon aria-hidden className="w-5 h-5 text-chalk-dim shrink-0" />
       </Link>

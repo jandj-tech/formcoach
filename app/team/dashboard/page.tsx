@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
-import { getTeamSession } from '@/lib/team-auth'
+import { getTeamSession, provenCoachCreditsEmail, switchableTeams } from '@/lib/team-auth'
+import { teamLeaderboard, teamMostImproved } from '@/lib/team-shots'
 import { getOrgSession } from '@/lib/org-auth'
 import { db } from '@/lib/db'
 import TopNav from '@/components/TopNav'
@@ -7,6 +8,7 @@ import SiteFooter from '@/components/SiteFooter'
 import TeamDashboardClient from './TeamDashboardClient'
 import type { ClassManagerPackage } from '@/components/ClassManager'
 import { teamTier } from '@/lib/team-features'
+import { loadTeamRosterEntries, type TeamRosterEntry } from '@/lib/team-roster-refs'
 
 export default async function TeamDashboardPage() {
   const session = await getTeamSession()
@@ -23,9 +25,12 @@ export default async function TeamDashboardPage() {
   const orgSession = await getOrgSession()
   const fromOrg = !!orgSession && !!team.organization_id && team.organization_id === orgSession.orgId
 
-  const allTeams = await db`
-    SELECT id, name FROM teams WHERE admin_email = ${session.adminEmail} AND password_hash IS NOT NULL ORDER BY name ASC
-  ` as unknown as Array<{ id: string; name: string }>
+  // The team switcher: every team this email coaches — head coach, added
+  // coach (team_coaches) or owning org's admin — narrowed to exactly what
+  // /api/team/select will accept for THIS session (same credential, or a live
+  // org session for org teams). Head-coach teams alone used to be listed,
+  // so a coach who heads one team and assists on another never saw the other.
+  const allTeams = await switchableTeams(session, orgSession)
 
   let leaderboard: Array<{
     id: string
@@ -45,88 +50,16 @@ export default async function TeamDashboardPage() {
     latest_score: number
   }> = []
 
-  let members: Array<{ id: string; email: string; tokens: number; first_name: string | null; last_name_initial: string | null }> = []
+  let members: Array<{ id: string; email: string; tokens: number; first_name: string | null; last_name_initial: string | null; roster_pending?: boolean; club_plan?: string | null; club_ends_at?: string | null }> = []
   let pendingMembers: Array<{ id: string; first_name: string; last_name_initial: string | null; invite_token: string | null }> = []
   let coaches: Array<{ id: string; email: string; pending: boolean; nickname: string | null }> = []
   let headCoachNickname: string | null = null
   let teamTokenPool = 0
 
   try {
-    // Shots come from two sources: players who joined with an account
-    // (submissions.user_id) and players a coach uploaded for by name
-    // (submissions.team_player_id). The leaderboard combines both.
-    leaderboard = (await db`
-      WITH shots AS (
-        SELECT
-          u.id::text AS player_id,
-          COALESCE(NULLIF(tm.first_name, ''), u.email) AS first_name,
-          COALESCE(tm.last_name_initial, '') AS last_name_initial,
-          a.overall_score, s.id AS sid, 'member' AS kind
-        FROM team_memberships tm
-        JOIN users u ON u.id = tm.user_id
-        JOIN submissions s ON s.user_id = u.id
-        JOIN analyses a ON a.submission_id = s.id
-        WHERE tm.team_id = ${team.id} AND s.status = 'complete'
-        UNION ALL
-        SELECT
-          tp.id::text AS player_id, tp.first_name, tp.last_name_initial,
-          a.overall_score, s.id AS sid, 'player' AS kind
-        FROM team_players tp
-        JOIN submissions s ON s.team_player_id = tp.id AND s.team_id = tp.team_id
-        JOIN analyses a ON a.submission_id = s.id
-        WHERE tp.team_id = ${team.id} AND s.status = 'complete'
-      )
-      SELECT
-        player_id AS id, first_name, last_name_initial, kind,
-        MAX(overall_score) AS best_score,
-        ROUND(AVG(overall_score)::numeric, 1) AS avg_score,
-        COUNT(sid)::int AS upload_count
-      FROM shots
-      GROUP BY player_id, first_name, last_name_initial, kind
-      ORDER BY best_score DESC
-    `) as unknown as typeof leaderboard
-
-    improved = (await db`
-      WITH shots AS (
-        SELECT
-          u.id::text AS player_id,
-          COALESCE(NULLIF(tm.first_name, ''), u.email) AS first_name,
-          COALESCE(tm.last_name_initial, '') AS last_name_initial,
-          a.overall_score, s.id AS sid, s.created_at
-        FROM team_memberships tm
-        JOIN users u ON u.id = tm.user_id
-        JOIN submissions s ON s.user_id = u.id
-        JOIN analyses a ON a.submission_id = s.id
-        WHERE tm.team_id = ${team.id} AND s.status = 'complete'
-        UNION ALL
-        SELECT
-          tp.id::text AS player_id, tp.first_name, tp.last_name_initial,
-          a.overall_score, s.id AS sid, s.created_at
-        FROM team_players tp
-        JOIN submissions s ON s.team_player_id = tp.id AND s.team_id = tp.team_id
-        JOIN analyses a ON a.submission_id = s.id
-        WHERE tp.team_id = ${team.id} AND s.status = 'complete'
-      ),
-      ranked AS (
-        SELECT
-          player_id, first_name, last_name_initial, overall_score, created_at,
-          COUNT(sid) OVER (PARTITION BY player_id) AS upload_count,
-          ROW_NUMBER() OVER (PARTITION BY player_id ORDER BY created_at ASC) AS rn_first,
-          ROW_NUMBER() OVER (PARTITION BY player_id ORDER BY created_at DESC) AS rn_last
-        FROM shots
-      )
-      SELECT * FROM (
-        SELECT DISTINCT
-          player_id,
-          first_name,
-          last_name_initial,
-          MAX(CASE WHEN rn_first = 1 THEN overall_score END) OVER (PARTITION BY player_id) AS first_score,
-          MAX(CASE WHEN rn_last = 1 THEN overall_score END) OVER (PARTITION BY player_id) AS latest_score
-        FROM ranked
-        WHERE upload_count >= 2
-      ) improved_rows
-      ORDER BY (latest_score - first_score) DESC
-    `) as unknown as typeof improved
+    // Only shots filed to THIS team — see lib/team-shots.ts.
+    leaderboard = await teamLeaderboard(team.id) as unknown as typeof leaderboard
+    improved = await teamMostImproved(team.id) as unknown as typeof improved
   } catch (err) {
     console.error('[team/dashboard] leaderboard query failed:', err)
   }
@@ -134,7 +67,8 @@ export default async function TeamDashboardPage() {
   try {
     members = (await db`
       SELECT u.id, u.email, COALESCE(u.analysis_tokens, 0)::int AS tokens,
-        tm.first_name, tm.last_name_initial
+        tm.first_name, tm.last_name_initial,
+        COALESCE(u.roster_pending, false) AS roster_pending
       FROM team_memberships tm
       JOIN users u ON u.id = tm.user_id
       WHERE tm.team_id = ${team.id}
@@ -144,9 +78,31 @@ export default async function TeamDashboardPage() {
     console.error('[team/dashboard] members query failed:', err)
   }
 
+  // Read-only "Club membership" badge: players holding a live seat from the
+  // organization that owns this team. Separate query so a database without
+  // the memberships migration still renders the roster.
+  if (members.length > 0) {
+    try {
+      const covered = (await db`
+        SELECT s.user_id, s.plan, s.ends_at
+        FROM org_membership_seats s
+        JOIN teams t ON t.id = ${team.id} AND t.organization_id = s.org_id
+        WHERE s.status = 'assigned' AND s.ends_at > NOW()
+          AND s.user_id IN (SELECT user_id FROM team_memberships WHERE team_id = ${team.id})
+      `) as unknown as Array<{ user_id: string; plan: string; ends_at: string }>
+      const byUser = new Map(covered.map(c => [c.user_id, c]))
+      members = members.map(m => {
+        const c = byUser.get(m.id)
+        return c ? { ...m, club_plan: c.plan, club_ends_at: new Date(c.ends_at).toISOString() } : m
+      })
+    } catch {
+      // org_membership_seats not migrated yet — no badges.
+    }
+  }
+
   try {
     pendingMembers = (await db`
-      SELECT id, first_name, last_name_initial, invite_token
+      SELECT id, first_name, last_name_initial, invite_token, contact_email
       FROM pending_team_members
       WHERE team_id = ${team.id}
       ORDER BY created_at ASC
@@ -169,6 +125,17 @@ export default async function TeamDashboardPage() {
   // Head coach's display name — queried separately so a missing column
   // (pre-migration) can't break the whole dashboard.
   let classPackageId: string | null = null
+  // Whether players see the whole leaderboard. Its own query so a database
+  // without the column still renders the dashboard (defaults to shown).
+  let leaderboardVisibility: 'team' | 'hidden' = 'team'
+  try {
+    const [row] = (await db`
+      SELECT leaderboard_visibility FROM teams WHERE id = ${team.id}
+    `) as unknown as [{ leaderboard_visibility: string | null } | undefined]
+    if (row?.leaderboard_visibility === 'hidden') leaderboardVisibility = 'hidden'
+  } catch (err) {
+    console.error('[team/dashboard] leaderboard visibility query failed:', err)
+  }
   try {
     const [row] = (await db`
       SELECT coach_nickname,
@@ -232,6 +199,15 @@ export default async function TeamDashboardPage() {
       console.error('[team/dashboard] class package query failed:', err)
     }
   }
+  // Every roster row with its stable ref, for "Upload a shot for a player":
+  // the same list the bulk uploader uses, so same-name players stay apart.
+  let uploadRoster: TeamRosterEntry[] = []
+  try {
+    uploadRoster = await loadTeamRosterEntries(team.id)
+  } catch (err) {
+    console.error('[team/dashboard] upload roster query failed:', err)
+  }
+
   // The coach's own shot uploads, shown as a list in "My Uploads".
   let myUploads: Array<{ id: string; token: string; created_at: string; overall_score: string | number | null }> = []
   try {
@@ -261,12 +237,17 @@ export default async function TeamDashboardPage() {
     }
   }
 
-  // The logged-in coach's own credit balance.
+  // The logged-in coach's own credit balance — only when this session proves
+  // it holds that email (see provenCoachCreditsEmail); otherwise 0, matching
+  // what the spend routes allow.
   let coachCredits = 0
   try {
-    const [cc] = (await db`
-      SELECT credits FROM coach_credits WHERE email = ${session.adminEmail.toLowerCase()}
-    `) as unknown as [{ credits: number } | undefined]
+    const proven = await provenCoachCreditsEmail(session, orgSession)
+    const [cc] = proven
+      ? ((await db`
+          SELECT credits FROM coach_credits WHERE email = ${proven}
+        `) as unknown as [{ credits: number } | undefined])
+      : [undefined]
     coachCredits = cc?.credits ?? 0
   } catch (err) {
     console.error('[team/dashboard] coach credits query failed:', err)
@@ -282,7 +263,7 @@ export default async function TeamDashboardPage() {
     <main className="min-h-screen bg-white dark:bg-ink-950 flex flex-col">
       <TopNav />
       <TeamDashboardClient
-        team={{ id: team.id, name: team.name, accessCode: team.access_code, credits: team.credits, tokenPool: teamTokenPool, tier: await teamTier(team.id) }}
+        team={{ id: team.id, name: team.name, accessCode: team.access_code, credits: team.credits, tokenPool: teamTokenPool, tier: await teamTier(team.id), leaderboardVisibility }}
         leaderboard={leaderboard}
         improved={improved}
         members={members}
@@ -299,6 +280,7 @@ export default async function TeamDashboardPage() {
         myUploads={myUploads}
         coachCredits={coachCredits}
         classProgram={classProgram}
+        uploadRoster={uploadRoster}
       />
       <SiteFooter />
     </main>

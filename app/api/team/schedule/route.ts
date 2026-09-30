@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { resolveChatActorFromRequest } from '@/lib/team-chat'
+import { resolveChatActorFromRequest, chatDeniedResponse } from '@/lib/team-chat'
 import { FEATURE_UPGRADE_MESSAGE, tierCan } from '@/lib/team-features'
 import { isCleanDisplayText } from '@/lib/moderation'
 import {
@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
   if (!teamId) return NextResponse.json({ error: 'teamId required' }, { status: 400 })
 
   const actor = await resolveChatActorFromRequest(req, teamId)
-  if (!actor) return NextResponse.json({ error: 'Login required' }, { status: 401 })
+  if (!actor) return chatDeniedResponse(req)
   if (!tierCan(actor.tier, 'schedule')) {
     return NextResponse.json({ error: FEATURE_UPGRADE_MESSAGE, upgradeRequired: true }, { status: 402 })
   }
@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
   if (!teamId) return NextResponse.json({ error: 'teamId required' }, { status: 400 })
 
   const actor = await resolveChatActorFromRequest(req, teamId)
-  if (!actor) return NextResponse.json({ error: 'Login required' }, { status: 401 })
+  if (!actor) return chatDeniedResponse(req)
   if (!tierCan(actor.tier, 'schedule')) {
     return NextResponse.json({ error: FEATURE_UPGRADE_MESSAGE, upgradeRequired: true }, { status: 402 })
   }
@@ -185,7 +185,7 @@ export async function PATCH(req: NextRequest) {
   if (!teamId || !eventId) return NextResponse.json({ error: 'teamId and eventId required' }, { status: 400 })
 
   const actor = await resolveChatActorFromRequest(req, teamId)
-  if (!actor) return NextResponse.json({ error: 'Login required' }, { status: 401 })
+  if (!actor) return chatDeniedResponse(req)
   if (!tierCan(actor.tier, 'schedule')) {
     return NextResponse.json({ error: FEATURE_UPGRADE_MESSAGE, upgradeRequired: true }, { status: 402 })
   }
@@ -279,7 +279,7 @@ export async function DELETE(req: NextRequest) {
   if (!teamId || !eventId) return NextResponse.json({ error: 'teamId and eventId required' }, { status: 400 })
 
   const actor = await resolveChatActorFromRequest(req, teamId)
-  if (!actor) return NextResponse.json({ error: 'Login required' }, { status: 401 })
+  if (!actor) return chatDeniedResponse(req)
   if (!tierCan(actor.tier, 'schedule')) {
     return NextResponse.json({ error: FEATURE_UPGRADE_MESSAGE, upgradeRequired: true }, { status: 402 })
   }

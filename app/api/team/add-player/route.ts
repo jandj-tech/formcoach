@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getTeamSessionFromRequest } from '@/lib/team-auth'
 import { teamIsEntitled, SUBSCRIPTION_ENDED_MESSAGE } from '@/lib/team-features'
-import { db } from '@/lib/db'
-import { randomBytes } from 'crypto'
-import { isCleanDisplayText, BLOCKED_TEXT_ERROR } from '@/lib/moderation'
-import { resolveBaseUrl } from '@/lib/base-url'
+import { addPlayerToTeam, AddPlayerError, getTeamContext, coachDisplayName } from '@/lib/roster-players'
 
-const BASE_URL = resolveBaseUrl()
-
+// Coach adds a player to their team. No password required. With an email the
+// player becomes a real (password-less) account + membership and the setup
+// link is emailed to that address (never returned here); without one they
+// stay a name-only pending invite whose join link IS returned to share.
+// Back-compat: older clients send { firstName, lastInitial } and no email.
 export async function POST(req: NextRequest) {
   try {
     const session = await getTeamSessionFromRequest(req)
@@ -20,27 +20,46 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const { firstName, lastInitial } = await req.json()
-    if (!isCleanDisplayText(`${firstName ?? ''} ${lastInitial ?? ''}`)) {
-      return NextResponse.json({ error: BLOCKED_TEXT_ERROR }, { status: 400 })
+    const body = (await req.json().catch(() => ({}))) as {
+      firstName?: string
+      lastName?: string
+      lastInitial?: string
+      email?: string
+      parentName?: string
+      phone?: string
+      sendEmail?: boolean
+      allowDuplicateName?: boolean
     }
-    if (!firstName || !firstName.trim()) {
-      return NextResponse.json({ error: 'First name is required' }, { status: 400 })
-    }
 
-    const inviteToken = randomBytes(24).toString('hex')
+    const team = await getTeamContext(session.teamId)
+    if (!team) return NextResponse.json({ error: 'Team not found' }, { status: 404 })
 
-    const [player] = await db`
-      INSERT INTO pending_team_members (team_id, first_name, last_name_initial, invite_token)
-      VALUES (${session.teamId}, ${firstName.trim()}, ${lastInitial?.trim().charAt(0) || null}, ${inviteToken})
-      RETURNING id, first_name, last_name_initial, invite_token
-    ` as unknown as [{ id: string; first_name: string; last_name_initial: string | null; invite_token: string }]
+    const result = await addPlayerToTeam({
+      teamId: team.id,
+      firstName: body.firstName ?? '',
+      lastName: body.lastName ?? body.lastInitial ?? null,
+      email: body.email ?? null,
+      parentName: body.parentName ?? null,
+      phone: body.phone ?? null,
+      sendEmail: body.sendEmail ?? true,
+      teamName: team.name,
+      orgName: team.orgName,
+      addedBy: (await coachDisplayName(team.id, session.adminEmail)) ?? team.orgName,
+      allowDuplicateName: !!body.allowDuplicateName,
+    })
 
-    const inviteUrl = `${BASE_URL}/signup?teamInvite=${inviteToken}`
-
-    return NextResponse.json({ player, inviteUrl })
+    // Back-compat shape: the coach dashboard reads `player` + `inviteUrl`.
+    // inviteUrl is only ever a name-only join link — never a setup link.
+    return NextResponse.json({
+      ...result,
+      player: { first_name: body.firstName ?? '', last_name_initial: (body.lastName ?? body.lastInitial ?? '').trim().charAt(0) || null },
+      inviteUrl: result.inviteUrl ?? null,
+    })
   } catch (err) {
+    if (err instanceof AddPlayerError) {
+      return NextResponse.json({ error: err.message }, { status: 400 })
+    }
     console.error('add-player error:', err)
-    return NextResponse.json({ error: 'Failed to add player' }, { status: 500 })
+    return NextResponse.json({ error: 'Could not add the player. Please try again.' }, { status: 500 })
   }
 }

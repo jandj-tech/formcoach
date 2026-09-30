@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe'
-import { signOrgSession, orgSessionCookieOptions } from '@/lib/org-auth'
+import { currentOrgPasswordHash, signOrgSession, orgSessionCookieOptions } from '@/lib/org-auth'
 import { clearPendingCookieOptions } from '@/lib/pending-org'
 import { createOrgFromCheckout } from '@/lib/create-org-from-checkout'
 
@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
     const org = await createOrgFromCheckout(session)
 
     if (org) {
-      const token = await signOrgSession({ orgId: org.orgId, adminEmail: org.adminEmail })
+      const token = await signOrgSession({ orgId: org.orgId, adminEmail: org.adminEmail }, await currentOrgPasswordHash(org.orgId))
       const res = NextResponse.redirect(`${baseUrl}/org/dashboard?welcome=1`)
       res.cookies.set(orgSessionCookieOptions(token))
       res.cookies.set(clearPendingCookieOptions())

@@ -60,7 +60,7 @@ export default function ReturnsPage() {
           <p className="text-gray-300 leading-relaxed">
             Yours to keep. The analyses that came with your ball stay in your account whether you
             keep the ball or not — we don&apos;t take back feedback you&apos;ve already received, or
-            credits already sitting in your balance.
+            tokens already in your account.
           </p>
         </section>
 

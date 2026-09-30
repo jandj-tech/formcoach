@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useTheme } from 'next-themes'
 
 export interface LeaderboardRow {
@@ -153,6 +153,8 @@ function Menu<T extends string>({
   )
 }
 
+const noopSubscribe = () => () => {}
+
 function formatPlayerName(firstName: string, lastNameInitial: string | null) {
   if (!lastNameInitial) return firstName
   if (lastNameInitial.length === 1) return `${firstName} ${lastNameInitial}.`
@@ -283,11 +285,13 @@ export default function LeaderboardTable({
 }) {
   const [sortMode, setSortMode] = useState<SortMode>('score-desc')
   const [teamFilter, setTeamFilter] = useState<string>(ALL_TEAMS)
-  // resolvedTheme collapses "system" to the light/dark actually on screen. It
-  // is undefined until mount, so 'auto' falls back to light for the server
-  // render and the first client pass, which keeps the two matching.
+  // resolvedTheme collapses "system" to the light/dark actually on screen.
+  // next-themes knows it on the first client render but the server doesn't,
+  // so 'auto' renders light until hydration is done, then switches — the
+  // server HTML and the first client pass match.
   const { resolvedTheme } = useTheme()
-  const isDark = theme === 'auto' ? resolvedTheme === 'dark' : theme === 'dark'
+  const hydrated = useSyncExternalStore(noopSubscribe, () => true, () => false)
+  const isDark = theme === 'auto' ? hydrated && resolvedTheme === 'dark' : theme === 'dark'
   const t = THEMES[isDark ? 'dark' : 'light']
 
   // Older callers may not send avg_score yet — drop the column (and its sort

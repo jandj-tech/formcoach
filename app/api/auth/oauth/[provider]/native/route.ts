@@ -40,7 +40,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ provider: 
     )
   }
 
-  const limit = await rateLimitByIp(req, 'oauth-native', 20, 900)
+  // Loose on purpose: a whole gym signing in on one Wi-Fi shares an IP, and
+  // every request still needs a valid one-time code / provider-signed token.
+  const limit = await rateLimitByIp(req, 'oauth-native', 60, 900)
   if (!limit.ok) {
     return NextResponse.json(
       { error: 'Too many attempts — try again later' },
@@ -100,7 +102,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ provider: 
     }
     return NextResponse.json({ success: true, token: result.token })
   } catch (err) {
-    if (err instanceof OAuthSignInError) return NextResponse.json({ error: err.message }, { status: 400 })
+    // choose_account: several player accounts share this address and the app
+    // has no chooser yet — the message tells them to use the password. `code`
+    // lets a newer build recognise the case.
+    if (err instanceof OAuthSignInError) return NextResponse.json({ error: err.message, code: err.code }, { status: 400 })
     console.error('Apple native sign-in failed:', err)
     return NextResponse.json({ error: 'Sign-in failed. Please try again.' }, { status: 500 })
   }

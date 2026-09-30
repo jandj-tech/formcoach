@@ -1,5 +1,6 @@
 'use client'
 
+import { BasketballIcon } from '@/components/backend/BasketballIcon'
 import { useIsInApp } from '@/lib/useIsInApp'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -77,7 +78,7 @@ export default function TeamSignupPage() {
       <div className="flex-1 flex items-center justify-center px-6 py-20">
         <div className="w-full max-w-sm space-y-6">
           <div className="text-center space-y-2">
-            <div className="text-4xl">🏀</div>
+            <BasketballIcon aria-hidden className="w-10 h-10 mx-auto text-ember-500" />
             <h1 className="text-2xl font-black text-black">Create your team</h1>
             <p className="text-gray-500 text-sm">{inApp ? 'No monthly fee — pay as you go' : 'No monthly fee — pay per analysis, with bulk discounts from 5+'}</p>
           </div>

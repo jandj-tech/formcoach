@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getOrgSessionFromRequest } from '@/lib/org-auth'
+import { currentOrgPasswordHash, getOrgSessionFromRequest } from '@/lib/org-auth'
 import { signTeamSession, teamSessionCookieOptions } from '@/lib/team-auth'
 
 // Stripe success URL for class-package checkouts. Runs as a Route Handler
@@ -37,7 +37,10 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ sessionId: 
     : []
 
   if (pkg && team) {
-    const token = await signTeamSession({ teamId: team.id, adminEmail: orgSession.adminEmail })
+    const token = await signTeamSession(
+      { teamId: team.id, adminEmail: orgSession.adminEmail },
+      await currentOrgPasswordHash(orgSession.orgId),
+    )
     const res = NextResponse.redirect(`${baseUrl}/team/dashboard`)
     res.cookies.set(teamSessionCookieOptions(token))
     return res
@@ -71,7 +74,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ sessionId: 
   </head>
   <body>
     <div class="card">
-      <div class="emoji">🏀</div>
+      <div class="emoji" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2v20"/><path d="M2 12h20"/><path d="M4.93 4.93c3.9 3.9 3.9 10.24 0 14.14"/><path d="M19.07 4.93c-3.9 3.9-3.9 10.24 0 14.14"/></svg></div>
       <h1>Setting up your class…</h1>
       <p>We're creating your team and crediting your class tokens. This usually takes a few seconds — this page will refresh automatically.</p>
       <p><code>${sessionId.replace(/[<>&"]/g, '')}</code></p>

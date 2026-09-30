@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
-import { signTeamSession, teamSessionCookieOptions } from '@/lib/team-auth'
+import { inviteAcceptPasswordHash, recordInviteInboxProof, signTeamSession, teamSessionCookieOptions } from '@/lib/team-auth'
 import { BCRYPT_COST } from '@/lib/password'
 import { rateLimitByIp } from '@/lib/rate-limit'
 
@@ -10,7 +9,7 @@ export async function POST(req: NextRequest) {
     // This trades a bare token for a team password and a session, so an
     // unlimited endpoint is a token-guessing oracle. Every other credential
     // route is capped; this one was not.
-    const limit = await rateLimitByIp(req, 'team-setup', 10, 900)
+    const limit = await rateLimitByIp(req, 'team-setup', 60, 900)
     if (!limit.ok) {
       return NextResponse.json(
         { error: 'Too many attempts — try again later' },
@@ -34,15 +33,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid or expired setup link' }, { status: 404 })
     }
 
-    const hash = await bcrypt.hash(password, BCRYPT_COST)
+    // Set on this invited team row only (see inviteAcceptPasswordHash): a new
+    // password is accepted even when the address is already used elsewhere.
+    const hash = await inviteAcceptPasswordHash(team.admin_email, password, BCRYPT_COST, { teamId: team.id })
 
     await db`
       UPDATE teams
       SET password_hash = ${hash}, coach_invite_token = NULL, invite_sent_at = NULL
       WHERE id = ${team.id}
     `
+    // The head-coach setup link is only ever emailed (org add-team / resend),
+    // so accepting it proves this inbox: the coach's tokens and self-uploads
+    // unlock now, even if a squatter holds another row on this address.
+    await recordInviteInboxProof({ teamId: team.id }, hash)
 
-    const sessionToken = await signTeamSession({ teamId: team.id, adminEmail: team.admin_email })
+    const sessionToken = await signTeamSession({ teamId: team.id, adminEmail: team.admin_email }, hash)
     const res = NextResponse.json({ success: true })
     res.cookies.set(teamSessionCookieOptions(sessionToken))
     return res

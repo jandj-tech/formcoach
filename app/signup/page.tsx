@@ -19,13 +19,35 @@ import { usd } from '@/lib/team-pricing'
 function SignupForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [email, setEmail] = useState('')
+  // A complimentary-membership invite links here with a signed token bound to
+  // the invited address. Signing up with that same address activates the
+  // membership at once; the address is prefilled from the token's payload
+  // (display only — the server verifies the signature).
+  const compToken = searchParams.get('comp') || ''
+  const compEmail = (() => {
+    if (!compToken) return ''
+    try {
+      const part = compToken.split('.')[1] ?? ''
+      const json = JSON.parse(atob(part.replace(/-/g, '+').replace(/_/g, '/')))
+      return typeof json?.email === 'string' ? json.email : ''
+    } catch {
+      return ''
+    }
+  })()
+  const [email, setEmail] = useState(compEmail)
+  // Set after signup when a free membership is waiting on this address but
+  // the inbox is not proven yet: we show "check your inbox" before moving on.
+  const [activationSentTo, setActivationSentTo] = useState('')
   const [nickname, setNickname] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [teamCode, setTeamCode] = useState(searchParams.get('teamCode') || '')
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [error, setError] = useState('')
+  // "Adding another player on this email?" — a parent creating a second
+  // child's account on the family email. Each player keeps their own password.
+  const [anotherPlayer, setAnotherPlayer] = useState(false)
+  const [firstName, setFirstName] = useState('')
   const [website, setWebsite] = useState('')
   const [captchaToken, setCaptchaToken] = useState('')
 
@@ -70,10 +92,15 @@ function SignupForm() {
       // One id shared by the browser pixel event below and the server's
       // Conversions API event, so Meta counts this signup once, not twice.
       const metaEventId = newMetaEventId()
-      const body: Record<string, string> = { email, password, website, metaEventId }
+      const body: Record<string, string | boolean> = { email, password, website, metaEventId }
       if (nickname.trim()) body.nickname = nickname.trim()
+      if (anotherPlayer) {
+        body.anotherPlayer = true
+        body.firstName = firstName.trim()
+      }
       if (teamInviteToken) body.teamInviteToken = teamInviteToken
       if (claimToken) body.claimToken = claimToken
+      if (compToken) body.compToken = compToken
       if (captchaToken) body.turnstileToken = captchaToken
 
       const res = await fetch('/api/auth/signup', {
@@ -84,7 +111,14 @@ function SignupForm() {
       const data = await res.json()
 
       if (!res.ok) {
-        setError(data.error || 'Signup failed')
+        if (res.status === 409 && data.accountExists && !anotherPlayer) {
+          // The email already has an account. Offer the family path right
+          // here instead of a dead end.
+          setError('An account already uses this email. Log in — or, if you are adding another player on this email, enter their first name above.')
+          setAnotherPlayer(true)
+        } else {
+          setError(data.error || 'Signup failed')
+        }
         setStatus('error')
         setCaptchaToken('')
         return
@@ -92,20 +126,29 @@ function SignupForm() {
 
       trackCompleteRegistration(metaEventId)
 
-      const tc = teamCode.trim()
-      if (tc) {
-        // Back to the invite card, which names the team and takes the player's
-        // name inline. This used to jump to /dashboard?joinTeam=, where a
-        // full-screen popup asked for the same two fields with none of the
-        // context about which team they were joining.
-        router.push(`/join/${encodeURIComponent(tc.toUpperCase())}`)
-      } else {
-        const next = searchParams.get('next') || '/dashboard'
-        router.push(next)
+      if (data.pendingEntitlement) {
+        setActivationSentTo(email.trim())
+        setStatus('idle')
+        return
       }
+      continueAfterSignup()
     } catch {
       setError('Something went wrong. Please try again.')
       setStatus('error')
+    }
+  }
+
+  function continueAfterSignup() {
+    const tc = teamCode.trim()
+    if (tc) {
+      // Back to the invite card, which names the team and takes the player's
+      // name inline. This used to jump to /dashboard?joinTeam=, where a
+      // full-screen popup asked for the same two fields with none of the
+      // context about which team they were joining.
+      router.push(`/join/${encodeURIComponent(tc.toUpperCase())}`)
+    } else {
+      const next = searchParams.get('next') || '/dashboard'
+      router.push(next)
     }
   }
 
@@ -124,6 +167,10 @@ function SignupForm() {
               <p className="text-sm font-semibold text-ember-400 bg-ember-500/10 border border-ember-500/30 rounded-xl px-4 py-2">
                 Your ball order includes {pendingCredits} free shot {pendingCredits === 1 ? 'analysis' : 'analyses'} — they&apos;ll be added to your account automatically.
               </p>
+            ) : compToken ? (
+              <p className="text-sm font-semibold text-ember-400 bg-ember-500/10 border border-ember-500/30 rounded-xl px-4 py-2">
+                You have a free LearnHoops membership. Create your account with the invited email to activate it.
+              </p>
             ) : teamInviteToken ? (
               <p className="text-sm font-semibold text-ember-400 bg-ember-500/10 border border-ember-500/30 rounded-xl px-4 py-2">
                 Your coach added you to the team — sign up to join.
@@ -140,6 +187,24 @@ function SignupForm() {
             )}
           </div>
 
+          {activationSentTo ? (
+            <div role="status" className="space-y-4 bg-ink-900 border border-courtline rounded-2xl p-5 text-center">
+              <h2 className="font-display font-black uppercase text-lg leading-tight">Check your inbox</h2>
+              <p className="text-sm text-chalk-dim leading-relaxed">
+                Your account is ready. A free membership is waiting on this address — we sent a link to{' '}
+                <span className="text-chalk font-semibold break-all">{activationSentTo}</span> to activate it.
+                Open that email and tap <span className="text-chalk font-semibold">Confirm and activate</span>.
+              </p>
+              <button
+                type="button"
+                onClick={continueAfterSignup}
+                className="w-full bg-ember-500 hover:bg-ember-400 active:scale-[0.99] text-ink-950 font-bold py-3.5 rounded-full transition-all"
+              >
+                Continue →
+              </button>
+            </div>
+          ) : (
+          <>
           <OAuthButtons
             next={nextPath || undefined}
             claimToken={claimToken || undefined}
@@ -159,6 +224,42 @@ function SignupForm() {
               onChange={e => setEmail(e.target.value)}
               className="w-full bg-ink-800 border border-courtline rounded-xl px-4 py-3 text-chalk placeholder-chalk-dim focus:outline-none focus:border-ember-500 transition-colors"
             />
+            {anotherPlayer ? (
+              <div className="space-y-1.5">
+                <label htmlFor="another-player-first-name" className="block text-xs font-semibold text-chalk-dim">
+                  New player&apos;s first name
+                </label>
+                <input
+                  id="another-player-first-name"
+                  type="text"
+                  required
+                  maxLength={50}
+                  autoComplete="off"
+                  placeholder="Player's first name"
+                  value={firstName}
+                  onChange={e => setFirstName(e.target.value)}
+                  className="w-full bg-ink-800 border border-courtline rounded-xl px-4 py-3 text-chalk placeholder-chalk-dim focus:outline-none focus:border-ember-500 transition-colors"
+                />
+                <p className="text-xs text-chalk-dim">
+                  They get their own account and their own password (different from the other players on this email).{' '}
+                  <button
+                    type="button"
+                    onClick={() => { setAnotherPlayer(false); setFirstName(''); setError('') }}
+                    className="text-ember-400 hover:text-ember-500 transition-colors"
+                  >
+                    Not adding a player?
+                  </button>
+                </p>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setAnotherPlayer(true)}
+                className="text-xs text-chalk-dim hover:text-chalk transition-colors text-left"
+              >
+                Adding another player on this email? <span className="text-ember-400">Enter their first name</span>
+              </button>
+            )}
             <input
               type="text"
               aria-label="Nickname (e.g. Buckets, KD, Air)"
@@ -214,9 +315,15 @@ function SignupForm() {
               disabled={status === 'loading'}
               className="w-full bg-ember-500 hover:bg-ember-400 disabled:opacity-50 active:scale-[0.99] text-ink-950 font-bold py-3.5 rounded-full transition-all"
             >
-              {status === 'loading' ? 'Creating account...' : 'Create Account →'}
+              {status === 'loading'
+                ? 'Creating account...'
+                : anotherPlayer && firstName.trim()
+                  ? `Create ${firstName.trim()}’s account →`
+                  : 'Create Account →'}
             </button>
           </form>
+          </>
+          )}
 
           <p className="text-center text-sm text-chalk-dim">
             Already have an account?{' '}

@@ -370,7 +370,7 @@ export default async function HomePage() {
           <p className="text-chalk-dim text-sm leading-relaxed">
             It works for everyone who wants a better jump shot: youth players building form from
             scratch, high-school shooters breaking bad habits, and coaches running whole teams —
-            with rosters, shared credits, and team pricing built in. Pair it with the LearnHoops
+            with rosters, shared tokens, and team pricing built in. Pair it with the LearnHoops
             Training Basketball, whose printed finger-placement guides groove correct hand position
             on every rep between analyses.{' '}
             <Link href="/learn" className="text-ember-400 hover:text-ember-500 font-semibold transition-colors">

@@ -23,7 +23,9 @@ export async function addToEmailList(email: string | null | undefined): Promise<
  * Everyone eligible to receive bulk mail right now.
  *
  * Three exclusions, and all three matter to deliverability:
- *  - unsubscribed_at: they asked us to stop.
+ *  - unsubscribed_at: they asked us to stop (everything, via a signed link).
+ *  - marketing_unsubscribed_at: they asked us to stop marketing through an
+ *    old unsigned link. Only marketing honours it; team mail does not.
  *  - bounced_at: the mailbox does not exist. Continuing to send to it is what
  *    turns a good sending reputation into a bad one.
  *  - complained_at: they pressed "report spam". Never mail them again.
@@ -37,6 +39,7 @@ export async function activeMarketingRecipients(): Promise<Array<{ email: string
     SELECT email
     FROM email_list
     WHERE unsubscribed_at IS NULL
+      AND marketing_unsubscribed_at IS NULL
       AND bounced_at IS NULL
       AND complained_at IS NULL
   `) as unknown as Array<{ email: string }>
@@ -50,10 +53,32 @@ export async function activeDripRecipients(
     SELECT email, marketing_emails_sent
     FROM email_list
     WHERE unsubscribed_at IS NULL
+      AND marketing_unsubscribed_at IS NULL
       AND bounced_at IS NULL
       AND complained_at IS NULL
       AND marketing_emails_sent < ${maxEmails}
   `) as unknown as Array<{ email: string; marketing_emails_sent: number }>
+}
+
+/**
+ * True when one address must not get MARKETING mail: a full unsubscribe, a
+ * marketing-only (unsigned-link) unsubscribe, a hard bounce or a complaint.
+ * For single-recipient marketing sends (abandoned checkout) that don't go
+ * through the lists above. Team / results / player mail must NOT use this —
+ * it checks unsubscribed_at alone.
+ */
+export async function isMarketingSuppressed(email: string | null | undefined): Promise<boolean> {
+  const clean = email?.toLowerCase().trim()
+  if (!clean) return true
+  const rows = (await db`
+    SELECT 1 FROM email_list
+    WHERE email = ${clean}
+      AND (unsubscribed_at IS NOT NULL
+        OR marketing_unsubscribed_at IS NOT NULL
+        OR bounced_at IS NOT NULL
+        OR complained_at IS NOT NULL)
+  `) as unknown as Array<unknown>
+  return rows.length > 0
 }
 
 /**

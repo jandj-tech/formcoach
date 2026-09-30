@@ -65,7 +65,7 @@ export default function OrgTokenDistribution({
           <h3 className="text-base font-semibold text-gray-900 dark:text-chalk">In your organization</h3>
           <p className="text-sm text-gray-500 dark:text-chalk-dim mt-0.5">
             {totalDistributed === 0
-              ? 'Nothing distributed yet — every token you own is in your balance.'
+              ? 'Nothing distributed yet — you still hold every token you’ve bought.'
               : `${totalDistributed} token${totalDistributed !== 1 ? 's' : ''} out with your teams, players, and coaches.`}
           </p>
         </div>
@@ -84,9 +84,9 @@ export default function OrgTokenDistribution({
           <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-gray-100 border-b border-gray-100 dark:border-courtline bg-gray-50/60 dark:bg-ink-950/40">
             {[
               { label: 'Player tokens', value: totalPlayerTokens },
-              { label: 'Team credits', value: totalTeamCredits },
-              { label: 'Team pools', value: totalPool },
-              { label: 'Coach credits', value: totalCoachCredits },
+              { label: 'Team tokens', value: totalTeamCredits },
+              { label: 'Unassigned team tokens', value: totalPool },
+              { label: 'Coach tokens', value: totalCoachCredits },
             ].map(s => (
               <div key={s.label} className="px-4 py-2.5">
                 <p className="text-[11px] font-medium uppercase tracking-wider text-gray-400">{s.label}</p>
@@ -122,7 +122,7 @@ export default function OrgTokenDistribution({
                           {t.name}{t.ageGroup ? ` · ${t.ageGroup}` : ''}
                         </span>
                         <span className="block text-xs text-gray-500 truncate">
-                          {t.credits} shared · {t.tokenPool} in pool · {teamPlayerTokens} with players
+                          {t.credits} team · {t.tokenPool} unassigned · {teamPlayerTokens} with players
                         </span>
                       </span>
                       <span className="shrink-0 text-sm font-bold text-gray-900 dark:text-chalk tabular-nums">{teamTotal}</span>
@@ -161,7 +161,7 @@ export default function OrgTokenDistribution({
           {coachesWithCredits.length > 0 && (
             <div className="border-t border-gray-100 dark:border-courtline">
               <p className="px-5 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                Coaches with personal credits
+                Coaches holding tokens
               </p>
               <div className="divide-y divide-gray-100 dark:divide-courtline">
                 {coachesWithCredits.map(c => (
@@ -169,7 +169,7 @@ export default function OrgTokenDistribution({
                     <UserIcon className="w-4 h-4 text-gray-400 shrink-0" aria-hidden />
                     <span className="flex-1 min-w-0 text-sm text-gray-900 dark:text-chalk truncate">{c.label}</span>
                     <span className="shrink-0 text-xs font-semibold bg-gray-100 dark:bg-ink-800 text-gray-700 dark:text-chalk-dim px-2 py-0.5 rounded-full tabular-nums">
-                      {c.credits} credit{c.credits !== 1 ? 's' : ''}
+                      {c.credits} token{c.credits !== 1 ? 's' : ''}
                     </span>
                   </div>
                 ))}
@@ -179,8 +179,8 @@ export default function OrgTokenDistribution({
 
           <p className="px-5 py-3 text-xs text-gray-400 border-t border-gray-100 dark:border-courtline flex items-center gap-1.5">
             <WalletIcon className="w-3.5 h-3.5 shrink-0" aria-hidden />
-            These balances belong to your teams, players, and coaches — separate from your own balance.
-            Coaches can return unused credits to you from their team dashboard.
+            These balances belong to your teams, players, and coaches — separate from your organization tokens.
+            Coaches can return unused tokens to you from their team dashboard.
           </p>
         </div>
       )}

@@ -6,7 +6,7 @@ import { currencyForRequest } from '@/lib/region'
 import { rateLimitByIp } from '@/lib/rate-limit'
 import { resolveBaseUrl } from '@/lib/base-url'
 import { getOfferById, getOrgResultSettings, getOrgSellingState } from '@/lib/org-offers-db'
-import { effectivePriceCents, shareRuleFor } from '@/lib/org-offers'
+import { effectivePriceCents, isBreakdownOnlyOffer, shareRuleFor } from '@/lib/org-offers'
 import { stripeAttributionMetadata } from '@/lib/meta-server'
 
 const BASE_URL = resolveBaseUrl()
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
     }
 
     const offer = await getOfferById(offerId)
-    if (!offer || offer.orgId !== orgId || !offer.active) {
+    if (!offer || offer.orgId !== orgId || !offer.active || isBreakdownOnlyOffer(offer)) {
       return NextResponse.json({ error: 'This offer is no longer available.' }, { status: 404 })
     }
     const selling = await getOrgSellingState(orgId)

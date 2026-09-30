@@ -1,5 +1,7 @@
 'use client'
 
+import { CircleCheckIcon } from 'lucide-react'
+import { BasketballIcon } from '@/components/backend/BasketballIcon'
 import { useState } from 'react'
 import VideoUploader from '@/components/VideoUploader'
 
@@ -24,10 +26,10 @@ export default function TeamUploadClient({ teamName, teamCode, initialCredits }:
     return (
       <div className="flex-1 flex items-center justify-center px-6 py-20 text-center">
         <div className="space-y-4 max-w-sm">
-          <div className="text-4xl">🏀</div>
+          <BasketballIcon aria-hidden className="w-10 h-10 mx-auto text-ember-500" />
           <h2 className="text-xl font-black text-black">{teamName}</h2>
-          <p className="text-gray-500">This team has no upload credits remaining.</p>
-          <p className="text-gray-400 text-sm">Ask your coach to add more credits to continue.</p>
+          <p className="text-gray-500">This team has no upload tokens remaining.</p>
+          <p className="text-gray-400 text-sm">Ask your coach to add more tokens to continue.</p>
         </div>
       </div>
     )
@@ -37,7 +39,7 @@ export default function TeamUploadClient({ teamName, teamCode, initialCredits }:
     return (
       <div className="flex-1 flex items-center justify-center px-6 py-20 text-center">
         <div className="space-y-4 max-w-sm">
-          <div className="text-5xl">✅</div>
+          <CircleCheckIcon aria-hidden className="w-12 h-12 mx-auto text-green-600" />
           <h2 className="text-xl font-black text-black">Shot analyzed!</h2>
           <p className="text-gray-500">
             Your shot has been analyzed. Your coach can see your score in the team dashboard.
@@ -104,7 +106,7 @@ export default function TeamUploadClient({ teamName, teamCode, initialCredits }:
     <div className="flex-1 flex items-center justify-center px-6 py-20">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center space-y-2">
-          <div className="text-4xl">🏀</div>
+          <BasketballIcon aria-hidden className="w-10 h-10 mx-auto text-ember-500" />
           <h1 className="text-2xl font-black text-black">{teamName}</h1>
           <p className="text-gray-500 text-sm">Enter your name to get started</p>
         </div>
@@ -164,7 +166,7 @@ export default function TeamUploadClient({ teamName, teamCode, initialCredits }:
         </form>
 
         <p className="text-center text-xs text-gray-400">
-          Your shot will be analyzed by AI and your score will appear on the team leaderboard.
+          Your shot will be analyzed by AI and your score will count toward your team results, and the team leaderboard, if your coach shares it.
         </p>
       </div>
     </div>

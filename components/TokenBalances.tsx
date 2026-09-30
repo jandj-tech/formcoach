@@ -21,15 +21,19 @@ export default function TokenBalances({ players, teamCredits, tokenPool }: Props
     <div className="border border-gray-200 dark:border-courtline rounded-2xl p-5 space-y-3">
       <p className="font-black text-black dark:text-chalk">Token balances</p>
 
-      <div className="grid grid-cols-2 gap-2">
+      {/* Same label as the dashboard's stat card; the legacy unassigned
+          balance only gets a tile while it still holds tokens. */}
+      <div className={`grid gap-2 ${tokenPool > 0 ? 'grid-cols-2' : 'grid-cols-1'}`}>
         <div className="bg-ember-50 dark:bg-ember-500/10 border border-ember-200 dark:border-ember-500/30 rounded-xl px-3 py-2">
-          <p className="text-xs text-gray-500 dark:text-chalk-dim">Team pool (unassigned)</p>
-          <p className="text-2xl font-black text-black dark:text-chalk">{tokenPool}</p>
-        </div>
-        <div className="bg-ember-50 dark:bg-ember-500/10 border border-ember-200 dark:border-ember-500/30 rounded-xl px-3 py-2">
-          <p className="text-xs text-gray-500 dark:text-chalk-dim">Team credits (shared)</p>
+          <p className="text-xs text-gray-500 dark:text-chalk-dim">Team tokens</p>
           <p className="text-2xl font-black text-black dark:text-chalk">{teamCredits}</p>
         </div>
+        {tokenPool > 0 && (
+          <div className="bg-ember-50 dark:bg-ember-500/10 border border-ember-200 dark:border-ember-500/30 rounded-xl px-3 py-2">
+            <p className="text-xs text-gray-500 dark:text-chalk-dim">Unassigned team tokens</p>
+            <p className="text-2xl font-black text-black dark:text-chalk">{tokenPool}</p>
+          </div>
+        )}
       </div>
 
       <div>

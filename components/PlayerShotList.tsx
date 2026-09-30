@@ -6,6 +6,8 @@ export interface Shot {
   created_at: string
   // Postgres returns DECIMAL columns as strings, so this can be either.
   overall_score: string | number | null
+  /** Which team the shot was filed to; shown when a player is on several. */
+  team_name?: string | null
 }
 
 function scoreColor(score: number) {
@@ -50,7 +52,9 @@ export default function PlayerShotList({
               className="flex items-center gap-4 group"
             >
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-gray-500">{date}</p>
+                <p className="text-sm text-gray-500">
+                  {shot.team_name ? `${shot.team_name} · ${date}` : date}
+                </p>
                 <p className="text-black font-semibold text-sm mt-0.5 group-hover:text-orange-600 transition-colors">
                   View Shot Breakdown →
                 </p>

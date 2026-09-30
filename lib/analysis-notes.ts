@@ -70,7 +70,9 @@ export async function resolveAnalysisNoteAuthor(
       JOIN submissions s ON s.id = a.submission_id
       JOIN users u ON u.id = ${player.userId}
       WHERE a.id = ${analysisId}
-        AND (s.user_id = ${player.userId} OR LOWER(s.email) = ${player.email.toLowerCase()})
+        -- user_id only: an email match is not ownership (security audit
+        -- item 1). A coach's own self-upload is reached via the coach path.
+        AND s.user_id = ${player.userId}
     `) as unknown as [
       { nickname: string | null; first_name: string | null; last_initial: string | null } | undefined,
     ]

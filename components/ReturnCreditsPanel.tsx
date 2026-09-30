@@ -39,13 +39,13 @@ export default function ReturnCreditsPanel({
       })
       const data = await res.json()
       if (!res.ok) {
-        setMsg({ ok: false, text: data.error || 'Could not return credits' })
+        setMsg({ ok: false, text: data.error || 'Could not return tokens' })
         setBusy(false)
         return
       }
       setMsg({
         ok: true,
-        text: `Returned ${amount} credit${amount !== 1 ? 's' : ''} to ${orgName}.`,
+        text: `Returned ${amount} token${amount !== 1 ? 's' : ''} to ${orgName}.`,
       })
       setQty(1)
       router.refresh()
@@ -58,15 +58,15 @@ export default function ReturnCreditsPanel({
   return (
     <div className="space-y-4">
       <p className="text-sm text-gray-600">
-        Send credits back to <span className="font-semibold text-gray-900">{orgName}</span>&rsquo;s
-        balance so they can be redistributed across the organization.
+        Send tokens back to <span className="font-semibold text-gray-900">{orgName}</span>
+        so they can be redistributed across the organization.
       </p>
 
       {/* Source picker */}
       <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Return from">
         {([
-          { id: 'personal' as Source, label: 'My credits', balance: personalCredits },
-          { id: 'team' as Source, label: 'Team credits', balance: teamCredits },
+          { id: 'personal' as Source, label: 'My tokens', balance: personalCredits },
+          { id: 'team' as Source, label: 'Team tokens', balance: teamCredits },
         ]).map(s => {
           const active = source === s.id
           return (
@@ -132,7 +132,7 @@ export default function ReturnCreditsPanel({
       )}
       {available === 0 && (
         <p className="text-sm text-gray-500">
-          {source === 'personal' ? 'Your personal balance is empty.' : 'The team’s shared balance is empty.'}
+          {source === 'personal' ? 'You have no tokens to return.' : 'The team has no team tokens to return.'}
         </p>
       )}
       {msg && (

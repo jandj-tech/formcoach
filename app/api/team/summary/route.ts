@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSessionFromRequest } from '@/lib/auth'
 import { db } from '@/lib/db'
+import { playerTeamBoard } from '@/lib/team-shots'
 
 function displayName(first: string, lastInitial: string): string {
   const f = (first || '').trim()
@@ -24,112 +25,30 @@ export async function GET(req: NextRequest) {
       ORDER BY tm.joined_at DESC
     `) as unknown as Array<{ id: string; name: string; admin_email: string }>
 
-    // Teams this account owns (founding coach) or coaches — matched by the
-    // account email, so owners see their teams in the app's Team tab too.
-    let coachTeams: Array<{ id: string; name: string; admin_email: string }> = []
-    try {
-      coachTeams = (await db`
-        SELECT DISTINCT t.id, t.name, t.admin_email
-        FROM teams t
-        LEFT JOIN team_coaches tc ON tc.team_id = t.id
-        WHERE t.admin_email = ${session.email} OR tc.email = ${session.email}
-        ORDER BY t.name ASC
-      `) as unknown as typeof coachTeams
-    } catch {
-      // team_coaches table may not exist on older DBs — owners still match.
-      coachTeams = (await db`
-        SELECT id, name, admin_email FROM teams WHERE admin_email = ${session.email}
-      `) as unknown as typeof coachTeams
-    }
-
-    const memberIds = new Set(memberTeams.map(t => t.id))
-    const teams = [
-      ...memberTeams.map(t => ({ ...t, role: 'player' as const })),
-      ...coachTeams.filter(t => !memberIds.has(t.id)).map(t => ({ ...t, role: 'coach' as const })),
-    ]
+    // Only teams this account is a MEMBER of. It used to add every team whose
+    // head coach or team_coaches email equalled the account's email, with
+    // role 'coach' — but a player account proves nothing about that address
+    // (public signup has no email verification), so signing up with a
+    // coach's email showed that team's leaderboard and unlocked coach powers
+    // in the app. Real coaches sign into the app with a coach credential
+    // (password or verified Google/Apple → a team token, see
+    // lib/oauth-account.ts), and their app never calls this route: it uses
+    // /api/team/coach-overview. The 'coach' role stays in the response type
+    // for older app builds; it is simply no longer produced.
+    const teams = memberTeams.map(t => ({ ...t, role: 'player' as 'player' | 'coach' }))
 
     const result = []
     for (const team of teams) {
       try {
-      // Same combined member+coach-uploaded-player shots as the coach dashboard.
-      const leaderboard = (await db`
-        WITH shots AS (
-          SELECT
-            u.id::text AS player_id,
-            COALESCE(NULLIF(tm.first_name, ''), u.email) AS first_name,
-            COALESCE(tm.last_name_initial, '') AS last_name_initial,
-            a.overall_score, s.id AS sid
-          FROM team_memberships tm
-          JOIN users u ON u.id = tm.user_id
-          JOIN submissions s ON s.user_id = u.id
-          JOIN analyses a ON a.submission_id = s.id
-          WHERE tm.team_id = ${team.id} AND s.status = 'complete'
-          UNION ALL
-          SELECT
-            tp.id::text AS player_id, tp.first_name, tp.last_name_initial,
-            a.overall_score, s.id AS sid
-          FROM team_players tp
-          JOIN submissions s ON s.team_player_id = tp.id AND s.team_id = tp.team_id
-          JOIN analyses a ON a.submission_id = s.id
-          WHERE tp.team_id = ${team.id} AND s.status = 'complete'
-        )
-        SELECT
-          player_id AS id, first_name, last_name_initial,
-          MAX(overall_score) AS best_score,
-          ROUND(AVG(overall_score)::numeric, 1) AS avg_score,
-          COUNT(sid)::int AS upload_count
-        FROM shots
-        GROUP BY player_id, first_name, last_name_initial
-        ORDER BY best_score DESC
-      `) as unknown as Array<{
-        id: string; first_name: string; last_name_initial: string
-        best_score: number | string; avg_score: number | string | null; upload_count: number
-      }>
-
-      const improved = (await db`
-        WITH shots AS (
-          SELECT
-            u.id::text AS player_id,
-            COALESCE(NULLIF(tm.first_name, ''), u.email) AS first_name,
-            COALESCE(tm.last_name_initial, '') AS last_name_initial,
-            a.overall_score, s.id AS sid, s.created_at
-          FROM team_memberships tm
-          JOIN users u ON u.id = tm.user_id
-          JOIN submissions s ON s.user_id = u.id
-          JOIN analyses a ON a.submission_id = s.id
-          WHERE tm.team_id = ${team.id} AND s.status = 'complete'
-          UNION ALL
-          SELECT
-            tp.id::text AS player_id, tp.first_name, tp.last_name_initial,
-            a.overall_score, s.id AS sid, s.created_at
-          FROM team_players tp
-          JOIN submissions s ON s.team_player_id = tp.id AND s.team_id = tp.team_id
-          JOIN analyses a ON a.submission_id = s.id
-          WHERE tp.team_id = ${team.id} AND s.status = 'complete'
-        ),
-        ranked AS (
-          SELECT
-            player_id, first_name, last_name_initial, overall_score, created_at,
-            COUNT(sid) OVER (PARTITION BY player_id) AS upload_count,
-            ROW_NUMBER() OVER (PARTITION BY player_id ORDER BY created_at ASC) AS rn_first,
-            ROW_NUMBER() OVER (PARTITION BY player_id ORDER BY created_at DESC) AS rn_last
-          FROM shots
-        )
-        SELECT * FROM (
-          SELECT DISTINCT
-            player_id,
-            first_name,
-            last_name_initial,
-            MAX(CASE WHEN rn_first = 1 THEN overall_score END) OVER (PARTITION BY player_id) AS first_score,
-            MAX(CASE WHEN rn_last = 1 THEN overall_score END) OVER (PARTITION BY player_id) AS latest_score
-          FROM ranked
-          WHERE upload_count >= 2
-        ) improved_rows
-        ORDER BY (latest_score - first_score) DESC
-      `) as unknown as Array<{
-        player_id: string; first_name: string; last_name_initial: string
-        first_score: number | string; latest_score: number | string
-      }>
+      // Only shots filed to this team, each counted once — the same rows the
+      // coach dashboard shows (lib/team-shots.ts). A teammate's personal or
+      // other-team shots are not this team's business. When the coach hides
+      // the leaderboard, playerTeamBoard keeps only this player's own row, so
+      // teammates' scores never leave the server. Older app builds ignore
+      // leaderboardHidden and simply draw a one-row board.
+      const board = await playerTeamBoard(team.id, session.userId)
+      const leaderboard = board.leaderboard
+      const improved = board.mostImproved
 
       // Schedule glance: next upcoming event + how many events still need
       // this caller's RSVP. Wrapped separately — the schedule tables may not
@@ -179,8 +98,9 @@ export async function GET(req: NextRequest) {
       } catch {}
 
       // Roster: names only — the app shows the roster without any scores.
+      // Never fall back to the email: every teammate can see this list.
       const roster = (await db`
-        SELECT COALESCE(NULLIF(tm.first_name, ''), u.email) AS first_name,
+        SELECT COALESCE(NULLIF(tm.first_name, ''), NULLIF(u.nickname, ''), 'Player') AS first_name,
                COALESCE(tm.last_name_initial, '') AS last_name_initial
         FROM team_memberships tm
         JOIN users u ON u.id = tm.user_id
@@ -196,6 +116,7 @@ export async function GET(req: NextRequest) {
         pendingRsvpCount,
         memberCount: roster.length,
         roster: roster.map(r => displayName(r.first_name, r.last_name_initial)),
+        leaderboardHidden: board.hidden,
         leaderboard: leaderboard.map(e => ({
           name: displayName(e.first_name, e.last_name_initial),
           bestScore: Number(e.best_score),
@@ -218,7 +139,7 @@ export async function GET(req: NextRequest) {
         result.push({
           id: team.id, name: team.name, role: team.role,
           nextEvent: null, pendingRsvpCount: 0,
-          memberCount: 0, roster: [], leaderboard: [], mostImproved: [],
+          memberCount: 0, roster: [], leaderboardHidden: false, leaderboard: [], mostImproved: [],
         })
       }
     }

@@ -7,7 +7,7 @@ const TOPICS = [
   ['account', 'Account & login'],
   ['analysis', 'Shot analysis results'],
   ['orders', 'Orders & shipping'],
-  ['billing', 'Credits, tokens & billing'],
+  ['billing', 'Tokens & billing'],
   ['teams', 'Teams & organizations'],
   ['report', 'Report inappropriate content'],
   ['other', 'Something else'],

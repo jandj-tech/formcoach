@@ -3,21 +3,27 @@ import { putObject, storageDriver } from '@/lib/storage'
 import { db } from '@/lib/db'
 import { analyzeShot } from '@/lib/analyze'
 import { getSessionFromRequest } from '@/lib/auth'
-import { getTeamSessionFromRequest } from '@/lib/team-auth'
+import { getTeamSessionFromRequest, provenCoachCreditsEmail, provenTeamCoachCreditsEmail } from '@/lib/team-auth'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { maybeSendFilmingTips } from '@/lib/filming-tips'
 import { rateLimit, rateLimitByIp } from '@/lib/rate-limit'
 import {
-  getPlayerSubscription,
   markSubmissionFailed,
   reserveSubscriptionAnalysis,
-  subscriptionEntitled,
 } from '@/lib/player-subscription'
+import { effectivePlan, hasIncludedAllowance } from '@/lib/player-entitlement'
 import {
   recordCharge,
   refundChargesForSubmission,
   settleChargesForSubmission,
 } from '@/lib/analysis-charge'
+import {
+  capitalizeFirst,
+  cleanName,
+  findOrCreateTeamPlayer,
+  resolvePlayerRef,
+} from '@/lib/team-roster-refs'
+import { cleanDisplayText, lastInitialFromText } from '@/lib/moderation'
 import crypto from 'crypto'
 
 export const maxDuration = 300
@@ -57,7 +63,10 @@ export async function POST(req: NextRequest) {
   // see lib/player-subscription.ts countUsage).
   let submissionIdForFailure: string | null = null
   try {
-    const formData = await req.formData()
+    const formData = await req.formData().catch(() => null)
+    if (!formData) {
+      return NextResponse.json({ error: 'Send the shot as a multipart form upload.' }, { status: 400 })
+    }
     const files = formData.getAll('frames') as File[]
     const videoUrl = (formData.get('videoUrl') as string | null) || null
     console.log('[analyze] received videoUrl:', videoUrl ? 'YES' : 'NO', 'frames:', files.length)
@@ -80,10 +89,16 @@ export async function POST(req: NextRequest) {
     const session = await getSessionFromRequest(req)
 
     // Team upload fields (optional)
-    const teamCode = (formData.get('teamCode') as string | null) || null
-    const playerFirstName = (formData.get('playerFirstName') as string | null) || null
-    const playerLastName = (formData.get('playerLastName') as string | null) || null
-    const isTeamUpload = !!(teamCode && playerFirstName && playerLastName)
+    const teamCode = cleanName(formData.get('teamCode') as string | null).toUpperCase() || null
+    // Coach flows (bulk page, dashboard "Upload shot for a player") send a
+    // stable `playerRef` (see lib/team-roster-refs.ts) and must be signed in
+    // as a coach of that team. The public /team/<code>/upload page and older
+    // callers still send names; that path stays code-only on purpose — the
+    // code is how a player uploads for themselves on the coach's credits.
+    const playerRef = cleanName(formData.get('playerRef') as string | null) || null
+    const playerFirstName = cleanName(formData.get('playerFirstName') as string | null) || null
+    const playerLastName = cleanName(formData.get('playerLastName') as string | null) || null
+    const isTeamUpload = !!(teamCode && (playerRef || (playerFirstName && playerLastName)))
     const isCoachSelf = formData.get('coachSelf') === 'true'
 
     // A coach or org owner analyzing their own shot. A team coach pays from
@@ -98,6 +113,20 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Login required' }, { status: 401 })
       }
       coachEmail = cEmail.toLowerCase()
+      if (teamSession) {
+        // coach_credits (and the self-upload this files) are keyed only by
+        // email, so the session must PROVE it holds that email's credential —
+        // a stranger's legacy team under a real coach's address must not
+        // spend that coach's tokens. See provenCoachCreditsEmail.
+        const proven = await provenCoachCreditsEmail(teamSession, await getOrgSessionFromRequest(req))
+        if (!proven) {
+          return NextResponse.json(
+            { error: 'Your coach tokens can’t be used from this login. Reset your coach password to unlock them.' },
+            { status: 403 },
+          )
+        }
+        coachEmail = proven
+      }
       if (orgSession && !teamSession) {
         orgSelfId = orgSession.orgId
         const [org] = (await db`
@@ -112,7 +141,7 @@ export async function POST(req: NextRequest) {
           SELECT credits FROM coach_credits WHERE email = ${coachEmail}
         `) as unknown as [{ credits: number } | undefined]
         if (!cc || cc.credits < 1) {
-          return NextResponse.json({ error: 'No analysis credits' }, { status: 402 })
+          return NextResponse.json({ error: 'Not enough tokens' }, { status: 402 })
         }
       }
     }
@@ -122,7 +151,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Login required' }, { status: 401 })
     }
 
-    const userId = session?.userId ?? null
+    // A team upload is attributed to the player the coach (or the public page)
+    // named — never to whoever else happens to be signed in on this browser.
+    // A parent's player session in the same cookie jar used to take the shot.
+    const userId = isTeamUpload ? null : (session?.userId ?? null)
 
     // Rate limit before any expensive work. This is the only route that runs
     // the full multi-pass Claude pipeline and it previously had NO limit at
@@ -156,8 +188,12 @@ export async function POST(req: NextRequest) {
     // they are consumed:
     //   1. legacy unlimited — pre-2026 subscription_type/expires_at holders,
     //      grandfathered exactly as before (never debited, no caps)
-    //   2. the Player/Pro included allowance (weekly AND monthly caps both
-    //      apply; enforced atomically at reservation below)
+    //   2. the Player/Pro included allowance of the EFFECTIVE plan — the
+    //      player's own subscription or an org-sponsored seat, whichever is
+    //      better (lib/player-entitlement.ts). Weekly AND monthly caps both
+    //      apply, counted across both sources; enforced atomically at
+    //      reservation below. Only the player's OWN uploads reach this —
+    //      team/coach uploads for them keep paying from coach/team/org tokens.
     //   3. purchased tokens
     // `isFreePreview` is retained (always false) so historical free-preview
     // submissions still read correctly. NOTE: balances are only RESERVED
@@ -172,13 +208,9 @@ export async function POST(req: NextRequest) {
         FROM users WHERE id = ${userId}
       ` as unknown as [{ analysis_tokens: number; subscription_type: string | null; subscription_expires_at: string | null; free_analysis_used: boolean | null } | undefined]
 
-      legacyUnlimited =
-        !!user?.subscription_type &&
-        !!user?.subscription_expires_at &&
-        new Date(user.subscription_expires_at) > new Date()
-
-      const playerSub = legacyUnlimited ? null : await getPlayerSubscription(userId)
-      hasEntitledPlan = subscriptionEntitled(playerSub)
+      const eff = await effectivePlan(userId)
+      legacyUnlimited = eff.source === 'legacy'
+      hasEntitledPlan = hasIncludedAllowance(eff)
 
       const tokens = user?.analysis_tokens ?? 0
 
@@ -194,64 +226,112 @@ export async function POST(req: NextRequest) {
     let teamPlayerId: string | null = null
     let teamCoachEmail: string | null = null
 
+    let classPlayerUserId: string | null = null
+    let filedUnder: string | null = null
+
     if (isTeamUpload) {
       const [team] = await db`
-        SELECT id, admin_email, credits FROM teams WHERE access_code = ${teamCode!.toUpperCase()} FOR UPDATE
-      ` as unknown as [{ id: string; admin_email: string; credits: number } | undefined]
+        SELECT id, admin_email, credits, organization_id FROM teams WHERE access_code = ${teamCode!} FOR UPDATE
+      ` as unknown as [{ id: string; admin_email: string; credits: number; organization_id: string | null } | undefined]
+
+      // A coach-flow upload must come from a coach of THIS team (or the org
+      // that owns it). Checked before the team lookup can leak anything more
+      // than "not found" to an anonymous caller.
+      if (playerRef) {
+        const teamSession = await getTeamSessionFromRequest(req)
+        const orgSession = await getOrgSessionFromRequest(req)
+        if (!teamSession && !orgSession) {
+          return NextResponse.json({ error: 'Login required' }, { status: 401 })
+        }
+        const allowed =
+          !!team &&
+          (teamSession?.teamId === team.id ||
+            (!!orgSession && !!team.organization_id && orgSession.orgId === team.organization_id))
+        if (!allowed) {
+          return NextResponse.json({ error: 'You are not a coach on this team' }, { status: 403 })
+        }
+      }
 
       if (!team) {
         return NextResponse.json({ error: 'Team not found' }, { status: 404 })
       }
 
-      // One coach balance funds team uploads: the coach's personal
+      // One coach balance funds team uploads: the head coach's personal
       // coach_credits, with legacy teams.credits as a fallback so older
-      // teams that still hold a team budget keep working.
-      const [cc] = await db`
-        SELECT COALESCE(credits, 0)::int AS credits FROM coach_credits WHERE LOWER(email) = ${team.admin_email.toLowerCase()}
-      ` as unknown as [{ credits: number } | undefined]
+      // teams that still hold a team budget keep working. coach_credits is
+      // keyed only by email, so it is spent only when this team's head-coach
+      // row provably holds that email (provenTeamCoachCreditsEmail) — a
+      // stranger's legacy team that copied a real coach's address falls back
+      // to its own team budget instead of the real coach's tokens.
+      teamCoachEmail = await provenTeamCoachCreditsEmail(team.id)
+      const [cc] = teamCoachEmail
+        ? await db`
+            SELECT COALESCE(credits, 0)::int AS credits FROM coach_credits WHERE LOWER(email) = ${teamCoachEmail}
+          ` as unknown as [{ credits: number } | undefined]
+        : [undefined]
       const coachBalance = cc?.credits ?? 0
       if (coachBalance + team.credits < 1) {
-        return NextResponse.json({ error: 'Insufficient credits' }, { status: 402 })
+        return NextResponse.json({ error: 'Not enough tokens' }, { status: 402 })
       }
 
       teamId = team.id
-      teamCoachEmail = team.admin_email.toLowerCase()
 
-      const lastNameClean = playerLastName!.trim()
-      await db`
-        INSERT INTO team_players (team_id, first_name, last_name_initial)
-        VALUES (${teamId}, ${playerFirstName!.trim()}, ${lastNameClean})
-        ON CONFLICT (team_id, first_name, last_name_initial) DO NOTHING
-      `
-      const [player] = await db`
-        SELECT id FROM team_players
-        WHERE team_id = ${teamId}
-          AND first_name = ${playerFirstName!.trim()}
-          AND last_name_initial = ${lastNameClean}
-      ` as unknown as [{ id: string }]
-
-      teamPlayerId = player.id
-    }
-
-    // For class team uploads, look up the joined player's user_id so the
-    // class-enrollment auto-link below (line ~207) can update their
-    // first_submission_id / final_submission_id and the certificate fires.
-    // Falls through silently if the player hasn't joined yet via signup link.
-    let classPlayerUserId: string | null = null
-    if (isTeamUpload && teamId) {
-      const [member] = (await db`
-        SELECT user_id FROM team_memberships
-        WHERE team_id = ${teamId}
-          AND first_name = ${playerFirstName!.trim()}
-          AND last_name_initial = ${playerLastName!.trim().charAt(0).toUpperCase()}
-        LIMIT 1
-      `) as unknown as Array<{ user_id: string | null }>
-      classPlayerUserId = member?.user_id ?? null
+      // Where the shot is filed. Exactly one of user_id / team_player_id is
+      // set, so every reader shows it once: member readers (leaderboard,
+      // results roster, member page, player dashboard) key on user_id, the
+      // name-only player page on team_player_id. See lib/team-roster-refs.ts.
+      if (playerRef) {
+        const resolved = await resolvePlayerRef(teamId, playerRef)
+        if (!resolved.ok) {
+          return NextResponse.json({ error: resolved.error }, { status: resolved.status })
+        }
+        classPlayerUserId = resolved.userId
+        teamPlayerId = resolved.teamPlayerId
+        filedUnder = resolved.name
+      } else {
+        // Legacy name path (public team page, older app builds). Only the
+        // first letter of the last name is stored — team_players holds a
+        // CHAR(1), and a full "Smith" used to 500 the upload.
+        // The typed name becomes a team_players row the coach sees, so it
+        // gets the same display-text rule as every other name save site.
+        const firstClean = cleanDisplayText(playerFirstName!, 50)
+        if (!firstClean.ok) {
+          return NextResponse.json({ error: firstClean.error }, { status: 400 })
+        }
+        const first = firstClean.value
+        // Same rule for the last name: markup is rejected, not silently
+        // filed under its first letter ("<b>Smith" used to become "B.").
+        const lastClean = cleanDisplayText(playerLastName!, 50)
+        if (!lastClean.ok) {
+          return NextResponse.json({ error: lastClean.error }, { status: 400 })
+        }
+        const initialCheck = lastInitialFromText(lastClean.value)
+        if (!initialCheck.ok) {
+          return NextResponse.json({ error: initialCheck.error }, { status: 400 })
+        }
+        const initial = initialCheck.value
+        filedUnder = `${capitalizeFirst(first)} ${initial}.`
+        // Link a joined account only when exactly ONE member on the team has
+        // this name. Two "Liam S." used to resolve with LIMIT 1 — an
+        // arbitrary account; now an ambiguous name stays on the name-only row.
+        const members = (await db`
+          SELECT user_id FROM team_memberships
+          WHERE team_id = ${teamId}
+            AND LOWER(TRIM(first_name)) = LOWER(${first})
+            AND UPPER(last_name_initial) = ${initial}
+          LIMIT 2
+        `) as unknown as Array<{ user_id: string }>
+        if (members.length === 1) {
+          classPlayerUserId = members[0].user_id
+        } else {
+          teamPlayerId = await findOrCreateTeamPlayer(teamId, first, initial)
+        }
+      }
     }
 
     // Create submission record
     const submissionToken = crypto.randomBytes(32).toString('hex')
-    const submissionUserId = userId ?? classPlayerUserId
+    const submissionUserId = isTeamUpload ? classPlayerUserId : userId
     const [submission] = await db`
       INSERT INTO submissions (token, status, user_id, team_id, team_player_id, email, is_free_preview)
       VALUES (${submissionToken}, 'processing', ${submissionUserId}, ${teamId}, ${teamPlayerId}, ${coachEmail}, ${isFreePreview})
@@ -374,7 +454,7 @@ export async function POST(req: NextRequest) {
         `) as unknown as unknown[]
         if (teamRows.length === 0) {
           await db`DELETE FROM submissions WHERE id = ${submission.id}`
-          return NextResponse.json({ error: 'Insufficient credits' }, { status: 402 })
+          return NextResponse.json({ error: 'Not enough tokens' }, { status: 402 })
         }
         fundingSource = 'team_credit'
         await recordCharge(submission.id, 'team_credit', { teamId })
@@ -397,7 +477,7 @@ export async function POST(req: NextRequest) {
       `) as unknown as unknown[]
       if (rows.length === 0) {
         await db`DELETE FROM submissions WHERE id = ${submission.id}`
-        return NextResponse.json({ error: 'No analysis credits' }, { status: 402 })
+        return NextResponse.json({ error: 'Not enough tokens' }, { status: 402 })
       }
       fundingSource = 'coach_credit'
       // 'exact', not 'lower': this branch debited `WHERE email =`. Refunding it
@@ -417,10 +497,15 @@ export async function POST(req: NextRequest) {
       if (hasEntitledPlan) {
         const reserved = await reserveSubscriptionAnalysis(userId, submission.id)
         if (reserved.ok) {
-          fundingSource = null // stamped 'subscription' inside the transaction
+          // Stamped 'subscription' or 'org_membership' inside the transaction.
+          fundingSource = null
           // For an included analysis the "refund" is exclusion from the usage
           // count: mark the row failed and the window count no longer sees it.
-          await recordCharge(submission.id, 'subscription', {})
+          await recordCharge(
+            submission.id,
+            reserved.source,
+            reserved.source === 'org_membership' ? { orgId: reserved.orgId ?? undefined } : {},
+          )
           refundCharge = () => refundChargesForSubmission(submission.id).then(() => undefined)
         } else if (reserved.reason === 'weekly' || reserved.reason === 'monthly') {
           limitInfo = {
@@ -577,7 +662,7 @@ export async function POST(req: NextRequest) {
     // Use whichever user_id this submission is actually tied to:
     // - self uploads → session.userId
     // - coach team uploads → the joined class player's user_id (resolved above)
-    const enrollmentUserId = userId ?? classPlayerUserId
+    const enrollmentUserId = submissionUserId
     if (enrollmentUserId) {
       try {
         // Pick the right enrollment when a player is in more than one class:
@@ -664,6 +749,8 @@ export async function POST(req: NextRequest) {
       // The bulk uploader shows each grade in its row as it lands, rather than
       // making a coach open twelve tabs to find out how the session went.
       overallScore: result.overall_score,
+      // Who a team upload was filed under, so the coach can confirm it.
+      filedUnder,
     })
   } catch (err) {
     // Refund the reserved credit if we charged before failing, so a crash mid-

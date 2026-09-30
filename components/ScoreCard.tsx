@@ -189,8 +189,8 @@ function CoachNotes({ notes, aiScore }: { notes: CoachNoteView[]; aiScore: numbe
         </div>
       ))}
       <p className="text-[10px] text-indigo-900/60 leading-snug">
-        Your coach&rsquo;s score is their own read of this clip. Your overall score, leaderboard
-        spot and progress still come from the AI score.
+        Your coach&rsquo;s score is their own read of this clip. Your overall score, progress
+        and team leaderboard spot, if your coach shares it, still come from the AI score.
       </p>
     </div>
   )

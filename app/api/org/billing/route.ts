@@ -25,9 +25,9 @@ function describeRow(r: OrderRow): string {
     case 'org_tokens':
       return `${r.quantity ?? ''} analysis tokens`.trim()
     case 'team_credits':
-      return `${r.quantity ?? ''} team credits`.trim()
+      return `${r.quantity ?? ''} team tokens`.trim()
     case 'coach_credits':
-      return `${r.quantity ?? ''} coach credits`.trim()
+      return `${r.quantity ?? ''} coach tokens`.trim()
     case 'player_tokens':
       return 'Tokens for players'
     case 'analysis_tokens':

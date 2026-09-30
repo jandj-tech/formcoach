@@ -40,8 +40,8 @@ export async function POST(req: NextRequest) {
             currency: currencyForRequest(req),
             unit_amount: unitAmount,
             product_data: {
-              name: 'LearnHoops Team Upload Credit',
-              description: '1 credit = 1 AI shot analysis for your team',
+              name: 'LearnHoops Team Token',
+              description: '1 token = 1 AI shot analysis for your team',
             },
           },
         },

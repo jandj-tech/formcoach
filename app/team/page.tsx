@@ -30,11 +30,11 @@ export default async function TeamLandingPage() {
   // Signed-in visitors see THEIR team here — this page is the "Teams" home,
   // not just the org sales pitch.
   const session = await getSession()
-  let myTeams: Array<{ id: string; name: string; access_code: string; admin_email: string }> = []
+  let myTeams: Array<{ id: string; name: string; access_code: string; admin_email: string; leaderboard_visibility: string | null }> = []
   if (session) {
     try {
       myTeams = (await db`
-        SELECT t.id, t.name, t.access_code, t.admin_email
+        SELECT t.id, t.name, t.access_code, t.admin_email, t.leaderboard_visibility
         FROM team_memberships tm JOIN teams t ON t.id = tm.team_id
         WHERE tm.user_id = ${session.userId}
         ORDER BY tm.joined_at DESC
@@ -87,6 +87,7 @@ export default async function TeamLandingPage() {
       memberCount: players.length,
       coaches,
       players,
+      leaderboardHidden: t.leaderboard_visibility === 'hidden',
     })
   }
   const teamSession = myTeams.length === 0 ? await getTeamSession() : null
@@ -151,7 +152,7 @@ export default async function TeamLandingPage() {
               <>
                 <TargetIcon aria-hidden className="w-8 h-8 text-ember-500" />
                 <div className="font-display font-bold uppercase text-chalk">Pay as you go</div>
-                <div className="text-chalk-dim text-sm">Use analysis credits whenever your team needs them.</div>
+                <div className="text-chalk-dim text-sm">Use analysis tokens whenever your team needs them.</div>
               </>
             ) : (
               <>
@@ -232,7 +233,7 @@ export default async function TeamLandingPage() {
           <div className="fade-up card-lift bg-ink-900 border border-courtline rounded-2xl p-6 space-y-2">
             <div className="font-numeric text-ember-500 text-lg select-none">03</div>
             <div className="font-display font-bold uppercase text-chalk">Players upload, you track everything</div>
-            <div className="text-chalk-dim text-sm">{inApp ? <>Watch the leaderboard fill up and see who&apos;s improving across every team.</> : <>Buy credits for players, watch the leaderboard fill up, and see who&apos;s improving across every team.</>}</div>
+            <div className="text-chalk-dim text-sm">{inApp ? <>Watch the leaderboard fill up and see who&apos;s improving across every team.</> : <>Buy tokens for players, watch the leaderboard fill up, and see who&apos;s improving across every team.</>}</div>
           </div>
         </div>
 

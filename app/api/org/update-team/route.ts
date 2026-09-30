@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { db } from '@/lib/db'
+import { cleanOptionalDisplayText } from '@/lib/moderation'
 
 // Update a team's age group (org owner). An empty value clears it.
 export async function POST(req: NextRequest) {
@@ -15,8 +16,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'teamId is required' }, { status: 400 })
     }
 
-    const value =
-      typeof ageGroup === 'string' && ageGroup.trim() ? ageGroup.trim().slice(0, 50) : null
+    // Same display-text rule as every other name save site (markup,
+    // invisible characters, profanity); blank clears the age group.
+    const cleaned = cleanOptionalDisplayText(ageGroup, 50)
+    if (!cleaned.ok) {
+      return NextResponse.json({ error: cleaned.error }, { status: 400 })
+    }
+    const value = cleaned.value
 
     const [team] = (await db`
       SELECT id FROM teams WHERE id = ${teamId} AND organization_id = ${session.orgId}

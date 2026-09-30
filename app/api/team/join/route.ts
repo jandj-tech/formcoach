@@ -3,7 +3,7 @@ import { getSessionFromRequest } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { grantFreeOrgTokensIfEligible } from '@/lib/team-tokens'
 import { teamIsEntitled } from '@/lib/team-features'
-import { isCleanDisplayText, BLOCKED_TEXT_ERROR } from '@/lib/moderation'
+import { cleanOptionalDisplayText, capitalizeFirst, lastInitialFromText, upperInitial } from '@/lib/moderation'
 
 export async function POST(req: NextRequest) {
   try {
@@ -18,9 +18,10 @@ export async function POST(req: NextRequest) {
     // set, those fields are ignored — the canonical user name wins so a single
     // email can't appear under different names on different teams.
     const { teamCode, firstName, lastInitial } = await req.json()
-    if (!isCleanDisplayText(`${firstName ?? ''} ${lastInitial ?? ''}`)) {
-      return NextResponse.json({ error: BLOCKED_TEXT_ERROR }, { status: 400 })
-    }
+    const firstClean = cleanOptionalDisplayText(firstName, 100)
+    if (!firstClean.ok) return NextResponse.json({ error: firstClean.error }, { status: 400 })
+    const lastClean = cleanOptionalDisplayText(lastInitial, 100)
+    if (!lastClean.ok) return NextResponse.json({ error: lastClean.error }, { status: 400 })
     if (!teamCode || typeof teamCode !== 'string') {
       return NextResponse.json({ error: 'Team code required' }, { status: 400 })
     }
@@ -30,13 +31,16 @@ export async function POST(req: NextRequest) {
     ` as unknown as [{ first_name: string | null; last_initial: string | null } | undefined]
 
     let firstNameClean = user?.first_name?.trim() ?? ''
-    let lastInitialClean = user?.last_initial?.trim().charAt(0).toUpperCase() ?? ''
+    let lastInitialClean = upperInitial(user?.last_initial)
 
     if (!firstNameClean || !lastInitialClean) {
-      const rawFirst = typeof firstName === 'string' ? firstName.trim().slice(0, 100) : ''
-      const bodyFirst = rawFirst ? rawFirst.charAt(0).toUpperCase() + rawFirst.slice(1) : ''
-      const bodyLast = typeof lastInitial === 'string'
-        ? lastInitial.trim().charAt(0).toUpperCase() : ''
+      const bodyFirst = firstClean.value ? capitalizeFirst(firstClean.value) : ''
+      // One letter, one character: "ß" must not become "SS" in a CHAR(1) column.
+      const bodyInitial = lastClean.value ? lastInitialFromText(lastClean.value) : null
+      if (bodyInitial && !bodyInitial.ok) {
+        return NextResponse.json({ error: bodyInitial.error }, { status: 400 })
+      }
+      const bodyLast = bodyInitial?.ok ? bodyInitial.value : ''
       if (!bodyFirst || !bodyLast) {
         return NextResponse.json(
           { error: 'Set your name on the dashboard first, then try joining.' },

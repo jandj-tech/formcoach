@@ -315,9 +315,9 @@ export default function CartView() {
           <p className="text-zinc-400 text-xs">
             Free analyses go to your{' '}
             {account.type === 'org'
-              ? 'organization balance'
+              ? 'organization tokens'
               : account.type === 'team'
-                ? 'coach credits'
+                ? 'coach tokens'
                 : 'account'}
             . You can transfer them to a team or players later from your dashboard.
           </p>

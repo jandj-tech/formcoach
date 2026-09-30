@@ -1,5 +1,6 @@
 'use client'
 
+import { LockIcon, UsersIcon } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 interface ChatMessage {
@@ -66,7 +67,9 @@ export default function TeamChatPanel({ teamId, tall = false }: { teamId: string
   }, [teamId, merge])
 
   useEffect(() => {
-    loadFull()
+    // First load on the next tick, outside the effect body (the lint rule
+    // can't see that loadFull only sets state after its fetch resolves).
+    const first = setTimeout(loadFull, 0)
     const timer = setInterval(async () => {
       // Skip the poll while the tab is backgrounded — a hidden panel polling
       // every 5s is pure load on the DB (no CDN) for a screen nobody is looking
@@ -77,7 +80,7 @@ export default function TeamChatPanel({ teamId, tall = false }: { teamId: string
         if (res.ok) merge(await res.json(), true)
       } catch {}
     }, POLL_MS)
-    return () => clearInterval(timer)
+    return () => { clearTimeout(first); clearInterval(timer) }
   }, [teamId, loadFull, merge])
 
   useEffect(() => {
@@ -156,13 +159,13 @@ export default function TeamChatPanel({ teamId, tall = false }: { teamId: string
                 onClick={() => moderate('mode', { mode: 'coach-only' })}
                 className={`px-3 py-1.5 text-xs font-bold transition-colors ${state.chatMode === 'coach-only' ? 'bg-orange-500 text-ink-950' : 'bg-white text-gray-600 hover:bg-orange-100'}`}
               >
-                🔒 Coach + allowed
+                <LockIcon className="inline w-3.5 h-3.5 mr-1 -mt-0.5" aria-hidden />Coach + allowed
               </button>
               <button
                 onClick={() => moderate('mode', { mode: 'everyone' })}
                 className={`px-3 py-1.5 text-xs font-bold transition-colors ${state.chatMode === 'everyone' ? 'bg-orange-500 text-ink-950' : 'bg-white text-gray-600 hover:bg-orange-100'}`}
               >
-                🟢 Everyone
+                <UsersIcon className="inline w-3.5 h-3.5 mr-1 -mt-0.5" aria-hidden />Everyone
               </button>
             </div>
           </div>
@@ -248,7 +251,7 @@ export default function TeamChatPanel({ teamId, tall = false }: { teamId: string
         </div>
       ) : (
         <p className="text-sm text-gray-500 text-center bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
-          🔒 {state.postBlockedReason}
+          <LockIcon className="inline w-3.5 h-3.5 mr-1 -mt-0.5" aria-hidden />{state.postBlockedReason}
         </p>
       )}
     </div>

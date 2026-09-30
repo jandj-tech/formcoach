@@ -32,6 +32,8 @@ export function StatCard({
   mono = false,
   /** One card per grid may carry the ember tint — the page's key number. */
   accent = false,
+  /** Extra grid classes, e.g. a column span. */
+  className = '',
 }: {
   label: string
   value: ReactNode
@@ -39,10 +41,11 @@ export function StatCard({
   note?: ReactNode
   mono?: boolean
   accent?: boolean
+  className?: string
 }) {
   return (
     <div
-      className={`rounded-2xl border px-4 py-3.5 ${
+      className={`rounded-2xl border px-4 py-3.5 ${className} ${
         accent
           ? 'border-ember-500/40 bg-ember-500/10'
           : 'border-gray-200 dark:border-courtline bg-white dark:bg-ink-900'

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getTeamSessionFromRequest } from '@/lib/team-auth'
+import { getTeamSessionFromRequest, provenCoachCreditsEmail } from '@/lib/team-auth'
+import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { db } from '@/lib/db'
 
 // A coach hands tokens to selected players on their team, paid from either
@@ -35,7 +36,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Some selected players are not on this team' }, { status: 400 })
     }
 
-    const coachEmail = session.adminEmail.toLowerCase()
+    // Personal coach tokens are keyed only by email: spend them only when this
+    // session proves it holds that email's credential (provenCoachCreditsEmail)
+    // — a stranger's legacy team under a real coach's address must not.
+    const coachEmail = from === 'personal'
+      ? await provenCoachCreditsEmail(session, await getOrgSessionFromRequest(req))
+      : null
+    if (from === 'personal' && !coachEmail) {
+      return NextResponse.json(
+        { error: 'Your coach tokens can’t be used from this login. Reset your coach password to unlock them.' },
+        { status: 403 },
+      )
+    }
     const total = ids.length * each
 
     // Deduct from the chosen balance and credit players atomically.
@@ -61,14 +73,14 @@ export async function POST(req: NextRequest) {
     if (remaining === null) {
       return NextResponse.json({
         error: from === 'team'
-          ? 'Not enough credits in the team balance'
-          : 'Not enough credits in your personal balance',
+          ? 'Not enough team tokens'
+          : "You don't have enough tokens",
       }, { status: 400 })
     }
 
     return NextResponse.json({ success: true, credits: remaining })
   } catch (err) {
     console.error('Team assign-credits error:', err)
-    return NextResponse.json({ error: 'Could not assign credits' }, { status: 500 })
+    return NextResponse.json({ error: 'Could not send tokens' }, { status: 500 })
   }
 }

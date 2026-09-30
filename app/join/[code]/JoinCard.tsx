@@ -81,7 +81,7 @@ export default function JoinCard({
             />
           </div>
           <p className="text-xs text-chalk-dim">
-            Shown on your team&apos;s roster and leaderboard. Last initial only.
+            Shown on your team&apos;s roster, and the team leaderboard, if your coach shares it. Last initial only.
           </p>
         </div>
       )}

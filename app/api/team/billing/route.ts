@@ -18,9 +18,9 @@ function describeRow(r: OrderRow): string {
   if (r.description) return r.description
   switch (r.kind) {
     case 'team_credits':
-      return `${r.quantity ?? ''} team credits`.trim()
+      return `${r.quantity ?? ''} team tokens`.trim()
     case 'coach_credits':
-      return `${r.quantity ?? ''} coach credits`.trim()
+      return `${r.quantity ?? ''} coach tokens`.trim()
     case 'player_tokens':
       return 'Tokens for players'
     case 'analysis_tokens':

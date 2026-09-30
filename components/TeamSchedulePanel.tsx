@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useTheme } from 'next-themes'
 import Link from 'next/link'
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
@@ -85,6 +85,12 @@ function isoToLocalTime(iso: string): string {
 // Theme tokens — light copies the dashboard vocabulary (TeamChatPanel), dark
 // copies /team's "Broadcast Court" classes. Green stays green in both.
 // ---------------------------------------------------------------------------
+
+const noopSubscribe = () => () => {}
+/** false during SSR and hydration, true after — without a setState-in-effect. */
+function useHydrated(): boolean {
+  return useSyncExternalStore(noopSubscribe, () => true, () => false)
+}
 
 function themeClasses(dark: boolean) {
   return {
@@ -1371,10 +1377,13 @@ export default function TeamSchedulePanel({
   upgradeCta?: { href: string; label: string }
 }) {
   // resolvedTheme collapses "system" to the concrete light/dark actually being
-  // shown. It is undefined until mount, so 'auto' renders light on the server
-  // and on the first client pass — matching, which is what keeps hydration calm.
+  // shown. next-themes already knows it on the first client render (from
+  // localStorage) but the server doesn't, so 'auto' waits until hydration is
+  // done (useHydrated) and renders light until then — server and first client
+  // pass match, then it switches.
   const { resolvedTheme } = useTheme()
-  const dark = theme === 'auto' ? resolvedTheme === 'dark' : theme === 'dark'
+  const hydrated = useHydrated()
+  const dark = theme === 'auto' ? hydrated && resolvedTheme === 'dark' : theme === 'dark'
   const t = themeClasses(dark)
 
   const [data, setData] = useState<ScheduleData | 'error' | null>(null)

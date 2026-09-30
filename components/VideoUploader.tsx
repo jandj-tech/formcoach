@@ -6,6 +6,7 @@ import { analysisBaseCents, isOrgTier, usd } from '@/lib/team-pricing'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { LoaderCircleIcon, VideoIcon } from 'lucide-react'
 import { upload } from '@vercel/blob/client'
 
 import { extractFrames as extractFramesShared, fitFramesToBudget } from '@/lib/frame-extraction'
@@ -17,7 +18,13 @@ interface TeamMode {
   code: string
   firstName: string
   lastName: string
-  onSuccess: (submissionId: string) => void
+  /**
+   * Stable roster ref (lib/team-roster-refs.ts). Coach flows send this so the
+   * shot is filed under exactly that player; the public team page sends names.
+   */
+  playerRef?: string
+  /** `token` is what /results/<token> looks up — the submission id is not. */
+  onSuccess: (submissionId: string, token: string) => void
 }
 
 export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { teamMode?: TeamMode; coachSelf?: boolean; coachCredits?: number } = {}) {
@@ -213,8 +220,12 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
 
         if (teamMode) {
           formData.append('teamCode', teamMode.code)
-          formData.append('playerFirstName', teamMode.firstName)
-          formData.append('playerLastName', teamMode.lastName)
+          if (teamMode.playerRef) {
+            formData.append('playerRef', teamMode.playerRef)
+          } else {
+            formData.append('playerFirstName', teamMode.firstName)
+            formData.append('playerLastName', teamMode.lastName)
+          }
         }
 
         const res = await fetch('/api/analyze', { method: 'POST', body: formData, signal: controller.signal })
@@ -238,7 +249,7 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
         setProgress(100)
 
         if (teamMode) {
-          teamMode.onSuccess(data.submissionId)
+          teamMode.onSuccess(data.submissionId, data.token)
         } else {
           router.push(`/results/${data.token}`)
         }
@@ -382,7 +393,7 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
   if (status === 'extracting' || status === 'uploading') {
     return (
       <div className="w-full max-w-lg mx-auto text-center space-y-6">
-        <div className="text-5xl animate-bounce">🏀</div>
+        <LoaderCircleIcon aria-hidden className="mx-auto h-12 w-12 animate-spin text-orange-500" />
         <div>
           <p className="text-black font-semibold text-lg mb-2">
             {status === 'extracting'
@@ -513,21 +524,21 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
               ? 'border-gray-300 bg-gray-50 select-none'
               : isDragging
                 ? 'border-orange-500 bg-orange-500/5 cursor-pointer'
-                : 'border-gray-300 hover:border-orange-400 hover:bg-orange-50/50 cursor-pointer'
+                : 'border-gray-300 dark:border-courtline hover:border-orange-400 hover:bg-orange-50/50 dark:hover:bg-ember-500/10 cursor-pointer'
             }`}
           onDragOver={(e) => { if (!isLocked) { e.preventDefault(); setIsDragging(true) } }}
           onDragLeave={() => setIsDragging(false)}
           onDrop={isLocked ? undefined : onDrop}
           onClick={() => { if (!isLocked) inputRef.current?.click() }}
         >
-          <div className="text-5xl mb-4" aria-hidden="true">🎥</div>
-          <p className={`font-semibold text-lg mb-1 ${isLocked ? 'text-gray-700' : 'text-black'}`}>
+          <VideoIcon aria-hidden className="mx-auto mb-4 h-12 w-12 text-orange-500" strokeWidth={1.5} />
+          <p className={`font-semibold text-lg mb-1 ${isLocked ? 'text-gray-700' : 'text-black dark:text-chalk'}`}>
             Tap to upload your video
           </p>
-          <p className={`text-sm hidden sm:block ${isLocked ? 'text-gray-700' : 'text-black'}`}>
+          <p className={`text-sm hidden sm:block ${isLocked ? 'text-gray-700' : 'text-black dark:text-chalk'}`}>
             or drag and drop
           </p>
-          <p className={`text-xs mt-3 ${isLocked ? 'text-gray-700' : 'text-black'}`}>
+          <p className={`text-xs mt-3 ${isLocked ? 'text-gray-700' : 'text-black dark:text-chalk'}`}>
             MP4, MOV, AVI · Max 1GB
           </p>
           <button
@@ -603,10 +614,10 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
           <div className="absolute inset-0 flex flex-col items-center justify-center px-6 bg-white/60 backdrop-blur-[1px] rounded-2xl">
             <div className="flex flex-col items-center gap-2 bg-white border-2 border-red-400 shadow-xl rounded-2xl px-5 py-4">
               <p className="text-red-600 font-black text-lg sm:text-xl text-center leading-snug">
-                0 analysis credits remaining
+                0 analysis tokens remaining
               </p>
               <p className="text-gray-600 text-sm text-center">
-                Buy a credit below before you can analyze your shot.
+                Buy a token below before you can analyze your shot.
               </p>
             </div>
           </div>

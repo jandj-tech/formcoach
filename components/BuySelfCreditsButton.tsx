@@ -39,13 +39,13 @@ export default function BuySelfCreditsButton({ tier }: { tier: OrgTier }) {
   return (
     <span className="inline-flex flex-col items-end gap-1.5">
       <span className="inline-flex items-center gap-2">
-        <QuantityStepper value={qty} onChange={setQty} min={1} max={MAX_COACH_CREDITS_PER_ORDER} size="sm" ariaLabel="Number of credits" />
+        <QuantityStepper value={qty} onChange={setQty} min={1} max={MAX_COACH_CREDITS_PER_ORDER} size="sm" ariaLabel="Number of tokens" />
         <button
           onClick={buy}
           disabled={loading}
           className="shrink-0 bg-orange-500 hover:bg-orange-400 disabled:bg-orange-300 text-ink-950 font-bold text-sm px-4 py-2 rounded-xl transition-colors"
         >
-          {loading ? 'Redirecting…' : `Buy ${qty > 1 ? `${qty} credits` : 'credit'} — ${usd(totalCents)}`}
+          {loading ? 'Redirecting…' : `Buy ${qty > 1 ? `${qty} tokens` : 'a token'} — ${usd(totalCents)}`}
         </button>
       </span>
       {percentOff > 0 && (

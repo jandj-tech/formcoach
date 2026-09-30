@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import crypto from 'crypto'
 import { db } from '@/lib/db'
 import { getTeamSessionFromRequest } from '@/lib/team-auth'
 import { teamIsEntitled, SUBSCRIPTION_ENDED_MESSAGE } from '@/lib/team-features'
-import { sendCoachSignupEmail } from '@/lib/email'
-import { addToEmailList } from '@/lib/email-list'
+import { addCoachToTeam, AddCoachError, coachDisplayName } from '@/lib/roster-players'
+import { cleanOptionalDisplayText } from '@/lib/moderation'
 
-// Lets a logged-in coach add another coach to their team. Always returns an
-// invite token (for a shareable link); optionally emails the signup link too.
+// Lets a logged-in coach add another coach to their team. A new coach gets an
+// invite token (for a shareable link) and optionally the signup email. A coach
+// who already coaches another team is added straight away with the password
+// they already use, and gets a "you've been added" notice instead.
 export async function POST(req: NextRequest) {
   const session = await getTeamSessionFromRequest(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -19,50 +20,38 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const body = (await req.json().catch(() => ({}))) as { email?: string; sendEmail?: boolean }
-  const email = body.email?.toLowerCase().trim()
-  if (!email) return NextResponse.json({ error: 'Coach email is required' }, { status: 400 })
+  const body = (await req.json().catch(() => ({}))) as { email?: string; sendEmail?: boolean; name?: string }
+  const name = cleanOptionalDisplayText(body.name, 100)
+  if (!name.ok) return NextResponse.json({ error: name.error }, { status: 400 })
 
   try {
-    const [existing] = (await db`
-      SELECT id FROM team_coaches WHERE email = ${email}
-    `) as unknown as [{ id: string } | undefined]
-    if (existing) {
-      return NextResponse.json({ error: 'That email is already a coach.' }, { status: 409 })
-    }
+    const [team] = (await db`
+      SELECT t.id, t.name, t.admin_email, o.name AS org_name
+      FROM teams t LEFT JOIN organizations o ON o.id = t.organization_id
+      WHERE t.id = ${session.teamId}
+    `) as unknown as [{ id: string; name: string; admin_email: string; org_name: string | null } | undefined]
+    if (!team) return NextResponse.json({ error: 'Team not found' }, { status: 404 })
 
-    const inviteToken = crypto.randomBytes(32).toString('hex')
-    await db`
-      INSERT INTO team_coaches (team_id, email, invite_token)
-      VALUES (${session.teamId}, ${email}, ${inviteToken})
-    `
-    await addToEmailList(email)
-
-    // Optionally email the signup link. The coach is created either way, so a
-    // failed email is non-fatal — the dashboard falls back to showing the link.
-    let emailed = false
-    if (body.sendEmail) {
-      try {
-        const [team] = (await db`
-          SELECT name FROM teams WHERE id = ${session.teamId}
-        `) as unknown as [{ name: string } | undefined]
-        await sendCoachSignupEmail(email, team?.name ?? 'your team', inviteToken)
-        emailed = true
-      } catch (err) {
-        console.error('Coach invite email failed:', err instanceof Error ? err.message : err)
-      }
-    }
-
-    return NextResponse.json({ inviteToken, emailed })
+    const result = await addCoachToTeam({
+      team: { id: team.id, name: team.name, adminEmail: team.admin_email, orgName: team.org_name },
+      email: body.email ?? '',
+      nickname: name.value,
+      sendEmail: !!body.sendEmail,
+      addedBy: await coachDisplayName(team.id, session.adminEmail),
+    })
+    return NextResponse.json(result)
   } catch (err) {
+    if (err instanceof AddCoachError) {
+      return NextResponse.json({ error: err.message }, { status: err.status })
+    }
     const msg = err instanceof Error ? err.message : String(err)
     if (/relation .*team_coaches.* does not exist|team_coaches.* does not exist/i.test(msg)) {
       return NextResponse.json(
-        { error: 'The multi-coach feature needs a database update — run `npm run migrate`.' },
+        { error: 'The multi-coach feature needs a database update \u2014 run `npm run migrate`.' },
         { status: 503 },
       )
     }
     console.error('add-coach error:', err)
-    return NextResponse.json({ error: 'Failed to add coach' }, { status: 500 })
+    return NextResponse.json({ error: 'Could not add the coach. Please try again.' }, { status: 500 })
   }
 }

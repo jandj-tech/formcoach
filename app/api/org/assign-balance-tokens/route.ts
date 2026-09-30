@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
     })
 
     if (remaining === null) {
-      return NextResponse.json({ error: 'Not enough tokens in your balance' }, { status: 400 })
+      return NextResponse.json({ error: 'Not enough organization tokens' }, { status: 400 })
     }
 
     return NextResponse.json({ success: true, tokenBalance: remaining })

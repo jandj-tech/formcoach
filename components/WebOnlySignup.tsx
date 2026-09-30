@@ -32,8 +32,8 @@ export default function WebOnlySignup({
     kind === 'organization'
       ? 'Registering an organization involves your teams, coaches and billing, so it lives on the full site where there is room to do it properly.'
       : kind === 'coach'
-        ? 'Coaching tools — your roster, credits and player uploads — are managed on the full site, so coach accounts are created there.'
-        : 'Running a team means a roster, credits and invoices, so team accounts are created on the full site where all of that lives.'
+        ? 'Coaching tools — your roster, tokens and player uploads — are managed on the full site, so coach accounts are created there.'
+        : 'Running a team means a roster, tokens and invoices, so team accounts are created on the full site where all of that lives.'
 
   return (
     <main className="min-h-screen bg-white dark:bg-ink-950 flex flex-col">

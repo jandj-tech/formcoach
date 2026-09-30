@@ -1982,3 +1982,16 @@ What this is not: <5% miss. On 108 cells the honest statement is a third of
 cells miss the coach's band by more than 0.3, down from just under half, and
 the trust-destroying misses went from eleven to four, on two runs. The number
 that would move it further is more graded videos, not another arm.
+
+## E56 — PRODUCTION IS NOT ON THE MEASURED MODEL (found 2026-09-30 09:00)
+The production environment carries ANTHROPIC_API_KEY and neither ANALYSIS_MODEL
+nor OPENROUTER_API_KEY. analysisModel() therefore falls back to claude-sonnet-4-6
+on the account whose credits hit zero on 2026-09-14. Every arm in this log ran
+on qwen/qwen3.7-flash via OpenRouter. Whatever production has been returning
+since the 14th, it is not what was measured here, and it may be nothing.
+
+Set today: FRAME_CHECKS=1 (inert on the Sonnet path; active once the model
+moves). NOT set: ANALYSIS_MODEL - pointing production at the gateway before the
+OpenRouter key is in the env would fail every analysis. The key must be added
+by the owner (a fresh one; the old one is in a transcript). Then
+ANALYSIS_MODEL=qwen/qwen3.7-flash, then the branch goes out.

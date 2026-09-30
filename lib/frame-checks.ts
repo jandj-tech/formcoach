@@ -25,7 +25,7 @@ import { callVisionModel } from '@/lib/model-provider'
 export interface FrameChecks {
   release: number
   /** Set point (majority of R-1..R-3). */
-  elbow: null | { catapult: boolean; flared: boolean; clean: boolean; frames: number[] }
+  elbow: null | { catapult: boolean; flared: boolean; clean: boolean; frames: number[]; v_top?: boolean }
   /** Dip frame R-6 vs release R. */
   power: null | { ball_low_at_dip: boolean; knees_bent_at_dip: boolean; head_higher_at_release: boolean }
   /** Release R (shoulders) and landing R+4 vs R. */
@@ -76,7 +76,11 @@ export async function runFrameChecks(frames: string[], mimes: string[], model: s
 6. Is ONE hand under the ball with the other hand only on its side?
 Answer JSON only: {"ball_behind_or_above_head":true|false,"elbow_flared_shoulder_height":true|false,"ball_beside_head":true|false,"ball_in_front_of_forehead":true|false,"elbow_inside_shoulder_line":true|false,"one_hand_under_ball":true|false}`
   const spFrames = [R - 1, R - 2, R - 3, R - 4].filter((i) => i >= 0)
-  const spAns = (await Promise.all(spFrames.map((i) => ask(model, frames, mimes, [i], spQ, spKeys)))).filter((a): a is Ask => !!a)
+  // Each frame is asked TWICE. On identical frames the answers vary between
+  // calls (e51/e54: the catapult on shot-200 lit on some runs and not others),
+  // and a single analysis in production gets one chance. Eight tiny
+  // single-image calls instead of four; the majority is over all answers.
+  const spAns = (await Promise.all([...spFrames, ...spFrames].map((i) => ask(model, frames, mimes, [i], spQ, spKeys)))).filter((a): a is Ask => !!a)
   if (spAns.length > 0) {
     const need = Math.ceil(spAns.length / 2)
     const n = (f: (a: Ask) => boolean) => spAns.filter(f).length
@@ -93,9 +97,15 @@ Answer JSON only: {"ball_behind_or_above_head":true|false,"elbow_flared_shoulder
     // three criteria on a good shot, which is the miss this project exists
     // to remove.
     const catapult = n((a) => a.ball_behind_or_above_head && a.elbow_flared_shoulder_height) >= Math.max(2, need)
-    const flared = !catapult && n((a) => a.ball_beside_head && a.elbow_flared_shoulder_height) >= need
+    // The two-arm V at the top (shot-202): both hands mirrored on the sides
+    // of the ball with both elbows out, ball IN FRONT of the head, thrown off
+    // both hands. The expert scored this shape a 3. The old rule also
+    // demanded the elbows at shoulder height, which a V does not need - the
+    // elbows are wide but low - so it never fired. Majority on the one cue.
+    const vTop = !catapult && n((a) => a.both_hands_mirrored_elbows_out) >= need
+    const flared = !catapult && !vTop && n((a) => a.ball_beside_head && a.elbow_flared_shoulder_height) >= need
     const clean = !catapult && !flared && n((a) => a.ball_in_front_of_forehead && a.elbow_inside_shoulder_line && a.one_hand_under_ball && !a.elbow_flared_shoulder_height) >= need
-    fc.elbow = { catapult, flared, clean, frames: spFrames }
+    fc.elbow = { catapult, flared, clean: clean && !vTop, frames: spFrames, v_top: vTop }
   }
 
   // --- POWER: dip frame vs release ---------------------------------------------
@@ -162,6 +172,7 @@ export function frameCheckBounds(fc: FrameChecks): Array<{ criterion: string; ca
   const SQUARE = 'Square to the Basket', FEET = 'Feet Shoulder Width Apart'
   if (fc.elbow) {
     if (fc.elbow.catapult) { b.push({ criterion: ELBOW, cap: 3, why: 'the ball went over or behind the head with the elbow flared' }); b.push({ criterion: POCKET, cap: 4, why: 'the ball was loaded over the head, not in a pocket' }); b.push({ criterion: POWER, cap: 4, why: 'the ball was slung from over the head' }) }
+    else if (fc.elbow.v_top) { b.push({ criterion: ELBOW, cap: 4, why: 'both hands were on the sides of the ball with both elbows out, and the ball was thrown from that two-handed V' }); b.push({ criterion: POCKET, cap: 4, why: 'the ball was held in a two-handed V rather than loaded in a one-hand pocket' }); b.push({ criterion: POWER, cap: 4, why: 'the ball was pushed out of a two-handed V by the arms' }) }
     else if (fc.elbow.flared) b.push({ criterion: ELBOW, cap: 4, why: 'the elbow was out at the shoulder with the ball beside the head' })
     else if (fc.elbow.clean) b.push({ criterion: ELBOW, floor: 6, why: 'the ball was in front of the forehead with the elbow inside the shoulder line and one hand under it' })
   }

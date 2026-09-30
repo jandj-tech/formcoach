@@ -18,6 +18,7 @@ const OAUTH_ERRORS: Record<string, string> = {
   oauth_no_email: 'That sign-in did not share an email address, so we could not create an account.',
   oauth_choose_account: 'More than one player uses this email address, so we can’t tell which one to sign in to. Log in with that player’s email and password instead.',
   oauth_failed: 'That sign-in could not be completed. Please try again.',
+  oauth_email_unverified: "Your Google account's email isn't verified yet. Verify it with Google, or sign up with your email and a password instead.",
   oauth_unavailable: 'Google and Apple sign-in are not available right now — use your email and password.',
 }
 

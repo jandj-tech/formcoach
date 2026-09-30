@@ -48,7 +48,7 @@ export interface OAuthSignInResult {
 export class OAuthSignInError extends Error {
   constructor(
     message: string,
-    readonly code: 'no_email' | 'choose_account' = 'no_email',
+    readonly code: 'no_email' | 'choose_account' | 'email_unverified' = 'no_email',
     /**
      * choose_account only: the verified address and the player accounts on it
      * the provider could be linked to (2+). The web callback turns these into
@@ -248,14 +248,25 @@ async function linkAndSignIn(
 }
 
 async function createPlayer(profile: OAuthProfile, email: string | null): Promise<OAuthSignInResult> {
-  // Apple gives a relay address when the user hides theirs; it still routes
-  // mail to them, so it is a real address for our purposes. If the provider
-  // sent nothing at all we cannot create an account — `users.email` is NOT NULL
-  // and every receipt, reset and report we send needs somewhere to go.
-  if (!email && !profile.email) {
-    throw new OAuthSignInError('That sign-in did not share an email address, so we could not create an account.')
+  // `email` is only non-null when the provider verified the address. Without
+  // that, the address is just a string the token carries: it must never find,
+  // claim, or create an account — not even a brand-new one, or anyone could
+  // squat an address and inherit whatever the real owner does with it later
+  // (step 5 would link their verified sign-in straight into the squatter's
+  // account). Apple always verifies, including private-relay addresses.
+  if (!email) {
+    if (!profile.email) {
+      // `users.email` is NOT NULL and every receipt, reset and report we send
+      // needs somewhere to go.
+      throw new OAuthSignInError('That sign-in did not share an email address, so we could not create an account.')
+    }
+    const providerName = profile.provider === 'apple' ? 'Apple' : 'Google'
+    throw new OAuthSignInError(
+      `Your ${providerName} account's email isn't verified yet. Verify it with ${providerName}, or sign up with your email and a password instead.`,
+      'email_unverified'
+    )
   }
-  const addr = (email ?? profile.email!).toLowerCase().trim()
+  const addr = email
 
   // The provider's display name is user-controlled too: same rule as every
   // other name save site. A name that fails it is simply not used.
@@ -266,12 +277,7 @@ async function createPlayer(profile: OAuthProfile, email: string | null): Promis
   // analysis is discontinued, and a provider account must not become a way
   // around that.
   //
-  // With an UNVERIFIED provider address (`email` null, falling back to
-  // profile.email) nothing here may attach to an existing account: the old
-  // ON CONFLICT DO UPDATE adopted whatever row already carried the address —
-  // a sign-in as someone else for anyone who could mint an unverified claim.
-  // Such an address can only ever start a brand-new account; if it is taken,
-  // refuse. Its earlier anonymous shots are not adopted either.
+  // Unverified addresses were refused above, so `addr` is always proven here.
   //
   // No ON CONFLICT (email): the unique constraint on users.email is dropped by
   // scripts/migrate-family-email.sql (several player accounts may share an
@@ -287,12 +293,10 @@ async function createPlayer(profile: OAuthProfile, email: string | null): Promis
       ORDER BY created_at ASC NULLS LAST, id ASC
     `) as unknown as Array<{ id: string; email: string }>
     if (existing) {
-      // Verified address: the lookup in signInWithOAuthProfile found no player
-      // a moment ago, so this is the losing side of a race — the account the
-      // winner just created is this person's (the old DO UPDATE adopted it the
-      // same way). Unverified: never attach to an existing account.
-      if (email) return existing
-      return undefined
+      // The lookup in signInWithOAuthProfile found no player a moment ago, so
+      // this is the losing side of a race — the account the winner just
+      // created is this person's (the provider verified the address).
+      return existing
     }
     const [row] = (await tx`
       INSERT INTO users (email, password_hash, nickname, free_analysis_used, email_verified_at)

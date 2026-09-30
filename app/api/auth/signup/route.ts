@@ -5,8 +5,8 @@ import { signSession, sessionCookieOptions } from '@/lib/auth'
 import { addToEmailList } from '@/lib/email-list'
 import { sendMetaEvent, makeRegistrationEvent, attributionFromRequest } from '@/lib/meta-server'
 import { BCRYPT_COST } from '@/lib/password'
-import { rateLimitLogin } from '@/lib/rate-limit'
-import { verifyTurnstile } from '@/lib/turnstile'
+import { rateLimit, rateLimitByIp, rateLimitLogin } from '@/lib/rate-limit'
+import { verifyTurnstile, turnstileConfigured, isNativeAppRequestWithoutToken } from '@/lib/turnstile'
 import { checkEmailAbuse } from '@/lib/email-abuse'
 import { cleanOptionalDisplayText, capitalizeFirst } from '@/lib/moderation'
 import { MAX_PLAYERS_PER_EMAIL } from '@/lib/player-accounts'
@@ -59,9 +59,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true })
     }
 
-    const captcha = await verifyTurnstile(req, turnstileToken)
-    if (!captcha.ok) {
-      return NextResponse.json({ error: captcha.error }, { status: 400 })
+    if (turnstileConfigured() && isNativeAppRequestWithoutToken(req, turnstileToken)) {
+      // The shipped iOS app has no Turnstile widget (see lib/turnstile.ts).
+      // Its headers are spoofable, so exempt signups get far tighter budgets
+      // than the general limit above: 5/hour per IP, and a global daily cap so
+      // a script rotating IPs is still bounded.
+      const perIp = await rateLimitByIp(req, 'signup-app-exempt', 5, 3600)
+      const global = perIp.ok ? await rateLimit('signup-app-exempt:global', 300, 86400) : perIp
+      if (!global.ok) {
+        console.warn('[signup] app-exempt rate limited', { scope: perIp.ok ? 'global' : 'ip' })
+        return NextResponse.json(
+          { error: 'Too many attempts — try again later' },
+          { status: 429, headers: { 'Retry-After': String(global.retryAfterSeconds) } }
+        )
+      }
+      console.info('[signup] app-exempt')
+    } else {
+      const captcha = await verifyTurnstile(req, turnstileToken)
+      if (!captcha.ok) {
+        return NextResponse.json({ error: captcha.error }, { status: 400 })
+      }
     }
 
     if (!email || !password || password.length < 6) {

@@ -1935,3 +1935,22 @@ and e53c (e53 + the four research rubrics). ~$1 saved.
 
 Lesson for the log: a p=0.04 on 117 cells needs its confirmation arm before it
 is a result. E50's number was real on that run; its mechanism was not stable.
+
+## E53 — Any-frame catapult + hands caps, no header · NULL; the DRAFTS on top · SIGNIFICANT
+```
+                        miss/109  big  MAE-out       vs previous
+base7                     50      11    0.79
+e53  (checks+hands)       48       7    0.68    vs base: FIXED 13 / BROKE 12, p = 1.0
+e53c (e53 + 4 drafts)     34       2    0.44    vs e53:  FIXED 24 / BROKE 11, p = 0.041
+```
+e53 per criterion vs base: Elbow 9->6 (the caps work), Square 4->3, Power 7->6;
+Feet 4->8 (the feet caps over-fire at distance), Guide Hand 5->6, One-Hand 5->5.
+Any-frame catapult fired on 8 fixtures for 2 real catapults: one CONFIRMED
+false positive (shot-206, expert [6.5,8.5]), five with no expert elbow cell.
+Majority (E50) fired on exactly the two real ones. Recall-over-precision was
+the wrong call; reverted to majority over four frames.
+Drafts on top: Feet 8->3, Knees 3->1, Guide Hand 6->4, Elbow 7->6; Power 6->7.
+All eight known cells in band in e53c. Two big misses left of eleven.
+Trimmed for e54: catapult majority; Elbow/Power floors kept; Square cap kept;
+Feet and hands caps removed (recorded only). e54 = trimmed checks + drafts;
+e54d = drafts only, to attribute.

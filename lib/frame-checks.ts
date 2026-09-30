@@ -86,7 +86,13 @@ Answer JSON only: {"ball_behind_or_above_head":true|false,"elbow_flared_shoulder
     // specificity at ~98% and the E45 controls never lit both cues on any
     // frame. Recall over precision here, because the two cues together have
     // not produced a false positive yet.
-    const catapult = n((a) => a.ball_behind_or_above_head && a.elbow_flared_shoulder_height) >= 1
+    // MAJORITY of the inspected frames, over four candidates. Any-frame (e53)
+    // fired on 8 fixtures for 2 real catapults, with a confirmed false
+    // positive on shot-206 (expert [6.5,8.5]); the majority rule (e50) fired
+    // on exactly the two real ones. Precision wins: a false catapult caps
+    // three criteria on a good shot, which is the miss this project exists
+    // to remove.
+    const catapult = n((a) => a.ball_behind_or_above_head && a.elbow_flared_shoulder_height) >= Math.max(2, need)
     const flared = !catapult && n((a) => a.ball_beside_head && a.elbow_flared_shoulder_height) >= need
     const clean = !catapult && !flared && n((a) => a.ball_in_front_of_forehead && a.elbow_inside_shoulder_line && a.one_hand_under_ball && !a.elbow_flared_shoulder_height) >= need
     fc.elbow = { catapult, flared, clean, frames: spFrames }
@@ -173,17 +179,15 @@ export function frameCheckBounds(fc: FrameChecks): Array<{ criterion: string; ca
   if (fc.square) {
     if (fc.square.one_shoulder_hidden && !fc.square.both_shoulders_visible) b.push({ criterion: SQUARE, cap: 5, why: 'the torso was side-on at the release' })
   }
-  if (fc.feet) {
-    if (!fc.feet.floor_between_shins) b.push({ criterion: FEET, cap: 5, why: 'the feet were together with no floor between the shins' })
-    else if (fc.feet.shoes_outside_shoulders) b.push({ criterion: FEET, cap: 5, why: 'the shoes were planted well outside the shoulders' })
-  }
+  // Feet: RECORDED, NOT ACTED ON. e53 measured the Feet caps at 4 -> 8
+  // misses against baseline; at ~80px the shin-gap and shoulder-line cues
+  // are not reliable enough to cap on. The answers stay in the dump.
   const ONEHAND = 'Shooting Through Guide Hand / One Hand Release', GHFT = 'Guide Hand Follow Through', SHFT = 'Shooting Hand Follow Through'
-  if (fc.hands) {
-    // Caps only. Two cues must agree for the two-hand call; one for the flick.
-    if (fc.hands.guide_hand_on_ball_at_release && fc.hands.both_hands_pushing) { b.push({ criterion: ONEHAND, cap: 4, why: 'the guide hand was still on the ball and both hands pushed it at the release' }); b.push({ criterion: GHFT, cap: 4, why: 'the guide hand pushed the ball rather than peeling off' }) }
-    if (fc.hands.hands_converge_after) { b.push({ criterion: GHFT, cap: 4, why: 'the hands came together after the release' }); b.push({ criterion: ONEHAND, cap: 5, why: 'the hands converged as the ball left' }) }
-    if (fc.hands.shooting_hand_off_line) b.push({ criterion: SHFT, cap: 5, why: 'the shooting hand finished off to the side rather than at the target' })
-  }
+  // Hands: RECORDED, NOT ACTED ON. e53: Guide Hand caps fired on 11 of 27
+  // fixtures for 5 -> 6 misses, One-Hand 5 -> 5. Neutral at best, and a
+  // false cap on a clean release is exactly the miss we are removing. The
+  // cues stay in the dump for the next design pass.
+  void ONEHAND; void GHFT; void SHFT
   // A cap always beats a floor on the same criterion: a detected fault
   // outranks a detected virtue. (E50 run 1 on shot-196: the catapult cap put
   // Power at 4 and the rise floor then lifted it to 7.)

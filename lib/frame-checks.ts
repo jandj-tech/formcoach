@@ -32,6 +32,8 @@ export interface FrameChecks {
   square: null | { both_shoulders_visible: boolean; one_shoulder_hidden: boolean; lands_same_direction: boolean }
   /** Last both-feet-down (R-3) and landing R+4. */
   feet: null | { floor_between_shins: boolean; shoes_outside_shoulders: boolean }
+  /** Release R and just after (R+2): the hands. */
+  hands: null | { guide_hand_on_ball_at_release: boolean; both_hands_pushing: boolean; hands_converge_after: boolean; shooting_hand_off_line: boolean }
   /** Which criteria received a cap or floor, for the dump. */
   applied: string[]
 }
@@ -61,7 +63,7 @@ async function ask(model: string, frames: string[], mimes: string[], idx: number
 const ONE = 'This is ONE frame of a basketball shot. Answer literally about what is visible in THIS image; do not describe what a shot usually looks like.'
 
 export async function runFrameChecks(frames: string[], mimes: string[], model: string, R: number): Promise<FrameChecks> {
-  const fc: FrameChecks = { release: R, elbow: null, power: null, square: null, feet: null, applied: [] }
+  const fc: FrameChecks = { release: R, elbow: null, power: null, square: null, feet: null, hands: null, applied: [] }
 
   // --- ELBOW: three set-point frames, majority -------------------------------
   const spKeys = ['ball_behind_or_above_head', 'elbow_flared_shoulder_height', 'ball_beside_head', 'ball_in_front_of_forehead', 'elbow_inside_shoulder_line', 'one_hand_under_ball']
@@ -122,7 +124,22 @@ Answer JSON only: {"facing_same_direction":true|false}`, landKeys)
 Answer JSON only: {"floor_visible_between_shins":true|false,"shoes_outside_shoulder_lines":true|false}`, ftKeys)
   if (ftAns) fc.feet = { floor_between_shins: ftAns.floor_visible_between_shins, shoes_outside_shoulders: ftAns.shoes_outside_shoulder_lines }
 
-  console.log('[framechecks]', JSON.stringify({ R, elbow: fc.elbow, power: fc.power, square: fc.square, feet: fc.feet }))
+  // --- HANDS: release frame and two frames after --------------------------------
+  const relKeys = ['guide_hand_still_on_ball', 'both_hands_pushing_ball']
+  const relAns = await ask(model, frames, mimes, [R], `${ONE} It is the release frame: the ball is leaving, or has just left, the hand.
+1. Is the guide (non-shooting) hand STILL touching the ball as it leaves?
+2. Are BOTH hands pushing the ball — palms behind or under it together, like a two-handed shove — rather than one hand releasing and the other only resting on the side?
+Answer JSON only: {"guide_hand_still_on_ball":true|false,"both_hands_pushing_ball":true|false}`, relKeys)
+  const aftKeys = ['hands_converged_or_crossed', 'shooting_hand_pointing_off_to_side']
+  const aftAns = await ask(model, frames, mimes, [R + 2], `${ONE} It is just after the release, the ball already gone.
+1. Have the two hands come TOGETHER — converged, touching or crossed in front of the face — rather than staying clearly apart?
+2. Is the shooting hand's follow-through pointing off to one SIDE (wrist flicked sideways, palm rolled outward) rather than straight ahead toward the target?
+Answer JSON only: {"hands_converged_or_crossed":true|false,"shooting_hand_pointing_off_to_side":true|false}`, aftKeys)
+  if (relAns && aftAns) {
+    fc.hands = { guide_hand_on_ball_at_release: relAns.guide_hand_still_on_ball, both_hands_pushing: relAns.both_hands_pushing_ball, hands_converge_after: aftAns.hands_converged_or_crossed, shooting_hand_off_line: aftAns.shooting_hand_pointing_off_to_side }
+  }
+
+  console.log('[framechecks]', JSON.stringify({ R, elbow: fc.elbow, power: fc.power, square: fc.square, feet: fc.feet, hands: fc.hands }))
   return fc
 }
 
@@ -153,6 +170,13 @@ export function frameCheckBounds(fc: FrameChecks): Array<{ criterion: string; ca
   if (fc.feet) {
     if (!fc.feet.floor_between_shins) b.push({ criterion: FEET, cap: 5, why: 'the feet were together with no floor between the shins' })
     else if (fc.feet.shoes_outside_shoulders) b.push({ criterion: FEET, cap: 5, why: 'the shoes were planted well outside the shoulders' })
+  }
+  const ONEHAND = 'Shooting Through Guide Hand / One Hand Release', GHFT = 'Guide Hand Follow Through', SHFT = 'Shooting Hand Follow Through'
+  if (fc.hands) {
+    // Caps only. Two cues must agree for the two-hand call; one for the flick.
+    if (fc.hands.guide_hand_on_ball_at_release && fc.hands.both_hands_pushing) { b.push({ criterion: ONEHAND, cap: 4, why: 'the guide hand was still on the ball and both hands pushed it at the release' }); b.push({ criterion: GHFT, cap: 4, why: 'the guide hand pushed the ball rather than peeling off' }) }
+    if (fc.hands.hands_converge_after) { b.push({ criterion: GHFT, cap: 4, why: 'the hands came together after the release' }); b.push({ criterion: ONEHAND, cap: 5, why: 'the hands converged as the ball left' }) }
+    if (fc.hands.shooting_hand_off_line) b.push({ criterion: SHFT, cap: 5, why: 'the shooting hand finished off to the side rather than at the target' })
   }
   // A cap always beats a floor on the same criterion: a detected fault
   // outranks a detected virtue. (E50 run 1 on shot-196: the catapult cap put

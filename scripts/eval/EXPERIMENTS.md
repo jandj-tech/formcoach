@@ -2042,6 +2042,32 @@ The tail of probe 2 was all gateway timeouts ("aborted due to timeout",
 "terminated") — the two probes overlapped, i.e. my own load, the same lesson as
 ANALYSIS_PASS_CONCURRENCY. Cleared before the arm (models 200 in 1s, chat 1s).
 
-**Mini-arm e57** (same 7 fixtures, 2 runs): pending. PASS = 196 and 200 Elbow and
-Power <= 4 on both runs, controls unchanged. 202 and 198 are expected to still
-miss and are accepted for this round.
+**Mini-arm e57** (same 7 fixtures, 2 runs, 3 fixtures in parallel, fetch timeout
+900s; 4th launch - the first three graded 0/14 because the model reasoned ~8x
+longer per call than in the morning and the 300s fetch timeout aborted and
+re-ran calls). 0 DID NOT RUN, 0 transport failures.
+
+```
+                       e55 (uncropped)          e57 (cropped)
+shot-196 Elbow [2,4]     9   MISS +5             3   ok   (cap fired 2/2)
+shot-196 Power [2,4]     9   MISS +5             4   ok
+shot-200 Elbow [2,4]     6   MISS +2             3   ok   (cap fired 2/2)
+shot-200 Power [2,4]     6.5 MISS +2.5           4   ok
+shot-196 Pocket [7.5,9.5] 9  ok                  4   MISS -3.5  <- the catapult's Pocket cap
+shot-200 Pocket [7,9]    9   ok                  4   MISS -3    <- same
+shot-202 Elbow [3,5]     8.5 MISS +3.5           9   MISS +4    (V recorded, not acted)
+shot-198 Elbow [3,5]     9   MISS +4             9   MISS +4    (unsolved)
+controls 125/189/206: all within 0.5 in both arms except 125 Elbow 9 vs [6.5,8]
+(+1, no cap involved; e55 gave 8.5).
+```
+The catapult is fixed on both runs of the only catapult clip, and the fix
+exposed a wrong cap: the expert scores the POCKET of that clip 7.5-9.5 - the
+ball starts in a proper pocket and only then goes up and back. Pocket cap
+under catapult REMOVED (arithmetic only: it can only return those two cells to
+the model's in-band 9; no other fixture is a catapult). Not re-run as an arm.
+
+Big misses (>= 3) on these 7: e55 had 4 (196 E, 196 P, 202 E, 198 E) plus 200 at
++2/+2.5; e57 after the Pocket fix has 3 (202 Elbow, 202 Pocket, 198 Elbow), all
+on the two fixtures accepted as unsolved this round. KEPT. A full 28-fixture arm
+of this config has not been run; the E54 paired numbers stand as the last full
+measurement.

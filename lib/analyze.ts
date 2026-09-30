@@ -466,6 +466,7 @@ async function loadGraderContext(): Promise<GraderContext> {
         // an indistinguishable baseline).
         (process.env.SETPOINT_CHECK === '1' ? 'setpoint:' : '') +
         (process.env.FRAME_CHECKS === '1' ? 'framechecks:' : '') +
+        (process.env.FRAME_CHECKS === '1' && process.env.FRAME_CHECK_CROP === '0' ? 'nocrop:' : '') +
         (process.env.SPLIT_FRAMES === '1' ? 'split:' : '') +
         (process.env.ANCHORS === '1' ? 'anchors:' : '') +
         (process.env.FAULT_GATE === '1' ? 'faultgate:' : '') +

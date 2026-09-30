@@ -529,12 +529,14 @@ export function renderPersonalPlanPausedEmail(a: PersonalPlanPausedInput): Rende
     })
   }
   return layout({
-    subject: `We paused billing on your personal plan until ${until}`,
+    // "Restarts on", never "paused until": the resume date is the day AFTER
+    // the club's last covered day and must not read as a coverage date.
+    subject: `Billing on your own plan is paused and restarts on ${until}`,
     headerSub: org,
     heading: 'Your personal plan is paused',
     blocks: [
       { p: hello(first) },
-      { p: `${org} is now providing your membership through LearnHoops, so we paused the billing on your personal plan until ${until}. You won't be charged for it while you are covered.` },
+      { p: `${org} is now covering your LearnHoops membership through ${fmtLastDay(a.resumesAt)}. Billing on your own plan is paused and restarts on ${until}. You won't be charged for it while you are covered.` },
       {
         list: [
           'Nothing you already paid for is lost. You keep full access the whole time.',

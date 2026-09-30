@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { billingPortalUrl } from '@/lib/org-subscription'
 import { resolveBaseUrl } from '@/lib/base-url'
+import { rejectInAppPurchase } from '@/lib/in-app'
 
 const BASE_URL = resolveBaseUrl()
 
@@ -15,6 +16,10 @@ const BASE_URL = resolveBaseUrl()
  * error to someone who was told they would never be billed.
  */
 export async function POST(req: NextRequest) {
+  // The Stripe portal can change plans, so it is a purchase surface: website
+  // only, never the iOS app (App Store 3.1.1) — same guard as the buy routes.
+  const inAppBlock = rejectInAppPurchase(req)
+  if (inAppBlock) return inAppBlock
   const session = await getOrgSessionFromRequest(req)
   if (!session) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })

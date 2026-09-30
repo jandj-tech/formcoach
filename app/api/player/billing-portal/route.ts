@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSessionFromRequest } from '@/lib/auth'
 import { resolveBaseUrl } from '@/lib/base-url'
+import { rejectInAppPurchase } from '@/lib/in-app'
 import { playerBillingPortalUrl } from '@/lib/player-subscription'
 
 const BASE_URL = resolveBaseUrl()
@@ -11,6 +12,10 @@ const BASE_URL = resolveBaseUrl()
  * /api/org/billing-portal); this app only mirrors state via webhooks.
  */
 export async function POST(req: NextRequest) {
+  // The Stripe portal can change plans, so it is a purchase surface: website
+  // only, never the iOS app (App Store 3.1.1) — same guard as the buy routes.
+  const inAppBlock = rejectInAppPurchase(req)
+  if (inAppBlock) return inAppBlock
   const session = await getSessionFromRequest(req)
   if (!session) {
     return NextResponse.json({ error: 'Login required' }, { status: 401 })

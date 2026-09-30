@@ -293,7 +293,8 @@ export async function createMembershipCheckout(order: OrderRow, customerEmail: s
           unit_amount: order.unit_cents,
           product_data: {
             name: `${planName} membership, ${termLabel(order.term)}`,
-            description: `${fmt(order.starts_at)} to ${fmt(order.ends_at)}. Prepaid, does not renew.`,
+            // ends_at is exclusive: name the last covered day, like the receipt and dashboard.
+            description: `${fmt(order.starts_at)} through ${fmt(new Date(new Date(order.ends_at).getTime() - 1))}. Prepaid, does not renew.`,
           },
         },
       },

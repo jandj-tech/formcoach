@@ -72,6 +72,11 @@ export interface UsageSummary {
   /** While a club seat covers them, the date the player's own Stripe plan
    * resumes billing (assigning the seat paused it). null otherwise. */
   personalPlanPausedUntil: string | null
+  /** A club seat that covers now while the player's OWN higher plan is the
+   * active source (club Player seat + personal Pro). The dashboard uses it to
+   * never offer a personal plan at or below the seat (the server 409s that —
+   * personalPlanVsClub in lib/player-entitlement.ts). null otherwise. */
+  coveringSeat: { orgName: string; plan: PlayerPlan; endsAt: string } | null
 }
 
 interface UserBalanceRow {
@@ -222,6 +227,10 @@ async function buildUsageSummary(
       : null,
     billedVia: orgSeat ? 'org' : eff.billedVia,
     personalPlanPausedUntil,
+    coveringSeat:
+      !orgSeat && eff.liveSeat
+        ? { orgName: eff.liveSeat.orgName, plan: eff.liveSeat.plan, endsAt: eff.liveSeat.endsAt.toISOString() }
+        : null,
   }
 }
 

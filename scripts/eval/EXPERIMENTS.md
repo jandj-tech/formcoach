@@ -1954,3 +1954,31 @@ All eight known cells in band in e53c. Two big misses left of eleven.
 Trimmed for e54: catapult majority; Elbow/Power floors kept; Square cap kept;
 Feet and hands caps removed (recorded only). e54 = trimmed checks + drafts;
 e54d = drafts only, to attribute.
+
+## E54 — Trimmed frame checks + research rubrics · SIGNIFICANT, REPRODUCED. KEPT.
+Attribution pair on the trimmed design (majority catapult; Elbow/Power floors;
+Square cap; feet/hands recorded only) plus the four rubric drafts.
+```
+                           miss/108   big   MAE-out    vs base7 (paired)
+base7                       45.4%     11     0.79
+e54d  drafts only           38.9%      6     0.65     FIXED 23 / BROKE 16, p = 0.34
+e54   checks + drafts       31.5%      4     0.49     FIXED 25 / BROKE 10, p = 0.017
+e53c  (noisy checks) + drafts 30.6%    2     0.43     (previous run of the same family)
+e54d -> e54 (the checks' own contribution)                 FIXED 16 / BROKE 7, p = 0.09
+```
+Two independent runs of checks + drafts land at 30.6% and 31.5% against a
+45% baseline. The known catastrophic cells in e54: 196 Elbow 3, Power 4;
+189 Power 8; 195 Square 9; 208 Square 5 - all in band. Drafts alone leave the
+catapults at 9 (196/200 Elbow and Power all +5.0); the checks are what remove
+them. Remaining e54 big misses: 200 Power 8 (catapult caught on too few runs
+for the median), 202 Elbow 9 (a flared elbow the flared rule does not reach),
+193 Power 9, 156 Square 4 (a Square cap that fired on a good shot).
+
+DECISION: ship checks + drafts. FRAME_CHECKS=1 in production, and the four
+rubrics promoted into criteria.grading_notes by scripts/migrate-rubrics-e54.sql.
+Spend for the whole E45-E54 sequence, metered: ~$24.
+
+What this is not: <5% miss. On 108 cells the honest statement is a third of
+cells miss the coach's band by more than 0.3, down from just under half, and
+the trust-destroying misses went from eleven to four, on two runs. The number
+that would move it further is more graded videos, not another arm.

@@ -61,7 +61,7 @@ export default function JoinTeamForm({ variant = 'inline' }: { variant?: 'inline
       <p className="mt-1.5 text-sm text-gray-600 dark:text-chalk-dim leading-relaxed">
         Your coach can send you an invite link, or give you the team code to
         enter here. Once you&apos;re on the roster you&apos;ll see the schedule,
-        the leaderboard and any tokens they hand out.
+        any tokens they hand out, and the team leaderboard, if your coach shares it.
       </p>
       <div className="mt-5 max-w-sm mx-auto text-left">{field}</div>
     </div>

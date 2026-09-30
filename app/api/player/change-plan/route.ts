@@ -5,6 +5,7 @@ import { db } from '@/lib/db'
 import { rejectInAppPurchase } from '@/lib/in-app'
 import { currencyForRequest } from '@/lib/region'
 import { ensurePlayerPlanProduct, getPlayerSubscription } from '@/lib/player-subscription'
+import { effectivePlan, personalPlanVsClub } from '@/lib/player-entitlement'
 import {
   isPlayerBillingInterval,
   isPlayerPlan,
@@ -41,6 +42,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Pick a plan' }, { status: 400 })
     }
 
+    // A club membership seat covers this player: moving the personal plan to
+    // the same or a lower plan (or re-billing the same one) pays twice. A
+    // higher plan is allowed; the seat stays until it ends.
+    const eff = await effectivePlan(session.userId)
+    const club = personalPlanVsClub(eff, plan)
+    if (!club.ok) {
+      return NextResponse.json({ error: club.message, clubCovered: true }, { status: 409 })
+    }
+
     const current = await getPlayerSubscription(session.userId)
     if (current && playerStatusEntitled(current.status) && !current.stripeSubscriptionId) {
       // Apple-billed membership: Stripe can't touch it.
@@ -67,6 +77,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Could not change plan' }, { status: 500 })
     }
 
+    // Upgrading above the club seat makes this plan the one in use, so a pause
+    // the seat put on it (lib/org-membership.ts applyPersonalPause) must lift —
+    // otherwise the higher plan would run unbilled until the seat ends.
+    const liftPause = !!club.note && !!subscription.pause_collection
+
     const isAnnual = interval === 'annual'
     const productId = await ensurePlayerPlanProduct(plan, PLAYER_PLANS[plan].name)
     await stripe.subscriptions.update(current.stripeSubscriptionId, {
@@ -82,6 +97,7 @@ export async function POST(req: NextRequest) {
         },
       ],
       proration_behavior: 'create_prorations',
+      ...(liftPause ? { pause_collection: '' as const } : {}),
       // customer.subscription.updated carries no checkout metadata, so restamp
       // the subscription with what it now is.
       metadata: {
@@ -100,13 +116,21 @@ export async function POST(req: NextRequest) {
       WHERE id = ${session.userId}
     `
 
+    if (liftPause && eff.liveSeat) {
+      await db`
+        UPDATE org_membership_seats SET paused_stripe_sub_id = NULL, updated_at = NOW()
+        WHERE id = ${eff.liveSeat.seatId} AND paused_stripe_sub_id = ${current.stripeSubscriptionId}
+      `
+    }
+
     console.log('[player/change-plan] plan changed', {
       userId: session.userId,
       from: `${current.plan}/${current.interval}`,
       to: `${plan}/${interval}`,
+      ...(liftPause ? { resumedFromClubPause: true } : {}),
     })
 
-    return NextResponse.json({ ok: true, plan, interval })
+    return NextResponse.json({ ok: true, plan, interval, ...(club.note ? { note: club.note } : {}) })
   } catch (err) {
     console.error('[player/change-plan] failed:', err)
     return NextResponse.json({ error: 'Could not change plan' }, { status: 500 })

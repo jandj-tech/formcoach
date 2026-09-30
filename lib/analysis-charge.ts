@@ -35,6 +35,7 @@ export type ChargeKind =
   | 'org_balance'
   | 'user_token'
   | 'subscription' // included allowance: no balance to increment
+  | 'org_membership' // an org-sponsored seat's included allowance: same as 'subscription'
 
 /**
  * What the refund needs to find the row again.
@@ -109,6 +110,7 @@ async function applyRefund(row: ChargeRow): Promise<void> {
       await db`UPDATE users SET analysis_tokens = analysis_tokens + 1 WHERE id = ${ref.userId}`
       return
     case 'subscription':
+    case 'org_membership':
       // An included analysis has no balance to increment. Dropping out of the
       // usage window IS the refund, and markSubmissionFailed does that.
       await markSubmissionFailed(row.submission_id)

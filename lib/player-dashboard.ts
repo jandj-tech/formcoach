@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { effectivePlan, type BilledVia, type EffectivePlan } from '@/lib/player-entitlement'
 import {
   getPlayerSubscription,
   getSubscriptionUsage,
@@ -61,6 +62,16 @@ export interface UsageSummary {
   /** What the next analysis would be funded by, so the UI can warn BEFORE a
    * purchased token is consumed ("This analysis will use 1 purchased token"). */
   nextAnalysisSource: 'legacy' | 'subscription' | 'token' | 'none'
+  /** Set while an organization's prepaid seat is the ACTIVE source of this
+   * player's plan (org-sponsored membership). `plan`/`planName`/limits above
+   * are then the seat's plan and the usage windows are the seat's. */
+  sponsor: { orgName: string; plan: PlayerPlan; endsAt: string } | null
+  /** Who pays for the active entitlement: 'org' (club seat), 'stripe' or
+   * 'apple' (the player's own plan), 'legacy' (grandfathered unlimited). */
+  billedVia: BilledVia | null
+  /** While a club seat covers them, the date the player's own Stripe plan
+   * resumes billing (assigning the seat paused it). null otherwise. */
+  personalPlanPausedUntil: string | null
 }
 
 interface UserBalanceRow {
@@ -86,18 +97,68 @@ function legacyUnlimitedFrom(row: UserBalanceRow | undefined): boolean {
 }
 
 export async function getUsageSummary(userId: string, now = new Date()): Promise<UsageSummary> {
-  const [sub, balances] = await Promise.all([getPlayerSubscription(userId), getUserBalances(userId)])
-  return buildUsageSummary(userId, sub, balances, now)
+  const [sub, balances, eff] = await Promise.all([
+    getPlayerSubscription(userId),
+    getUserBalances(userId),
+    effectivePlan(userId, now),
+  ])
+  return buildUsageSummary(userId, sub, balances, eff, now)
+}
+
+/**
+ * When a club seat is active and assigning it paused the player's own Stripe
+ * subscription, that plan resumes when the seat ends. Degrades to null on a
+ * database without the memberships migration.
+ */
+async function pausedPersonalUntil(
+  eff: EffectivePlan,
+  sub: PlayerSubscription | null,
+): Promise<string | null> {
+  if (eff.source !== 'org' || !eff.seatId || !eff.endsAt) return null
+  if (eff.personal?.billedVia !== 'stripe' || !sub?.stripeSubscriptionId) return null
+  try {
+    const [row] = (await db`
+      SELECT paused_stripe_sub_id FROM org_membership_seats WHERE id = ${eff.seatId}
+    `) as unknown as [{ paused_stripe_sub_id: string | null } | undefined]
+    return row?.paused_stripe_sub_id && row.paused_stripe_sub_id === sub.stripeSubscriptionId
+      ? eff.endsAt.toISOString()
+      : null
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    if (!/(column|relation) .* does not exist/i.test(msg)) throw err
+    return null
+  }
 }
 
 async function buildUsageSummary(
   userId: string,
-  sub: PlayerSubscription | null,
+  personalSub: PlayerSubscription | null,
   balances: UserBalanceRow | undefined,
+  eff: EffectivePlan,
   now: Date,
 ): Promise<UsageSummary> {
   const purchasedTokens = balances?.analysis_tokens ?? 0
   const legacyUnlimited = legacyUnlimitedFrom(balances)
+  // An org seat that is the ACTIVE source (lib/player-entitlement.ts picks the
+  // higher plan, org on a tie) replaces the personal plan for display: its
+  // plan, its caps, and usage windows anchored on the seat. Legacy and
+  // personal paths are exactly as before.
+  const orgSeat =
+    eff.source === 'org' && eff.plan && eff.anchor && eff.orgName && eff.endsAt
+      ? { plan: eff.plan, anchor: eff.anchor, orgName: eff.orgName, endsAt: eff.endsAt }
+      : null
+  const sub: PlayerSubscription | null = orgSeat
+    ? {
+        plan: orgSeat.plan,
+        interval: 'monthly',
+        status: 'active',
+        anchor: orgSeat.anchor,
+        periodEnd: null,
+        cancelAtPeriodEnd: false,
+        stripeSubscriptionId: null,
+        stripeCustomerId: null,
+      }
+    : personalSub
   const entitled = subscriptionEntitled(sub)
 
   let weeklyUsed = 0
@@ -124,11 +185,13 @@ async function buildUsageSummary(
   }
 
   const includedAvailable = entitled && weeklyRemaining > 0 && monthlyRemaining > 0
+  const personalPlanPausedUntil = await pausedPersonalUntil(eff, personalSub)
 
   return {
     plan: sub?.plan ?? null,
     planName: sub ? PLAYER_PLANS[sub.plan].name : null,
-    billingFrequency: sub?.interval ?? null,
+    // A club seat is prepaid for a term — no billing frequency of its own.
+    billingFrequency: orgSeat ? null : sub?.interval ?? null,
     subscriptionStatus: sub?.status ?? null,
     entitled,
     cancelAtPeriodEnd: sub?.cancelAtPeriodEnd ?? false,
@@ -146,7 +209,7 @@ async function buildUsageSummary(
     monthlyResetInDays,
     purchasedTokens,
     legacyUnlimited,
-    billedViaApple: !!sub && !sub.stripeSubscriptionId,
+    billedViaApple: !orgSeat && !!sub && !sub.stripeSubscriptionId,
     nextAnalysisSource: legacyUnlimited
       ? 'legacy'
       : includedAvailable
@@ -154,6 +217,11 @@ async function buildUsageSummary(
         : purchasedTokens > 0
           ? 'token'
           : 'none',
+    sponsor: orgSeat
+      ? { orgName: orgSeat.orgName, plan: orgSeat.plan, endsAt: orgSeat.endsAt.toISOString() }
+      : null,
+    billedVia: orgSeat ? 'org' : eff.billedVia,
+    personalPlanPausedUntil,
   }
 }
 
@@ -206,10 +274,14 @@ export async function getPlayerDashboard(userId: string, now = new Date()): Prom
   const monthFloor = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
   const floor = new Date(Math.min(seriesFloor.getTime(), monthFloor.getTime()))
 
-  const [sub, balances] = await Promise.all([getPlayerSubscription(userId), getUserBalances(userId)])
+  const [sub, balances, eff] = await Promise.all([
+    getPlayerSubscription(userId),
+    getUserBalances(userId),
+    effectivePlan(userId, now),
+  ])
 
   const [usage, analysisWeeks, trainingRows, totals, recentTraining] = await Promise.all([
-    buildUsageSummary(userId, sub, balances, now),
+    buildUsageSummary(userId, sub, balances, eff, now),
     db`
       SELECT (date_trunc('week', created_at AT TIME ZONE 'utc'))::date::text AS week_start,
              COUNT(*)::int AS analyses
@@ -255,7 +327,7 @@ export async function getPlayerDashboard(userId: string, now = new Date()): Prom
     if (!/relation .* does not exist|column .* does not exist/i.test(msg)) throw err
     console.warn('[player-dashboard] training tables missing — run `npm run migrate`.')
     const [usageOnly, totalRows] = await Promise.all([
-      buildUsageSummary(userId, sub, balances, now),
+      buildUsageSummary(userId, sub, balances, eff, now),
       db`
         SELECT COUNT(*)::int AS total FROM submissions
         WHERE user_id = ${userId} AND status = 'complete'

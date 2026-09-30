@@ -2,6 +2,7 @@ import type Stripe from 'stripe'
 import { getStripe } from '@/lib/stripe'
 import { db } from '@/lib/db'
 import { stripeIdOf, subscriptionPeriodEnd } from '@/lib/org-subscription'
+import { effectivePlanWith, hasIncludedAllowance } from '@/lib/player-entitlement'
 import {
   isPlayerBillingInterval,
   isPlayerPlan,
@@ -259,8 +260,17 @@ export interface SubscriptionUsage {
 }
 
 /**
+ * The stamps that consume INCLUDED allowance. An org-sponsored seat and a
+ * personal plan share one count: whichever source is active, both kinds of
+ * row inside its windows count, so switching source mid-week (seat assigned,
+ * seat released, personal plan resumed) can never grant a second allowance.
+ */
+export const INCLUDED_USAGE_SOURCES = ['subscription', 'org_membership'] as const
+export type IncludedUsageSource = (typeof INCLUDED_USAGE_SOURCES)[number]
+
+/**
  * The usage predicate, in one place: a submission consumes included allowance
- * when it is stamped 'subscription' and either finished successfully or is
+ * when it is stamped 'subscription' or 'org_membership' and either finished successfully or is
  * still in flight (recent 'processing' rows count so a concurrent request
  * can't slip in while one is mid-grade; rows stranded by a crash age out of
  * the count after 15 minutes instead of eating allowance forever; 'failed'
@@ -282,7 +292,7 @@ function countUsage(
       )::int AS monthly_used
     FROM submissions
     WHERE user_id = ${userId}
-      AND entitlement_source = 'subscription'
+      AND entitlement_source IN ('subscription', 'org_membership')
       AND (
         status = 'complete'
         OR (status = 'processing' AND created_at > NOW() - INTERVAL '15 minutes')
@@ -290,10 +300,14 @@ function countUsage(
   ` as unknown as Promise<[{ weekly_used: number; monthly_used: number }]>
 }
 
-/** Current-window usage for display. Not serialized — reads only. */
+/**
+ * Current-window usage for display. Not serialized — reads only. Pass the
+ * ACTIVE source's anchor: a PlayerSubscription, or the EffectivePlan from
+ * lib/player-entitlement.ts (org seats anchor on the seat's anchor_at).
+ */
 export async function getSubscriptionUsage(
   userId: string,
-  sub: PlayerSubscription,
+  sub: { anchor: Date },
   now = new Date(),
 ): Promise<SubscriptionUsage> {
   const weekly = weeklyWindow(sub.anchor, now)
@@ -310,12 +324,15 @@ export async function getSubscriptionUsage(
 }
 
 export type ReserveResult =
-  | { ok: true; decision: QuotaDecision }
+  | { ok: true; decision: QuotaDecision; source: IncludedUsageSource; orgId: string | null; seatId: string | null }
   | { ok: false; reason: 'not_subscribed' }
   | { ok: false; reason: 'weekly' | 'monthly'; decision: QuotaDecision; usage: SubscriptionUsage }
 
 /**
- * Try to fund `submissionId` from the included subscription allowance.
+ * Try to fund `submissionId` from the included allowance of the player's
+ * EFFECTIVE plan (lib/player-entitlement.ts): their personal subscription or
+ * an org-sponsored seat. The stamp says which ('subscription' |
+ * 'org_membership'); the count covers both.
  *
  * Runs in a transaction that locks the user row FIRST, so concurrent attempts
  * queue: the second one re-counts after the first commits and sees its stamp.
@@ -329,22 +346,20 @@ export async function reserveSubscriptionAnalysis(
   now = new Date(),
 ): Promise<ReserveResult> {
   return (await db.begin(async (sql) => {
-    const [row] = (await sql`
-      SELECT plan, plan_interval, plan_status, plan_anchor, plan_period_end,
-             plan_cancel_at_period_end, stripe_subscription_id, stripe_customer_id
-      FROM users WHERE id = ${userId} FOR UPDATE
-    `) as unknown as [UserPlanRow | undefined]
+    // Lock first: every reservation for this user queues behind this row.
+    await sql`SELECT id FROM users WHERE id = ${userId} FOR UPDATE`
 
-    const sub = rowToSubscription(row)
-    if (!subscriptionEntitled(sub)) return { ok: false as const, reason: 'not_subscribed' as const }
+    const eff = await effectivePlanWith(sql as unknown as typeof db, userId, now)
+    if (!hasIncludedAllowance(eff)) return { ok: false as const, reason: 'not_subscribed' as const }
+    const source: IncludedUsageSource = eff.source === 'org' ? 'org_membership' : 'subscription'
 
-    const weekly = weeklyWindow(sub.anchor, now)
-    const monthly = monthlyWindow(sub.anchor, now)
+    const weekly = weeklyWindow(eff.anchor, now)
+    const monthly = monthlyWindow(eff.anchor, now)
     const [counts] = await countUsage(sql as unknown as typeof db, userId, weekly, monthly)
     const weeklyUsed = counts?.weekly_used ?? 0
     const monthlyUsed = counts?.monthly_used ?? 0
 
-    const decision = quotaDecision(sub.plan, weeklyUsed, monthlyUsed)
+    const decision = quotaDecision(eff.plan, weeklyUsed, monthlyUsed)
     if (!decision.allowed) {
       return {
         ok: false as const,
@@ -362,9 +377,9 @@ export async function reserveSubscriptionAnalysis(
     }
 
     await sql`
-      UPDATE submissions SET entitlement_source = 'subscription' WHERE id = ${submissionId}
+      UPDATE submissions SET entitlement_source = ${source} WHERE id = ${submissionId}
     `
-    return { ok: true as const, decision }
+    return { ok: true as const, decision, source, orgId: eff.orgId, seatId: eff.seatId }
   })) as ReserveResult
 }
 

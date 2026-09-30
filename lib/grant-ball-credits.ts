@@ -1,5 +1,7 @@
 import { db } from '@/lib/db'
 import { claimStripeSession, releaseStripeSessionClaim } from '@/lib/stripe-idempotency'
+import { createPendingCreditClaim, playersByEmail, soleVerifiedPlayer } from '@/lib/player-accounts'
+import { sendClaimCreditsEmail } from '@/lib/email'
 
 export interface GrantBallCreditsInput {
   sessionId: string
@@ -17,6 +19,12 @@ export interface GrantBallCreditsResult {
   granted: boolean
   reason: 'no_tokens' | 'already_processed' | 'no_recipient_no_email' | 'no_match' | 'grant_failed' | 'granted'
   updatedRows?: number
+  /**
+   * Set when several verified player accounts share the address, so the
+   * credits could not go to exactly one: they wait on this one-time claim and
+   * the claim link was emailed to the address.
+   */
+  heldClaimToken?: string
 }
 
 // Idempotently grant the free shot-analysis credits attached to a Stripe
@@ -50,6 +58,34 @@ export async function grantBallCreditsOnce(input: GrantBallCreditsInput): Promis
   }
 
   let updatedRows = 0
+  let heldClaimToken: string | undefined
+
+  // The address alone names the buyer here, and several player accounts may
+  // share it (siblings on a parent's inbox). Credit EXACTLY ONE: the single
+  // account that has proven the inbox. With several verified accounts the
+  // credits wait on a claim whose emailed link lets the family pick one (by
+  // logging in to it); with none, the caller's no-account fallback applies.
+  async function creditSoleVerifiedByEmail(): Promise<'credited' | 'held' | 'none'> {
+    const target = await soleVerifiedPlayer(emailLower)
+    if (target) {
+      const rows = await db`
+        UPDATE users SET analysis_tokens = COALESCE(analysis_tokens, 0) + ${tokensToGrant}
+        WHERE id = ${target.id}
+        RETURNING id
+      ` as unknown as Array<{ id: string }>
+      return rows.length > 0 ? 'credited' : 'none'
+    }
+    const verified = (await playersByEmail(emailLower)).filter((a) => !!a.email_verified_at)
+    if (verified.length < 2) return 'none'
+    heldClaimToken = await createPendingCreditClaim(tokensToGrant)
+    try {
+      await sendClaimCreditsEmail(emailLower, null, tokensToGrant, heldClaimToken, { choose: true })
+    } catch (err) {
+      console.error('[grantBallCreditsOnce] claim email failed (claim still redeemable):', { sessionId, heldClaimToken }, err)
+    }
+    return 'held'
+  }
+
   try {
     if (recipient.startsWith('coach:')) {
       const coachEmail = recipient.slice(6).toLowerCase()
@@ -86,14 +122,12 @@ export async function grantBallCreditsOnce(input: GrantBallCreditsInput): Promis
         RETURNING id
       ` as unknown as Array<{ id: string }>
       updatedRows = rows.length
-      // Stale user_id fallback: try email.
+      // Stale user_id fallback: try email — but only an account that has
+      // proven it owns that inbox (anyone can register any address), and only
+      // ONE (siblings may share it — see creditSoleVerifiedByEmail).
       if (updatedRows === 0 && emailLower) {
-        const byEmail = await db`
-          UPDATE users SET analysis_tokens = COALESCE(analysis_tokens, 0) + ${tokensToGrant}
-          WHERE LOWER(email) = ${emailLower}
-          RETURNING id
-        ` as unknown as Array<{ id: string }>
-        updatedRows = byEmail.length
+        const out = await creditSoleVerifiedByEmail()
+        updatedRows = out === 'none' ? 0 : 1
       }
       if (emailLower) {
         await db`
@@ -104,17 +138,18 @@ export async function grantBallCreditsOnce(input: GrantBallCreditsInput): Promis
         `
       }
     } else if (emailLower) {
-      // Guest / legacy: credit the user account if one exists for this email.
-      // Only when there is no account do the credits park on email_list (the
+      // Guest / legacy: credit the user account for this email — only one that
+      // has proven it owns the inbox (email_verified_at); an address match
+      // alone would hand the buyer's credits to whoever registered it. Only
+      // when there is no such account do the credits park on email_list (the
       // anonymous analyze-by-email flow spends from there). Crediting both —
       // as this used to — handed the buyer the tokens twice.
-      const rows = await db`
-        UPDATE users SET analysis_tokens = COALESCE(analysis_tokens, 0) + ${tokensToGrant}
-        WHERE LOWER(email) = ${emailLower}
-        RETURNING id
-      ` as unknown as Array<{ id: string }>
-      updatedRows = rows.length
-      if (updatedRows === 0) {
+      //
+      // Exactly one account (creditSoleVerifiedByEmail): several verified
+      // siblings on the address hold the credits on an emailed claim instead.
+      const out = await creditSoleVerifiedByEmail()
+      updatedRows = out === 'none' ? 0 : 1
+      if (out === 'none') {
         await db`
           INSERT INTO email_list (email, analysis_tokens)
           VALUES (${emailLower}, ${tokensToGrant})
@@ -141,6 +176,6 @@ export async function grantBallCreditsOnce(input: GrantBallCreditsInput): Promis
     return { granted: false, reason: 'no_match', updatedRows: 0 }
   }
 
-  console.log('[grantBallCreditsOnce] granted', { sessionId, recipient, emailLower, tokensToGrant, updatedRows })
-  return { granted: true, reason: 'granted', updatedRows }
+  console.log('[grantBallCreditsOnce] granted', { sessionId, recipient, emailLower, tokensToGrant, updatedRows, heldClaimToken })
+  return { granted: true, reason: 'granted', updatedRows, ...(heldClaimToken ? { heldClaimToken } : {}) }
 }

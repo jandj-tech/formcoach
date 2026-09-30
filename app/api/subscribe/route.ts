@@ -7,6 +7,7 @@ import { currencyForRequest } from '@/lib/region'
 import { resolveBaseUrl } from '@/lib/base-url'
 import { getPlayerSubscription, subscriptionEntitled } from '@/lib/player-subscription'
 import { stripeAttributionMetadata } from '@/lib/meta-server'
+import { effectivePlan, personalPlanVsClub } from '@/lib/player-entitlement'
 import {
   isPlayerBillingInterval,
   isPlayerPlan,
@@ -42,6 +43,14 @@ export async function POST(req: NextRequest) {
     const interval = body?.interval
     if (!isPlayerPlan(plan) || !isPlayerBillingInterval(interval)) {
       return NextResponse.json({ error: 'Pick a plan' }, { status: 400 })
+    }
+
+    // A club membership seat already covers this player: buying the same or a
+    // lower plan would pay twice. A higher plan is allowed, and the seat stays
+    // on the account until it ends (the note is shown on Stripe's page too).
+    const club = personalPlanVsClub(await effectivePlan(session.userId), plan)
+    if (!club.ok) {
+      return NextResponse.json({ error: club.message, clubCovered: true }, { status: 409 })
     }
 
     // An entitled subscriber changes plans in place (proration, no second
@@ -97,6 +106,7 @@ export async function POST(req: NextRequest) {
         ? { customer: user.stripe_customer_id }
         : { customer_email: user.email }),
       allow_promotion_codes: true,
+      ...(club.note ? { custom_text: { submit: { message: club.note } } } : {}),
       // Session metadata additionally carries ad-click attribution for the
       // webhook's Conversions API Purchase; the subscription's own metadata
       // stays limited to the routing fields the lifecycle handlers key on.
@@ -118,7 +128,7 @@ export async function POST(req: NextRequest) {
       sessionId: checkout.id,
     })
 
-    return NextResponse.json({ url: checkout.url })
+    return NextResponse.json({ url: checkout.url, ...(club.note ? { note: club.note } : {}) })
   } catch (err) {
     console.error('[subscribe] failed:', err)
     return NextResponse.json({ error: 'Checkout failed' }, { status: 500 })

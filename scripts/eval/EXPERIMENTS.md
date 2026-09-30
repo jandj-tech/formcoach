@@ -1911,3 +1911,27 @@ arm: Square and Feet are cap-only; a cap beats a floor on the same criterion
 Cost, metered: $2.80 for both arms (168 analyses) - the arms cost the SAME per
 analysis; the eight single-image checks are lost in the noise of gate
 retries. All-in about $0.017 per analysis on this model, ~$17 per 1,000.
+
+## E51 — Confirmation arm: E50 DID NOT REPRODUCE. Two fragilities, both diagnosed.
+Same code as E50 except Square/Feet cap-only and cap-beats-floor.
+```
+PAIRED 117 cells / 26 fixtures     base 46.2%   e50 34.2%   e51 44.4%
+e51 vs base: FIXED 16 / BROKE 14, p = 0.86          big misses: base 11, e50 5, e51 4
+```
+The miss rate went back to baseline while the big-miss count stayed low. The
+cells that were right in e50 and wrong in e51 explain it:
+1. shot-196 Elbow 3 -> 7, Power 3 -> 8. The catapult lit on 1 of 3 runs in e51
+   (3 of 3 in e50) on IDENTICAL frames, and the 3-run median let two misses
+   outvote a hit. Fix: any frame over R-1..R-4 counts (E35: a fault seen is
+   ~98% specific; the E45 controls never lit both cues on any frame).
+2. shot-156: seven unrelated criteria fell from 8 to 5 together, with NO code
+   cap applied - the injected facts header haloed the whole grade (E34's
+   shape, exactly what the review's S2 warned). Fix: inject nothing; bounds
+   apply in code on the merged result; the bounded criterion's reasoning gets
+   a one-line note so score and text agree.
+Both fixed in eb44374. e52 (hands) and e46c (drafts) were killed - they were
+running on the old design - and relaunched as e53 (checks + hands, no header)
+and e53c (e53 + the four research rubrics). ~$1 saved.
+
+Lesson for the log: a p=0.04 on 117 cells needs its confirmation arm before it
+is a result. E50's number was real on that run; its mechanism was not stable.

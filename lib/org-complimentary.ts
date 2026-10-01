@@ -1,8 +1,9 @@
 import { db } from './db'
 
 /**
- * Whether an organization's OWN uploads (the owner analyzing a shot from the
- * org login) are complimentary.
+ * Whether an organization is complimentary: its OWN uploads (the owner
+ * analyzing a shot from the org login) and the tokens it SENDS to its coaches,
+ * teams and players are free — a deal the founder makes with one org.
  *
  * The admin grants complimentary access to an EMAIL (/admin/access writes
  * email_list.subscription_type = 'complimentary'). On a player account that
@@ -11,12 +12,14 @@ import { db } from './db'
  * org tokens for their own shots.
  *
  * Deliberately narrow:
- *   - it never touches organizations.token_balance, team credits, coach
- *     credits or player tokens — every balance stays separate and the only
- *     way tokens reach anyone else is an explicit send from the Tokens tab;
- *   - it only funds uploads where the org session itself is the uploader
- *     (coachSelf). Team uploads for players keep drawing on the head coach's
- *     credits / team budget exactly as before;
+ *   - nobody in the org is entitled by it. Every balance stays separate: a
+ *     coach or player only ever gets what the org EXPLICITLY sends them from
+ *     the Tokens tab (the three /api/org send routes), and what they get are
+ *     ordinary tokens. The send itself is what is free — the org balance is
+ *     read, not debited;
+ *   - for uploads it only funds the org session's own shot (coachSelf). Team
+ *     uploads for players keep drawing on the head coach's credits / team
+ *     budget exactly as before;
  *   - revoking the comp in /admin/access clears email_list, which switches
  *     this off at the same time.
  *

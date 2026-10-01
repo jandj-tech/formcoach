@@ -51,7 +51,7 @@ interface Props {
   classPackages: ClassPackage[]
   myUploads: Shot[]
   orgTokenBalance: number
-  /** The org's own uploads are complimentary; the balance is only what it can send. */
+  /** Complimentary org (lib/org-complimentary.ts): its own uploads and everything it sends are free. */
   orgComplimentary?: boolean
   /** The organization plan — sets the token rate and which features are open. */
   orgTier: OrgTier
@@ -914,11 +914,11 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
           </p>
           {orgComplimentary && (
             <p className="text-sm font-semibold text-ember-600 dark:text-ember-400 mt-1">
-              Your own uploads are complimentary &mdash; this balance is only what you can send to coaches and players.
+              Complimentary &mdash; your own uploads and every token you send to coaches and players are free.
             </p>
           )}
         </div>
-        <p className="shrink-0 text-3xl font-bold text-gray-900 dark:text-chalk tabular-nums">{orgTokenBalance}</p>
+        <p className="shrink-0 text-3xl font-bold text-gray-900 dark:text-chalk tabular-nums">{orgComplimentary ? 'Unlimited' : orgTokenBalance}</p>
       </div>
 
       {/* Where distributed tokens live — collapsed until asked for, and kept
@@ -947,6 +947,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
         coaches={orgCoaches}
         teams={teams.map(t => ({ id: t.id, name: t.name, coachName: t.coachNickname || t.adminEmail, ageGroup: t.ageGroup, memberCount: t.members.length }))}
         tier={orgTier}
+        unlimited={orgComplimentary}
       />
     </div>
   )
@@ -1171,7 +1172,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
               them straight to players or to a coach from the Tokens tab.
             </InfoTip>
           </div>
-          <p className="text-xl font-bold text-gray-900 dark:text-chalk tabular-nums mt-0.5">{orgTokenBalance}</p>
+          <p className="text-xl font-bold text-gray-900 dark:text-chalk tabular-nums mt-0.5">{orgComplimentary ? 'Unlimited' : orgTokenBalance}</p>
           <div className="flex items-center gap-3 mt-1">
             <button
               type="button"

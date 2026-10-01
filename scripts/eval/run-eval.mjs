@@ -19,6 +19,40 @@ const ONLY = onlyArg !== -1 ? args[onlyArg + 1].split(',').map((s) => s.trim()) 
 const dumpArg = args.indexOf('--dump')
 const DUMP = dumpArg !== -1 ? args[dumpArg + 1] : null
 const dumpRows = []
+const { writeFileSync: writeDumpFile } = await import('fs')
+// The dump is written after EVERY fixture (partial: true) and at the end, so
+// a run that dies late - breaker, kill, laptop asleep - leaves what it graded.
+// 2026-10-01: three launches of a mini-arm and most of a full arm were lost
+// to late failures with nothing on disk.
+function writeDump(partial) {
+  writeDumpFile(
+    DUMP,
+    JSON.stringify(
+      {
+        partial,
+        grader,
+        model: grader?.model ?? null,
+        passes: grader?.passes ?? null,
+        env: {
+          ANALYSIS_MODEL: process.env.ANALYSIS_MODEL ?? null,
+          SETPOINT_CHECK: process.env.SETPOINT_CHECK ?? null,
+          FRAME_CHECKS: process.env.FRAME_CHECKS ?? null,
+          SPLIT_FRAMES: process.env.SPLIT_FRAMES ?? null,
+          ANCHORS: process.env.ANCHORS ?? null,
+          FAULT_GATE: process.env.FAULT_GATE ?? null,
+          RUBRIC_OVERRIDE: process.env.RUBRIC_OVERRIDE ?? null,
+          CRITERION_GROUPS: process.env.CRITERION_GROUPS ?? null,
+          GATEWAY_REASONING: process.env.GATEWAY_REASONING ?? null,
+        },
+        ranFixtures: partial ? new Set(dumpRows.map((r) => r.fixture)).size : fixtures.length - runFailures,
+        lostFixtures: runFailures,
+        cells: dumpRows,
+      },
+      null,
+      1
+    )
+  )
+}
 
 const { db } = await import('../../lib/db.ts')
 const { runFixtureOnce } = await import('../../lib/eval.ts')
@@ -124,12 +158,14 @@ const breaker = {
   failure(msg) {
     if (/\b402\b|Insufficient credits|requires more credits/i.test(msg)) {
       console.error(`\n*** ARM CANCELLED: OpenRouter credits exhausted (${msg.slice(0, 120)}). ***`)
+      if (DUMP && dumpRows.length) writeDump(true)
       process.exit(3)
     }
     if (TRANSPORT.test(msg)) {
       this.consecutive++
       if (this.consecutive >= BREAKER_FAILURES) {
         console.error(`\n*** ARM CANCELLED: ${this.consecutive} consecutive transport failures - the network is down. Nothing more is spent. ***`)
+        if (DUMP && dumpRows.length) writeDump(true)
         process.exit(4)
       }
     }
@@ -259,6 +295,7 @@ for (const fixture of fixtures) {
             : score === null || score < exp[0] || score > exp[1],
       })
     }
+    writeDump(true)
   }
 
   if (RUNS > 1 && summary.overall_spread !== null) {
@@ -350,33 +387,7 @@ console.log(
     ' the old grader\'s own output, so they show change, not correctness.'
 )
 if (DUMP) {
-  const { writeFileSync } = await import('fs')
-  writeFileSync(
-    DUMP,
-    JSON.stringify(
-      {
-        grader,
-        model: grader?.model ?? null,
-        passes: grader?.passes ?? null,
-        env: {
-          ANALYSIS_MODEL: process.env.ANALYSIS_MODEL ?? null,
-          SETPOINT_CHECK: process.env.SETPOINT_CHECK ?? null,
-          FRAME_CHECKS: process.env.FRAME_CHECKS ?? null,
-          SPLIT_FRAMES: process.env.SPLIT_FRAMES ?? null,
-          ANCHORS: process.env.ANCHORS ?? null,
-          FAULT_GATE: process.env.FAULT_GATE ?? null,
-          RUBRIC_OVERRIDE: process.env.RUBRIC_OVERRIDE ?? null,
-          CRITERION_GROUPS: process.env.CRITERION_GROUPS ?? null,
-          GATEWAY_REASONING: process.env.GATEWAY_REASONING ?? null,
-        },
-        ranFixtures: fixtures.length - runFailures,
-        lostFixtures: runFailures,
-        cells: dumpRows,
-      },
-      null,
-      1
-    )
-  )
+  writeDump(false)
   console.log(`\nwrote ${dumpRows.length} cell results to ${DUMP}`)
 }
 

@@ -151,6 +151,7 @@ async function ffmpegBinary(): Promise<string> {
 
 interface RunResult {
   code: number | null
+  stdout: string
   stderr: string
   timedOut: boolean
 }
@@ -174,8 +175,9 @@ async function runFfmpeg(args: string[], timeoutMs: number, signal?: AbortSignal
     // Local files only — never a URL, never a pipe. The input is always the
     // copy we downloaded ourselves.
     const child = spawn(bin, ['-hide_banner', '-nostdin', '-protocol_whitelist', 'file', ...args], {
-      stdio: ['ignore', 'ignore', 'pipe'],
+      stdio: ['ignore', 'pipe', 'pipe'],
     })
+    let stdout = ''
     let stderr = ''
     let timedOut = false
     const timer = setTimeout(() => {
@@ -184,6 +186,9 @@ async function runFfmpeg(args: string[], timeoutMs: number, signal?: AbortSignal
     }, Math.max(1000, timeoutMs))
     const onAbort = () => child.kill('SIGKILL')
     signal?.addEventListener('abort', onAbort, { once: true })
+    child.stdout.on('data', (chunk: Buffer) => {
+      if (stdout.length < STDERR_CAP) stdout += chunk.toString('utf8')
+    })
     child.stderr.on('data', (chunk: Buffer) => {
       if (stderr.length < STDERR_CAP) stderr += chunk.toString('utf8')
     })
@@ -196,7 +201,7 @@ async function runFfmpeg(args: string[], timeoutMs: number, signal?: AbortSignal
       clearTimeout(timer)
       signal?.removeEventListener('abort', onAbort)
       if (signal?.aborted) reject(new AbortedError())
-      else resolve({ code, stderr, timedOut })
+      else resolve({ code, stdout, stderr, timedOut })
     })
   })
 }
@@ -617,6 +622,20 @@ async function fitToBudget(frames: Buffer[]): Promise<{ frames: Buffer[]; reduce
     if (totalBytes(current) <= UPLOAD_BUDGET_BYTES) return { frames: current, reduced: step.lossy }
   }
   return { frames: current, reduced: true }
+}
+
+/** Whether ffmpeg can be spawned here, and which version — for the route's health check. */
+export async function ffmpegHealth(): Promise<{ ok: boolean; ffmpeg: string | null; error: string | null }> {
+  try {
+    const { stdout, stderr, code } = await runFfmpeg(['-version'], 10_000)
+    const m = (stdout + stderr).match(/ffmpeg version (\S+)/)
+    if (code !== 0 || !m) {
+      return { ok: false, ffmpeg: null, error: `ffmpeg exited ${code}: ${stderr.trim().split('\n')[0] || 'no output'}` }
+    }
+    return { ok: true, ffmpeg: m[1], error: null }
+  } catch (err) {
+    return { ok: false, ffmpeg: null, error: err instanceof Error ? err.message : String(err) }
+  }
 }
 
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {

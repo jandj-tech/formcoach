@@ -3,7 +3,7 @@ import { del } from '@vercel/blob'
 import { resolveUploader, uploaderKey } from '@/lib/upload-guard'
 import { rateLimit, rateLimitByIp } from '@/lib/rate-limit'
 import { isOurUploadedVideoUrl } from '@/lib/blob-store'
-import { AbortedError, extractFramesOnServer, VideoReadError } from '@/lib/server-frame-extraction'
+import { AbortedError, extractFramesOnServer, ffmpegHealth, VideoReadError } from '@/lib/server-frame-extraction'
 
 /**
  * Decode an uploaded original with ffmpeg and return the 28 grading frames.
@@ -44,6 +44,19 @@ let inflight = 0
 
 function busy(retryAfter: number, message: string) {
   return NextResponse.json({ error: 'busy', detail: message }, { status: 429, headers: { 'Retry-After': String(retryAfter) } })
+}
+
+/**
+ * GET: can this deployment read videos at all? Runs `ffmpeg -version` and
+ * answers with the version line, so after a deploy anyone can confirm the
+ * binary shipped and is executable on this platform without uploading a clip.
+ * Reveals only the ffmpeg version; rate-limited per IP like everything else.
+ */
+export async function GET(req: NextRequest) {
+  const perIp = await rateLimitByIp(req, `${ROUTE}-health`, 10, 60)
+  if (!perIp.ok) return busy(perIp.retryAfterSeconds, 'Too many checks')
+  const health = await ffmpegHealth()
+  return NextResponse.json(health, { status: health.ok ? 200 : 503, headers: { 'Cache-Control': 'no-store' } })
 }
 
 export async function POST(req: NextRequest) {

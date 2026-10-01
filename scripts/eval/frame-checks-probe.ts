@@ -15,7 +15,7 @@ async function main() {
     for (const [i, fc] of results.entries()) {
       const e = fc.elbow
       const caps = frameCheckBounds(fc).map((b) => `${b.criterion.split(' ')[0]}:${b.cap !== undefined ? 'cap' + b.cap : 'floor' + b.floor}`).join(' ')
-      console.log(`${slug} rep${i} crop=${fc.crop ? `${fc.crop.x0}-${fc.crop.x1}x${fc.crop.y0}-${fc.crop.y1}` : 'NONE'} catapult=${e?.catapult} v_top=${e?.v_top} flared=${e?.flared} elbow_out=${e?.elbow_out} clean=${e?.clean} n=${e?.answers} counts=${JSON.stringify(e?.counts)} | power=${JSON.stringify(fc.power)} | ${caps || '(no caps)'}`)
+      console.log(`${slug} rep${i} crop=${fc.crop ? `${fc.crop.x0}-${fc.crop.x1}x${fc.crop.y0}-${fc.crop.y1}` : 'NONE'} catapult=${e?.catapult} v_top=${e?.v_top} v_throw=${e?.v_throw} flared=${e?.flared} elbow_out=${e?.elbow_out} clean=${e?.clean} n=${e?.answers} counts=${JSON.stringify(e?.counts)} | square=${JSON.stringify(fc.square)} | power=${JSON.stringify(fc.power)} | ${caps || '(no caps)'}`)
     }
   }
 }

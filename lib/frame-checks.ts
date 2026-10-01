@@ -25,11 +25,11 @@ import { callVisionModel } from '@/lib/model-provider'
 export interface FrameChecks {
   release: number
   /** Set point (majority of R-1..R-3). */
-  elbow: null | { catapult: boolean; flared: boolean; clean: boolean; frames: number[]; v_top?: boolean; elbow_out?: boolean; counts?: Record<string, number>; answers?: number }
+  elbow: null | { catapult: boolean; flared: boolean; clean: boolean; frames: number[]; v_top?: boolean; v_throw?: boolean; elbow_out?: boolean; counts?: Record<string, number>; answers?: number }
   /** Dip frame R-6 vs release R. */
   power: null | { ball_low_at_dip: boolean; knees_bent_at_dip: boolean; head_higher_at_release: boolean }
   /** Release R (shoulders) and landing R+4 vs R. */
-  square: null | { both_shoulders_visible: boolean; one_shoulder_hidden: boolean; lands_same_direction: boolean }
+  square: null | { both_shoulders_visible: boolean; one_shoulder_hidden: boolean; lands_same_direction: boolean; ball_sideways?: boolean; ball_up?: boolean }
   /** Last both-feet-down (R-3) and landing R+4. */
   feet: null | { floor_between_shins: boolean; shoes_outside_shoulders: boolean }
   /** Release R and just after (R+2): the hands. */
@@ -161,14 +161,14 @@ export async function runFrameChecks(frames: string[], mimes: string[], model: s
     const box = await locateShooter(model, frames, mimes, R)
     if (box) {
       fc.crop = box
-      const need = [...new Set([R - 1, R - 2, R - 3, R - 4, R - 6, R - 3, R, R + 2, R + 4].filter((i) => i >= 0 && i < frames.length))]
+      const need = [...new Set([R - 1, R - 2, R - 3, R - 4, R - 6, R, R + 2, R + 3, R + 4].filter((i) => i >= 0 && i < frames.length))]
       await Promise.all(need.map(async (i) => { view[i] = await cropFrame(frames[i], box); vmimes[i] = 'image/jpeg' }))
     }
   }
   frames = view; mimes = vmimes
 
   // --- ELBOW: three set-point frames, majority -------------------------------
-  const spKeys = ['ball_behind_or_above_head', 'elbow_flared_shoulder_height', 'ball_beside_head', 'ball_in_front_of_forehead', 'elbow_inside_shoulder_line', 'one_hand_under_ball', 'both_hands_mirrored_elbows_out']
+  const spKeys = ['ball_behind_or_above_head', 'elbow_flared_shoulder_height', 'ball_beside_head', 'ball_in_front_of_forehead', 'elbow_inside_shoulder_line', 'one_hand_under_ball', 'both_hands_mirrored_elbows_out', 'elbow_at_or_above_shoulder']
   const spQ = `${ONE} It is at or just before the set point, before the upward release.
 1. Is the ball ABOVE or BEHIND the top of the head?
 2. Is the shooting elbow flared OUT at or above shoulder height, upper arm near horizontal?
@@ -177,7 +177,8 @@ export async function runFrameChecks(frames: string[], mimes: string[], model: s
 5. Is the shooting elbow INSIDE the outer line of the shoulder, under the ball?
 6. Is ONE hand under the ball with the other hand only on its side?
 7. Are BOTH hands on the SIDES of the ball, mirrored like a chest pass, with BOTH elbows pointing out wide?
-Answer JSON only: {"ball_behind_or_above_head":true|false,"elbow_flared_shoulder_height":true|false,"ball_beside_head":true|false,"ball_in_front_of_forehead":true|false,"elbow_inside_shoulder_line":true|false,"one_hand_under_ball":true|false,"both_hands_mirrored_elbows_out":true|false}`
+8. Is the shooting elbow LEVEL WITH or HIGHER than the shoulder, the upper arm horizontal or pointing upward (not angled down toward the ribs)?
+Answer JSON only: {"ball_behind_or_above_head":true|false,"elbow_flared_shoulder_height":true|false,"ball_beside_head":true|false,"ball_in_front_of_forehead":true|false,"elbow_inside_shoulder_line":true|false,"one_hand_under_ball":true|false,"both_hands_mirrored_elbows_out":true|false,"elbow_at_or_above_shoulder":true|false}`
   const spFrames = [R - 1, R - 2, R - 3, R - 4].filter((i) => i >= 0)
   // Each frame is asked TWICE. On identical frames the answers vary between
   // calls (e51/e54: the catapult on shot-200 lit on some runs and not others),
@@ -208,16 +209,30 @@ Answer JSON only: {"ball_behind_or_above_head":true|false,"elbow_flared_shoulder
     // Guarded by the one-hand cue on the SAME answer: the cropped probe
     // (2026-09-30) fired the bare mirrored cue once in three on shot-206, a
     // normal one-hand shot with the guide hand on the side.
-    const vTop = !catapult && n((a) => a.both_hands_mirrored_elbows_out && !a.one_hand_under_ball) >= need
+    const vTopSet = !catapult && n((a) => a.both_hands_mirrored_elbows_out && !a.one_hand_under_ball) >= need
+    // The V is a two-hand THROW. The set-point cue alone fired on one-hand
+    // shots whose guide hand was still on the ball (198, 125); what separates
+    // shot-202 is the release: both arms extend together and the ball leaves
+    // off both hands. Two frames, asked twice; both answers must agree.
+    const thKeys = ['both_arms_extend_together']
+    const thQ = `These are TWO frames of one basketball shot: the release, then a moment after. Look at the ARMS.
+Do BOTH arms extend straight up together, symmetrical, with BOTH hands having pushed the ball like a two-handed throw-in — rather than ONE shooting arm extending while the other hand stays beside the ball or drops away?
+Answer JSON only: {"both_arms_extend_together":true|false}`
+    const thAns = (await Promise.all([0, 1].map(() => ask(model, frames, mimes, [R, R + 2], thQ, thKeys)))).filter((a): a is Ask => !!a)
+    const vThrow = thAns.length === 2 && thAns.every((a) => a.both_arms_extend_together)
+    const vTop = vTopSet && vThrow
     const flared = !catapult && !vTop && n((a) => a.ball_beside_head && a.elbow_flared_shoulder_height) >= need
     // The elbow out at shoulder height with the ball still IN FRONT (shot-198
     // at 2x: ball above the forehead on the shooting side, upper arm near
     // horizontal). The rubric's own anchor for exactly this is 5. Without it
     // the clean floor fired on 198 (expert [3,5]) and lifted it to 6.
-    const elbowOut = !catapult && !vTop && !flared && n((a) => a.elbow_flared_shoulder_height && !a.elbow_inside_shoulder_line) >= need
+    // shot-198 at 2x: ball above the forehead on the shooting side, upper arm
+    // horizontal. The flared cue read 0/8 there even cropped; this one asks
+    // the height alone. Rubric anchor for this shape is 5.
+    const elbowOut = !catapult && !vTop && !flared && n((a) => a.elbow_at_or_above_shoulder) >= need
     const clean = !catapult && !flared && !elbowOut && n((a) => a.ball_in_front_of_forehead && a.elbow_inside_shoulder_line && a.one_hand_under_ball && !a.elbow_flared_shoulder_height) >= need
     const counts = Object.fromEntries(spKeys.map((k) => [k, n((a) => a[k])]))
-    fc.elbow = { catapult, flared, clean: clean && !vTop, frames: spFrames, v_top: vTop, elbow_out: elbowOut, counts, answers: spAns.length }
+    fc.elbow = { catapult, flared, clean: clean && !vTop && !elbowOut, frames: spFrames, v_top: vTop, v_throw: vThrow, elbow_out: elbowOut, counts, answers: spAns.length }
   }
 
   // --- POWER: dip frame vs release ---------------------------------------------
@@ -246,8 +261,20 @@ Answer JSON only: {"both_shoulders_visible_similar_size":true|false,"one_shoulde
   const landAns = await ask(model, frames, mimes, [R, land], `These are TWO frames of one basketball shot: the release, then the landing a moment later.
 Is the shooter's chest facing the SAME direction in both (no twist in the air)?
 Answer JSON only: {"facing_same_direction":true|false}`, landKeys)
+  // Where the ball goes tells where the target is (Square v8's first rule).
+  // E50: "both shoulders visible" is true of a chest facing the camera while
+  // the ball leaves SIDEWAYS (shot-208, expert 3-5 -> 9). Two frames, asked
+  // twice; sideways needs both answers.
+  const dirKeys = ['ball_moves_toward_left_or_right_edge', 'ball_rises_over_shooter']
+  const dirQ = `These are TWO frames of one basketball shot: the release, then a moment later with the ball in flight. Look only at where the BALL went.
+1. Did the ball move clearly toward the LEFT or RIGHT edge of the picture (the target is off to one side)?
+2. Did the ball rise UP over the shooter, staying roughly above them (the target is ahead of the camera or the shooter)?
+Answer JSON only: {"ball_moves_toward_left_or_right_edge":true|false,"ball_rises_over_shooter":true|false}`
+  const dirAns = (await Promise.all([0, 1].map(() => ask(model, frames, mimes, [R, R + 3], dirQ, dirKeys)))).filter((a): a is Ask => !!a)
+  const ballSideways = dirAns.length === 2 && dirAns.every((a) => a.ball_moves_toward_left_or_right_edge && !a.ball_rises_over_shooter)
+  const ballUp = dirAns.length === 2 && dirAns.every((a) => a.ball_rises_over_shooter && !a.ball_moves_toward_left_or_right_edge)
   if (shAns) {
-    fc.square = { both_shoulders_visible: shAns.both_shoulders_visible_similar_size, one_shoulder_hidden: shAns.one_shoulder_hidden_or_side_on, lands_same_direction: landAns ? landAns.facing_same_direction : true }
+    fc.square = { both_shoulders_visible: shAns.both_shoulders_visible_similar_size, one_shoulder_hidden: shAns.one_shoulder_hidden_or_side_on, lands_same_direction: landAns ? landAns.facing_same_direction : true, ball_sideways: ballSideways, ball_up: ballUp }
   }
 
   // --- FEET: last both-feet-down frame ----------------------------------------
@@ -300,7 +327,7 @@ export function frameCheckBounds(fc: FrameChecks): Array<{ criterion: string; ca
     // guide hand is still on the ball, and 5-6/8 on the V: too thin to cap
     // three criteria on. Needs a release-side cue (both arms extending
     // together) before it can act. The counts stay in the dump.
-    else if (fc.elbow.v_top && process.env.FRAME_CHECK_VTOP === '1') { b.push({ criterion: ELBOW, cap: 4, why: 'both hands were on the sides of the ball with both elbows out, and the ball was thrown from that two-handed V' }); b.push({ criterion: POCKET, cap: 4, why: 'the ball was held in a two-handed V rather than loaded in a one-hand pocket' }); b.push({ criterion: POWER, cap: 6, why: 'the ball was pushed out of a two-handed V by the arms' }); b.push({ criterion: ONEHAND, cap: 5, why: 'the ball left off both hands rather than through the guide hand' }) }
+    else if (fc.elbow.v_top) { b.push({ criterion: ELBOW, cap: 4, why: 'both hands were on the sides of the ball with both elbows out, and the ball was thrown from that two-handed V' }); b.push({ criterion: POCKET, cap: 4, why: 'the ball was held in a two-handed V rather than loaded in a one-hand pocket' }); b.push({ criterion: POWER, cap: 6, why: 'the ball was pushed out of a two-handed V by the arms' }); b.push({ criterion: ONEHAND, cap: 5, why: 'the ball left off both hands rather than through the guide hand' }) }
     else if (fc.elbow.flared) b.push({ criterion: ELBOW, cap: 4, why: 'the elbow was out at the shoulder with the ball beside the head' })
     else if (fc.elbow.elbow_out) b.push({ criterion: ELBOW, cap: 5, why: 'the elbow was out at shoulder height, outside the line of the shoulder, even though the ball stayed in front' })
     else if (fc.elbow.clean) b.push({ criterion: ELBOW, floor: 6, why: 'the ball was in front of the forehead with the elbow inside the shoulder line and one hand under it' })
@@ -318,6 +345,12 @@ export function frameCheckBounds(fc: FrameChecks): Array<{ criterion: string; ca
   // 80px these two cues cannot see that.
   if (fc.square) {
     if (fc.square.one_shoulder_hidden && !fc.square.both_shoulders_visible) b.push({ criterion: SQUARE, cap: 5, why: 'the torso was side-on at the release' })
+    // Chest to the camera while the ball leaves toward a side edge: the
+    // target was off to the side and the shoulders were not turned to it.
+    else if (fc.square.both_shoulders_visible && fc.square.ball_sideways) b.push({ criterion: SQUARE, cap: 5, why: 'the ball left toward the side of the picture while the chest stayed facing the camera, so the shoulders were not turned to the target' })
+    // The floor E50 removed, now guarded by the ball's path: it only fires
+    // when the ball rose over the shooter toward a target ahead.
+    else if (fc.square.both_shoulders_visible && fc.square.ball_up && fc.square.lands_same_direction) b.push({ criterion: SQUARE, floor: 6, why: 'the chest faced the target, the ball rose straight over the shooter toward it, and the landing faced the same way' })
   }
   // Feet: RECORDED, NOT ACTED ON. e53 measured the Feet caps at 4 -> 8
   // misses against baseline; at ~80px the shin-gap and shoulder-line cues

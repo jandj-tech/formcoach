@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { getOrgSession } from '@/lib/org-auth'
 import { db } from '@/lib/db'
 import { orgHasComplimentaryAccess } from '@/lib/org-complimentary'
+import { listOrgAdmins, orgRoleOf } from '@/lib/org-admins'
 import { teamLeaderboard } from '@/lib/team-shots'
 import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
@@ -66,11 +67,16 @@ export default async function OrgDashboardPage() {
   if (!session) redirect('/login')
 
   const [org] = await db`
-    SELECT id, name, access_code
+    SELECT id, name, access_code, admin_email
     FROM organizations WHERE id = ${session.orgId}
-  ` as unknown as [{ id: string; name: string; access_code: string } | undefined]
+  ` as unknown as [{ id: string; name: string; access_code: string; admin_email: string } | undefined]
 
   if (!org) redirect('/login')
+
+  // Who is signed in: the owner, or a linked full-access admin
+  // (lib/org-admins.ts). A login that was removed no longer verifies at all.
+  const orgRole = (await orgRoleOf(session)) ?? 'admin'
+  const orgAdmins = (await listOrgAdmins(org.id)).map((a) => ({ id: a.id, email: a.email, name: a.name, accepted: a.accepted }))
 
   // One predicate decides everything: a lapsed plan closes the same gates a
   // never-subscribed org would face, and reopens them all the moment it is paid.
@@ -402,7 +408,7 @@ export default async function OrgDashboardPage() {
           </div>
         )}
 
-        <OrgDashboardClient orgTier={orgTier} teams={teams} orgName={org.name} classPackages={classPackages} myUploads={myUploads} orgTokenBalance={orgTokenBalance} orgComplimentary={orgComplimentary} coachCreditBalances={coachCreditBalances} hasBilling={billing.hasBilling} />
+        <OrgDashboardClient orgTier={orgTier} teams={teams} orgName={org.name} classPackages={classPackages} myUploads={myUploads} orgTokenBalance={orgTokenBalance} orgComplimentary={orgComplimentary} orgAdmins={orgAdmins} orgRole={orgRole} ownerEmail={org.admin_email} sessionEmail={session.adminEmail} coachCreditBalances={coachCreditBalances} hasBilling={billing.hasBilling} />
       </DashboardShell>
       <SiteFooter />
     </main>

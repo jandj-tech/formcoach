@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getOrgSessionFromRequest } from '@/lib/org-auth'
+import { currentOrgCredentialHash, getOrgSessionFromRequest } from '@/lib/org-auth'
 import { orgIsEntitledById, SUBSCRIPTION_ENDED_MESSAGE } from '@/lib/team-features'
 import { addCoachToTeam, AddCoachError } from '@/lib/roster-players'
 import { cleanOptionalDisplayText } from '@/lib/moderation'
@@ -60,14 +60,13 @@ export async function POST(req: NextRequest) {
       }
 
       const nickname = name.value
-      // Reuse the org's password so the entry isn't flagged "invite pending".
-      const [org] = (await db`
-        SELECT password_hash FROM organizations WHERE id = ${session.orgId}
-      `) as unknown as [{ password_hash: string } | undefined]
+      // Reuse this login's password (owner or linked admin) so the entry
+      // isn't flagged "invite pending".
+      const hash = await currentOrgCredentialHash(session)
 
       await db`
         INSERT INTO team_coaches (team_id, email, password_hash, nickname)
-        VALUES (${team.id}, ${selfEmail}, ${org?.password_hash ?? null}, ${nickname})
+        VALUES (${team.id}, ${selfEmail}, ${hash}, ${nickname})
       `
       return NextResponse.json({ self: true })
     }

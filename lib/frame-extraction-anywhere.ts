@@ -143,15 +143,17 @@ export async function extractFramesAnywhere(file: File, opts: AnywhereOptions = 
     } catch {}
   }
 
-  // The server removes originals too large to be worth keeping; only a kept
-  // one is filed with the analysis.
-  return { frames: parsed.frames, videoUrl: parsed.keepVideo ? blob.url : null, reduced: parsed.reduced, viaServer: true }
+  // The server says where the original now lives (the app's real store, or
+  // nowhere when it was too large to keep); that is what gets filed with the
+  // analysis — never the staging URL.
+  return { frames: parsed.frames, videoUrl: parsed.keepVideo ? parsed.videoUrl : null, reduced: parsed.reduced, viaServer: true }
 }
 
 interface FramePayload {
   frames: Blob[]
   reduced: boolean
   keepVideo: boolean
+  videoUrl: string | null
 }
 
 /** Inverse of the layout /api/extract-frames writes: magic, header length, header JSON, frame bytes. */
@@ -165,6 +167,7 @@ export function parseFramePayload(buf: ArrayBuffer): FramePayload {
     sizes: number[]
     reduced: boolean
     keepVideo?: boolean
+    videoUrl?: string | null
   }
   const frames: Blob[] = []
   let offset = 8 + headerLen
@@ -175,7 +178,8 @@ export function parseFramePayload(buf: ArrayBuffer): FramePayload {
   if (frames.length !== header.count || frames.length === 0) {
     throw new Error('The server returned no frames for this video')
   }
-  return { frames, reduced: !!header.reduced, keepVideo: header.keepVideo !== false }
+  const keepVideo = header.keepVideo === true && typeof header.videoUrl === 'string' && !!header.videoUrl
+  return { frames, reduced: !!header.reduced, keepVideo, videoUrl: keepVideo ? (header.videoUrl as string) : null }
 }
 
 function blobToDataUrl(blob: Blob): Promise<string> {

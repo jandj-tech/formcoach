@@ -100,6 +100,12 @@ export interface ServerExtractOptions {
   deadlineMs?: number
   /** Aborting kills any running ffmpeg and stops the pipeline (client went away). */
   signal?: AbortSignal
+  /**
+   * Called with the decoded original while it is still on disk, so the caller
+   * can file it in long-term storage before the tmp dir is removed. Errors are
+   * logged and swallowed: storage is a nicety, the frames are the job.
+   */
+  onOriginal?: (file: string, bytes: number) => Promise<void>
 }
 
 // --- ffmpeg process plumbing -------------------------------------------------
@@ -770,6 +776,13 @@ export async function extractFramesOnServer(
     }
 
     const fitted = await fitToBudget(raw)
+    if (opts.onOriginal) {
+      try {
+        await opts.onOriginal(input, bytes)
+      } catch (err) {
+        log(`storing the original failed (ignored): ${err instanceof Error ? err.message : err}`)
+      }
+    }
     const ms = Date.now() - started
     log(`done: ${fitted.frames.length} frames, ${totalBytes(fitted.frames)} bytes, reduced=${fitted.reduced}, ${ms}ms`)
     return {

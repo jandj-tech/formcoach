@@ -3,6 +3,8 @@ import { del } from '@vercel/blob'
 import { resolveUploader, uploaderKey } from '@/lib/upload-guard'
 import { rateLimit, rateLimitByIp } from '@/lib/rate-limit'
 import { isOurUploadedVideoUrl } from '@/lib/blob-store'
+import { putObject, storageDriver } from '@/lib/storage'
+import { readFile } from 'node:fs/promises'
 import { AbortedError, extractFramesOnServer, ffmpegHealth, VideoReadError } from '@/lib/server-frame-extraction'
 
 /**
@@ -17,7 +19,15 @@ import { AbortedError, extractFramesOnServer, ffmpegHealth, VideoReadError } fro
  *
  * Response body layout (Content-Type application/octet-stream):
  *   "LHFR" | uint32 BE header length | header JSON | frame bytes back to back
- *   header = { count, sizes[], reduced, keepVideo, info }
+ *   header = { count, sizes[], reduced, keepVideo, videoUrl, info }
+ *
+ * Storage: Vercel Blob is only the STAGING area here — the one store a browser
+ * can push a 200MB file into past Vercel's 4.5MB function limit. Once decoded,
+ * an original worth keeping (≤100MB, like the single uploader's own rule) is
+ * copied into the app's real store (Cloudflare R2 under STORAGE_DRIVER=s3)
+ * and the staging blob is deleted, so every stored video lives where the rest
+ * do and is served through /api/media like the rest. On the 'vercel' driver
+ * the blob simply stays.
  */
 
 // ffmpeg time on a 4K HEVC clip is real CPU work; 600s is within Pro's 800s cap.
@@ -94,14 +104,31 @@ export async function POST(req: NextRequest) {
   const tag = `[extract-frames ${uploaderKey(uploader)}]`
   inflight++
   try {
+    // Where the kept original ends up. Starts as the staging blob and moves
+    // to the real store when that store is R2.
+    let storedUrl: string | null = null
     const result = await extractFramesOnServer(videoUrl, {
       log: (line) => console.log(tag, line),
       deadlineMs: (maxDuration - 30) * 1000,
       signal: req.signal,
+      onOriginal: async (file, bytes) => {
+        if (bytes > KEEP_VIDEO_MAX_BYTES) return
+        if (storageDriver() !== 's3') {
+          storedUrl = videoUrl
+          return
+        }
+        const key = new URL(videoUrl).pathname.replace(/^\/+/, '')
+        const ext = key.split('.').pop()?.toLowerCase() || 'mp4'
+        const contentType = ext === 'mov' ? 'video/quicktime' : ext === 'webm' ? 'video/webm' : ext === 'mp4' || ext === 'm4v' ? 'video/mp4' : 'application/octet-stream'
+        const { url } = await putObject(key, await readFile(file), { contentType })
+        storedUrl = url
+        console.log(tag, `original filed in R2 as ${key} (${bytes} bytes)`)
+      },
     })
-    const keepVideo = result.info.bytes <= KEEP_VIDEO_MAX_BYTES
-    if (!keepVideo) {
-      await del(videoUrl).catch((err) => console.warn(tag, 'could not remove the large original:', err instanceof Error ? err.message : err))
+    const keepVideo = storedUrl !== null
+    // The staging blob has done its job unless it IS the long-term copy.
+    if (storedUrl !== videoUrl) {
+      await del(videoUrl).catch((err) => console.warn(tag, 'could not remove the staging copy:', err instanceof Error ? err.message : err))
     }
     const header = Buffer.from(
       JSON.stringify({
@@ -109,6 +136,7 @@ export async function POST(req: NextRequest) {
         sizes: result.frames.map((f) => f.length),
         reduced: result.reduced,
         keepVideo,
+        videoUrl: storedUrl,
         info: result.info,
       }),
     )

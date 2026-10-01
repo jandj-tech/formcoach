@@ -8,14 +8,25 @@ import { discountedUnitCents, usd, TEAM_FULL_RATE_MIN_QTY, type OrgTier } from '
 // The analyze-page uploader for coaches and org owners. The upload zone is
 // always shown — with a transparent "0 credits" overlay when empty — and the
 // credit-purchase panel sits below it.
-export default function CoachSelfUploader({ credits, tier }: { credits: number; tier: OrgTier }) {
+export default function CoachSelfUploader({ credits, tier, unlimited = false }: { credits: number; tier: OrgTier; unlimited?: boolean }) {
   const inApp = useIsInApp()
   return (
     <div className="w-full max-w-lg mx-auto space-y-4 px-2">
-      <VideoUploader coachSelf coachCredits={credits} />
+      <VideoUploader coachSelf coachCredits={credits} coachUnlimited={unlimited} />
+
+      {/* A complimentary org analyzes its own shots free; its token balance is
+          only what it can send to coaches and players, so no purchase prompt. */}
+      {unlimited && (
+        <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3">
+          <p className="text-sm font-semibold text-black">Unlimited analyses on this account</p>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Your own uploads are complimentary. Tokens you send to coaches and players still come from your organization balance.
+          </p>
+        </div>
+      )}
 
       {/* Analysis credit purchase — hidden in the iOS app (guideline 3.1.1) */}
-      {!inApp && (
+      {!inApp && !unlimited && (
         <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
           <div>
             <p className="text-sm font-semibold text-black">

@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getOrgSession } from '@/lib/org-auth'
 import { db } from '@/lib/db'
+import { orgHasComplimentaryAccess } from '@/lib/org-complimentary'
 import { teamLeaderboard } from '@/lib/team-shots'
 import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
@@ -107,6 +108,10 @@ export default async function OrgDashboardPage() {
   } catch {
     // token_balance column not migrated yet — treat as 0.
   }
+
+  // Complimentary org: its own uploads are free (lib/org-complimentary.ts).
+  // Shown beside the balance so a 0 does not read as "cannot analyze".
+  const orgComplimentary = await orgHasComplimentaryAccess(org.id)
 
   let classPackages: ClassPackage[] = []
   try {
@@ -397,7 +402,7 @@ export default async function OrgDashboardPage() {
           </div>
         )}
 
-        <OrgDashboardClient orgTier={orgTier} teams={teams} orgName={org.name} classPackages={classPackages} myUploads={myUploads} orgTokenBalance={orgTokenBalance} coachCreditBalances={coachCreditBalances} hasBilling={billing.hasBilling} />
+        <OrgDashboardClient orgTier={orgTier} teams={teams} orgName={org.name} classPackages={classPackages} myUploads={myUploads} orgTokenBalance={orgTokenBalance} orgComplimentary={orgComplimentary} coachCreditBalances={coachCreditBalances} hasBilling={billing.hasBilling} />
       </DashboardShell>
       <SiteFooter />
     </main>

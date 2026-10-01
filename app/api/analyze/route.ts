@@ -5,6 +5,7 @@ import { analyzeShot } from '@/lib/analyze'
 import { getSessionFromRequest } from '@/lib/auth'
 import { getTeamSessionFromRequest, provenCoachCreditsEmail, provenTeamCoachCreditsEmail } from '@/lib/team-auth'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
+import { orgHasComplimentaryAccess } from '@/lib/org-complimentary'
 import { maybeSendFilmingTips } from '@/lib/filming-tips'
 import { rateLimit, rateLimitByIp } from '@/lib/rate-limit'
 import {
@@ -105,6 +106,10 @@ export async function POST(req: NextRequest) {
     // their personal coach_credits; an org owner pays from the org balance.
     let coachEmail: string | null = null
     let orgSelfId: string | null = null
+    // An org whose admin email holds a complimentary grant (/admin/access)
+    // analyzes its OWN shots without a token. Only this org-self path — it
+    // never funds team uploads or anyone the org sends tokens to.
+    let orgComplimentary = false
     if (isCoachSelf) {
       const teamSession = await getTeamSessionFromRequest(req)
       const orgSession = teamSession ? null : await getOrgSessionFromRequest(req)
@@ -129,12 +134,15 @@ export async function POST(req: NextRequest) {
       }
       if (orgSession && !teamSession) {
         orgSelfId = orgSession.orgId
-        const [org] = (await db`
-          SELECT COALESCE(token_balance, 0)::int AS token_balance
-          FROM organizations WHERE id = ${orgSelfId}
-        `) as unknown as [{ token_balance: number } | undefined]
-        if (!org || org.token_balance < 1) {
-          return NextResponse.json({ error: 'No analysis tokens' }, { status: 402 })
+        orgComplimentary = await orgHasComplimentaryAccess(orgSelfId)
+        if (!orgComplimentary) {
+          const [org] = (await db`
+            SELECT COALESCE(token_balance, 0)::int AS token_balance
+            FROM organizations WHERE id = ${orgSelfId}
+          `) as unknown as [{ token_balance: number } | undefined]
+          if (!org || org.token_balance < 1) {
+            return NextResponse.json({ error: 'No analysis tokens' }, { status: 402 })
+          }
         }
       } else {
         const [cc] = (await db`
@@ -433,7 +441,7 @@ export async function POST(req: NextRequest) {
     // What funded this analysis, stamped onto the submission after the chain
     // ('subscription' is stamped inside its reservation transaction instead —
     // the stamp IS the usage record there, so it must commit atomically).
-    let fundingSource: 'legacy' | 'token' | 'coach_credit' | 'team_credit' | 'org_balance' | null =
+    let fundingSource: 'legacy' | 'token' | 'coach_credit' | 'team_credit' | 'org_balance' | 'org_comp' | null =
       null
     if (isTeamUpload && teamId) {
       const coachRows = teamCoachEmail
@@ -460,6 +468,11 @@ export async function POST(req: NextRequest) {
         await recordCharge(submission.id, 'team_credit', { teamId })
         refundCharge = () => refundChargesForSubmission(submission.id).then(() => undefined)
       }
+    } else if (isCoachSelf && orgSelfId && orgComplimentary) {
+      // Complimentary org (lib/org-complimentary.ts): the org's own shot,
+      // never debited. The org balance stays whatever it was, so what the
+      // owner can SEND is still only what the org bought.
+      fundingSource = 'org_comp'
     } else if (isCoachSelf && orgSelfId) {
       const rows = (await db`
         UPDATE organizations SET token_balance = token_balance - 1 WHERE id = ${orgSelfId} AND token_balance > 0 RETURNING id

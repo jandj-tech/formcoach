@@ -688,7 +688,7 @@ async function noEmailTwinWarning(teamId: string, first: string, li: string | nu
  *   - never a team upload (team_id / team_player_id set: the email there, if
  *     any, is the coach's, not the player's),
  *   - never a coach's or org admin's self-upload (entitlement_source
- *     coach_credit / org_balance store the COACH's address in email),
+ *     coach_credit / org_balance / org_comp store the COACH's address in email),
  *   - never when the address belongs to a coach or org admin at all: signup
  *     does not verify the inbox, so a stranger signing up with a coach's email
  *     must not collect (and then delete) that coach's shots.
@@ -704,7 +704,7 @@ export async function adoptLegacySubmissions(userId: string, email: string): Pro
       AND s.user_id IS NULL
       AND s.team_id IS NULL
       AND s.team_player_id IS NULL
-      AND COALESCE(s.entitlement_source, '') NOT IN ('coach_credit', 'org_balance')
+      AND COALESCE(s.entitlement_source, '') NOT IN ('coach_credit', 'org_balance', 'org_comp')
       AND NOT EXISTS (SELECT 1 FROM teams t WHERE LOWER(t.admin_email) = ${e})
       AND NOT EXISTS (SELECT 1 FROM team_coaches c WHERE LOWER(c.email) = ${e})
       AND NOT EXISTS (SELECT 1 FROM organizations o WHERE LOWER(o.admin_email) = ${e})

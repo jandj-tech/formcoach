@@ -9,6 +9,7 @@ import OrgTeamCard from './OrgTeamCard'
 import OrgRosterImport from '@/components/OrgRosterImport'
 import PlayerEmailComposer from '@/components/player-email/PlayerEmailComposer'
 import OrgOffersPanel from './OrgOffersPanel'
+import OrgAdminsPanel, { type OrgAdminItem } from './OrgAdminsPanel'
 import {
   memberDisplayName,
   memberPickLabel,
@@ -53,6 +54,11 @@ interface Props {
   orgTokenBalance: number
   /** Complimentary org (lib/org-complimentary.ts): its own uploads and everything it sends are free. */
   orgComplimentary?: boolean
+  /** Linked full-access admin logins (lib/org-admins.ts) and who is signed in now. */
+  orgAdmins: OrgAdminItem[]
+  orgRole: 'owner' | 'admin'
+  ownerEmail: string
+  sessionEmail: string
   /** The organization plan — sets the token rate and which features are open. */
   orgTier: OrgTier
   /** Personal credit balances held by this org's coaches (credits > 0 only). */
@@ -68,7 +74,7 @@ const PLAYER_SORT_OPTIONS: SortOption<PlayerSortMode>[] = [
   { value: 'score-asc', label: 'Lowest score' },
 ]
 
-export default function OrgDashboardClient({ teams, orgName, classPackages, myUploads, orgTokenBalance, orgComplimentary = false, orgTier, coachCreditBalances, hasBilling }: Props) {
+export default function OrgDashboardClient({ teams, orgName, classPackages, myUploads, orgTokenBalance, orgComplimentary = false, orgAdmins, orgRole, ownerEmail, sessionEmail, orgTier, coachCreditBalances, hasBilling }: Props) {
   const router = useRouter()
   const inApp = useIsInApp()
   const [expanded, setExpanded] = useState<string | null>(null)
@@ -873,6 +879,15 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
 
   const settingsTab = (
     <div className="space-y-4">
+      <Section
+        title="Organization admins"
+        tipLabel="What is an organization admin?"
+        tip="A full-access login for your organization. Admins see every team and can send tokens, email results and change settings — unlike a coach, who only sees their own team."
+        summary={`${1 + orgAdmins.filter((a) => a.accepted).length} with access${orgAdmins.some((a) => !a.accepted) ? ', invite pending' : ''}`}
+        defaultOpen
+      >
+        <OrgAdminsPanel ownerEmail={ownerEmail} sessionEmail={sessionEmail} role={orgRole} admins={orgAdmins} />
+      </Section>
       <AppearanceSection />
       {/* Only orgs on a Stripe plan have anything to manage; legacy and comped
           orgs were told they would never be billed, so they never see this. */}

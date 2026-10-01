@@ -20,6 +20,10 @@ export default function OrgAddCoach({ teamId }: { teamId: string }) {
   const [addedExisting, setAddedExisting] = useState('')
   const [copied, setCopied] = useState(false)
   const [selfName, setSelfName] = useState('')
+  // What the email gets: this one team (coach) or the whole organization
+  // (a full-access admin login — lib/org-admins.ts).
+  const [role, setRole] = useState<'coach' | 'admin'>('coach')
+  const [adminInvited, setAdminInvited] = useState('')
 
   const BASE_URL = typeof window !== 'undefined' ? window.location.origin : 'https://learnhoops.com'
 
@@ -28,6 +32,40 @@ export default function OrgAddCoach({ teamId }: { teamId: string }) {
     setInviteUrl('')
     setEmailedTo('')
     setAddedExisting('')
+    setAdminInvited('')
+  }
+
+  // Organization admin: full access to every team, invited by email only.
+  async function addAdmin() {
+    setErrorAt('invite')
+    const value = email.trim()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value)) {
+      setError('Enter their email address (it should look like name@example.com).')
+      return
+    }
+    setLoading(true)
+    reset()
+    try {
+      const res = await fetch('/api/org/admins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: value, name: coachName.trim() || undefined }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error || 'Could not add that admin')
+        setLoading(false)
+        return
+      }
+      setAdminInvited(value)
+      setEmail('')
+      setCoachName('')
+      setLoading(false)
+      router.refresh()
+    } catch {
+      setError('Something went wrong. Please try again.')
+      setLoading(false)
+    }
   }
 
   // mode: 'email' emails the coach the signup link; 'link' just returns it.
@@ -117,43 +155,67 @@ export default function OrgAddCoach({ teamId }: { teamId: string }) {
 
   return (
     <div className="border border-gray-200 dark:border-courtline rounded-xl p-3 space-y-2">
-      <p className="text-sm font-semibold text-black dark:text-chalk">Invite a coach</p>
+      <p className="text-sm font-semibold text-black dark:text-chalk">{role === 'admin' ? 'Invite an organization admin' : 'Invite a coach'}</p>
+      <div role="radiogroup" aria-label="What access to give" className="grid grid-cols-2 gap-1 bg-gray-100 dark:bg-ink-800 rounded-lg p-1">
+        {([
+          { id: 'coach', label: 'Coach', sub: 'This team only' },
+          { id: 'admin', label: 'Organization admin', sub: 'All teams, full access' },
+        ] as const).map((o) => (
+          <button
+            key={o.id}
+            type="button"
+            role="radio"
+            aria-checked={role === o.id}
+            onClick={() => { setRole(o.id); reset() }}
+            className={`rounded-md px-2 py-1.5 text-left transition-colors ${role === o.id ? 'bg-white dark:bg-ink-900 shadow-sm' : 'hover:bg-white/60 dark:hover:bg-ink-900/60'}`}
+          >
+            <span className={`block text-xs font-bold ${role === o.id ? 'text-black dark:text-chalk' : 'text-gray-600 dark:text-chalk-dim'}`}>{o.label}</span>
+            <span className="block text-[10px] text-gray-400 dark:text-chalk-dim">{o.sub}</span>
+          </button>
+        ))}
+      </div>
       <input
         type="email"
-        aria-label="Coach email"
-        placeholder="Coach email"
+        aria-label={role === 'admin' ? 'Admin email' : 'Coach email'}
+        placeholder={role === 'admin' ? 'Admin email' : 'Coach email'}
         value={email}
         onChange={e => setEmail(e.target.value)}
         className="w-full bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-lg px-3 py-2 text-black dark:text-chalk text-sm placeholder-gray-400 focus:outline-none focus:border-ember-500 transition-colors"
       />
       <input
         type="text"
-        aria-label="Coach name (optional)"
-        placeholder="Coach name (optional) — shown to players"
+        aria-label={role === 'admin' ? 'Admin name (optional)' : 'Coach name (optional)'}
+        placeholder={role === 'admin' ? 'Their name (optional)' : 'Coach name (optional) — shown to players'}
         value={coachName}
         onChange={e => setCoachName(e.target.value)}
         className="w-full bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-lg px-3 py-2 text-black dark:text-chalk text-sm placeholder-gray-400 focus:outline-none focus:border-ember-500 transition-colors"
       />
-      <p className="text-[11px] text-gray-400 dark:text-chalk-dim">
-        Already a coach on another team? They&rsquo;re added straight away and keep the password they use now.
-      </p>
+      {role === 'admin' ? (
+        <p className="text-[11px] text-gray-400 dark:text-chalk-dim">
+          An organization admin sees every team and can send tokens, email results and change settings &mdash; everything you can do here. They choose their own password from the emailed link.
+        </p>
+      ) : (
+        <p className="text-[11px] text-gray-400 dark:text-chalk-dim">
+          Already a coach on another team? They&rsquo;re added straight away and keep the password they use now.
+        </p>
+      )}
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
-          onClick={() => addCoach('email')}
+          onClick={() => (role === 'admin' ? addAdmin() : addCoach('email'))}
           disabled={loading}
           className="flex-1 bg-ember-500 hover:bg-ember-400 disabled:bg-ember-300 text-ink-950 font-bold px-3 py-2 rounded-lg text-xs transition-colors"
         >
           {loading ? 'Working…' : 'Email the invite'}
         </button>
-        <button
+        {role === 'coach' && <button
           type="button"
           onClick={() => addCoach('link')}
           disabled={loading}
           className="flex-1 bg-white dark:bg-ink-900 border border-ember-500 text-ember-600 dark:text-ember-400 hover:bg-ember-50 dark:hover:bg-ember-500/10 disabled:opacity-50 font-bold px-3 py-2 rounded-lg text-xs transition-colors"
         >
           {loading ? 'Working…' : 'Just get the link'}
-        </button>
+        </button>}
         <button
           type="button"
           onClick={() => { setOpen(false); reset() }}
@@ -163,6 +225,13 @@ export default function OrgAddCoach({ teamId }: { teamId: string }) {
         </button>
       </div>
       {error && errorAt === 'invite' && <p role="alert" className="text-red-500 text-xs">{error}</p>}
+      {adminInvited && (
+        <div className="bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-900 rounded-lg p-3">
+          <p className="text-xs font-semibold text-green-700 dark:text-green-400">
+            Invite sent to {adminInvited}. Once they set a password they sign in with their own email and see the whole organization. Manage admins under Settings.
+          </p>
+        </div>
+      )}
 
       <div className="flex items-center gap-2">
         <div className="flex-1 h-px bg-gray-200 dark:bg-ink-700" />

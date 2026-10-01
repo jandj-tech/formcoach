@@ -70,7 +70,23 @@ export async function signOrgSession(
     .sign(jwtSecret())
 }
 
-/** The org's current password hash (null when it has none or does not exist). */
+/**
+ * The password hash the SESSION's login stands on: the owner's organizations
+ * row, or the linked admin's org_admins row (lib/org-admins.ts). Used to sign
+ * derived sessions (an org "open team" team session) so a reset of THAT
+ * login ends them. Null when the email no longer holds a credential there.
+ */
+export async function currentOrgCredentialHash(session: OrgSessionPayload): Promise<string | null> {
+  try {
+    const { orgCredential } = await import('@/lib/org-admins')
+    const c = await orgCredential(session.orgId, session.adminEmail)
+    return c?.hash ?? null
+  } catch {
+    return null
+  }
+}
+
+/** The org OWNER's current password hash (null when it has none or does not exist). */
 export async function currentOrgPasswordHash(orgId: string): Promise<string | null> {
   try {
     const [row] = (await db`
@@ -83,9 +99,9 @@ export async function currentOrgPasswordHash(orgId: string): Promise<string | nu
 }
 
 /**
- * Signature, shape, AND the database: the org still exists, its admin is
- * still this email, and its password is still the one the session was issued
- * under. Tokens minted before `cv` existed are rejected (the admin signs in
+ * Signature, shape, AND the database: the org still exists, this email is
+ * still its owner or a linked admin, and that login's password is still the
+ * one the session was issued under. Tokens minted before `cv` existed are rejected (the admin signs in
  * again). Fails closed on a database error.
  */
 export async function verifyOrgSession(token: string): Promise<OrgSessionPayload | null> {
@@ -105,8 +121,17 @@ export async function verifyOrgSession(token: string): Promise<OrgSessionPayload
       SELECT admin_email, password_hash FROM organizations WHERE id = ${claims.orgId}
     `) as unknown as [{ admin_email: string; password_hash: string | null } | undefined]
     if (!row) return null
-    if (row.admin_email.toLowerCase().trim() !== claims.adminEmail.toLowerCase().trim()) return null
-    const expected = sessionCredentialFingerprint('org', claims.orgId, claims.adminEmail, row.password_hash)
+    const e = claims.adminEmail.toLowerCase().trim()
+    if (row.admin_email.toLowerCase().trim() === e) {
+      const expected = sessionCredentialFingerprint('org', claims.orgId, claims.adminEmail, row.password_hash)
+      return fingerprintMatches(claims.cv, expected) ? claims : null
+    }
+    // A linked admin (lib/org-admins.ts): the session stands on that row's
+    // own password. Removing the row or resetting its password ends it.
+    const { orgCredential } = await import('@/lib/org-admins')
+    const admin = await orgCredential(claims.orgId, e)
+    if (!admin || admin.role !== 'admin') return null
+    const expected = sessionCredentialFingerprint('org', claims.orgId, claims.adminEmail, admin.hash)
     return fingerprintMatches(claims.cv, expected) ? claims : null
   } catch {
     return null

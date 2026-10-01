@@ -170,6 +170,10 @@ async function sessionCredential(
       SELECT o.admin_email AS email, o.password_hash AS hash, 'org' AS source FROM organizations o
       JOIN teams t ON t.organization_id = o.id
       WHERE t.id = ${session.teamId} AND LOWER(o.admin_email) = ${e}
+      UNION ALL
+      SELECT a.email, a.password_hash AS hash, 'org' AS source FROM org_admins a
+      JOIN teams t ON t.organization_id = a.org_id
+      WHERE t.id = ${session.teamId} AND LOWER(a.email) = ${e} AND a.accepted_at IS NOT NULL AND a.password_hash IS NOT NULL
     `) as unknown as typeof rows
   } catch {
     return null
@@ -232,6 +236,7 @@ export async function emailBelongsToCoachOrOrg(email: string): Promise<boolean> 
   const [row] = (await db`
     SELECT (
       EXISTS (SELECT 1 FROM organizations WHERE LOWER(admin_email) = ${e})
+      OR EXISTS (SELECT 1 FROM org_admins WHERE LOWER(email) = ${e})
       OR EXISTS (SELECT 1 FROM teams WHERE LOWER(admin_email) = ${e})
       OR EXISTS (SELECT 1 FROM team_coaches WHERE LOWER(email) = ${e})
     ) AS taken
@@ -270,10 +275,18 @@ async function orgSessionOwnsTeam(
   if (!orgSession || typeof orgSession.orgId !== 'string' || !orgSession.orgId) return null
   if (typeof orgSession.adminEmail !== 'string' || orgSession.adminEmail.toLowerCase().trim() !== e) return null
   try {
+    // The owner's row, or a linked admin's (lib/org-admins.ts) — either acts
+    // as the organization over its teams.
     const [row] = (await db`
       SELECT o.admin_email, o.password_hash FROM organizations o
       JOIN teams t ON t.organization_id = o.id
       WHERE t.id = ${teamId} AND o.id = ${orgSession.orgId} AND LOWER(o.admin_email) = ${e}
+      UNION ALL
+      SELECT a.email AS admin_email, a.password_hash FROM org_admins a
+      JOIN teams t ON t.organization_id = a.org_id
+      WHERE t.id = ${teamId} AND a.org_id = ${orgSession.orgId} AND LOWER(a.email) = ${e}
+        AND a.accepted_at IS NOT NULL AND a.password_hash IS NOT NULL
+      LIMIT 1
     `) as unknown as [{ admin_email: string; password_hash: string | null } | undefined]
     return row ? { email: row.admin_email, hash: row.password_hash } : null
   } catch {
@@ -602,7 +615,14 @@ export async function provenTeamCoachCreditsEmail(teamId: string): Promise<strin
       if ((await onlyCredentialOf(e)) === t.password_hash) return e
       return (await credentialInboxProven(e, t.password_hash)) ? e : null
     }
-    return t.org_admin_email && t.org_admin_email.toLowerCase().trim() === e ? e : null
+    if (t.org_admin_email && t.org_admin_email.toLowerCase().trim() === e) return e
+    // A team a linked org admin created under their own address (org
+    // add-team signs the team with the session email and no password).
+    const [a] = (await db`
+      SELECT 1 FROM org_admins a JOIN teams t ON t.organization_id = a.org_id
+      WHERE t.id = ${teamId} AND LOWER(a.email) = ${e} AND a.accepted_at IS NOT NULL LIMIT 1
+    `) as unknown as [unknown | undefined]
+    return a ? e : null
   } catch {
     return null
   }

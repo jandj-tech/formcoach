@@ -2611,3 +2611,63 @@ export async function sendEntitlementConfirmEmail(
   }
   console.log('[email] entitlement confirmation sent:', data?.id, 'mode:', mode, 'to:', to)
 }
+
+// Invites an email to become a full-access admin of an organization
+// (lib/org-admins.ts) — links to the admin setup page where they choose a
+// password. Transactional: no unsubscribe footer.
+export async function sendOrgAdminInviteEmail(to: string, orgName: string, inviteToken: string) {
+  const link = `${BASE_URL}/org/admin-setup?token=${inviteToken}`
+  const { data, error } = await getResend().emails.send({
+    from: NOTIFICATION_FROM,
+    to,
+    subject: `You've been made an admin of ${orgName} on LearnHoops`,
+    text: [
+      `${orgName} has given you a full-access organization admin account on LearnHoops.`,
+      ``,
+      `As an admin you can open every team in the organization, send tokens, email results and manage settings — everything the organization owner can do.`,
+      ``,
+      `Set your password here:`,
+      link,
+      ``,
+      `Afterwards, sign in at ${BASE_URL}/login with this email address and that password.`,
+      ``,
+      `LearnHoops.com`,
+    ].join('\n'),
+    html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"/></head>
+<body style="margin:0;padding:0;background:#F4F4F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table role="presentation" width="100%" style="background:#F4F4F5;"><tr><td align="center" style="padding:32px 16px;">
+    <table role="presentation" width="100%" style="max-width:560px;background:#fff;border-radius:14px;border:1px solid #E4E4E7;">
+      <tr><td style="background:#000;padding:22px 32px;">
+        <div style="color:#F97316;font-size:20px;font-weight:800;">LearnHoops<span style="color:#71717A;">.com</span></div>
+      </td></tr>
+      <tr><td style="padding:36px 32px 8px;">
+        <h1 style="margin:0 0 10px;color:#111;font-size:22px;font-weight:800;">You're now an organization admin</h1>
+        <p style="margin:0 0 12px;color:#52525B;font-size:15px;line-height:1.55;">
+          <strong>${escHtml(orgName)}</strong> has given you a full-access organization admin account on LearnHoops.com.
+        </p>
+        <p style="margin:0;color:#52525B;font-size:15px;line-height:1.55;">
+          As an admin you can open every team in the organization, send tokens, email results and manage settings &mdash; everything the organization owner can do. Choose a password below to get started.
+        </p>
+      </td></tr>
+      <tr><td style="padding:24px 32px 32px;">
+        <a href="${link}" style="display:inline-block;background:#F97316;color:#fff;padding:13px 26px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">Set up my admin account</a>
+        <p style="margin:18px 0 0;color:#A1A1AA;font-size:13px;line-height:1.5;">
+          If the button doesn't work, copy this link into your browser:<br/>
+          <a href="${link}" style="color:#71717A;word-break:break-all;">${link}</a>
+        </p>
+        <p style="margin:10px 0 0;color:#A1A1AA;font-size:13px;line-height:1.5;">Afterwards, sign in at ${BASE_URL}/login with this email address and your new password. If you didn't expect this, you can ignore this email.</p>
+      </td></tr>
+    </table>
+  </td></tr></table>
+</body>
+</html>`.trim(),
+  })
+  if (error) {
+    console.error('[email] org admin invite failed:', error)
+    throw new Error(`Org admin invite email failed: ${error.message}`)
+  }
+  console.log('[email] org admin invite sent:', data?.id, 'to:', to)
+}

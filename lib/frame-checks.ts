@@ -284,10 +284,13 @@ export function frameCheckBounds(fc: FrameChecks): Array<{ criterion: string; ca
   const SQUARE = 'Square to the Basket', FEET = 'Feet Shoulder Width Apart'
   const ONEHAND = 'Shooting Through Guide Hand / One Hand Release', GHFT = 'Guide Hand Follow Through', SHFT = 'Shooting Hand Follow Through'
   if (fc.elbow) {
-    // No Shot Pocket cap on the catapult: the expert scored the pocket of the
-    // catapult clip (shot-196/200) 7.5-9.5 and 7-9 - the ball starts in a
-    // proper pocket and only then travels up and back. e57 measured the cap
-    // at 9 -> 4 on both, two big misses on cells the model had right.
+    // No Shot Pocket cap on the catapult. CORRECTION (2026-10-01): the Pocket
+    // bands on the catapult clip (shot-196/200, 7.5-9.5 and 7-9) are
+    // AI-SEEDED, not the expert's - the expert's corrections for that clip do
+    // not cover the pocket. So neither the cap (E50) nor its removal (e57) has
+    // expert evidence; the removal stands because a cap without evidence is
+    // the riskier guess, and the cell does not count toward the expert miss
+    // rate either way.
     if (fc.elbow.catapult) { b.push({ criterion: ELBOW, cap: 3, why: 'the ball went over or behind the head with the elbow flared' }); b.push({ criterion: POWER, cap: 4, why: 'the ball was slung from over the head' }) }
     // shot-202 (the expert's own two-hand V): Elbow [3,5], Pocket [3,5], Power [5,7], One-Hand [3,5].
     // V-AT-TOP: RECORDED, NOT ACTED ON. Cropped probe 2026-09-30 (3 reps each):

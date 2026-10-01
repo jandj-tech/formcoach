@@ -2060,11 +2060,16 @@ shot-198 Elbow [3,5]     9   MISS +4             9   MISS +4    (unsolved)
 controls 125/189/206: all within 0.5 in both arms except 125 Elbow 9 vs [6.5,8]
 (+1, no cap involved; e55 gave 8.5).
 ```
-The catapult is fixed on both runs of the only catapult clip, and the fix
-exposed a wrong cap: the expert scores the POCKET of that clip 7.5-9.5 - the
-ball starts in a proper pocket and only then goes up and back. Pocket cap
-under catapult REMOVED (arithmetic only: it can only return those two cells to
-the model's in-band 9; no other fixture is a catapult). Not re-run as an arm.
+The catapult is fixed on both runs of the only catapult clip. The Pocket cap
+under catapult was REMOVED on the strength of the 7.5-9.5 / 7-9 Pocket bands -
+CORRECTION 2026-10-01: those bands are AI-SEEDED, not the expert's (the
+report's own "ai-seeded movement" count is where they live). So the cap (E50)
+and its removal are both without expert evidence; the removal stands because
+a cap without evidence is the riskier guess, and the cell never counted
+toward the expert miss rate. Expert-cell numbers on these 7 fixtures (44
+cells): e55 21/44 = 47.7%, e57 18/44 = 40.9%; big misses e55 5 -> e57 4
+(198 Elbow +4, 198 Square +4, 202 Elbow +4, 125 Square -3.5 with no cap
+involved - run variance on Square, the shot-156 family).
 
 Big misses (>= 3) on these 7: e55 had 4 (196 E, 196 P, 202 E, 198 E) plus 200 at
 +2/+2.5; e57 after the Pocket fix has 3 (202 Elbow, 202 Pocket, 198 Elbow), all

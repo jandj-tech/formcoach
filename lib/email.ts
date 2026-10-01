@@ -11,6 +11,7 @@ function getResend() {
 // domain must be verified in the Resend dashboard before an address will
 // deliver; until then, set EMAIL_FROM to `onboarding@resend.dev`.
 import { INTERNAL_INBOX, MARKETING_FROM, NOTIFICATION_FROM, SUPPORT_ADDRESS, SUPPORT_FROM, onBehalfFrom } from './email-senders'
+import { playerEmailPaused } from './player-email-pause'
 
 export const BASE_URL = resolveBaseUrl()
 
@@ -440,6 +441,7 @@ export async function sendPlayerSetupEmail(
   parentName?: string | null,
   opts: { playerName?: string | null; addedBy?: string | null; orgName?: string | null } = {},
 ) {
+  if (playerEmailPaused('player setup email', to)) return
   const player = opts.playerName?.trim() || null
   const addedBy = opts.addedBy?.trim() || null
   const orgName = opts.orgName?.trim() || null
@@ -2245,6 +2247,7 @@ export async function sendPlayerEmail(args: {
   text: string
   html: string
 }): Promise<string | null> {
+  if (playerEmailPaused('player email', args.to)) return null
   const unsubscribe = unsubscribeUrl(args.to)
   const { data, error } = await getResend().emails.send({
     from: onBehalfFrom(args.fromName),
@@ -2309,6 +2312,7 @@ export async function sendOrgResultsEmail(
   input: OrgResultsEmailInput,
   replyTo: string
 ): Promise<void> {
+  if (playerEmailPaused('org results email', input.recipientEmail)) return
   const { subject, text, html } = renderOrgResultsEmail(input)
   const unsubscribe = unsubscribeUrl(input.recipientEmail)
   const { error } = await getResend().emails.send({

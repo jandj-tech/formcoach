@@ -14,11 +14,16 @@ interface Coach {
 }
 
 export default function TeamCoaches({
+  teamName,
+  isHeadCoach,
   foundingCoachEmail,
   foundingCoachNickname,
   coaches,
   myNickname,
 }: {
+  teamName: string
+  /** Only the head coach may remove assistants or cancel invites. */
+  isHeadCoach: boolean
   foundingCoachEmail: string
   foundingCoachNickname: string | null
   coaches: Coach[]
@@ -35,6 +40,7 @@ export default function TeamCoaches({
   // Set when the email already had a coach password: added straight away.
   const [addedExisting, setAddedExisting] = useState('')
   const [copied, setCopied] = useState(false)
+  const [removing, setRemoving] = useState<string | null>(null)
 
   const BASE_URL = typeof window !== 'undefined' ? window.location.origin : 'https://learnhoops.com'
 
@@ -81,6 +87,31 @@ export default function TeamCoaches({
     } catch {
       setError('Something went wrong. Please try again.')
       setLoading(false)
+    }
+  }
+
+  async function removeCoach(c: Coach) {
+    const who = c.nickname || c.email
+    if (!confirm(c.pending ? `Cancel ${who}'s invite to ${teamName}?` : `Remove ${who} from ${teamName}? They lose access to this team.`)) return
+    setRemoving(c.id)
+    try {
+      const res = await fetch('/api/team/remove-coach', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ coachId: c.id }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        alert(data.error || 'Could not remove that coach. Please try again.')
+        setRemoving(null)
+        return
+      }
+      // A note about a coach who's no longer listed would be stale.
+      reset()
+      router.refresh()
+    } catch {
+      setRemoving(null)
+      alert('Could not remove that coach. Please try again.')
     }
   }
 
@@ -193,13 +224,24 @@ export default function TeamCoaches({
               <p className="text-sm font-semibold text-black dark:text-chalk truncate">{c.nickname || c.email}</p>
               {c.nickname && <p className="text-xs text-gray-400 dark:text-chalk-dim truncate">{c.email}</p>}
             </div>
-            <span
-              className={`shrink-0 text-xs font-bold px-2 py-0.5 rounded-full ${
-                c.pending ? 'bg-gray-100 dark:bg-ink-800 text-gray-500 dark:text-chalk-dim' : 'bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400'
-              }`}
-            >
-              {c.pending ? 'Invite pending' : 'Coach'}
-            </span>
+            <div className="flex items-center gap-3 shrink-0">
+              <span
+                className={`shrink-0 text-xs font-bold px-2 py-0.5 rounded-full ${
+                  c.pending ? 'bg-gray-100 dark:bg-ink-800 text-gray-500 dark:text-chalk-dim' : 'bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400'
+                }`}
+              >
+                {c.pending ? 'Invite pending' : 'Coach'}
+              </span>
+              {isHeadCoach && c.email.toLowerCase() !== foundingCoachEmail.toLowerCase() && (
+                <button
+                  onClick={() => removeCoach(c)}
+                  disabled={removing === c.id}
+                  className="text-xs font-semibold text-gray-400 dark:text-chalk-dim hover:text-red-500 disabled:opacity-50 transition-colors"
+                >
+                  {removing === c.id ? '…' : c.pending ? 'Cancel invite' : 'Remove'}
+                </button>
+              )}
+            </div>
           </div>
         ))}
       </div>

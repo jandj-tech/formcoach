@@ -1,10 +1,10 @@
 'use client'
 
 import { useId, useState, type ReactNode } from 'react'
-import { AlertTriangleIcon, ChevronRightIcon, LoaderCircleIcon, SendIcon } from 'lucide-react'
+import { AlertTriangleIcon, ChevronRightIcon, EyeIcon, LoaderCircleIcon, SendIcon, UserRoundPlusIcon } from 'lucide-react'
 import { backendButton } from '@/components/backend/button-styles'
 import StepCard from './StepCard'
-import { CHECKBOX, plural, type Duplicate, type Recipient } from './types'
+import { CHECKBOX, getsSetupEmail, plural, type Duplicate, type Recipient } from './types'
 
 // Step 3 — review and send. Everything the sender needs to be sure of before
 // a real email goes out: who it is from, where replies go, the exact
@@ -49,6 +49,8 @@ export default function ReviewStep({
   sending,
   error,
   onSend,
+  onPreviewSetup,
+  shotTotal = null,
 }: {
   fromHeader: string
   replyTo: string
@@ -64,6 +66,10 @@ export default function ReviewStep({
   sending: boolean
   error: ComposerError | null
   onSend: () => void
+  /** Shows a not-set-up player's version in the step 2 preview. */
+  onPreviewSetup?: () => void
+  /** Graded shots across the send, when more than each latest is going (else null). */
+  shotTotal?: number | null
 }) {
   const confirmId = useId()
   const [confirmedFor, setConfirmedFor] = useState<number | null>(null)
@@ -79,6 +85,8 @@ export default function ReviewStep({
   }
   const withScore = recipients.filter((r) => r.player.submissionId && r.player.score !== null).length
   const withoutScore = n - withScore
+  // Not set up yet: they get "finish setting up to see your results" instead of their score.
+  const needSetup = recipients.filter((r) => getsSetupEmail(r.player, includeResults)).length
 
   const left: Excluded[] = [
     ...duplicates.map((d) => ({
@@ -112,8 +120,32 @@ export default function ReviewStep({
             </p>
             {includeResults && (
               <p className="mt-1 text-sm text-gray-700 dark:text-chalk">
-                Score included for {withScore}
+                Score included for {withScore - needSetup}
+                {shotTotal !== null && shotTotal !== withScore && ` · ${plural(shotTotal, 'shot')} in total`}
                 {withoutScore > 0 && ` · ${withoutScore} ${withoutScore === 1 ? 'has' : 'have'} no graded shot yet (message only)`}
+              </p>
+            )}
+            {needSetup > 0 && (
+              <p className="mt-2 flex flex-wrap items-start gap-x-2 gap-y-1 text-sm text-gray-700 dark:text-chalk">
+                <UserRoundPlusIcon className="mt-0.5 w-4 h-4 shrink-0 text-ember-600 dark:text-ember-400" aria-hidden />
+                <span className="flex-1 min-w-[12rem]">
+                  {needSetup === n
+                    ? needSetup === 1
+                      ? 'This player hasn’t set up their account yet'
+                      : 'None of these players have set up their account yet'
+                    : `${needSetup} of these players ${needSetup === 1 ? 'hasn’t' : 'haven’t'} set up their account yet`}
+                  {' '}— they’ll get a “finish setting up to see your results” email instead of their score.
+                </span>
+                {onPreviewSetup && (
+                  <button
+                    type="button"
+                    onClick={onPreviewSetup}
+                    className="inline-flex items-center gap-1 text-sm font-semibold text-ember-700 dark:text-ember-400 underline underline-offset-2 hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember-400 rounded"
+                  >
+                    <EyeIcon className="w-3.5 h-3.5" aria-hidden />
+                    Preview their version
+                  </button>
+                )}
               </p>
             )}
           </div>
@@ -151,7 +183,12 @@ export default function ReviewStep({
                           <span className="text-xs text-gray-500 dark:text-chalk-dim [overflow-wrap:anywhere]">
                             {r.player.email}
                             {r.player.emailSource === 'family' && (r.player.familyOf ? ` (${r.player.familyOf}'s family email)` : ' (family email)')}
-                            {includeResults && (r.player.score !== null ? ` · score ${r.player.score.toFixed(1)}` : ' · message only')}
+                            {includeResults &&
+                              (getsSetupEmail(r.player, includeResults)
+                                ? ' · finish-setup email'
+                                : r.player.score !== null
+                                  ? ` · score ${r.player.score.toFixed(1)}`
+                                  : ' · message only')}
                           </span>
                         </li>
                       ))}

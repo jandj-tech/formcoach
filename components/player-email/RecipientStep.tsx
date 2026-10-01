@@ -112,6 +112,11 @@ function PlayerRow({
             <span className="block text-xs text-gray-500 dark:text-chalk-dim [overflow-wrap:anywhere]">{player.email}</span>
           ) : null}
           {family && <span className="block text-xs font-medium text-gray-600 dark:text-chalk">{family}</span>}
+          {player.setupPending && player.email && (
+            <span className="block text-xs text-gray-500 dark:text-chalk-dim">
+              Setup incomplete{player.score !== null ? ' · results go out as a “finish setup” email' : ''}
+            </span>
+          )}
           {player.sameNameAsAnother && player.detail && player.detail !== player.email && (
             <span className="block text-xs text-gray-500 dark:text-chalk-dim">{player.detail}</span>
           )}

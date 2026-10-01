@@ -3,7 +3,14 @@ import { putObject, storageDriver } from '@/lib/storage'
 import { db } from '@/lib/db'
 import { analyzeShot } from '@/lib/analyze'
 import { getSessionFromRequest } from '@/lib/auth'
-import { getTeamSessionFromRequest, provenCoachCreditsEmail, provenTeamCoachCreditsEmail } from '@/lib/team-auth'
+import {
+  getTeamSessionFromRequest,
+  provenCoachCreditsEmail,
+  provenTeamCoachCreditsEmail,
+  teamUploadPayer,
+  type TeamUploadPayer,
+} from '@/lib/team-auth'
+import { teamUploadBalance, teamUploadCopy } from '@/lib/team-tokens'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { maybeSendFilmingTips } from '@/lib/filming-tips'
 import { rateLimit, rateLimitByIp } from '@/lib/rate-limit'
@@ -225,6 +232,7 @@ export async function POST(req: NextRequest) {
     let teamId: string | null = null
     let teamPlayerId: string | null = null
     let teamCoachEmail: string | null = null
+    let teamPayer: TeamUploadPayer | null = null
 
     let classPlayerUserId: string | null = null
     let filedUnder: string | null = null
@@ -256,21 +264,36 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Team not found' }, { status: 404 })
       }
 
-      // One coach balance funds team uploads: the head coach's personal
-      // coach_credits, with legacy teams.credits as a fallback so older
-      // teams that still hold a team budget keep working. coach_credits is
-      // keyed only by email, so it is spent only when this team's head-coach
-      // row provably holds that email (provenTeamCoachCreditsEmail) — a
-      // stranger's legacy team that copied a real coach's address falls back
-      // to its own team budget instead of the real coach's tokens.
+      // Who funds a team upload. Coach flows (playerRef — authenticated
+      // above) follow the uploader (teamUploadPayer): an org upload spends
+      // this team's tokens, then the organization's own balance, and never a
+      // coach's personal tokens; a coach upload (head or assistant) spends the
+      // UPLOADER's own coach_credits, then the team's tokens — never another
+      // coach's. coach_credits is keyed only by email, so the uploader's are
+      // spent only when the session proves that email
+      // (provenCoachCreditsEmail inside teamUploadPayer).
+      //
+      // The legacy name path (public /team/<code>/upload page, older app
+      // builds) has no signed-in uploader and keeps its original rule: the
+      // head coach's personal tokens, then the team's — only when the
+      // head-coach row provably holds that email (provenTeamCoachCreditsEmail),
+      // so a stranger's legacy team that copied a real coach's address falls
+      // back to its own team budget instead of the real coach's tokens.
       teamCoachEmail = await provenTeamCoachCreditsEmail(team.id)
-      const [cc] = teamCoachEmail
-        ? await db`
-            SELECT COALESCE(credits, 0)::int AS credits FROM coach_credits WHERE LOWER(email) = ${teamCoachEmail}
-          ` as unknown as [{ credits: number } | undefined]
-        : [undefined]
-      const coachBalance = cc?.credits ?? 0
-      if (coachBalance + team.credits < 1) {
+      if (playerRef) {
+        teamPayer = await teamUploadPayer(
+          team,
+          await getTeamSessionFromRequest(req),
+          await getOrgSessionFromRequest(req),
+        )
+        if (!teamPayer) {
+          return NextResponse.json({ error: 'You are not a coach on this team' }, { status: 403 })
+        }
+      } else {
+        teamPayer = { kind: 'coach', email: teamCoachEmail }
+      }
+      const balance = await teamUploadBalance(team.id, teamPayer)
+      if (balance.total < 1) {
         return NextResponse.json({ error: 'Not enough tokens' }, { status: 402 })
       }
 
@@ -435,31 +458,51 @@ export async function POST(req: NextRequest) {
     // the stamp IS the usage record there, so it must commit atomically).
     let fundingSource: 'legacy' | 'token' | 'coach_credit' | 'team_credit' | 'org_balance' | null =
       null
-    if (isTeamUpload && teamId) {
-      const coachRows = teamCoachEmail
-        ? ((await db`
-            UPDATE coach_credits SET credits = credits - 1
-            WHERE LOWER(email) = ${teamCoachEmail} AND credits > 0 RETURNING email
-          `) as unknown as unknown[])
-        : []
-      // `&& teamCoachEmail` is narrowing, not a new condition: coachRows is
-      // only non-empty when the debit above ran, which required it.
-      if (coachRows.length > 0 && teamCoachEmail) {
+    if (isTeamUpload && teamId && teamPayer) {
+      // Same order as the balance check above (teamUploadBalance). Each step
+      // is its own atomic `WHERE ... > 0` debit, so concurrent uploads can
+      // never overdraw any one balance; a step that finds it empty falls to
+      // the next. The charge records exactly which row paid, so the refund
+      // (in-request or the reconcile cron) gives it back to that source.
+      const debitCoach = async (email: string | null): Promise<boolean> => {
+        if (!email) return false
+        const rows = (await db`
+          UPDATE coach_credits SET credits = credits - 1
+          WHERE LOWER(email) = ${email} AND credits > 0 RETURNING email
+        `) as unknown as unknown[]
+        if (rows.length === 0) return false
         fundingSource = 'coach_credit'
-        await recordCharge(submission.id, 'coach_credit_lower', { email: teamCoachEmail })
-        refundCharge = () => refundChargesForSubmission(submission.id).then(() => undefined)
-      } else {
-        const teamRows = (await db`
+        await recordCharge(submission.id, 'coach_credit_lower', { email })
+        return true
+      }
+      const debitTeam = async (): Promise<boolean> => {
+        const rows = (await db`
           UPDATE teams SET credits = credits - 1 WHERE id = ${teamId} AND credits > 0 RETURNING id
         `) as unknown as unknown[]
-        if (teamRows.length === 0) {
-          await db`DELETE FROM submissions WHERE id = ${submission.id}`
-          return NextResponse.json({ error: 'Not enough tokens' }, { status: 402 })
-        }
+        if (rows.length === 0) return false
         fundingSource = 'team_credit'
-        await recordCharge(submission.id, 'team_credit', { teamId })
-        refundCharge = () => refundChargesForSubmission(submission.id).then(() => undefined)
+        await recordCharge(submission.id, 'team_credit', { teamId: teamId! })
+        return true
       }
+      const debitOrg = async (orgId: string): Promise<boolean> => {
+        const rows = (await db`
+          UPDATE organizations SET token_balance = token_balance - 1
+          WHERE id = ${orgId} AND token_balance > 0 RETURNING id
+        `) as unknown as unknown[]
+        if (rows.length === 0) return false
+        fundingSource = 'org_balance'
+        await recordCharge(submission.id, 'org_balance', { orgId })
+        return true
+      }
+      const paid =
+        teamPayer.kind === 'org'
+          ? (await debitTeam()) || (await debitOrg(teamPayer.orgId))
+          : (await debitCoach(teamPayer.email)) || (await debitTeam())
+      if (!paid) {
+        await db`DELETE FROM submissions WHERE id = ${submission.id}`
+        return NextResponse.json({ error: 'Not enough tokens' }, { status: 402 })
+      }
+      refundCharge = () => refundChargesForSubmission(submission.id).then(() => undefined)
     } else if (isCoachSelf && orgSelfId) {
       const rows = (await db`
         UPDATE organizations SET token_balance = token_balance - 1 WHERE id = ${orgSelfId} AND token_balance > 0 RETURNING id
@@ -662,8 +705,12 @@ export async function POST(req: NextRequest) {
     // Use whichever user_id this submission is actually tied to:
     // - self uploads → session.userId
     // - coach team uploads → the joined class player's user_id (resolved above)
+    // - coach team uploads for a NAME-ONLY roster player (team_players row,
+    //   no account) → the class's name-only enrolment (user_id NULL) with the
+    //   same name, only on the class team itself. Account matching is
+    //   unchanged; this applies only when the shot has no account.
     const enrollmentUserId = submissionUserId
-    if (enrollmentUserId) {
+    if (enrollmentUserId || (teamId && teamPlayerId)) {
       try {
         // Pick the right enrollment when a player is in more than one class:
         //   - Coach team upload → prefer the enrollment whose package belongs
@@ -671,18 +718,32 @@ export async function POST(req: NextRequest) {
         //   - Self upload (no team context) → oldest active enrollment.
         // The CASE in ORDER BY ranks the matching team's enrollment first;
         // tie-breaks by created_at so behavior stays predictable.
-        const activeEnrollment = await db`
-          SELECT e.id, e.first_submission_id, e.first_score, e.is_first_class
-          FROM org_class_enrollments e
-          JOIN org_class_packages p ON p.id = e.package_id
-          LEFT JOIN teams t ON t.class_package_id = p.id
-          WHERE e.user_id = ${enrollmentUserId}
-            AND p.status = 'active'
-          ORDER BY
-            CASE WHEN ${teamId}::uuid IS NOT NULL AND t.id = ${teamId}::uuid THEN 0 ELSE 1 END,
-            e.created_at ASC
-          LIMIT 1
-        ` as unknown as { id: string; first_submission_id: string | null; first_score: number | null; is_first_class: boolean }[]
+        type ActiveEnrollment = { id: string; first_submission_id: string | null; first_score: number | null; is_first_class: boolean }
+        const activeEnrollment = enrollmentUserId
+          ? await db`
+              SELECT e.id, e.first_submission_id, e.first_score, e.is_first_class
+              FROM org_class_enrollments e
+              JOIN org_class_packages p ON p.id = e.package_id
+              LEFT JOIN teams t ON t.class_package_id = p.id
+              WHERE e.user_id = ${enrollmentUserId}
+                AND p.status = 'active'
+              ORDER BY
+                CASE WHEN ${teamId}::uuid IS NOT NULL AND t.id = ${teamId}::uuid THEN 0 ELSE 1 END,
+                e.created_at ASC
+              LIMIT 1
+            ` as unknown as ActiveEnrollment[]
+          : await db`
+              SELECT e.id, e.first_submission_id, e.first_score, e.is_first_class
+              FROM org_class_enrollments e
+              JOIN org_class_packages p ON p.id = e.package_id AND p.status = 'active'
+              JOIN teams t ON t.class_package_id = p.id AND t.id = ${teamId}
+              JOIN team_players tp ON tp.id = ${teamPlayerId} AND tp.team_id = t.id
+              WHERE e.user_id IS NULL
+                AND LOWER(TRIM(e.first_name)) = LOWER(TRIM(tp.first_name))
+                AND UPPER(COALESCE(NULLIF(TRIM(e.last_name_initial), ''), '?')) = UPPER(TRIM(tp.last_name_initial))
+              ORDER BY e.created_at ASC
+              LIMIT 1
+            ` as unknown as ActiveEnrollment[]
 
         const enrollment = activeEnrollment[0]
         if (enrollment) {
@@ -766,4 +827,30 @@ export async function POST(req: NextRequest) {
     console.error('Analysis error:', err instanceof Error ? err.message : err)
     return NextResponse.json({ error: 'Analysis failed', detail: err instanceof Error ? err.message : String(err) }, { status: 500 })
   }
+}
+
+/**
+ * GET /api/analyze?teamCode=XXXX — what a coach-flow upload to that team will
+ * spend from, for the single-upload card on the team dashboard ("Uses 1
+ * token — N left"). Same auth and the same payer rule as the POST above
+ * (teamUploadPayer + teamUploadBalance), so the number shown is the number
+ * the upload will actually draw on.
+ */
+export async function GET(req: NextRequest) {
+  const teamCode = cleanName(req.nextUrl.searchParams.get('teamCode')).toUpperCase()
+  if (!teamCode) return NextResponse.json({ error: 'teamCode is required' }, { status: 400 })
+  const teamSession = await getTeamSessionFromRequest(req)
+  const orgSession = await getOrgSessionFromRequest(req)
+  if (!teamSession && !orgSession) {
+    return NextResponse.json({ error: 'Login required' }, { status: 401 })
+  }
+  const [team] = (await db`
+    SELECT id, organization_id FROM teams WHERE access_code = ${teamCode}
+  `) as unknown as [{ id: string; organization_id: string | null } | undefined]
+  const payer = team ? await teamUploadPayer(team, teamSession, orgSession) : null
+  if (!team || !payer) {
+    return NextResponse.json({ error: 'You are not a coach on this team' }, { status: 403 })
+  }
+  const balance = await teamUploadBalance(team.id, payer)
+  return NextResponse.json({ ...balance, ...teamUploadCopy(balance.payer, !!team.organization_id) })
 }

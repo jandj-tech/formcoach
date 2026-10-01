@@ -13,6 +13,7 @@ const SendResultPanel = forwardRef<HTMLElement, { result: SendResponse; onAnothe
 ) {
   const sent = result.sent.length
   const ok = sent > 0
+  const setup = result.sent.filter((s) => s.setupRequired).length
   return (
     <section ref={ref} tabIndex={-1} aria-live="polite" className={`${CARD} p-5 sm:p-6 space-y-4 focus:outline-none`}>
       <div className="flex items-start gap-3">
@@ -30,6 +31,17 @@ const SendResultPanel = forwardRef<HTMLElement, { result: SendResponse; onAnothe
               ? 'They are on their way now. Replies come straight to your email.'
               : 'None of the selected players could get this email. The reasons are below.'}
           </p>
+          {setup > 0 && (
+            <p className="mt-1 text-sm text-gray-700 dark:text-chalk">
+              {setup === sent
+                ? setup === 1
+                  ? 'They haven’t'
+                  : 'None of them have'
+                : `${setup} of them ${setup === 1 ? 'hasn’t' : 'haven’t'}`}{' '}
+              set up their account yet, so{' '}
+              {setup === 1 ? 'that email asks them' : 'those emails ask them'} to finish setting up to see their results.
+            </p>
+          )}
         </div>
       </div>
 
@@ -45,7 +57,10 @@ const SendResultPanel = forwardRef<HTMLElement, { result: SendResponse; onAnothe
                 <span className="text-gray-900 dark:text-chalk">
                   {s.name} <span className="text-gray-400 dark:text-chalk-dim">· {s.team}</span>
                 </span>
-                <span className="text-xs text-gray-500 dark:text-chalk-dim [overflow-wrap:anywhere]">{s.email}</span>
+                <span className="text-xs text-gray-500 dark:text-chalk-dim [overflow-wrap:anywhere]">
+                  {s.email}
+                  {s.setupRequired ? ' · finish-setup email' : ''}
+                </span>
               </li>
             ))}
           </ul>

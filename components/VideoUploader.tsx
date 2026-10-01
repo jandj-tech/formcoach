@@ -25,6 +25,12 @@ interface TeamMode {
   playerRef?: string
   /** `token` is what /results/<token> looks up — the submission id is not. */
   onSuccess: (submissionId: string, token: string) => void
+  /**
+   * Called instead of showing "Upload failed" when the server answers 402 —
+   * the team dashboard's card swaps in its "No tokens left" message with the
+   * way to get more. Without it a 402 shows as an error, as before.
+   */
+  onOutOfTokens?: () => void
 }
 
 export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { teamMode?: TeamMode; coachSelf?: boolean; coachCredits?: number } = {}) {
@@ -239,6 +245,15 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
             setStatus('idle')
             setProgress(0)
             setPreviews([])
+            return
+          }
+          if (res.status === 402 && teamMode?.onOutOfTokens) {
+            // Nothing was charged; the caller explains how to get tokens.
+            setStatus('idle')
+            setProgress(0)
+            setPreviews([])
+            setVideoUploadStatus({ state: 'idle' })
+            teamMode.onOutOfTokens()
             return
           }
           // Surface the server's real error detail, not just the generic label.

@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { shortEmail } from '@/lib/team-roster-refs'
 
 /**
  * A team's shots, for its leaderboard / most-improved / roster aggregates.
@@ -100,6 +101,33 @@ export async function teamMostImproved(teamId: string): Promise<TeamImprovedRow[
     ) improved_rows
     ORDER BY (latest_score - first_score) DESC
   `) as unknown as TeamImprovedRow[]
+}
+
+/**
+ * Coach/org boards only: when two players on the team's roster share a name
+ * ("Liam B." twice), their rows get a `detail` that tells them apart — the
+ * member's email (shortened), or "name only". Player-facing boards never
+ * call this, so teammates' emails stay off them. `roster` is the team's
+ * members (id = user id, with email) and name-only players (no email).
+ */
+export function withTwinDetails<T extends Pick<TeamLeaderRow, 'id' | 'first_name' | 'last_name_initial' | 'kind'>>(
+  rows: T[],
+  roster: ReadonlyArray<{ id: string; email?: string | null; first_name: string | null; last_name_initial: string | null }>,
+): Array<T & { detail?: string }> {
+  const key = (first: string | null, initial: string | null) =>
+    `${(first ?? '').trim().toLowerCase()}|${(initial ?? '').trim().toLowerCase()}`
+  const count = new Map<string, number>()
+  for (const p of roster) {
+    if (!p.first_name) continue
+    const k = key(p.first_name, p.last_name_initial)
+    count.set(k, (count.get(k) ?? 0) + 1)
+  }
+  const emailOf = new Map(roster.filter(p => p.email).map(p => [p.id, p.email as string]))
+  return rows.map(r => {
+    if ((count.get(key(r.first_name, r.last_name_initial)) ?? 0) < 2) return r
+    const email = r.kind === 'member' ? emailOf.get(r.id) : undefined
+    return { ...r, detail: email ? shortEmail(email) : 'name only' }
+  })
 }
 
 /** Contract names used by the player/coach packages. */

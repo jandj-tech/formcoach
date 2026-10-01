@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { getTeamSession, provenCoachCreditsEmail, switchableTeams } from '@/lib/team-auth'
-import { teamLeaderboard, teamMostImproved } from '@/lib/team-shots'
+import { teamLeaderboard, teamMostImproved, withTwinDetails } from '@/lib/team-shots'
 import { getOrgSession } from '@/lib/org-auth'
 import { db } from '@/lib/db'
 import TopNav from '@/components/TopNav'
@@ -40,6 +40,7 @@ export default async function TeamDashboardPage() {
     best_score: number
     avg_score: number | string | null
     upload_count: number
+    detail?: string
   }> = []
 
   let improved: Array<{
@@ -110,6 +111,10 @@ export default async function TeamDashboardPage() {
   } catch (err) {
     console.error('[team/dashboard] pending members query failed:', err)
   }
+
+  // Same-name players on the board get their email beside the name (coach
+  // view only; player-facing boards never carry it).
+  leaderboard = withTwinDetails(leaderboard, [...members, ...pendingMembers])
 
   try {
     coaches = (await db`

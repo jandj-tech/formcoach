@@ -573,9 +573,10 @@ export async function provenCoachCreditsEmail(
 
 /**
  * The head-coach email whose coach_credits a team upload on `teamId` may
- * spend (the public /team/<code>/upload page and the coach flows both charge
- * the HEAD coach's tokens), or null — then only the team's own budget
- * (teams.credits) funds the upload.
+ * spend (the public /team/<code>/upload page charges the HEAD coach's tokens;
+ * signed-in coach and org flows follow the uploader instead — see
+ * teamUploadPayer), or null — then only the team's own budget (teams.credits)
+ * funds the upload.
  *
  *   - the head-coach row has a password and it is that email's ONLY
  *     credential anywhere (a stranger's self-registered team under a real
@@ -606,6 +607,50 @@ export async function provenTeamCoachCreditsEmail(teamId: string): Promise<strin
   } catch {
     return null
   }
+}
+
+/**
+ * Who pays for a coach-flow team upload (/api/analyze with a playerRef, and
+ * the balance the upload pages show), or null when neither session may
+ * upload to this team:
+ *
+ *   - `org`: the organization that owns the team is uploading — its own
+ *     login, or a director's "open team" session next to a live org login by
+ *     the same email (orgSessionOwnsTeam). Funded by the team's tokens, then
+ *     the org's own balance. Never any coach's personal tokens.
+ *   - `coach`: a coach (head or added) on their own credentialed row of this
+ *     team. Funded by the UPLOADER's personal coach_credits, then the team's
+ *     tokens — never another coach's. `email` is the address whose personal
+ *     tokens may be spent, under the same proof as every other spend of
+ *     coach_credits (provenCoachCreditsEmail); null when this login can't
+ *     prove it, so only the team's tokens pay.
+ */
+export type TeamUploadPayer =
+  | { kind: 'org'; orgId: string }
+  | { kind: 'coach'; email: string | null }
+
+/** See TeamUploadPayer. */
+export async function teamUploadPayer(
+  team: { id: string; organization_id: string | null },
+  teamSession: TeamSessionPayload | null,
+  orgSession: OrgSessionPayload | null,
+): Promise<TeamUploadPayer | null> {
+  const orgOwnsTeam =
+    !!orgSession && !!team.organization_id && orgSession.orgId === team.organization_id
+  if (teamSession && teamSession.teamId === team.id) {
+    const e = teamSession.adminEmail.toLowerCase().trim()
+    // Checked first: a director who is also this team's head coach (same
+    // address, same password) still uploads as the organization while their
+    // org login is live — the org dashboard is where they came from.
+    if (orgOwnsTeam && (await orgSessionOwnsTeam(e, team.id, orgSession))) {
+      return { kind: 'org', orgId: orgSession!.orgId }
+    }
+    const current = await sessionCredential(teamSession)
+    if (current?.source === 'row') {
+      return { kind: 'coach', email: await provenCoachCreditsEmail(teamSession, orgSession) }
+    }
+  }
+  return orgOwnsTeam ? { kind: 'org', orgId: orgSession!.orgId } : null
 }
 
 /**

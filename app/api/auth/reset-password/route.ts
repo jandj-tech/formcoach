@@ -16,6 +16,7 @@ import { clearOtherSessions, PLAYER_COOKIE, TEAM_COOKIE, ORG_COOKIE } from '@/li
 import { sendPasswordChangedEmail } from '@/lib/email'
 import { BCRYPT_COST } from '@/lib/password'
 import { rateLimit, rateLimitByIp } from '@/lib/rate-limit'
+import { safeLocalPath } from '@/lib/safe-next'
 
 // Completes a password reset: verifies the token, sets the new password on the
 // matching account (player, coach, or organization), and logs them in. The web
@@ -49,12 +50,14 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const { token: bodyToken, email, code, password, chosen } = (await req.json().catch(() => ({}))) as {
+    const { token: bodyToken, email, code, password, chosen, next } = (await req.json().catch(() => ({}))) as {
       token?: string
       email?: string
       code?: string
       password?: string
       chosen?: string
+      /** Where a player lands afterwards (a "see your results" setup link). Same-site paths only. */
+      next?: unknown
     }
     if (!password || typeof password !== 'string' || password.length < 6) {
       return NextResponse.json({ error: 'Password (6+ characters) required' }, { status: 400 })
@@ -125,7 +128,9 @@ export async function POST(req: NextRequest) {
     let res: NextResponse
     if (target.kind === 'user') {
       sessionToken = await signSession({ userId: target.userId!, email: target.email }, hash)
-      res = NextResponse.json({ success: true, redirect: target.redirect, token: sessionToken })
+      // Only a player honours `next`; coaches and orgs always go to their dashboard.
+      const redirect = safeLocalPath(next) ?? target.redirect
+      res = NextResponse.json({ success: true, redirect, token: sessionToken })
       res.cookies.set(sessionCookieOptions(sessionToken))
       clearOtherSessions(res, PLAYER_COOKIE)
     } else if (target.kind === 'org') {

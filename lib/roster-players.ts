@@ -9,6 +9,7 @@ import { cleanDisplayText, cleanOptionalDisplayText } from '@/lib/moderation'
 import { isValidEmail as isValidEmailShared, importRowProblem } from '@/lib/csv'
 import { rateLimit } from '@/lib/rate-limit'
 import { MAX_PLAYERS_PER_EMAIL } from '@/lib/player-accounts'
+import { safeLocalPath } from '@/lib/safe-next'
 
 // Adds a player to a team the way a coach or org would: no password required.
 //
@@ -120,22 +121,54 @@ export function isValidEmail(email: string): boolean {
 }
 
 /**
- * Issues (or re-issues) a 14-day setup token for a roster-pending player and
- * returns the link that lets them set a password. Reuses the reset_token
- * column so the existing /reset-password flow completes the account.
+ * A live setup token with at least this long left is re-sent as-is rather
+ * than replaced, so every recent setup / results email for the player keeps
+ * working. A shorter-lived token (a 1-hour forgot-password one, or a setup
+ * link about to lapse) is replaced with a fresh 14-day one.
+ */
+const SETUP_TOKEN_REUSE_MIN_MS = 24 * 60 * 60 * 1000
+
+/**
+ * Returns the link that lets a roster-pending player set a password, issuing
+ * a 14-day setup token when needed. Reuses the reset_token column so the
+ * existing /reset-password flow completes the account.
+ *
+ * Several emails can carry a setup link (the setup email, a resend, a "finish
+ * setup to see your results" email): they all carry the SAME current token,
+ * so an earlier email's button still works after a later one arrives. The
+ * token is still single-use (consuming it clears it), still expires, and is
+ * still only ever emailed to the account's own (unchangeable) address.
+ *
+ * `next` (a same-site path) is where the player lands once the password is
+ * set, e.g. their results. It never carries anything secret.
  *
  * The link must only ever be emailed to the player's own address.
  */
-export async function issuePlayerSetupToken(userId: string): Promise<string | null> {
-  const token = crypto.randomBytes(32).toString('hex')
+export async function issuePlayerSetupToken(
+  userId: string,
+  opts: { next?: string | null } = {},
+): Promise<string | null> {
+  const fresh = crypto.randomBytes(32).toString('hex')
   const expires = new Date(Date.now() + SETUP_TOKEN_TTL_MS)
+  const reuseUntil = new Date(Date.now() + SETUP_TOKEN_REUSE_MIN_MS)
+  // One statement, so two sends racing each other agree on the token. SET
+  // expressions read the row's values from before the update.
   const rows = (await db`
-    UPDATE users SET reset_token = ${token}, reset_token_expires = ${expires}
+    UPDATE users SET
+      reset_token = CASE
+        WHEN reset_token IS NOT NULL AND reset_token_expires > ${reuseUntil} THEN reset_token
+        ELSE ${fresh}
+      END,
+      reset_token_expires = CASE
+        WHEN reset_token IS NOT NULL AND reset_token_expires > ${reuseUntil} THEN reset_token_expires
+        ELSE ${expires}
+      END
     WHERE id = ${userId} AND roster_pending = true AND password_hash IS NULL
-    RETURNING id
-  `) as unknown as Array<{ id: string }>
-  if (rows.length === 0) return null
-  return `${resolveBaseUrl()}/reset-password?token=${token}&setup=1`
+    RETURNING reset_token
+  `) as unknown as Array<{ reset_token: string }>
+  if (rows.length === 0 || !rows[0].reset_token) return null
+  const next = safeLocalPath(opts.next)
+  return `${resolveBaseUrl()}/reset-password?token=${rows[0].reset_token}&setup=1${next ? `&next=${encodeURIComponent(next)}` : ''}`
 }
 
 export type ResendSetupOutcome =
@@ -299,6 +332,163 @@ function inviteLink(token: string): string {
   return `${resolveBaseUrl()}/signup?teamInvite=${token}`
 }
 
+// ── Class teams (the 10-week program) ─────────────────────────────────────
+//
+// A team created by a class purchase (teams.class_package_id) counts a
+// player's shots only through an org_class_enrollments row. /api/team/join
+// makes one when a player joins with the code; adding the player to the
+// roster here (single add, CSV import, the Program Manager) makes the same
+// row, within the package's places. A name-only player's row has no user_id
+// and is matched by first name + last initial.
+
+interface ClassSeats { packageId: string; places: number; enrolled: number }
+
+/** The active class package behind a team, with its places, or null. */
+async function classSeatsForTeam(teamId: string): Promise<ClassSeats | null> {
+  const [row] = (await db`
+    SELECT p.id, p.player_count,
+           (SELECT COUNT(*)::int FROM org_class_enrollments e WHERE e.package_id = p.id) AS enrolled
+    FROM teams t JOIN org_class_packages p ON p.id = t.class_package_id
+    WHERE t.id = ${teamId} AND p.status = 'active'
+  `) as unknown as [{ id: string; player_count: number; enrolled: number } | undefined]
+  return row ? { packageId: row.id, places: row.player_count, enrolled: row.enrolled } : null
+}
+
+type ClassWho = { userId: string } | { firstName: string; li: string | null }
+
+/** The enrolment this player already holds in the package (an account's, or a name-only one by name). */
+async function heldEnrollment(sql: Sql, packageId: string, who: ClassWho): Promise<string | null> {
+  const [row] = ('userId' in who
+    ? await sql`
+        SELECT id FROM org_class_enrollments WHERE package_id = ${packageId} AND user_id = ${who.userId}
+      `
+    : await sql`
+        SELECT id FROM org_class_enrollments
+        WHERE package_id = ${packageId} AND user_id IS NULL
+          AND LOWER(TRIM(first_name)) = ${who.firstName.toLowerCase()}
+          AND UPPER(COALESCE(TRIM(last_name_initial), '')) = ${who.li ?? ''}
+        ORDER BY created_at ASC LIMIT 1
+      `) as unknown as [{ id: string } | undefined]
+  return row?.id ?? null
+}
+
+function classFullError(places: number): AddPlayerError {
+  return new AddPlayerError(`This class is full — all ${places} places are taken.`)
+}
+
+/** Throws when the class is full and none of `who` already holds a place. */
+async function assertClassPlace(seats: ClassSeats | null, ...who: ClassWho[]): Promise<void> {
+  if (!seats || seats.enrolled < seats.places) return
+  for (const w of who) if (await heldEnrollment(db, seats.packageId, w)) return
+  throw classFullError(seats.places)
+}
+
+export type ClassEnrollOutcome =
+  | { outcome: 'none' }                              // not a class team (or the package isn't active)
+  | { outcome: 'full'; places: number }
+  | { outcome: 'enrolled' | 'already'; enrollmentId: string }
+
+/**
+ * Enrols a roster player in the team's class, as /api/team/join does for a
+ * player joining by code: same columns, same place limit (checked under a
+ * per-package lock), idempotent. An account with no enrolment of its own
+ * takes over a name-only enrolment of the same name when nothing else on the
+ * team could own it (an older Program Manager entry with no roster player).
+ */
+export async function ensureClassEnrollment(
+  teamId: string,
+  who: { userId: string | null; firstName: string; li: string | null; newName?: boolean },
+): Promise<ClassEnrollOutcome> {
+  return (await db.begin(async (tx) => {
+    const sql = tx as unknown as Sql
+    const [pkg] = (await sql`
+      SELECT p.id, p.player_count
+      FROM teams t JOIN org_class_packages p ON p.id = t.class_package_id
+      WHERE t.id = ${teamId} AND p.status = 'active'
+    `) as unknown as [{ id: string; player_count: number } | undefined]
+    if (!pkg) return { outcome: 'none' } as ClassEnrollOutcome
+    await sql`SELECT pg_advisory_xact_lock(hashtext(${'class-package:' + pkg.id}))`
+
+    const first = cleanName(who.firstName)
+    const byName = { firstName: first, li: who.li }
+    if (who.userId) {
+      const own = await heldEnrollment(sql, pkg.id, { userId: who.userId })
+      if (own) return { outcome: 'already', enrollmentId: own } as ClassEnrollOutcome
+      const orphan = await heldEnrollment(sql, pkg.id, byName)
+      if (orphan) {
+        const others = (await findSameNameOnTeam(teamId, first, who.li)).filter(m => m.kind !== 'member' || m.id !== who.userId)
+        if (others.length === 0) {
+          await sql`UPDATE org_class_enrollments SET user_id = ${who.userId} WHERE id = ${orphan} AND user_id IS NULL`
+          return { outcome: 'already', enrollmentId: orphan } as ClassEnrollOutcome
+        }
+      }
+    } else if (!who.newName) {
+      const named = await heldEnrollment(sql, pkg.id, byName)
+      if (named) return { outcome: 'already', enrollmentId: named } as ClassEnrollOutcome
+    }
+
+    const [{ n }] = (await sql`
+      SELECT COUNT(*)::int AS n FROM org_class_enrollments WHERE package_id = ${pkg.id}
+    `) as unknown as [{ n: number }]
+    if (n >= pkg.player_count) return { outcome: 'full', places: pkg.player_count } as ClassEnrollOutcome
+
+    // First-time class flag, as the Program Manager sets it: drives the small
+    // display-score boost in analyze for a player's first class.
+    let isFirstClass = true
+    if (who.userId) {
+      const [prior] = (await sql`
+        SELECT id FROM org_class_enrollments
+        WHERE user_id = ${who.userId} AND final_submission_id IS NOT NULL
+        LIMIT 1
+      `) as unknown as [{ id: string } | undefined]
+      isFirstClass = !prior
+    }
+    const [row] = (await sql`
+      INSERT INTO org_class_enrollments (package_id, user_id, first_name, last_name_initial, is_first_class)
+      VALUES (${pkg.id}, ${who.userId}, ${first}, ${who.li}, ${isFirstClass})
+      ON CONFLICT DO NOTHING
+      RETURNING id
+    `) as unknown as [{ id: string } | undefined]
+    if (!row) {
+      const again = who.userId ? await heldEnrollment(sql, pkg.id, { userId: who.userId }) : null
+      return again ? { outcome: 'already', enrollmentId: again } : { outcome: 'none' }
+    }
+    return { outcome: 'enrolled', enrollmentId: row.id } as ClassEnrollOutcome
+  })) as ClassEnrollOutcome
+}
+
+/**
+ * The Program Manager's "already on the class team" case: enrols whoever the
+ * roster already has by this first name + last initial — the account when the
+ * only match is one account, else the name-only player.
+ */
+export async function ensureClassEnrollmentByName(
+  teamId: string,
+  firstNameRaw: string,
+  lastNameRaw: string | null,
+): Promise<ClassEnrollOutcome> {
+  const first = cleanDisplayText(firstNameRaw, 50)
+  if (!first.ok) throw new AddPlayerError(first.error)
+  const li = lastInitial(lastNameRaw)
+  const matches = await findSameNameOnTeam(teamId, first.value, li)
+  const members = matches.filter(m => m.kind === 'member')
+  const userId = members.length === 1 && matches.length === 1 ? members[0].id : null
+  return ensureClassEnrollment(teamId, { userId, firstName: first.value, li })
+}
+
+/** ensureClassEnrollment for the add paths: never fails the add itself. */
+async function enrolIfClassTeam(
+  teamId: string,
+  who: { userId: string | null; firstName: string; li: string | null; newName?: boolean },
+): Promise<void> {
+  try {
+    const out = await ensureClassEnrollment(teamId, who)
+    if (out.outcome === 'full') console.warn('[roster] class full, player not enrolled', { teamId })
+  } catch (err) {
+    console.error('[roster] class enrolment failed:', err instanceof Error ? err.message : err)
+  }
+}
+
 // Name-only placeholder, with the same-name duplicate check.
 async function addNameOnly(
   teamId: string,
@@ -319,11 +509,21 @@ async function addNameOnly(
     }
   }
 
+  // A second same-named player needs a place of their own.
+  const newName = matches.length > 0
+  const seats = await classSeatsForTeam(teamId)
+  if (newName) {
+    if (seats && seats.enrolled >= seats.places) throw classFullError(seats.places)
+  } else {
+    await assertClassPlace(seats, { firstName, li })
+  }
+
   const inviteToken = crypto.randomBytes(24).toString('hex')
   await db`
     INSERT INTO pending_team_members (team_id, first_name, last_name_initial, invite_token)
     VALUES (${teamId}, ${firstName}, ${li}, ${inviteToken})
   `
+  if (seats) await enrolIfClassTeam(teamId, { userId: null, firstName, li, newName })
   return {
     status: 'invited',
     inviteUrl: inviteLink(inviteToken),
@@ -522,6 +722,9 @@ export async function addPlayerToTeam(input: AddPlayerInput): Promise<AddPlayerR
     }
   }
 
+  // A class team only takes a new player while it has places left.
+  const seats = await classSeatsForTeam(input.teamId)
+
   // ── Email given: which account on it (if any) is this child's? ───────────
   // Decided, and any new stub created, under a per-address lock.
   type Plan =
@@ -545,6 +748,7 @@ export async function addPlayerToTeam(input: AddPlayerInput): Promise<AddPlayerR
         return { kind: 'link', account: accounts[0] } as Plan
       }
       if (accounts.length >= MAX_PLAYERS_PER_EMAIL) throw emailFullError(email)
+      await assertClassPlace(seats, { firstName, li })
 
       // A new account for this child. When the team already lists this child
       // name-only at this very family address (the old workaround), that entry
@@ -575,6 +779,7 @@ export async function addPlayerToTeam(input: AddPlayerInput): Promise<AddPlayerR
     // details we didn't have, without clobbering anything set.
     const existing = plan.account
     const userId = existing.id
+    if (!existing.onThisTeam) await assertClassPlace(seats, { userId }, { firstName, li })
     await db`
       UPDATE users
       SET parent_name = COALESCE(parent_name, ${parentName}),
@@ -582,11 +787,15 @@ export async function addPlayerToTeam(input: AddPlayerInput): Promise<AddPlayerR
           nickname = COALESCE(NULLIF(nickname, ''), ${firstName})
       WHERE id = ${userId}
     `
-    const newlyOnTeam = await attachMembership(userId, input.teamId, firstName, li)
+    const attached = await attachMembership(userId, input.teamId, firstName, li)
     await addToEmailList(email)
+    // Also fills in a missing enrolment for a player already on the team.
+    if (seats) await enrolIfClassTeam(input.teamId, { userId, firstName: attached.firstName, li: attached.li })
 
-    if (!newlyOnTeam) {
-      return { status: 'already_on_team', userId, displayName, message: `${displayName} is already on this team.` }
+    if (!attached.inserted) {
+      // Named as the team already has them: a re-add never renames anyone.
+      const onTeamAs = nameLabel(attached.firstName, attached.li)
+      return { status: 'already_on_team', userId, displayName: onTeamAs, message: `${onTeamAs} is already on this team.` }
     }
 
     // M5: an account that never finished setup gets the setup email for this
@@ -594,7 +803,7 @@ export async function addPlayerToTeam(input: AddPlayerInput): Promise<AddPlayerR
     // last. (This replaces the earlier link; only the newest email works.)
     const pendingSetup = existing.rosterPending && !existing.passwordHash
     const emailed = pendingSetup ? await sendSetup(userId) : false
-    const warning = await noEmailTwinWarning(input.teamId, firstName, li)
+    const warning = await sameNameTwinWarning(input.teamId, firstName, li, userId)
     return {
       status: 'linked',
       userId,
@@ -621,8 +830,9 @@ export async function addPlayerToTeam(input: AddPlayerInput): Promise<AddPlayerR
   } else {
     await attachMembership(userId, input.teamId, firstName, li)
   }
+  if (seats) await enrolIfClassTeam(input.teamId, { userId, firstName, li })
   const emailed = await sendSetup(userId)
-  const warning = converted ? undefined : await noEmailTwinWarning(input.teamId, firstName, li)
+  const warning = converted ? undefined : await sameNameTwinWarning(input.teamId, firstName, li, userId)
   const shared = siblings.length > 0
   const shares = shared ? ` ${sharesNote(parentName, siblings)}` : ''
   const sent = emailed
@@ -652,31 +862,52 @@ export async function addPlayerToTeam(input: AddPlayerInput): Promise<AddPlayerR
   }
 }
 
-// Attach to the team (idempotent). Returns true when the player is new to the
-// roster (xmax = 0 on a freshly inserted row).
-async function attachMembership(userId: string, teamId: string, firstName: string, li: string | null): Promise<boolean> {
+// Attach to the team (idempotent). `inserted` is true when the player is new
+// to the roster (xmax = 0 on a freshly inserted row). Re-adding someone
+// already on the team never renames them: a name the team already has is
+// kept, and only a missing one is filled in. Returns the name on the team.
+async function attachMembership(
+  userId: string,
+  teamId: string,
+  firstName: string,
+  li: string | null,
+): Promise<{ inserted: boolean; firstName: string; li: string | null }> {
   const membership = (await db`
     INSERT INTO team_memberships (user_id, team_id, first_name, last_name_initial)
     VALUES (${userId}, ${teamId}, ${firstName}, ${li})
     ON CONFLICT (user_id, team_id) DO UPDATE
-      SET first_name = EXCLUDED.first_name, last_name_initial = EXCLUDED.last_name_initial
-    RETURNING (xmax = 0) AS inserted
-  `) as unknown as [{ inserted: boolean }]
+      SET first_name = COALESCE(NULLIF(TRIM(team_memberships.first_name), ''), EXCLUDED.first_name),
+          last_name_initial = COALESCE(NULLIF(TRIM(team_memberships.last_name_initial), ''), EXCLUDED.last_name_initial)
+    RETURNING (xmax = 0) AS inserted, first_name, last_name_initial
+  `) as unknown as [{ inserted: boolean; first_name: string | null; last_name_initial: string | null }]
   const newlyOnTeam = membership[0]?.inserted ?? true
   if (newlyOnTeam) {
     try { await grantFreeOrgTokensIfEligible(teamId) } catch {}
   }
-  return newlyOnTeam
+  return {
+    inserted: newlyOnTeam,
+    firstName: cleanName(membership[0]?.first_name) || firstName,
+    li: cleanName(membership[0]?.last_name_initial).toUpperCase() || li,
+  }
 }
 
-// A player just added with an email may be the same child as an email-less
-// entry already on the team (e.g. added name-only earlier). We can't be sure —
-// only the last initial is stored — so we point it out rather than merge.
-async function noEmailTwinWarning(teamId: string, first: string, li: string | null): Promise<string | undefined> {
-  const matches = (await findSameNameOnTeam(teamId, first, li)).filter(m => !m.hasEmail)
+// A player just added with an email may be the same child as another entry
+// with the same first name and last initial already on the team: one added
+// name-only earlier, or another account. We can't be sure — only the last
+// initial is stored — so we point it out rather than merge. The add stands.
+async function sameNameTwinWarning(
+  teamId: string,
+  first: string,
+  li: string | null,
+  userId: string,
+): Promise<string | undefined> {
+  const matches = (await findSameNameOnTeam(teamId, first, li)).filter(m => !(m.kind === 'member' && m.id === userId))
   if (matches.length === 0) return undefined
   const label = nameLabel(first, li)
-  return `There’s also a ${label} on this team without an email. If that’s the same player, remove the extra entry.`
+  if (matches.some(m => !m.hasEmail)) {
+    return `There’s also a ${label} on this team without an email. If that’s the same player, remove the extra entry.`
+  }
+  return `Another player on this team is also ${label} — check this isn’t a duplicate. Their emails tell them apart.`
 }
 
 // ── Ownership of earlier shots (security audit 2026-09-28, items 1 + 7) ──
@@ -793,6 +1024,24 @@ async function claimInTx(
     ) tp ON TRUE
     WHERE p.id = ${pending.id}
   `) as unknown as [{ team_player_id: string | null; created_after: boolean | null; same_name_pending: number } | undefined]
+
+  // On a class team the invite's name-only class enrolment (and its progress)
+  // becomes the account's, unless the account already has one there.
+  if (link?.same_name_pending === 0) {
+    await sql`
+      UPDATE org_class_enrollments e SET user_id = ${userId}
+      WHERE e.id = (
+        SELECT e2.id FROM org_class_enrollments e2
+        JOIN teams t ON t.class_package_id = e2.package_id AND t.id = ${pending.team_id}
+        WHERE e2.user_id IS NULL
+          AND LOWER(TRIM(e2.first_name)) = ${pending.first_name.trim().toLowerCase()}
+          AND UPPER(COALESCE(TRIM(e2.last_name_initial), '')) = ${(pending.last_name_initial ?? '').trim().toUpperCase()}
+          AND NOT EXISTS (SELECT 1 FROM org_class_enrollments e3 WHERE e3.package_id = e2.package_id AND e3.user_id = ${userId})
+        ORDER BY e2.created_at ASC
+        LIMIT 1
+      )
+    `
+  }
 
   let movedShots = 0
   const linked = !!link?.team_player_id && !!link.created_after && link.same_name_pending === 0
@@ -1148,6 +1397,11 @@ export async function importPlayersToTeam(
   const results: ImportRowResult[] = []
   // Players seen earlier in this same file, by first name + last initial.
   const seen = new Map<string, Array<{ last: string; email: string; rowNumber: number }>>()
+  // Whether the team already had someone by that name BEFORE this import
+  // (looked up the first time the name comes up). A same-initial twin earlier
+  // in the file must not wave a name-only row past a player who was already
+  // on the team: re-importing a sheet used to re-add every name-only player.
+  const onTeamBefore = new Map<string, boolean>()
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i] ?? {}
@@ -1164,6 +1418,9 @@ export async function importPlayersToTeam(
     }
 
     const key = `${first.toLowerCase()}|${lastInitial(last) ?? ''}`
+    if (!onTeamBefore.has(key)) {
+      onTeamBefore.set(key, (await findSameNameOnTeam(team.id, first, lastInitial(last))).length > 0)
+    }
     const earlier = seen.get(key) ?? []
     const twin = earlier.find(e => e.last.toLowerCase() === last.toLowerCase() && e.email === email)
     if (twin) {
@@ -1191,7 +1448,7 @@ export async function importPlayersToTeam(
         teamName: team.name,
         orgName: team.orgName,
         addedBy: opts.addedBy ?? null,
-        allowDuplicateName: !!row.allowDuplicateName || differentSameInitial,
+        allowDuplicateName: !!row.allowDuplicateName || (differentSameInitial && !onTeamBefore.get(key)),
       })
       const warning = r.warning ?? (ambiguous && r.status !== 'already_on_team'
         ? `Another player in this file is also ${r.displayName} — check this isn’t a duplicate.`
@@ -1226,6 +1483,28 @@ export async function importPlayersToTeam(
   const skipped = results.filter(r => r.status === 'already_on_team').length
   const failed = results.filter(r => r.status === 'error').length
   return { results, summary: { added, skipped, failed, total: results.length } }
+}
+
+/**
+ * For the import preview: the rows without an email whose first name + last
+ * initial is already on the team. The import skips exactly these (as
+ * "already on team") unless the row says allowDuplicateName, so the preview
+ * can say so before anything is added. Read-only.
+ */
+export async function importNameMatches(teamId: string, rows: ImportRowInput[]): Promise<number[]> {
+  const out: number[] = []
+  const cache = new Map<string, boolean>()
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i] ?? {}
+    const first = cleanName(row.firstName)
+    const last = cleanName(row.lastName)
+    if ((row.email ?? '').trim() || importRowProblem({ firstName: first, email: '' })) continue
+    const li = lastInitial(last)
+    const key = `${first.toLowerCase()}|${li ?? ''}`
+    if (!cache.has(key)) cache.set(key, (await findSameNameOnTeam(teamId, first, li)).length > 0)
+    if (cache.get(key)) out.push(i)
+  }
+  return out
 }
 
 // ── Coaches ───────────────────────────────────────────────────────────────

@@ -131,3 +131,69 @@ export async function grantFreeOrgTokensIfEligible(teamId: string): Promise<void
     console.error('[grantFreeOrgTokensIfEligible] error:', err)
   }
 }
+
+/**
+ * Every balance a coach-flow team upload may draw on, in the order
+ * /api/analyze spends them (see teamUploadPayer in lib/team-auth.ts):
+ *   - coach: the uploader's own personal coach_credits, then the team's tokens
+ *   - org:   the team's tokens, then the organization's own balance
+ * `total` is what the upload pages show as "N left", so it always equals
+ * what the server will actually let this login spend.
+ */
+export interface TeamUploadBalance {
+  payer: 'coach' | 'org'
+  /** The uploader's personal tokens (coach) — 0 for an org or an unproven login. */
+  own: number
+  /** teams.credits. */
+  team: number
+  /** organizations.token_balance (org only). */
+  org: number
+  total: number
+}
+
+export async function teamUploadBalance(
+  teamId: string,
+  payer: { kind: 'org'; orgId: string } | { kind: 'coach'; email: string | null },
+): Promise<TeamUploadBalance> {
+  const [t] = (await db`
+    SELECT COALESCE(credits, 0)::int AS credits FROM teams WHERE id = ${teamId}
+  `) as unknown as [{ credits: number } | undefined]
+  const team = t?.credits ?? 0
+  if (payer.kind === 'org') {
+    const [o] = (await db`
+      SELECT COALESCE(token_balance, 0)::int AS token_balance FROM organizations WHERE id = ${payer.orgId}
+    `) as unknown as [{ token_balance: number } | undefined]
+    const org = o?.token_balance ?? 0
+    return { payer: 'org', own: 0, team, org, total: team + org }
+  }
+  const [cc] = payer.email
+    ? ((await db`
+        SELECT COALESCE(credits, 0)::int AS credits FROM coach_credits WHERE LOWER(email) = ${payer.email}
+      `) as unknown as [{ credits: number } | undefined])
+    : [undefined]
+  const own = cc?.credits ?? 0
+  return { payer: 'coach', own, team, org: 0, total: own + team }
+}
+
+/**
+ * The honest one-liner for where an upload's token comes from, and where to
+ * get more when there are none — shared by the bulk and single uploaders so
+ * they never disagree.
+ */
+export function teamUploadCopy(
+  payer: 'coach' | 'org',
+  inOrganization: boolean,
+): { source: string; getCredits: { href: string; label: string } } {
+  if (payer === 'org') {
+    return {
+      source: 'Uses this team’s tokens, then your organization’s',
+      getCredits: { href: '/org/dashboard#tokens', label: 'Buy more tokens for your organization' },
+    }
+  }
+  return {
+    source: 'Uses your tokens, then the team’s',
+    getCredits: inOrganization
+      ? { href: '/team/dashboard#credits', label: 'Ask your organization for more tokens, or buy some' }
+      : { href: '/team/dashboard#credits', label: 'Buy more tokens' },
+  }
+}

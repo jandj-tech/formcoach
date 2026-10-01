@@ -3,6 +3,7 @@ import { getTeamSessionFromRequest } from '@/lib/team-auth'
 import { teamIsEntitled, SUBSCRIPTION_ENDED_MESSAGE } from '@/lib/team-features'
 import {
   importPlayersToTeam,
+  importNameMatches,
   getTeamContext,
   coachDisplayName,
   MAX_IMPORT_ROWS,
@@ -23,7 +24,13 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const body = (await req.json().catch(() => ({}))) as { rows?: ImportRowInput[]; sendEmail?: boolean }
+  // `check`: preview only — which name-only rows are already on the team
+  // (the import skips them unless told to add anyway). Adds nothing.
+  const body = (await req.json().catch(() => ({}))) as { rows?: ImportRowInput[]; sendEmail?: boolean; check?: boolean }
+  if (body.check) {
+    const rows = Array.isArray(body.rows) ? body.rows.slice(0, MAX_IMPORT_ROWS) : []
+    return NextResponse.json({ matches: await importNameMatches(session.teamId, rows) })
+  }
   if (!Array.isArray(body.rows) || body.rows.length === 0) {
     return NextResponse.json({ error: 'There are no players to import.' }, { status: 400 })
   }

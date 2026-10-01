@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useIsInApp } from '@/lib/useIsInApp'
 import { trackInitiateCheckout } from '@/lib/meta-pixel'
 import { useRegionCurrency } from '@/lib/use-region-currency'
+import { DEFAULT_SIZE, isSizeInStock } from '@/lib/ball-inventory'
 
 // Purchase UI for org-released results. Two modes:
 //   'unlock' — centered card over the gated section, selling everything the
@@ -66,7 +67,9 @@ export default function OfferCta({
   const router = useRouter()
   const [buyingId, setBuyingId] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [size, setSize] = useState<string>('7')
+  // Opens on the first size we can actually ship (lib/ball-inventory.ts);
+  // sold-out sizes stay visible but can't be picked.
+  const [size, setSize] = useState<string>(DEFAULT_SIZE)
   const [variant, setVariant] = useState<'right' | 'left'>('right')
   const [error, setError] = useState<string | null>(null)
   // Right after checkout the webhook that unlocks the report can lag the
@@ -177,22 +180,29 @@ export default function OfferCta({
             {expanded && (
               <div className="mt-3 space-y-2">
                 <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Ball size">
-                  {SIZES.map((s) => (
-                    <button
-                      key={s.value}
-                      type="button"
-                      role="radio"
-                      aria-checked={size === s.value}
-                      onClick={() => setSize(s.value)}
-                      className={`rounded-lg border px-2.5 py-1.5 text-xs font-bold transition-colors ${
-                        size === s.value
-                          ? 'border-orange-500 bg-orange-50 text-black'
-                          : 'border-gray-200 text-gray-600 hover:border-gray-300'
-                      }`}
-                    >
-                      {s.label}
-                    </button>
-                  ))}
+                  {SIZES.map((s) => {
+                    const outOfStock = !isSizeInStock(s.value)
+                    return (
+                      <button
+                        key={s.value}
+                        type="button"
+                        role="radio"
+                        aria-checked={size === s.value}
+                        onClick={() => setSize(s.value)}
+                        disabled={outOfStock}
+                        className={`rounded-lg border px-2.5 py-1.5 text-xs font-bold transition-colors ${
+                          outOfStock
+                            ? 'border-gray-200 text-gray-400 opacity-60 cursor-not-allowed'
+                            : size === s.value
+                              ? 'border-orange-500 bg-orange-50 text-black'
+                              : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                        }`}
+                      >
+                        {s.label}
+                        {outOfStock && <span className="ml-1 font-semibold text-red-500">· Out of stock</span>}
+                      </button>
+                    )
+                  })}
                 </div>
                 <div className="flex gap-1.5" role="radiogroup" aria-label="Shooting hand">
                   {(['right', 'left'] as const).map((v) => (

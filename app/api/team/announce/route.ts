@@ -105,6 +105,9 @@ export async function POST(req: NextRequest) {
       gradedAt: null,
       orgId: team.organization_id,
       orgName,
+      // A message-only blast: never a results email, so never the setup variant.
+      setupPending: false,
+      shots: null,
       status: pl.bounced_at ? 'bounced' : pl.unsubscribed_at || pl.complained_at ? 'unsubscribed' : 'ok',
     }))
 

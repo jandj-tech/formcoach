@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation'
 import { getOrgSession } from '@/lib/org-auth'
 import { db } from '@/lib/db'
-import { teamLeaderboard } from '@/lib/team-shots'
+import { teamLeaderboard, withTwinDetails } from '@/lib/team-shots'
+import { loadPendingShotLinks } from '@/lib/team-roster-refs'
 import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
 import InlineEdit from '@/components/InlineEdit'
@@ -15,7 +16,7 @@ import { orgTierById } from '@/lib/team-features'
 import type { ClassPackage } from './org-team'
 import type { LeaderboardRow } from '@/components/LeaderboardTable'
 import Link from 'next/link'
-import { BookOpenIcon, Building2Icon } from 'lucide-react'
+import { BookOpenIcon } from 'lucide-react'
 import DashboardShell from '@/components/backend/DashboardShell'
 import DashboardHeader from '@/components/backend/DashboardHeader'
 import { StatGrid, StatCard } from '@/components/backend/StatGrid'
@@ -34,6 +35,8 @@ interface PendingPlayer {
   id: string
   first_name: string
   last_name_initial: string | null
+  /** The name-only team_players row this invite's shots are filed on. */
+  shot_player_id?: string | null
 }
 
 interface Coach {
@@ -184,6 +187,17 @@ export default async function OrgDashboardPage() {
         } catch {
           // pending_team_members may not exist yet — leave empty
         }
+        // Coach uploads for a name-only player are filed on a team_players
+        // row; link each invite to its row so its shots can be counted.
+        try {
+          const links = new Map((await loadPendingShotLinks(t.id)).map(l => [l.pendingId, l]))
+          pendingPlayers = pendingPlayers.map(p => {
+            const link = links.get(p.id)
+            return { ...p, shot_player_id: link?.linked ? link.teamPlayerId : null }
+          })
+        } catch (err) {
+          console.error('[org/dashboard] pending shot links failed:', err)
+        }
 
         let coaches: Coach[] = []
         try {
@@ -227,7 +241,8 @@ export default async function OrgDashboardPage() {
         // double-counted coach uploads that carried both ids.
         let leaderboard: LeaderboardRow[] = []
         try {
-          leaderboard = await teamLeaderboard(t.id)
+          // Same-name players get their email beside the name (org view only).
+          leaderboard = withTwinDetails(await teamLeaderboard(t.id), [...members, ...pendingPlayers])
         } catch (err) {
           console.error('[org/dashboard] leaderboard query failed:', err)
         }
@@ -311,10 +326,6 @@ export default async function OrgDashboardPage() {
                 <BookOpenIcon aria-hidden />
                 Guide
               </Link>
-              <Link href="/team" className={backendButton('quiet')}>
-                <Building2Icon aria-hidden />
-                Organization Hub
-              </Link>
               <LogoutButton />
             </>
           }
@@ -354,11 +365,14 @@ export default async function OrgDashboardPage() {
           />
           <StatCard
             label="Players"
-            value={teams.reduce((n, t) => n + t.members.length, 0)}
+            // The Players tab's total: accounts once each (however many
+            // teams they're on) plus players added by name only.
+            value={new Set(teams.flatMap(t => t.members.map(m => m.id))).size + teams.reduce((n, t) => n + t.pendingPlayers.length, 0)}
             hint={
               <InfoTip label="What counts as a player?">
-                Players who have joined one of your teams&apos; rosters, across
-                the whole organization.
+                Everyone on your teams&apos; rosters: players with an account
+                (including ones who haven&apos;t finished setting it up) and
+                players added by name only. A player on two teams counts once.
               </InfoTip>
             }
           />

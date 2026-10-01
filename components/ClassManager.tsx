@@ -63,7 +63,7 @@ export default function ClassManager({ packages, canManage = false, onStartAnoth
   const [lastInit, setLastInit] = useState('')
   const [enrolling, setEnrolling] = useState(false)
   const [enrollError, setEnrollError] = useState('')
-  const [enrollSuccess, setEnrollSuccess] = useState(false)
+  const [enrollSuccess, setEnrollSuccess] = useState<string | false>(false)
   const [resetting, setResetting] = useState<string | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
   const [boardOpen, setBoardOpen] = useState<string | null>(null)
@@ -91,11 +91,11 @@ export default function ClassManager({ packages, canManage = false, onStartAnoth
         setEnrolling(false)
         return
       }
-      setEnrollSuccess(true)
+      setEnrollSuccess(typeof data.message === 'string' && data.message ? data.message : 'Added to the roster.')
       setFirstName('')
       setLastInit('')
       router.refresh()
-      setTimeout(() => setEnrollSuccess(false), 2500)
+      setTimeout(() => setEnrollSuccess(false), 4000)
     } catch {
       setEnrollError('Something went wrong. Please try again.')
     }
@@ -327,8 +327,8 @@ export default function ClassManager({ packages, canManage = false, onStartAnoth
               {canManage && isEnrollOpen && (
                 <div className="border border-gray-200 dark:border-courtline rounded-xl p-4 space-y-2">
                   <p className="text-xs text-gray-500 dark:text-chalk-dim">
-                    Adds a place for a player without an account. Players who sign up with the join code
-                    appear here on their own.
+                    Adds the player to the class team&rsquo;s roster by name, so you can upload their shots from
+                    the team. Players who sign up with the join code appear here on their own.
                   </p>
                   <div className="flex gap-2 flex-wrap">
                     <input
@@ -355,7 +355,7 @@ export default function ClassManager({ packages, canManage = false, onStartAnoth
                   </div>
                   {enrollError && <p className="text-red-600 dark:text-red-400 text-sm">{enrollError}</p>}
                   {enrollSuccess && (
-                    <p className="text-ember-600 dark:text-ember-400 text-sm font-bold">Added to the roster.</p>
+                    <p className="text-ember-600 dark:text-ember-400 text-sm font-bold">{enrollSuccess}</p>
                   )}
                 </div>
               )}

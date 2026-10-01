@@ -1,7 +1,7 @@
 'use client'
 
 import { BasketballIcon } from '@/components/backend/BasketballIcon'
-import { useState, Suspense } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import TopNav from '@/components/TopNav'
 import WebOnlySignup from '@/components/WebOnlySignup'
@@ -28,6 +28,27 @@ function OrgSignupInner() {
   const [regEmail, setRegEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
+  // Set once the approved application loads: the email is then fixed to the
+  // address that applied (the server uses it regardless).
+  const [regEmailLocked, setRegEmailLocked] = useState(false)
+
+  // Approval-link flow: open the form pre-filled from the application.
+  useEffect(() => {
+    if (!token) return
+    let cancelled = false
+    fetch(`/api/org/register?token=${encodeURIComponent(token)}`)
+      .then(r => (r.ok ? r.json() : null))
+      .then((d: { orgName?: string; email?: string } | null) => {
+        if (cancelled || !d) return
+        if (d.orgName) setRegOrgName(prev => prev || d.orgName!)
+        if (d.email) {
+          setRegEmail(d.email)
+          setRegEmailLocked(true)
+        }
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [token])
 
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [error, setError] = useState('')
@@ -142,9 +163,13 @@ function OrgSignupInner() {
                   required
                   value={regEmail}
                   onChange={e => setRegEmail(e.target.value)}
+                  readOnly={regEmailLocked}
                   placeholder="admin@yourorg.com"
-                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500"
+                  className={`w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500 ${regEmailLocked ? 'bg-gray-50 text-gray-600' : ''}`}
                 />
+                {regEmailLocked && (
+                  <p className="text-xs text-gray-500 mt-1">The email you applied with. You&apos;ll log in with it.</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Password</label>

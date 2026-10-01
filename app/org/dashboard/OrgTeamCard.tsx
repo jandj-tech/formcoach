@@ -23,11 +23,15 @@ import ChangeHeadCoachPanel, { type HeadCoachChange } from '@/components/ChangeH
 import AddPlayerForm from '@/components/AddPlayerForm'
 import CsvPlayerImport from '@/components/CsvPlayerImport'
 import { PlayerStatusBadge, ResendSetupButton } from '@/components/PlayerSetupStatus'
+import SendSetupToAllButton from '@/components/SendSetupToAllButton'
 import GiveOwnAccountButton, { SharedEmailNote, membersSharingEmail } from '@/components/GiveOwnAccountButton'
 import {
   memberDisplayName,
   memberPickLabel,
+  memberShotCount,
   memberStatus,
+  pendingShotCount,
+  shotCountLabel,
   type ClassPackage,
   type Member,
   type PlayerSortMode,
@@ -197,7 +201,9 @@ export default function OrgTeamCard({
   }, [isOpen, team.id, pendingKey, team.adminEmail])
 
   async function removePending(pendingId: string) {
-    if (!confirm('Remove this player from the team? Their invite link will stop working.')) return
+    const p = team.pendingPlayers.find(x => x.id === pendingId)
+    const who = p ? `${p.first_name}${p.last_name_initial ? ` ${p.last_name_initial}.` : ''}` : 'this player'
+    if (!confirm(`Remove ${who} from ${team.name}? Their invite link will stop working.`)) return
     setRemovingPending(pendingId)
     try {
       const res = await fetch('/api/org/remove-player', {
@@ -233,6 +239,8 @@ export default function OrgTeamCard({
   const rosterCount = team.members.length + team.pendingPlayers.length
   // Siblings on this team with their own accounts on one family email.
   const sharedEmailIds = membersSharingEmail(team.members)
+  // Added with an email but setup not finished: who "Email setup link to all" reaches.
+  const setupPendingCount = team.members.filter(m => memberStatus(m) === 'pending' && m.email).length
 
   function copyLink() {
     copyToClipboard(signupLink, 'Invite link copied!').then(() => {
@@ -367,7 +375,7 @@ export default function OrgTeamCard({
           </div>
         )}
         <div className="mt-2">
-          <OrgAddCoach teamId={team.id} />
+          <OrgAddCoach teamId={team.id} coachEmails={team.coaches.map(c => c.email.toLowerCase())} />
         </div>
       </Section>
 
@@ -391,6 +399,11 @@ export default function OrgTeamCard({
             </div>
           )}
         </div>
+        {setupPendingCount > 0 && (
+          <div className="pb-1">
+            <SendSetupToAllButton endpoint="/api/org/resend-player-setup-all" count={setupPendingCount} extra={{ teamId: team.id }} />
+          </div>
+        )}
 
         {team.members.length === 0 && team.pendingPlayers.length === 0 ? (
           <p className="text-sm text-gray-400 dark:text-chalk-dim mt-0.5">No players yet. Add one above, or share the invite link below.</p>
@@ -422,6 +435,7 @@ export default function OrgTeamCard({
                     {m.email && <p className="text-xs text-gray-400 dark:text-chalk-dim truncate mt-0.5">{m.email}</p>}
                   </div>
                   <div className="flex items-center gap-3 shrink-0 ml-auto">
+                    <span className="text-xs text-gray-500 dark:text-chalk-dim tabular-nums">{shotCountLabel(memberShotCount(team, m.id))}</span>
                     {memberStatus(m) === 'pending' && (
                       <ResendSetupButton endpoint="/api/org/resend-player-setup" userId={m.id} extra={{ teamId: team.id }} />
                     )}
@@ -454,6 +468,7 @@ export default function OrgTeamCard({
                       )}
                     </div>
                     <div className="flex items-center gap-3 shrink-0 ml-auto">
+                      <span className="text-xs text-gray-500 dark:text-chalk-dim tabular-nums">{shotCountLabel(pendingShotCount(team, p))}</span>
                       {p.contact_email && (
                         <GiveOwnAccountButton
                           endpoint="/api/org/give-own-account"
@@ -538,7 +553,7 @@ export default function OrgTeamCard({
           {team.members.length === 0 ? (
             <p className="text-sm text-gray-400 dark:text-chalk-dim">No players have joined this team yet.</p>
           ) : team.credits === 0 ? (
-            <p className="text-sm text-gray-500 dark:text-chalk-dim">No team tokens yet. Buy some below (pick Team tokens), or send your organization tokens straight to players from the Tokens tab at the top of the page.</p>
+            <p className="text-sm text-gray-500 dark:text-chalk-dim">No team tokens yet. Your uploads to this team use your organization tokens when the team has none. To give players tokens, buy team tokens below (pick Team tokens) or send organization tokens straight to players from the Tokens tab at the top of the page.</p>
           ) : (
             <GiveTokensForm
               players={team.members.map(m => ({ id: m.id, label: memberPickLabel(m, team.members), tokens: m.tokens }))}
@@ -837,8 +852,9 @@ export default function OrgTeamCard({
               <StatCard label="Players" value={rosterCount} />
               <StatCard label="Team tokens" value={team.credits} accent />
               <StatCard label="Coaches" value={team.coaches.length + 1} />
-              {/* Legacy shared pool — only worth a card while it still holds tokens. */}
-              {team.tokenPool > 0 && <StatCard label="Unassigned team tokens" value={team.tokenPool} />}
+              {/* Legacy shared pool — only worth a card while it still holds
+                  tokens. Hidden on class teams, whose tokens are Team tokens. */}
+              {team.tokenPool > 0 && !team.classPackageId && <StatCard label="Unassigned team tokens" value={team.tokenPool} />}
               <StatCard label="Ranked" value={team.leaderboard.length} />
             </StatGrid>
 

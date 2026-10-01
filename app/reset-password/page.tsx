@@ -6,6 +6,7 @@ import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
 import Image from 'next/image'
 import PasswordInput from '@/components/PasswordInput'
+import { safeLocalPath } from '@/lib/safe-next'
 
 function ResetPasswordForm() {
   const router = useRouter()
@@ -19,6 +20,9 @@ function ResetPasswordForm() {
   // Carried from a link bound to one account (confirm / setup link) so a comp
   // on a shared family email lands on that account in this one step.
   const chosen = params.get('chosen') || ''
+  // Where a player lands once the password is set (a "finish setup to see your
+  // results" link carries their results). Same-site paths only.
+  const next = safeLocalPath(params.get('next'))
   // Several players can share a family email: name the one this link is for.
   const [playerName, setPlayerName] = useState('')
   useEffect(() => {
@@ -36,6 +40,8 @@ function ResetPasswordForm() {
   const [confirm, setConfirm] = useState('')
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [error, setError] = useState('')
+  // The link was already used (account set up) or has run out.
+  const [linkDead, setLinkDead] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -49,11 +55,12 @@ function ResetPasswordForm() {
       const res = await fetch('/api/auth/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(chosen ? { token, password, chosen } : { token, password }),
+        body: JSON.stringify({ token, password, ...(chosen ? { chosen } : {}), ...(next ? { next } : {}) }),
       })
       const data = await res.json()
       if (!res.ok) {
         setError(data.error || 'Could not reset your password')
+        setLinkDead(res.status === 400 && !data.code && /invalid or has expired/i.test(data.error || ''))
         setStatus('error')
         return
       }
@@ -119,7 +126,20 @@ function ResetPasswordForm() {
                 onChange={e => setConfirm(e.target.value)}
                 className="w-full bg-ink-800 border border-courtline rounded-xl pl-4 pr-11 py-3 text-chalk placeholder-chalk-dim focus:outline-none focus:border-ember-500 transition-colors"
               />
-              {error && <p className="text-red-400 text-sm">{error}</p>}
+              {error && (
+                <p className="text-red-400 text-sm">
+                  {linkDead && setup ? (
+                    <>
+                      This setup link has already been used or has expired. Already set a password?{' '}
+                      <a href={`/login${next ? `?next=${encodeURIComponent(next)}` : ''}`} className="text-ember-400 hover:text-ember-500 font-semibold transition-colors">Log in</a>
+                      {' '}to see your results. Otherwise{' '}
+                      <a href="/forgot-password" className="text-ember-400 hover:text-ember-500 font-semibold transition-colors">get a new link</a>.
+                    </>
+                  ) : (
+                    error
+                  )}
+                </p>
+              )}
               <button
                 type="submit"
                 disabled={status === 'loading'}

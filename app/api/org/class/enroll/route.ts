@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { canManageClassPackage } from '@/lib/org-class-access'
+import { addPlayerToTeam, AddPlayerError, ensureClassEnrollmentByName } from '@/lib/roster-players'
 
+// Program Manager "Add player". The player goes onto the class team's roster
+// as a normal name-only player (exactly as the org's Add player does without
+// an email), and that roster add enrols them in the class within its places
+// (lib/roster-players ensureClassEnrollment). A shot uploaded for that roster
+// player is then the one the class counts. Before, this made an enrolment
+// with no player behind it, which nobody could ever upload for.
 export async function POST(req: NextRequest) {
   const { packageId, userId, firstName, lastNameInitial } = await req.json()
-  if (!packageId || !firstName) {
+  if (!packageId || !firstName || typeof firstName !== 'string') {
     return NextResponse.json({ error: 'packageId and firstName required' }, { status: 400 })
   }
 
@@ -13,39 +20,70 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Re-check capacity. No more
-  // token-pool deduction or per-player token grant — the new model has the
-  // org leader / coach uploading on each player's behalf out of the team's
-  // credit pool, so players don't carry personal tokens.
   const [pkg] = await db`
     SELECT p.id, p.player_count, p.status,
-           COUNT(e.id)::int AS enrolled_count
+           (SELECT COUNT(*)::int FROM org_class_enrollments e WHERE e.package_id = p.id) AS enrolled_count,
+           t.id AS team_id, t.name AS team_name, o.name AS org_name
     FROM org_class_packages p
-    LEFT JOIN org_class_enrollments e ON e.package_id = p.id
+    LEFT JOIN teams t ON t.class_package_id = p.id
+    LEFT JOIN organizations o ON o.id = p.org_id
     WHERE p.id = ${packageId}
-    GROUP BY p.id
-  ` as unknown as [{ id: string; player_count: number; status: string; enrolled_count: number } | undefined]
+    ORDER BY t.created_at ASC NULLS LAST
+    LIMIT 1
+  ` as unknown as [{
+    id: string; player_count: number; status: string; enrolled_count: number
+    team_id: string | null; team_name: string | null; org_name: string | null
+  } | undefined]
 
   if (!pkg) return NextResponse.json({ error: 'Package not found' }, { status: 404 })
   if (pkg.status !== 'active') return NextResponse.json({ error: 'Package is not active' }, { status: 400 })
-  if (pkg.enrolled_count >= pkg.player_count) {
-    return NextResponse.json({ error: 'Package is full — all player slots are taken' }, { status: 400 })
-  }
-
-  // First-time class flag — drives the small display-score boost in analyze.
-  let isFirstClass = true
-  if (userId) {
-    const [prior] = await db`
-      SELECT e.id FROM org_class_enrollments e
-      JOIN org_class_packages p ON p.id = e.package_id
-      WHERE e.user_id = ${userId}
-        AND e.final_submission_id IS NOT NULL
-      LIMIT 1
-    ` as unknown as [{ id: string } | undefined]
-    isFirstClass = !prior
-  }
 
   try {
+    if (pkg.team_id) {
+      const result = await addPlayerToTeam({
+        teamId: pkg.team_id,
+        firstName,
+        lastName: typeof lastNameInitial === 'string' ? lastNameInitial : null,
+        email: null,
+        teamName: pkg.team_name,
+        orgName: pkg.org_name,
+        addedBy: pkg.org_name,
+      })
+      // The roster add enrolled a new player; a player already on the class
+      // roster by this name is enrolled here (or already was).
+      const enrol = await ensureClassEnrollmentByName(
+        pkg.team_id,
+        firstName,
+        typeof lastNameInitial === 'string' ? lastNameInitial : null,
+      )
+      if (enrol.outcome === 'full') {
+        return NextResponse.json({ error: 'Package is full — all player slots are taken' }, { status: 400 })
+      }
+      if (enrol.outcome === 'none') {
+        return NextResponse.json({ error: 'Enrollment failed' }, { status: 500 })
+      }
+      return NextResponse.json({
+        enrollmentId: enrol.enrollmentId,
+        alreadyEnrolled: result.status === 'already_on_team' && enrol.outcome === 'already',
+        message: result.status === 'already_on_team'
+          ? `${result.displayName} is already on the class team${enrol.outcome === 'already' ? ' and enrolled' : ' — now enrolled'}.`
+          : `${result.displayName} is on the class team. Upload their shots from the team like any player.`,
+      })
+    }
+
+    // An older package with no class team: the enrolment alone, as before.
+    if (pkg.enrolled_count >= pkg.player_count) {
+      return NextResponse.json({ error: 'Package is full — all player slots are taken' }, { status: 400 })
+    }
+    let isFirstClass = true
+    if (userId) {
+      const [prior] = await db`
+        SELECT e.id FROM org_class_enrollments e
+        WHERE e.user_id = ${userId} AND e.final_submission_id IS NOT NULL
+        LIMIT 1
+      ` as unknown as [{ id: string } | undefined]
+      isFirstClass = !prior
+    }
     const [enrollment] = await db`
       INSERT INTO org_class_enrollments
         (package_id, user_id, first_name, last_name_initial, is_first_class)
@@ -53,9 +91,11 @@ export async function POST(req: NextRequest) {
         (${packageId}, ${userId ?? null}, ${firstName.trim()}, ${lastNameInitial?.trim() ?? null}, ${isFirstClass})
       RETURNING id
     ` as unknown as [{ id: string }]
-
     return NextResponse.json({ enrollmentId: enrollment.id })
   } catch (err) {
+    if (err instanceof AddPlayerError) {
+      return NextResponse.json({ error: err.message }, { status: 400 })
+    }
     console.error('[org/class/enroll] error:', err)
     return NextResponse.json({ error: 'Enrollment failed' }, { status: 500 })
   }

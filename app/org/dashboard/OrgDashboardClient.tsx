@@ -9,6 +9,7 @@ import OrgTeamCard from './OrgTeamCard'
 import OrgRosterImport from '@/components/OrgRosterImport'
 import PlayerEmailComposer from '@/components/player-email/PlayerEmailComposer'
 import OrgOffersPanel from './OrgOffersPanel'
+import { PlayerStatusBadge } from '@/components/PlayerSetupStatus'
 import {
   memberDisplayName,
   memberPickLabel,
@@ -22,7 +23,7 @@ import BillingHistory from '@/components/BillingHistory'
 import InfoTip from '@/components/InfoTip'
 import LeaderboardTable, { type LeaderboardRow } from '@/components/LeaderboardTable'
 import SortMenu, { type SortOption } from '@/components/SortMenu'
-import type { OrgTier } from '@/lib/team-pricing'
+import { usd, type OrgTier } from '@/lib/team-pricing'
 import OrgTokenPanel from '@/components/OrgTokenPanel'
 import OrgMembershipPanel from '@/components/OrgMembershipPanel'
 import OrgTokenDistribution from '@/components/OrgTokenDistribution'
@@ -30,6 +31,7 @@ import PlayerShotList, { type Shot } from '@/components/PlayerShotList'
 import PrintButton from '@/components/PrintButton'
 import TeamSchedulePanel from '@/components/TeamSchedulePanel'
 import { CLASS_MIN_PLAYERS, CLASS_BULK_THRESHOLD, classPriceCents } from '@/lib/org-class-pricing'
+import { DEFAULT_SIZE, isSizeInStock, type BallSize } from '@/lib/ball-inventory'
 import { copyToClipboard } from '@/lib/copy'
 import AppearanceSection from '@/components/account/AppearanceSection'
 import Section from '@/components/account/Section'
@@ -81,6 +83,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   const [showMyUploads, setShowMyUploads] = useState(false)
   const [showAllPlayers, setShowAllPlayers] = useState(false)
   const [allPlayersSort, setAllPlayersSort] = useState<PlayerSortMode>('name')
+  const [playerSearch, setPlayerSearch] = useState('')
   const [teamLbModal, setTeamLbModal] = useState<string | null>(null)
   // Team id whose full month schedule is open in a modal.
   const [scheduleModal, setScheduleModal] = useState<string | null>(null)
@@ -94,10 +97,11 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   const BASE_URL = typeof window !== 'undefined' ? window.location.origin : 'https://learnhoops.com'
 
   // Class program: per ball-size counts; classPlayerCount = sum.
-  // Seeds with the minimum on size 7 (men's) so the page loads with a valid order.
-  const [classSize5, setClassSize5] = useState(0)
-  const [classSize6, setClassSize6] = useState(0)
-  const [classSize7, setClassSize7] = useState(CLASS_MIN_PLAYERS)
+  // Seeds with the minimum on the first in-stock size so the page loads with
+  // an order that can actually ship.
+  const [classSize5, setClassSize5] = useState(DEFAULT_SIZE === '5' ? CLASS_MIN_PLAYERS : 0)
+  const [classSize6, setClassSize6] = useState(DEFAULT_SIZE === '6' ? CLASS_MIN_PLAYERS : 0)
+  const [classSize7, setClassSize7] = useState(DEFAULT_SIZE === '7' ? CLASS_MIN_PLAYERS : 0)
   const classPlayerCount = classSize5 + classSize6 + classSize7
   // Collapsed by default, like every other dashboard section.
   const [classProgramOpen, setClassProgramOpen] = useState(false)
@@ -127,7 +131,12 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   }
 
   async function removeCoach(coachId: string, pending: boolean) {
-    if (!confirm(pending ? 'Cancel this coach invite?' : 'Remove this coach from the team?')) return
+    // Name who and where, so a slip on the wrong row is caught here.
+    const team = teams.find(t => t.coaches.some(c => c.id === coachId))
+    const coach = team?.coaches.find(c => c.id === coachId)
+    const who = coach ? coach.nickname || coach.email : 'this coach'
+    const where = team ? team.name : 'the team'
+    if (!confirm(pending ? `Cancel ${who}'s invite to ${where}?` : `Remove ${who} from ${where}?`)) return
     setRemovingCoach(coachId)
     try {
       const res = await fetch('/api/org/remove-coach', {
@@ -144,7 +153,10 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   }
 
   async function removePlayer(teamId: string, userId: string) {
-    if (!confirm('Remove this player from the team?')) return
+    const team = teams.find(t => t.id === teamId)
+    const member = team?.members.find(m => m.id === userId)
+    const who = member && team ? memberPickLabel(member, team.members) : 'this player'
+    if (!confirm(`Remove ${who} from ${team ? team.name : 'the team'}?`)) return
     setRemovingPlayer(userId)
     try {
       const res = await fetch('/api/org/remove-player', {
@@ -193,6 +205,15 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
     ].find(([, v]) => /[<>`]/.test(v))
     if (badField) {
       setAddError(`The ${badField[0]} can only use letters, numbers, spaces and simple punctuation like - ' . Please remove any other symbols and try again.`)
+      setAddStatus('error')
+      return
+    }
+    // Same rule as the server (case and spacing ignored): two teams with one
+    // name can't be told apart in pickers and spreadsheet imports.
+    const sameName = (v: string) => v.trim().replace(/\s+/g, ' ').toLowerCase()
+    const twin = teams.find(t => sameName(t.name) === sameName(newName))
+    if (twin) {
+      setAddError(`You already have a team called "${twin.name}". Pick a different name, for example with the season or age group.`)
       setAddStatus('error')
       return
     }
@@ -388,7 +409,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
   }
 
   const classPricePerPlayer = classPlayerCount >= CLASS_BULK_THRESHOLD ? 36.99 : 40
-  const classTotal = classPriceCents(classPlayerCount) / 100
+  const classTotalCents = classPriceCents(classPlayerCount)
 
   // Whole purchase pitch hidden in the iOS app (guideline 3.1.1) — showing a
   // priced buy form with a missing button reads as broken UI or steering.
@@ -484,14 +505,17 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
             <label className="text-xs font-semibold text-ember-200 uppercase tracking-wide">Players by ball size</label>
             <div className="space-y-2">
               {([
-                { key: 'size5' as const, label: 'Size 5', sub: 'Youth · 27.5"', value: classSize5, set: setClassSize5 },
-                { key: 'size6' as const, label: 'Size 6', sub: "Women's / Youth · 28.5\"", value: classSize6, set: setClassSize6 },
-                { key: 'size7' as const, label: 'Size 7', sub: "Men's · 29.5\"", value: classSize7, set: setClassSize7 },
-              ]).map(row => (
+                { key: 'size5' as const, size: '5' as BallSize, label: 'Size 5', sub: 'Youth · 27.5"', value: classSize5, set: setClassSize5 },
+                { key: 'size6' as const, size: '6' as BallSize, label: 'Size 6', sub: "Women's / Youth · 28.5\"", value: classSize6, set: setClassSize6 },
+                { key: 'size7' as const, size: '7' as BallSize, label: 'Size 7', sub: "Men's · 29.5\"", value: classSize7, set: setClassSize7 },
+              ]).map(row => {
+                // Sold out: can be cleared, never added to (lib/ball-inventory.ts).
+                const soldOut = !isSizeInStock(row.size)
+                return (
                 <div key={row.key} className="flex items-center gap-3 bg-white/10 rounded-xl px-3 py-2">
                   <div className="flex-1 min-w-0">
                     <p className="text-white font-bold text-sm">{row.label}</p>
-                    <p className="text-ember-200 text-xs">{row.sub}</p>
+                    <p className="text-ember-200 text-xs">{row.sub}{soldOut && <span className="font-bold text-white"> · Out of stock</span>}</p>
                   </div>
                   <button
                     onClick={() => row.set(v => Math.max(0, v - 1))}
@@ -501,15 +525,19 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                     type="number"
                     min={0}
                     value={row.value}
+                    disabled={soldOut}
                     onChange={e => row.set(Math.max(0, parseInt(e.target.value) || 0))}
-                    className="w-14 bg-white/20 border border-white/30 rounded-lg px-2 py-1.5 text-white text-sm text-center focus:outline-none focus:border-white"
+                    className="w-14 bg-white/20 border border-white/30 rounded-lg px-2 py-1.5 text-white text-sm text-center focus:outline-none focus:border-white disabled:opacity-50"
                   />
                   <button
                     onClick={() => row.set(v => v + 1)}
-                    className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 text-white font-bold transition-colors flex items-center justify-center shrink-0"
+                    disabled={soldOut}
+                    aria-label={soldOut ? `${row.label} is out of stock` : undefined}
+                    className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 disabled:opacity-40 disabled:hover:bg-white/20 disabled:cursor-not-allowed text-white font-bold transition-colors flex items-center justify-center shrink-0"
                   >+</button>
                 </div>
-              ))}
+                )
+              })}
             </div>
             <div className="flex items-center justify-between text-xs">
               <span className="text-ember-200">Total players</span>
@@ -530,8 +558,15 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
               <p className="text-sm text-ember-100">{classPlayerCount} players × ${classPricePerPlayer}</p>
               <p className="text-xs text-ember-200 mt-0.5">{classPlayerCount * 2} total analyses + {classPlayerCount} certificates</p>
             </div>
-            <p className="text-2xl font-black text-white">${classTotal.toLocaleString()}</p>
+            <p className="text-2xl font-black text-white">{usd(classTotalCents)}</p>
           </div>
+          {/* Just under the bulk threshold, 30 places can cost less than this. */}
+          {classPlayerCount >= CLASS_BULK_THRESHOLD - 3 && classPlayerCount < CLASS_BULK_THRESHOLD && (
+            <p className="text-xs text-ember-100">
+              At {CLASS_BULK_THRESHOLD}+ players it&apos;s $36.99 each: {CLASS_BULK_THRESHOLD} players would be {usd(classPriceCents(CLASS_BULK_THRESHOLD))}
+              {classPriceCents(CLASS_BULK_THRESHOLD) < classTotalCents ? ', less than this order' : ''}.
+            </p>
+          )}
 
           {classError && <p className="text-red-200 text-sm">{classError}</p>}
 
@@ -542,7 +577,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
               disabled={buyingClass || classPlayerCount < CLASS_MIN_PLAYERS}
               className="w-full bg-white dark:bg-ink-900 hover:bg-ember-50 dark:hover:bg-ember-500/10 disabled:bg-white/60 disabled:text-ember-400 text-ember-600 dark:text-ember-400 font-black py-3 rounded-xl transition-colors"
             >
-              {buyingClass ? 'Redirecting to checkout...' : `Buy Class Package — $${classTotal.toLocaleString()}`}
+              {buyingClass ? 'Redirecting to checkout...' : `Buy Class Package — ${usd(classTotalCents)}`}
             </button>
           )}
         </div>
@@ -995,9 +1030,9 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
               Every player across the organization, with their best score and team
             </p>
             <p className="text-xs text-gray-500 dark:text-chalk-dim mt-0.5">
-              {uniquePlayerCount} player{uniquePlayerCount !== 1 ? 's' : ''}: {uniqueAccountCount} with an account (listed here, once each
+              {uniquePlayerCount} player{uniquePlayerCount !== 1 ? 's' : ''}: {uniqueAccountCount} with an account (listed once each
               {onSeveralTeams > 0 ? ` — ${onSeveralTeams} ${onSeveralTeams === 1 ? 'is' : 'are'} on more than one team` : ''})
-              {nameOnlyCount > 0 ? ` and ${nameOnlyCount} added by name only (shown on their team card)` : ''}.
+              {nameOnlyCount > 0 ? ` and ${nameOnlyCount} added by name only` : ''}.
             </p>
           </div>
           <span className="text-gray-400 dark:text-chalk-dim text-lg">{showAllPlayers ? '−' : '+'}</span>
@@ -1007,9 +1042,14 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
             {(() => {
               // Group by member.id so a player on multiple teams is one row
               // with their teams joined in the Team column. Best score is the
-              // max across all teams they're on.
+              // max across all teams they're on. Name-only players (no
+              // account) get a row each, tagged, so they can be found too.
               const byMember = new Map<string, {
-                member: typeof teams[number]['members'][number]
+                key: string
+                member: typeof teams[number]['members'][number] | null
+                // memberDisplayName, plus the email when a teammate shares the name.
+                label: string
+                email: string
                 teams: Array<{ teamId: string; teamName: string }>
                 score: number | null
               }>()
@@ -1017,46 +1057,83 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                 for (const m of t.members) {
                   const lb = t.leaderboard.find(r => r.kind === 'member' && r.id === m.id)
                   const teamScore = lb ? Number(lb.best_score) : null
+                  const label = memberPickLabel(m, t.members)
                   const existing = byMember.get(m.id)
                   if (existing) {
                     existing.teams.push({ teamId: t.id, teamName: t.name })
+                    if (label !== memberDisplayName(m)) existing.label = label
                     if (teamScore !== null && (existing.score === null || teamScore > existing.score)) {
                       existing.score = teamScore
                     }
                   } else {
                     byMember.set(m.id, {
+                      key: m.id,
                       member: m,
+                      label,
+                      email: m.email,
                       teams: [{ teamId: t.id, teamName: t.name }],
                       score: teamScore,
                     })
                   }
                 }
+                for (const pp of t.pendingPlayers) {
+                  const lb = pp.shot_player_id
+                    ? t.leaderboard.find(r => r.kind === 'player' && r.id === pp.shot_player_id)
+                    : undefined
+                  byMember.set(`pending:${pp.id}`, {
+                    key: `pending:${pp.id}`,
+                    member: null,
+                    label: `${pp.first_name}${pp.last_name_initial ? ` ${pp.last_name_initial}.` : ''}`,
+                    email: pp.contact_email ?? '',
+                    teams: [{ teamId: t.id, teamName: t.name }],
+                    score: lb ? Number(lb.best_score) : null,
+                  })
+                }
               }
-              const rows = Array.from(byMember.values())
-              if (rows.length === 0) {
+              const allRows = Array.from(byMember.values())
+              if (allRows.length === 0) {
                 return (
                   <p className="text-sm text-gray-400 dark:text-chalk-dim">
                     No players have joined a team in your organization yet.
                   </p>
                 )
               }
+              // Search by first name, last initial, team or email; every word
+              // typed has to match ("liam b u14"). Dots are ignored so "Mila N"
+              // finds "Mila N.".
+              const norm = (v: string) => v.toLowerCase().replace(/\./g, '').replace(/\s+/g, ' ').trim()
+              const words = norm(playerSearch).split(' ').filter(Boolean)
+              const rows = words.length === 0 ? allRows : allRows.filter(r => {
+                const hay = norm(`${r.label} ${r.email} ${r.teams.map(tm => tm.teamName).join(' ')}`)
+                return words.every(w => hay.includes(w))
+              })
               rows.sort((a, b) => {
                 if (allPlayersSort === 'name') {
-                  return memberDisplayName(a.member).localeCompare(memberDisplayName(b.member))
+                  return a.label.localeCompare(b.label)
                 }
                 if (a.score === null && b.score === null) {
-                  return memberDisplayName(a.member).localeCompare(memberDisplayName(b.member))
+                  return a.label.localeCompare(b.label)
                 }
                 if (a.score === null) return 1
                 if (b.score === null) return -1
                 return allPlayersSort === 'score-desc' ? b.score - a.score : a.score - b.score
               })
-              const selectedCount = rows.filter(r => emailSelected[r.member.id]).length
+              const selectedCount = rows.filter(r => r.member && emailSelected[r.member.id]).length
               return (
                 <>
+                  <input
+                    type="search"
+                    value={playerSearch}
+                    onChange={e => setPlayerSearch(e.target.value)}
+                    placeholder="Search by name, team or email"
+                    aria-label="Search players"
+                    className="w-full bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl px-4 py-2.5 text-sm text-black dark:text-chalk placeholder-gray-400 focus:outline-none focus:border-ember-500 transition-colors"
+                  />
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-xs text-gray-400 dark:text-chalk-dim">
-                      {rows.length} player{rows.length !== 1 ? 's' : ''} with an account
+                      {rows.length === allRows.length
+                        ? `${rows.length} player${rows.length !== 1 ? 's' : ''}`
+                        : `${rows.length} of ${allRows.length} players`}
                     </p>
                     <SortMenu
                       value={allPlayersSort}
@@ -1075,23 +1152,33 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
-                        {rows.map(({ member: m, teams: memberTeams, score }) => (
-                          <tr key={m.id} className="bg-white dark:bg-ink-900">
+                        {rows.map(({ key, member: m, label, teams: memberTeams, score }) => (
+                          <tr key={key} className="bg-white dark:bg-ink-900">
                             <td className="px-3 py-2.5">
-                              <input
-                                type="checkbox"
-                                checked={!!emailSelected[m.id]}
-                                onChange={() => toggleEmailMember(m.id)}
-                                className="w-4 h-4 accent-ember-500"
-                              />
+                              {/* Name-only players have no email to draft to. */}
+                              {m && (
+                                <input
+                                  type="checkbox"
+                                  checked={!!emailSelected[m.id]}
+                                  onChange={() => toggleEmailMember(m.id)}
+                                  className="w-4 h-4 accent-ember-500"
+                                />
+                              )}
                             </td>
                             <td className="px-3 py-2.5">
-                              <Link
-                                href={`/org/dashboard/member/${m.id}`}
-                                className="text-sm font-semibold text-black dark:text-chalk hover:text-ember-600 dark:hover:text-ember-400 hover:underline transition-colors"
-                              >
-                                {memberDisplayName(m)}
-                              </Link>
+                              {m ? (
+                                <Link
+                                  href={`/org/dashboard/member/${m.id}`}
+                                  className="text-sm font-semibold text-black dark:text-chalk hover:text-ember-600 dark:hover:text-ember-400 hover:underline transition-colors [overflow-wrap:anywhere]"
+                                >
+                                  {label}
+                                </Link>
+                              ) : (
+                                <span className="inline-flex flex-wrap items-center gap-2">
+                                  <span className="text-sm font-semibold text-gray-600 dark:text-chalk-dim">{label}</span>
+                                  <PlayerStatusBadge status="invited" />
+                                </span>
+                              )}
                             </td>
                             <td className="px-3 py-2.5">
                               <span className="text-sm text-gray-700 dark:text-chalk-dim">
@@ -1130,6 +1217,9 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                       </tbody>
                     </table>
                   </div>
+                  {rows.length === 0 && (
+                    <p className="text-sm text-gray-400 dark:text-chalk-dim">No players match &ldquo;{playerSearch.trim()}&rdquo;.</p>
+                  )}
                   {selectedCount > 0 && (
                     <button
                       onClick={() => setEmailDraftTeam('__all__')}
@@ -1189,9 +1279,10 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
           <div className="flex items-center gap-1.5">
             <p className="text-xs font-medium text-gray-500 dark:text-chalk-dim">In your organization</p>
             <InfoTip label="What does 'in your organization' mean?" align="right">
-              Tokens you&apos;ve already sent out &mdash; held by your teams,
-              players, and coaches. They&apos;re counted separately so they
-              never blur into your own balance.
+              Tokens held by your teams, players, and coaches &mdash; the ones
+              you&apos;ve sent out plus the free starter token each player gets
+              on joining a team. They&apos;re counted separately so they never
+              blur into your own balance.
             </InfoTip>
           </div>
           <p className="text-xl font-bold text-gray-900 dark:text-chalk tabular-nums mt-0.5">{totalDistributed}</p>

@@ -6,6 +6,8 @@ import { db } from '@/lib/db'
 // pool. Once in that pool the team's coach can spend them on coach uploads or
 // assign them to players — but only within this team. The org can also still
 // use them (via Open team dashboard or by assigning to players directly).
+// Optional for org uploads: those already spend the team's tokens first, then
+// the org balance, automatically (/api/analyze, teamUploadPayer).
 export async function POST(req: NextRequest) {
   const session = await getOrgSessionFromRequest(req)
   if (!session) {

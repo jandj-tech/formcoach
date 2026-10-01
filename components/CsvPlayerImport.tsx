@@ -25,6 +25,12 @@ export interface EditableRow extends PlayerImportRow {
   /** Set when the row was deliberately left out (e.g. it names another team). */
   skippedReason?: string
   allowDuplicateName?: boolean
+  /**
+   * Preview: no email, and a player by this first name + last initial is
+   * already on the team. Left out (the import would skip it) unless the
+   * person chooses "Add anyway" (allowDuplicateName).
+   */
+  onTeam?: boolean
   /** Being fixed by hand: keep its cells editable even once the value is valid. */
   fixing?: boolean
   outcome?: RowOutcome
@@ -106,10 +112,47 @@ export function fieldProblems(r: EditableRow): { firstName: boolean; lastName: b
   }
 }
 
-/** Rows still to send: not done, not removed, not skipped, valid, and not a repeat. */
+/** Looks already on the team, and nobody said "Add anyway" yet. */
+export function rowLooksOnTeam(r: EditableRow): boolean {
+  return !!r.onTeam && !r.allowDuplicateName && !r.outcome
+}
+
+/** Rows still to send: not done, not removed, not skipped, valid, not a repeat, not already on the team. */
 export function rowsToSend(rows: EditableRow[]): EditableRow[] {
   const dups = inFileDuplicates(rows)
-  return rows.filter(r => !r.removed && !r.skippedReason && !rowIsDone(r) && !importRowProblem(r) && !dups.has(r.key))
+  return rows.filter(r => !r.removed && !r.skippedReason && !rowIsDone(r) && !importRowProblem(r) && !dups.has(r.key) && !rowLooksOnTeam(r))
+}
+
+/**
+ * Asks the import endpoint (check mode, adds nothing) which rows without an
+ * email name a player already on the team, and marks them `onTeam`. Best
+ * effort: on any failure the rows are left as they were, and the import
+ * itself still skips those players.
+ */
+export async function markRowsOnTeam(
+  endpoint: string,
+  extra: Record<string, unknown>,
+  rows: EditableRow[],
+): Promise<Set<string>> {
+  const batch = rows.filter(r => !r.removed && !r.skippedReason && !r.outcome && !r.email.trim() && r.firstName.trim())
+  if (batch.length === 0) return new Set()
+  try {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...extra,
+        check: true,
+        rows: batch.map(r => ({ firstName: r.firstName.trim(), lastName: r.lastName.trim() || undefined })),
+      }),
+    })
+    if (!res.ok) return new Set()
+    const data = await res.json().catch(() => ({}))
+    const matches = Array.isArray(data.matches) ? (data.matches as number[]) : []
+    return new Set(matches.map(i => batch[i]?.key).filter((k): k is string => !!k))
+  } catch {
+    return new Set()
+  }
 }
 
 export function readRosterFile(text: string): { rows: EditableRow[]; unmapped: string[]; hasTeamColumn: boolean } {
@@ -167,6 +210,7 @@ export function countOutcomes(rows: EditableRow[]) {
     added: live.filter(r => r.outcome && ['created', 'linked', 'invited'].includes(r.outcome.status)).length,
     already: live.filter(r => r.outcome?.status === 'already_on_team').length,
     needsFix: live.filter(r => !r.skippedReason && !rowIsDone(r) && !!rowProblem(r)).length,
+    onTeam: live.filter(r => !r.skippedReason && rowLooksOnTeam(r)).length,
     ready: rowsToSend(live).length,
   }
 }
@@ -185,6 +229,22 @@ function StatusCell({ row, sameAs, family, onAddAnyway }: { row: EditableRow; sa
       <span className="text-gray-600 dark:text-chalk-dim">
         <strong className="font-semibold">Same as row {sameAs}</strong> — only imported once. Remove this row, or edit it if it&rsquo;s a different player.
       </span>
+    )
+  }
+  if (rowLooksOnTeam(row) && !importRowProblem(row)) {
+    const name = `${row.firstName.trim()}${row.lastName.trim() ? ` ${row.lastName.trim().charAt(0).toUpperCase()}.` : ''}`
+    return (
+      <div className="space-y-0.5">
+        <p className="font-semibold text-gray-600 dark:text-chalk-dim">Already on team?</p>
+        <p className="text-gray-500 dark:text-chalk-dim">
+          There&rsquo;s already a {name} on this team, so this row is left out.
+        </p>
+        {onAddAnyway && (
+          <button onClick={onAddAnyway} className="font-semibold text-ember-600 dark:text-ember-400 hover:text-ember-500">
+            Add anyway (different player)
+          </button>
+        )}
+      </div>
     )
   }
   const problem = rowProblem(row)
@@ -273,9 +333,9 @@ export function ImportRowsTable({
             {showTeam && <th className="text-left font-semibold px-2 py-1.5 md:w-28">Team</th>}
             <th className="text-left font-semibold px-2 py-1.5 md:w-32 whitespace-nowrap">First name</th>
             <th className="text-left font-semibold px-2 py-1.5 md:w-32 whitespace-nowrap">Last name</th>
-            <th className="text-left font-semibold px-2 py-1.5 min-w-[11rem] md:min-w-0 md:w-52">Email</th>
+            <th className="text-left font-semibold px-2 py-1.5 hidden md:table-cell md:w-52">Email</th>
             <th className="text-left font-semibold px-2 py-1.5 hidden md:table-cell md:w-28">Parent</th>
-            <th className="text-left font-semibold px-2 py-1.5 min-w-[12rem] md:min-w-0">Status</th>
+            <th className="text-left font-semibold px-2 py-1.5 hidden md:table-cell">Status</th>
             <th className="px-2 py-1.5 md:w-9"><span className="sr-only">Remove</span></th>
           </tr>
         </thead>
@@ -286,6 +346,10 @@ export function ImportRowsTable({
             // A server error for the row (not a cell problem) leaves the cells
             // neutral; only a cell that is itself wrong is marked red.
             const bad = fieldProblems(r)
+            const emailCell = editable
+              ? <input aria-label={`Email, row ${r.rowNumber}`} aria-invalid={bad.email || undefined} type="email" value={r.email} placeholder="Email (optional)" onChange={e => onEdit(r.key, { email: e.target.value })} className={bad.email ? cellInput : okCell} />
+              : r.email || <span className="text-gray-400">&mdash;</span>
+            const status = <StatusCell row={r} sameAs={dups.get(r.key)} family={family.get(r.key)} onAddAnyway={onAddAnyway ? () => onAddAnyway(r.key) : undefined} />
             return (
               <tr key={r.key} className={editable ? 'bg-red-50/60 dark:bg-red-950/20' : ''}>
                 <td className="px-2 py-1.5 text-gray-400 dark:text-chalk-dim tabular-nums align-top">{r.rowNumber}</td>
@@ -294,23 +358,26 @@ export function ImportRowsTable({
                   {editable
                     ? <input aria-label={`First name, row ${r.rowNumber}`} aria-invalid={bad.firstName || undefined} value={r.firstName} placeholder="First name" onChange={e => onEdit(r.key, { firstName: e.target.value })} className={bad.firstName ? cellInput : okCell} />
                     : r.firstName || <span className="text-gray-400">&mdash;</span>}
+                  {/* Phones: the Email and Status columns would sit off-screen, so they go under the name. */}
+                  <div className="md:hidden mt-1.5 space-y-1.5 text-gray-600 dark:text-chalk-dim [overflow-wrap:anywhere]">
+                    {(editable || r.email) && <div>{emailCell}</div>}
+                    {status}
+                  </div>
                 </td>
                 <td className="px-2 py-1.5 align-top text-black dark:text-chalk">
                   {editable
                     ? <input aria-label={`Last name, row ${r.rowNumber}`} aria-invalid={bad.lastName || undefined} value={r.lastName} placeholder="Last name" onChange={e => onEdit(r.key, { lastName: e.target.value })} className={bad.lastName ? cellInput : okCell} />
                     : r.lastName || <span className="text-gray-400">&mdash;</span>}
                 </td>
-                <td className="px-2 py-1.5 align-top text-gray-600 dark:text-chalk-dim [overflow-wrap:anywhere]">
-                  {editable
-                    ? <input aria-label={`Email, row ${r.rowNumber}`} aria-invalid={bad.email || undefined} type="email" value={r.email} placeholder="Email (optional)" onChange={e => onEdit(r.key, { email: e.target.value })} className={bad.email ? cellInput : okCell} />
-                    : r.email || <span className="text-gray-400">&mdash;</span>}
+                <td className="px-2 py-1.5 align-top text-gray-600 dark:text-chalk-dim [overflow-wrap:anywhere] hidden md:table-cell">
+                  {emailCell}
                 </td>
                 <td className="px-2 py-1.5 align-top text-gray-600 dark:text-chalk-dim hidden md:table-cell">
                   {editable && (bad.parentName || r.fixing)
                     ? <input aria-label={`Parent name, row ${r.rowNumber}`} aria-invalid={bad.parentName || undefined} value={r.parentName} placeholder="Parent name" onChange={e => onEdit(r.key, { parentName: e.target.value })} className={bad.parentName ? cellInput : okCell} />
                     : r.parentName || '—'}
                 </td>
-                <td className="px-2 py-1.5 align-top"><StatusCell row={r} sameAs={dups.get(r.key)} family={family.get(r.key)} onAddAnyway={onAddAnyway ? () => onAddAnyway(r.key) : undefined} /></td>
+                <td className="px-2 py-1.5 align-top hidden md:table-cell">{status}</td>
                 <td className="px-1 py-1.5 align-top text-right">
                   {!done && (
                     <button
@@ -400,7 +467,11 @@ export default function CsvPlayerImport({
         const others = Array.from(new Set(parsed.rows.filter(isOther).map(r => r.teamName.trim())))
         setOtherTeams(others)
         setUnmapped(parsed.unmapped)
-        setRows(applyLeaveOut(parsed.rows, leaveOutOthers))
+        const list = applyLeaveOut(parsed.rows, leaveOutOthers)
+        setRows(list)
+        void markRowsOnTeam(endpoint, extra, list).then(keys => {
+          if (keys.size) setRows(cur => cur.map(r => (keys.has(r.key) ? { ...r, onTeam: true } : r)))
+        })
       } catch {
         setError('Could not read that file. Save it as a .csv file from your spreadsheet app and try again.')
       }
@@ -409,7 +480,8 @@ export default function CsvPlayerImport({
   }
 
   function edit(key: string, patch: Partial<PlayerImportRow>) {
-    setRows(list => list.map(r => (r.key === key ? { ...r, ...patch, fixing: true, outcome: r.outcome?.status === 'error' ? undefined : r.outcome } : r)))
+    // A changed name or email is no longer the same name check; the import still skips a match.
+    setRows(list => list.map(r => (r.key === key ? { ...r, ...patch, fixing: true, onTeam: false, outcome: r.outcome?.status === 'error' ? undefined : r.outcome } : r)))
   }
   function remove(key: string) {
     setRows(list => list.map(r => (r.key === key ? { ...r, removed: true } : r)))
@@ -435,6 +507,8 @@ export default function CsvPlayerImport({
     if (!row) return
     const retry = { ...row, allowDuplicateName: true, outcome: undefined }
     setRows(list => list.map(r => (r.key === key ? retry : r)))
+    // Still in the preview: it simply joins the rows to import.
+    if (!row.outcome) return
     void send([retry])
   }
 
@@ -515,6 +589,7 @@ export default function CsvPlayerImport({
             {imported && counts.already > 0 && <span><strong className="text-black dark:text-chalk">{counts.already}</strong> already on team</span>}
             {counts.ready > 0 && <span><strong className="text-black dark:text-chalk">{counts.ready}</strong> ready to import</span>}
             {counts.repeats > 0 && <span><strong className="text-black dark:text-chalk">{counts.repeats}</strong> repeated in the file (imported once)</span>}
+            {counts.onTeam > 0 && <span><strong className="text-black dark:text-chalk">{counts.onTeam}</strong> look already on the team (left out)</span>}
             {counts.needsFix > 0 && <span className="text-red-600 dark:text-red-400"><strong>{counts.needsFix}</strong> need fixing (edit the red cells, or remove the row)</span>}
           </div>
 
@@ -537,6 +612,11 @@ export default function CsvPlayerImport({
                   ? `Import the fixed rows (${sendable.length})`
                   : `Import ${sendable.length} player${sendable.length === 1 ? '' : 's'}`}
             </button>
+          )}
+          {imported && !sendEmail && rows.some(r => !r.removed && !!r.email.trim() && (r.outcome?.status === 'created' || r.outcome?.status === 'linked')) && (
+            <p className="text-xs text-gray-600 dark:text-chalk-dim">
+              No setup emails were sent. You can email setup links later from the roster.
+            </p>
           )}
           {imported && sendable.length === 0 && counts.needsFix === 0 && (
             <p className="flex items-center gap-1.5 text-xs font-semibold text-green-700 dark:text-green-400">

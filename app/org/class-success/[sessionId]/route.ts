@@ -9,7 +9,9 @@ import { signTeamSession, teamSessionCookieOptions } from '@/lib/team-auth'
 // Flow:
 //   1. Find the package by stripe_session_id (the path param).
 //   2. Find the auto-created team via teams.class_package_id.
-//   3. If team exists, sign a team session and redirect to /team/dashboard.
+//   3. If team exists, sign a team session and redirect to the team
+//      dashboard's Program tab (#program) — the new class team has no
+//      players yet, so the week-by-week plan is the useful first screen.
 //   4. If not yet (webhook lagging), render a holding screen that meta-refreshes
 //      back here every few seconds.
 export async function GET(req: NextRequest, ctx: { params: Promise<{ sessionId: string }> }) {
@@ -41,7 +43,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ sessionId: 
       { teamId: team.id, adminEmail: orgSession.adminEmail },
       await currentOrgPasswordHash(orgSession.orgId),
     )
-    const res = NextResponse.redirect(`${baseUrl}/team/dashboard`)
+    const res = NextResponse.redirect(`${baseUrl}/team/dashboard#program`)
     res.cookies.set(teamSessionCookieOptions(token))
     return res
   }

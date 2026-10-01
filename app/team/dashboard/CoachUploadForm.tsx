@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { CheckIcon } from 'lucide-react'
 import VideoUploader from '@/components/VideoUploader'
@@ -15,15 +15,54 @@ interface Props {
    * name can never be mixed up.
    */
   players: TeamRosterEntry[]
+  /**
+   * Optional: the balance this login's uploads draw on (lib/team-tokens.ts
+   * teamUploadBalance — a coach's own tokens + the team's, or the team's +
+   * the organization's) and its wording (teamUploadCopy), shown until the
+   * form's own GET /api/analyze?teamCode= answers — that applies the same
+   * rule as the upload itself.
+   */
+  credits?: number
+  creditsSource?: string
+  getCredits?: { href: string; label: string }
 }
 
-export default function CoachUploadForm({ accessCode, players }: Props) {
+interface UploadBalance {
+  left: number
+  source: string
+  getCredits: { href: string; label: string }
+}
+
+export default function CoachUploadForm({ accessCode, players, credits, creditsSource, getCredits }: Props) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<TeamRosterEntry | null>(null)
   const [step, setStep] = useState<'pick' | 'upload' | 'done'>('pick')
   const [resultToken, setResultToken] = useState('')
+  // Seeded from the parent when it passes all three props; either way it is
+  // refetched from the server each time the card opens, so it never shows a
+  // stale count after uploads elsewhere.
+  const [balance, setBalance] = useState<UploadBalance | null>(
+    credits !== undefined && creditsSource && getCredits
+      ? { left: credits, source: creditsSource, getCredits }
+      : null,
+  )
+
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    fetch(`/api/analyze?teamCode=${encodeURIComponent(accessCode)}`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => {
+        if (cancelled || !data || typeof data.total !== 'number') return
+        setBalance({ left: data.total, source: data.source, getCredits: data.getCredits })
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [open, accessCode])
+
+  const outOfTokens = balance !== null && balance.left < 1
 
   const q = search.trim().toLowerCase()
   const filtered = q
@@ -40,6 +79,18 @@ export default function CoachUploadForm({ accessCode, players }: Props) {
     // /results/<token> looks up by token; the submission id 404s there.
     setResultToken(token)
     setStep('done')
+    setBalance(b => (b ? { ...b, left: Math.max(0, b.left - 1) } : b))
+  }
+
+  // The server said 402: whatever we showed, there is nothing left to spend.
+  function handleOutOfTokens() {
+    setBalance(b => ({
+      left: 0,
+      source: b?.source ?? 'Uses your tokens, then the team’s',
+      getCredits: b?.getCredits ?? { href: '/team/dashboard#credits', label: 'Get more tokens' },
+    }))
+    setStep('pick')
+    setSelected(null)
   }
 
   function reset() {
@@ -69,7 +120,26 @@ export default function CoachUploadForm({ accessCode, players }: Props) {
         <button onClick={reset} className="text-sm font-semibold text-gray-500 dark:text-chalk-dim hover:text-gray-700 dark:hover:text-chalk">Cancel</button>
       </div>
 
-      {step === 'pick' && (
+      {balance && !outOfTokens && step !== 'done' && (
+        <p className="text-sm text-gray-700 dark:text-chalk">
+          Uses 1 token — <span className="font-bold">{balance.left} left</span>. {balance.source}.
+        </p>
+      )}
+
+      {balance && outOfTokens && step !== 'done' && (
+        <div className="rounded-xl border border-red-300 dark:border-red-500/40 bg-red-50 dark:bg-red-500/10 px-4 py-3 space-y-1">
+          <p className="text-sm font-bold text-red-700 dark:text-red-400">No tokens left</p>
+          <p className="text-sm text-gray-700 dark:text-chalk">
+            Each upload uses 1 token. {balance.source} — both are at 0.{' '}
+            <a href={balance.getCredits.href} className="font-bold underline">
+              {balance.getCredits.label}
+            </a>
+            .
+          </p>
+        </div>
+      )}
+
+      {step === 'pick' && !outOfTokens && (
         <div className="space-y-3">
           <input
             type="search"
@@ -105,7 +175,7 @@ export default function CoachUploadForm({ accessCode, players }: Props) {
         </div>
       )}
 
-      {step === 'upload' && selected && (
+      {step === 'upload' && selected && !outOfTokens && (
         <div className="space-y-3">
           <p className="text-sm text-gray-600 dark:text-chalk-dim">
             Uploading for <span className="font-semibold text-gray-900 dark:text-chalk">{selected.name}</span>
@@ -123,6 +193,7 @@ export default function CoachUploadForm({ accessCode, players }: Props) {
               lastName: selected.lastInitial || '?',
               playerRef: selected.ref,
               onSuccess: handleSuccess,
+              onOutOfTokens: handleOutOfTokens,
             }}
           />
         </div>

@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { getTeamSession, provenTeamCoachCreditsEmail } from '@/lib/team-auth'
+import { getTeamSession, teamUploadPayer } from '@/lib/team-auth'
+import { getOrgSession } from '@/lib/org-auth'
+import { teamUploadBalance, teamUploadCopy } from '@/lib/team-tokens'
 import { db } from '@/lib/db'
 import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
@@ -16,20 +18,15 @@ export default async function BulkUploadPage() {
   if (!session) redirect('/login')
 
   const [team] = (await db`
-    SELECT t.id, t.name, t.access_code, t.admin_email, COALESCE(t.credits, 0)::int AS credits,
-           t.organization_id, o.admin_email AS org_admin_email
+    SELECT t.id, t.name, t.access_code, t.organization_id
     FROM teams t
-    LEFT JOIN organizations o ON o.id = t.organization_id
     WHERE t.id = ${session.teamId}
   `) as unknown as [
     | {
         id: string
         name: string
         access_code: string
-        admin_email: string
-        credits: number
         organization_id: string | null
-        org_admin_email: string | null
       }
     | undefined,
   ]
@@ -40,35 +37,24 @@ export default async function BulkUploadPage() {
   // "Liam S." are two people). /api/analyze resolves the ref within this team.
   const roster = await loadTeamRosterEntries(team.id)
 
-  // The balance /api/analyze actually charges for a team upload: the head
-  // coach's personal coach_credits first, then the legacy team budget.
-  // Only when the head-coach row provably holds that email (the same rule the
-  // charge uses — provenTeamCoachCreditsEmail).
-  const headCreditsEmail = await provenTeamCoachCreditsEmail(team.id)
-  const [cc] = headCreditsEmail
-    ? ((await db`
-        SELECT COALESCE(credits, 0)::int AS credits FROM coach_credits
-        WHERE LOWER(email) = ${headCreditsEmail}
-      `) as unknown as [{ credits: number } | undefined])
-    : [undefined]
-  const credits = (cc?.credits ?? 0) + (Number(team.credits) || 0)
-  const me = session.adminEmail.toLowerCase()
-  const youAreHeadCoach = me === team.admin_email.toLowerCase()
-  // The org director "opened" this team from the org dashboard: their team
-  // session carries the org's admin email. Offer the way back there too.
-  const openedByOrg = !!team.org_admin_email && me === team.org_admin_email.toLowerCase()
+  // The balance /api/analyze actually charges for this login's uploads, by
+  // the same rule (teamUploadPayer): a coach spends their own tokens, then
+  // the team's; the organization spends the team's, then its own.
+  const payer = await teamUploadPayer(team, session, await getOrgSession())
+  if (!payer) redirect('/login')
+  const balance = await teamUploadBalance(team.id, payer)
+  const credits = balance.total
+  // The org director "opened" this team from the org dashboard. Offer the
+  // way back there too.
+  const openedByOrg = payer.kind === 'org'
+  const copy = teamUploadCopy(payer.kind, !!team.organization_id)
 
-  const links = openedByOrg
-    ? {
-        emailResults: { href: '/org/dashboard#results', label: 'Email the results from the Results tab' },
-        getCredits: { href: '/org/dashboard#tokens', label: 'Send this team more tokens' },
-      }
-    : {
-        emailResults: { href: '/team/dashboard#email', label: 'Email the results to players' },
-        getCredits: team.organization_id
-          ? { href: '/team/dashboard#credits', label: 'Ask your organization for more tokens, or buy some' }
-          : { href: '/team/dashboard#credits', label: 'Buy more tokens' },
-      }
+  const links = {
+    emailResults: openedByOrg
+      ? { href: '/org/dashboard#results', label: 'Email the results from the Results tab' }
+      : { href: '/team/dashboard#email', label: 'Email the results to players' },
+    getCredits: copy.getCredits,
+  }
 
   return (
     // Same shell as /team/dashboard: the ink canvas and the console-width
@@ -110,7 +96,7 @@ export default async function BulkUploadPage() {
             teamCode={team.access_code}
             roster={roster}
             credits={credits}
-            creditsOwner={youAreHeadCoach ? 'your' : 'the head coach’s'}
+            creditsSource={copy.source}
             links={links}
           />
         )}

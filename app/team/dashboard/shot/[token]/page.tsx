@@ -1,6 +1,7 @@
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getTeamSession } from '@/lib/team-auth'
+import { getOrgSession } from '@/lib/org-auth'
 import { db } from '@/lib/db'
 import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
@@ -20,12 +21,15 @@ import { getOwnNotes } from '@/lib/coach-notes'
 // coach's roster below.
 export default async function CoachShotPage({ params }: { params: Promise<{ token: string }> }) {
   const session = await getTeamSession()
-  if (!session) redirect('/login')
+  // An org director's team session follows whichever team they opened last;
+  // they may still open a shot from any of their organization's teams.
+  const orgSession = await getOrgSession()
+  if (!session && !orgSession) redirect('/login')
 
   const { token } = await params
 
-  const [submission] = (await db`
-    SELECT s.id, s.token, s.created_at, s.is_free_preview
+  const [teamShot] = session ? (await db`
+    SELECT s.id, s.token, s.created_at, s.is_free_preview, s.team_id
     FROM submissions s
     WHERE s.token = ${token}
       -- Filed to this team, and the player is still on its roster. Roster
@@ -43,10 +47,36 @@ export default async function CoachShotPage({ params }: { params: Promise<{ toke
         )
       )
   `) as unknown as [
-    { id: string; token: string; created_at: string; is_free_preview: boolean } | undefined,
-  ]
+    { id: string; token: string; created_at: string; is_free_preview: boolean; team_id: string } | undefined,
+  ] : [undefined]
 
+  // Same rule, with the shot's own team standing in for the session's: filed
+  // to one of this organization's teams, player still on that roster.
+  const [orgShot] = !teamShot && orgSession ? (await db`
+    SELECT s.id, s.token, s.created_at, s.is_free_preview, s.team_id
+    FROM submissions s
+    JOIN teams t ON t.id = s.team_id AND t.organization_id = ${orgSession.orgId}
+    WHERE s.token = ${token}
+      AND (
+        EXISTS (
+          SELECT 1 FROM team_players tp
+          WHERE tp.id = s.team_player_id AND tp.team_id = s.team_id
+        )
+        OR EXISTS (
+          SELECT 1 FROM team_memberships tm
+          WHERE tm.team_id = s.team_id AND tm.user_id = s.user_id
+        )
+      )
+  `) as unknown as [
+    { id: string; token: string; created_at: string; is_free_preview: boolean; team_id: string } | undefined,
+  ] : [undefined]
+
+  const submission = teamShot ?? orgShot
   if (!submission) return notFound()
+  // Notes save under the viewer's team session when there is one
+  // (lib/coach-notes.ts), so while it points at another team the boxes would
+  // fail to save — show the notes read-only and say how to edit.
+  const canEdit = !!teamShot || !session
 
   const [analysis] = (await db`
     SELECT id, overall_score
@@ -71,7 +101,10 @@ export default async function CoachShotPage({ params }: { params: Promise<{ toke
     name: string
   }>
 
-  const ownNotes = await getOwnNotes(analysis.id, session.teamId)
+  const ownNotes = await getOwnNotes(analysis.id, submission.team_id)
+  const [shotTeam] = canEdit ? [undefined] : ((await db`
+    SELECT name FROM teams WHERE id = ${submission.team_id}
+  `) as unknown as [{ name: string } | undefined])
 
   return (
     <main className="min-h-screen bg-white dark:bg-ink-950 flex flex-col">
@@ -86,7 +119,9 @@ export default async function CoachShotPage({ params }: { params: Promise<{ toke
               {analysis.overall_score !== null ? Number(analysis.overall_score).toFixed(1) : '—'}/10
             </>
           }
-          back={{ href: '/team/dashboard', label: 'Back to team dashboard' }}
+          back={teamShot
+            ? { href: '/team/dashboard', label: 'Back to team dashboard' }
+            : { href: '/org/dashboard', label: 'Back to organization dashboard' }}
         />
 
         <div>
@@ -103,6 +138,13 @@ export default async function CoachShotPage({ params }: { params: Promise<{ toke
             View the player&apos;s report
             <ArrowRightIcon aria-hidden className="w-4 h-4" />
           </Link>
+          {!canEdit && (
+            <p className="mt-3 text-sm text-gray-600 dark:text-chalk-dim leading-relaxed">
+              You&apos;re working in another team right now, so notes are read-only here. To add
+              notes, open {shotTeam?.name ?? 'this shot’s team'} from your organization dashboard, then
+              come back to this shot.
+            </p>
+          )}
         </div>
 
         <div className="space-y-4">
@@ -124,12 +166,23 @@ export default async function CoachShotPage({ params }: { params: Promise<{ toke
                   )}
                 </div>
                 <p className="text-gray-600 dark:text-chalk-dim text-xs mt-1.5 leading-relaxed">{s.ai_reasoning}</p>
-                <CoachNoteEditor
-                  criterionScoreId={s.id}
-                  aiScore={ai}
-                  endpoint="/api/coach-note"
-                  initial={ownNotes.get(s.id) ?? null}
-                />
+                {canEdit ? (
+                  <CoachNoteEditor
+                    criterionScoreId={s.id}
+                    aiScore={ai}
+                    endpoint="/api/coach-note"
+                    initial={ownNotes.get(s.id) ?? null}
+                  />
+                ) : (() => {
+                  const n = ownNotes.get(s.id)
+                  if (!n || (n.note === null && n.suggestedScore === null)) return null
+                  return (
+                    <p className="mt-3 text-sm text-gray-700 dark:text-chalk">
+                      <span className="font-semibold">Coach&apos;s note{n.suggestedScore !== null ? ` (${n.suggestedScore}/10)` : ''}:</span>{' '}
+                      {n.note}
+                    </p>
+                  )
+                })()}
               </div>
             )
           })}

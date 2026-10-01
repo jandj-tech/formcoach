@@ -327,7 +327,7 @@ export async function sendCoachInviteEmail(to: string, orgName: string, teamName
   const { data, error } = await getResend().emails.send({
     from: NOTIFICATION_FROM,
     to,
-    subject: `You've been added as a coach at ${orgName}`,
+    subject: `You've been added as head coach of ${teamName} at ${orgName}`,
     text: [
       `You've been added as head coach of ${teamName} at ${orgName}.`,
       ``,
@@ -1317,7 +1317,11 @@ export async function sendClassPurchaseConfirmationEmail(
   playerCount: number,
   teamAccessCode: string,
   dashboardUrl: string,
+  // The class team the purchase created. Its default name is the one the
+  // Stripe webhook gives it, so existing callers keep passing five arguments.
+  teamName: string = `10-Week Class — ${playerCount} Players`,
 ) {
+  const joinUrl = `${BASE_URL}/signup?teamCode=${encodeURIComponent(teamAccessCode)}`
   const { data, error } = await getResend().emails.send({
     from: NOTIFICATION_FROM,
     to,
@@ -1327,10 +1331,11 @@ export async function sendClassPurchaseConfirmationEmail(
       ``,
       `Your 10-Week Shooting Class program is confirmed and ready.`,
       ``,
-      `Players enrolled: ${playerCount}`,
+      `Places: ${playerCount}`,
       `Team access code: ${teamAccessCode}`,
       ``,
-      `Your team "10 Week Shooting Class" has been created on your dashboard. Players can join with the access code above.`,
+      `Your class team "${teamName}" has been created on your dashboard.`,
+      `How players join: send them this link (or the code above) — ${joinUrl} — or add them yourself on the class team's roster. Either way they're enrolled in the class.`,
       ``,
       `Balls will ship to the address you provided. You'll receive a separate shipping confirmation when they're on the way.`,
       ``,
@@ -1362,22 +1367,25 @@ export async function sendClassPurchaseConfirmationEmail(
       <tr><td style="padding:20px 32px 8px;">
         <table role="presentation" width="100%" style="background:#F8FAFC;border:1px solid #E4E4E7;border-radius:10px;padding:0;">
           <tr><td style="padding:16px 20px;">
-            <div style="color:#71717A;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Players Enrolled</div>
+            <div style="color:#71717A;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Places</div>
             <div style="color:#111111;font-size:22px;font-weight:800;">${playerCount}</div>
           </td></tr>
           <tr><td style="padding:0 20px 16px;">
             <div style="color:#71717A;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Team Access Code</div>
             <div style="color:#F97316;font-size:26px;font-weight:900;letter-spacing:2px;">${escHtml(teamAccessCode)}</div>
-            <div style="color:#52525B;font-size:12px;margin-top:4px;">Players use this code to join the "10 Week Shooting Class" team</div>
+            <div style="color:#52525B;font-size:12px;margin-top:4px;">Players use this code to join the &ldquo;${escHtml(teamName)}&rdquo; team</div>
           </td></tr>
         </table>
       </td></tr>
 
       <tr><td style="padding:16px 32px 8px;">
         <p style="margin:0;color:#52525B;font-size:14px;line-height:1.6;">
-          <span style="color:#16A34A;font-weight:700;">&#10003;</span>&nbsp; <strong>Team created</strong> — "10 Week Shooting Class" is live on your dashboard<br/>
+          <span style="color:#16A34A;font-weight:700;">&#10003;</span>&nbsp; <strong>Team created</strong> — &ldquo;${escHtml(teamName)}&rdquo; is live on your dashboard<br/>
           <span style="color:#16A34A;font-weight:700;">&#10003;</span>&nbsp; <strong>Balls shipping</strong> — to the address you entered at checkout<br/>
           <span style="color:#16A34A;font-weight:700;">&#10003;</span>&nbsp; <strong>2 shot analyses per player</strong> — tokens are ready to assign
+        </p>
+        <p style="margin:14px 0 0;color:#52525B;font-size:14px;line-height:1.6;">
+          <strong>How players join:</strong> send families <a href="${joinUrl}" style="color:#F97316;font-weight:600;">this join link</a> (or the code above), or add players yourself on the class team&rsquo;s roster. Either way they&rsquo;re enrolled in the class.
         </p>
       </td></tr>
 
@@ -2019,6 +2027,21 @@ export interface PlayerEmailResultsBlock {
   score: number
   /** The link always opens the full report (team uploads are never paywalled). */
   token: string
+  /** When this shot was graded (ISO). Only shown when the email holds several shots. */
+  gradedAt?: string | null
+  /**
+   * The sender chose several shots: the newest is the big score above, these
+   * (older, newest first) are listed under it, each with its own link. Empty
+   * or absent: the single-shot email, exactly as before.
+   */
+  more?: Array<{ score: number; token: string; gradedAt?: string | null }>
+}
+
+/** "Sep 30" — the day a shot was graded, for the multi-shot list. */
+function shotDay(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
 }
 
 export interface PlayerEmailOffersBlock {
@@ -2107,6 +2130,11 @@ export function renderPlayerEmail(input: PlayerEmailRenderInput): {
   const scoreText = results ? results.score.toFixed(1) : ''
   const offers = input.offers && input.offers.items.length ? { ...input.offers, items: input.offers.items.slice(0, 4) } : null
   const shopUrl = `${BASE_URL}/shop`
+  // Several chosen shots: the newest stays the big score; the rest are listed.
+  const more = results?.more?.length ? results.more : null
+  const moreRows = more
+    ? more.map((m) => ({ ...m, day: shotDay(m.gradedAt), grade: gradeLetter(m.score), link: `${BASE_URL}/results/${m.token}` }))
+    : []
 
   const text = [
     fromLine,
@@ -2115,9 +2143,19 @@ export function renderPlayerEmail(input: PlayerEmailRenderInput): {
     ...paragraphs.flatMap((p) => [p, ``]),
     ...(results && grade
       ? [
+          ...(more ? [`Latest shot${shotDay(results.gradedAt) ? ` (${shotDay(results.gradedAt)})` : ''}:`] : []),
           `Overall score: ${scoreText} / 10  (${grade.letter}, ${grade.label})`,
           `See your results: ${resultsLink}`,
           ``,
+          ...(more
+            ? [
+                `Your other ${more.length === 1 ? 'shot' : `${more.length} shots`} in this email:`,
+                ...moreRows.map(
+                  (m) => `- ${m.day ? `${m.day}: ` : ''}${m.score.toFixed(1)} / 10 (${m.grade.letter}) ${m.link}`
+                ),
+                ``,
+              ]
+            : []),
         ]
       : []),
     ...(offers
@@ -2186,7 +2224,8 @@ export function renderPlayerEmail(input: PlayerEmailRenderInput): {
       </td></tr>
       ${
         results && grade
-          ? `<tr><td align="center" style="padding:16px 32px 8px;">
+          ? `<tr><td align="center" style="padding:16px 32px 8px;">${more ? `
+        <div style="color:#71717A;font-size:12px;font-weight:700;letter-spacing:0.6px;text-transform:uppercase;margin-bottom:10px;">Latest shot${shotDay(results.gradedAt) ? ` · ${escHtml(shotDay(results.gradedAt))}` : ''}</div>` : ''}
         <table role="presentation" style="border-collapse:separate;">
           <tr><td align="center" style="width:132px;height:132px;padding:0;border-radius:50%;border:3px solid #FF5C1A;background:#FAFAFA;">
             <div style="color:#111;font-size:42px;font-weight:900;line-height:1;">${scoreText}</div>
@@ -2198,7 +2237,25 @@ export function renderPlayerEmail(input: PlayerEmailRenderInput): {
       </td></tr>
       <tr><td align="center" style="padding:20px 32px 8px;">
         <a href="${resultsLink}" style="display:inline-block;background:#FF5C1A;color:#111;padding:14px 28px;border-radius:10px;text-decoration:none;font-weight:800;font-size:15px;">See your results</a>
+      </td></tr>${
+        more
+          ? `
+      <tr><td style="padding:20px 32px 8px;">
+        <div style="color:#111;font-size:16px;font-weight:800;margin-bottom:10px;">Your other ${more.length === 1 ? 'shot' : `${more.length} shots`} in this email</div>
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border:1px solid #E4E4E7;border-radius:10px;border-collapse:separate;border-spacing:0;">${moreRows
+          .map(
+            (m, i) => `
+          <tr>
+            <td style="padding:12px 16px;${i ? 'border-top:1px solid #E4E4E7;' : ''}color:#52525B;font-size:13px;white-space:nowrap;">${escHtml(m.day || `Shot ${i + 2}`)}</td>
+            <td style="padding:12px 8px;${i ? 'border-top:1px solid #E4E4E7;' : ''}white-space:nowrap;"><span style="color:#111;font-size:17px;font-weight:900;">${m.score.toFixed(1)}</span><span style="color:#71717A;font-size:12px;"> / 10 · ${escHtml(m.grade.letter)}</span></td>
+            <td align="right" style="padding:12px 16px;${i ? 'border-top:1px solid #E4E4E7;' : ''}white-space:nowrap;"><a href="${m.link}" style="color:#C2410C;font-size:13px;font-weight:800;text-decoration:none;">See report &rarr;</a></td>
+          </tr>`
+          )
+          .join('')}
+        </table>
       </td></tr>`
+          : ''
+      }`
           : ''
       }
       ${
@@ -2229,6 +2286,210 @@ export function renderPlayerEmail(input: PlayerEmailRenderInput): {
 </body></html>`.trim()
 
   return { subject, text, html }
+}
+
+// ---------------------------------------------------------------------------
+// "Finish setting up to see your results": what a coach/org results email
+// becomes for a player whose account isn't set up yet (added by email, no
+// password chosen). Same header, From line and footer as renderPlayerEmail,
+// but NO score, grade, report content or /results link — only a setup
+// button, so every player visits LearnHoops once to open their results.
+// ---------------------------------------------------------------------------
+
+export interface PlayerResultsSetupEmailInput {
+  recipientEmail: string
+  /** Final subject (tokens already replaced). */
+  subject: string
+  /** The sender's own message (tokens replaced), or '' for the standard intro. */
+  message: string
+  /** "Ava": greeting. */
+  firstName: string | null
+  /** "Ava O.": names the child, so a family inbox knows whose results these are. */
+  playerLabel: string | null
+  orgName: string | null
+  teamName: string
+  sender: PlayerEmailRenderInput['sender']
+  /** Graded shots waiting in the account (1 or more). */
+  shotCount: number
+  /** The player's own setup link (or a non-working placeholder in previews). */
+  setupUrl: string
+  /** Other player accounts share this address (siblings). */
+  sharedInbox: boolean
+}
+
+export function renderPlayerResultsSetupEmail(input: PlayerResultsSetupEmailInput): {
+  subject: string
+  text: string
+  html: string
+} {
+  const subject = cleanSubject(input.subject)
+  const unsubscribe = unsubscribeUrl(input.recipientEmail)
+  const org = input.orgName?.trim() || null
+  const team = input.teamName.trim()
+  const senderName = input.sender.name.trim() || (input.sender.kind === 'org' ? org ?? team : 'Your coach')
+  const generic = !!input.sender.generic
+  const reachName = generic ? senderName.charAt(0).toLowerCase() + senderName.slice(1) : senderName
+  const fromLine =
+    input.sender.kind === 'org'
+      ? ['From ' + (org ?? senderName), team].join(' · ')
+      : ['From ' + (generic ? reachName : senderName), team, org].filter(Boolean).join(' · ')
+  const headerSub = [org, team].filter(Boolean).join(' · ')
+  const footerWhy = `You're getting this because you're on ${team}${org ? ` with ${org}` : ''}.`
+  const footerWho = `${senderName} sent it through LearnHoops. Reply to this email to reach ${reachName}.`
+
+  const first = input.firstName?.trim() || null
+  const label = input.playerLabel?.trim() || first
+  const n = Math.max(1, Math.floor(input.shotCount))
+  const where = org ?? team
+  // A family inbox gets one of these per child: the headline names the child.
+  const headline =
+    input.sharedInbox && first ? `${first}’s shot results from ${where} are ready` : `Your shot results from ${where} are ready`
+  const intro =
+    `Hi ${first ?? 'there'},\n\n` +
+    `${generic ? 'Your coach' : senderName} has shared your latest ${n === 1 ? 'shot result' : 'shot results'} from ${team}. ` +
+    `Finish setting up your free LearnHoops account to see your score and the full breakdown of what to work on next.`
+  const paragraphs = paragraphsOf(input.message.trim() ? input.message : intro)
+  const waitingFor = label ? `Waiting for ${label}` : 'Waiting in your account'
+  const waitingWhat = n === 1 ? '1 new shot result' : `${n} new shot results`
+  const waitingWhere = [team, org].filter(Boolean).join(' · ')
+  const cta = 'Finish setting up to see your results'
+  const easy = 'It takes under a minute and it’s free. Just choose a password.'
+  const onlyThisChild = input.sharedInbox
+    ? `This link sets up ${first ?? label ?? 'this player'}’s account only. Each player on this email gets their own link and password.`
+    : null
+  const url = input.setupUrl
+
+  const text = [
+    fromLine,
+    ``,
+    headline,
+    ``,
+    ...paragraphs.flatMap((p) => [p, ``]),
+    `${waitingFor}: ${waitingWhat} (${waitingWhere})`,
+    ``,
+    `${cta}:`,
+    url,
+    ``,
+    easy,
+    ...(onlyThisChild ? [onlyThisChild] : []),
+    ``,
+    `--`,
+    footerWhy,
+    footerWho,
+    `Unsubscribe: ${unsubscribe}`,
+  ].join('\n')
+
+  const paragraphHtml = paragraphs
+    .map(
+      (p) =>
+        `<p class="lh-text" style="margin:0 0 14px;color:#27272A;font-size:15px;line-height:1.6;">${escHtml(p).replace(/\n/g, '<br/>')}</p>`
+    )
+    .join('')
+
+  // Light by default (the look of every other player email). Clients that
+  // honour prefers-color-scheme get a matching dark palette; the black brand
+  // bar and the orange button read the same in both.
+  const html = `
+<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="color-scheme" content="light dark"/><meta name="supported-color-schemes" content="light dark"/>
+<title>${escHtml(subject)}</title>
+<style>
+  :root { color-scheme: light dark; supported-color-schemes: light dark; }
+  @media (prefers-color-scheme: dark) {
+    .lh-bg { background:#09090B !important; }
+    .lh-card { background:#18181B !important; border-color:#27272A !important; }
+    .lh-text { color:#F4F4F5 !important; }
+    .lh-muted { color:#A1A1AA !important; }
+    .lh-box { background:#0F0F11 !important; border-color:#3F3F46 !important; border-left-color:#FF5C1A !important; }
+    .lh-rule { border-color:#27272A !important; }
+    .lh-link { color:#A1A1AA !important; }
+  }
+  @media only screen and (max-width:480px) {
+    .lh-pad { padding-left:20px !important; padding-right:20px !important; }
+  }
+</style>
+</head>
+<body class="lh-bg" style="margin:0;padding:0;background:#F4F4F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#111;">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">${escHtml(`${waitingWhat} from ${where}. ${easy}`)}</div>
+  <table role="presentation" width="100%" class="lh-bg" style="background:#F4F4F5;"><tr><td align="center" style="padding:32px 16px;">
+    <table role="presentation" width="100%" class="lh-card" style="max-width:560px;background:#fff;border-radius:14px;overflow:hidden;border:1px solid #E4E4E7;">
+      <tr><td class="lh-pad" style="background:#000;padding:22px 32px;">
+        <div style="color:#FF5C1A;font-size:20px;font-weight:800;letter-spacing:-0.3px;line-height:1;">LearnHoops<span style="color:#71717A;">.com</span></div>
+        <div style="color:#A1A1AA;font-size:12px;margin-top:5px;">${escHtml(headerSub)}</div>
+      </td></tr>
+      <tr><td class="lh-pad" style="padding:24px 32px 0;">
+        <div class="lh-muted" style="color:#71717A;font-size:13px;line-height:1.5;">${escHtml(fromLine)}</div>
+      </td></tr>
+      <tr><td class="lh-pad" style="padding:16px 32px 4px;">
+        <h1 class="lh-text" style="margin:0 0 14px;color:#111;font-size:24px;line-height:1.25;font-weight:800;">${escHtml(headline)}</h1>
+        ${paragraphHtml}
+      </td></tr>
+      <tr><td class="lh-pad" style="padding:6px 32px 4px;">
+        <table role="presentation" width="100%" class="lh-box" style="border-collapse:separate;background:#FAFAFA;border:1px solid #E4E4E7;border-left:4px solid #FF5C1A;border-radius:12px;">
+          <tr><td style="padding:16px 18px;">
+            <div class="lh-muted" style="color:#71717A;font-size:11px;font-weight:700;letter-spacing:0.6px;text-transform:uppercase;">${escHtml(waitingFor)}</div>
+            <div class="lh-text" style="color:#111;font-size:20px;font-weight:900;line-height:1.3;margin-top:4px;">${escHtml(waitingWhat)}</div>
+            <div class="lh-muted" style="color:#52525B;font-size:13px;line-height:1.5;margin-top:2px;">${escHtml(waitingWhere)}</div>
+            <div class="lh-muted" style="color:#71717A;font-size:13px;line-height:1.5;margin-top:8px;">Overall score, what you’re doing well, and exactly what to fix next.</div>
+          </td></tr>
+        </table>
+      </td></tr>
+      <tr><td class="lh-pad" align="center" style="padding:24px 32px 6px;">
+        <table role="presentation" width="100%" style="border-collapse:separate;"><tr>
+          <td align="center" style="border-radius:12px;background:#FF5C1A;">
+            <a href="${escHtml(url)}" style="display:block;padding:16px 22px;border-radius:12px;background:#FF5C1A;color:#111;text-decoration:none;font-weight:800;font-size:16px;line-height:1.3;">${escHtml(cta)}</a>
+          </td>
+        </tr></table>
+      </td></tr>
+      <tr><td class="lh-pad" align="center" style="padding:6px 32px 4px;">
+        <p class="lh-muted" style="margin:0;color:#52525B;font-size:13px;line-height:1.5;">${escHtml(easy)}</p>
+        ${onlyThisChild ? `<p class="lh-muted" style="margin:6px 0 0;color:#52525B;font-size:13px;line-height:1.5;">${escHtml(onlyThisChild)}</p>` : ''}
+      </td></tr>
+      <tr><td class="lh-pad" style="padding:16px 32px 0;">
+        <p class="lh-muted" style="margin:0;color:#A1A1AA;font-size:12px;line-height:1.5;">
+          Button not working? Copy this link into your browser:<br/>
+          <a class="lh-link" href="${escHtml(url)}" style="color:#71717A;word-break:break-all;">${escHtml(url)}</a>
+        </p>
+      </td></tr>
+      <tr><td class="lh-pad" style="padding:20px 32px 32px;">
+        <p class="lh-muted lh-rule" style="margin:0;border-top:1px solid #E4E4E7;padding-top:16px;color:#71717A;font-size:12px;line-height:1.6;">
+          ${escHtml(footerWhy)} ${escHtml(footerWho)}<br/>
+          <a class="lh-link" href="${escHtml(unsubscribe)}" style="color:#71717A;">Unsubscribe</a>
+        </p>
+      </td></tr>
+    </table>
+  </td></tr></table>
+</body></html>`.trim()
+
+  return { subject, text, html }
+}
+
+/**
+ * The legacy org Results send's "finish setup" email: same From
+ * (NOTIFICATION_FROM) and Reply-To (the org admin) as sendOrgResultsEmail.
+ */
+export async function sendOrgResultsSetupEmail(
+  input: PlayerResultsSetupEmailInput,
+  replyTo: string
+): Promise<void> {
+  const { subject, text, html } = renderPlayerResultsSetupEmail(input)
+  const unsubscribe = unsubscribeUrl(input.recipientEmail)
+  const { error } = await getResend().emails.send({
+    from: NOTIFICATION_FROM,
+    to: input.recipientEmail,
+    replyTo,
+    subject,
+    text,
+    html,
+    headers: {
+      'List-Unsubscribe': `<${unsubscribe}>`,
+      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+    },
+  })
+  if (error) {
+    console.error('[email] org results setup email failed:', error)
+    throw new Error(`Org results setup email failed: ${error instanceof Error ? error.message : String(error)}`)
+  }
 }
 
 /**

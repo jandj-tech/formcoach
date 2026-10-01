@@ -26,6 +26,8 @@ export interface PendingPlayer {
    * roster offers "Give own account" for these.
    */
   contact_email?: string | null
+  /** The name-only team_players row this invite's shots are filed on, if any. */
+  shot_player_id?: string | null
 }
 
 export interface Coach {
@@ -106,4 +108,21 @@ export function memberDisplayName(m: Member): string {
     return `${m.first_name}${m.last_name_initial ? ' ' + m.last_name_initial + '.' : ''}`
   }
   return m.email
+}
+
+// Graded shots filed to this team for one roster row, read off the team's
+// leaderboard (one query per team, already loaded). A name-only invite's
+// shots sit on its team_players row (shot_player_id).
+export function memberShotCount(team: TeamData, memberId: string): number {
+  return team.leaderboard.find(r => r.kind === 'member' && r.id === memberId)?.upload_count ?? 0
+}
+
+export function pendingShotCount(team: TeamData, p: PendingPlayer): number {
+  if (!p.shot_player_id) return 0
+  return team.leaderboard.find(r => r.kind === 'player' && r.id === p.shot_player_id)?.upload_count ?? 0
+}
+
+/** "3 shots" / "1 shot" / "No shots yet". */
+export function shotCountLabel(n: number): string {
+  return n > 0 ? `${n} shot${n === 1 ? '' : 's'}` : 'No shots yet'
 }

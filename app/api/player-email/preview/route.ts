@@ -46,6 +46,9 @@ export async function POST(req: NextRequest) {
       replyTo: sender.replyTo,
       to: recipient.email,
       includesScore: built.includesScore,
+      // Additive: 'setup' when this player hasn't set up their account, so
+      // they get the "finish setting up to see your results" version.
+      variant: built.variant,
       // Additive: whether this player would actually receive it.
       status: recipient.status,
       statusDetail: recipient.status === 'ok' ? null : SKIP_DETAIL[recipient.status],

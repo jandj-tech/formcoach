@@ -27,6 +27,19 @@ export interface AudiencePlayer {
   unlocked: boolean
   unsubscribed: boolean
   bounced: boolean
+  /** Added by email, account not set up yet: results go out as a "finish setup" email. */
+  setupPending?: boolean
+  /** Every graded shot the team holds for this player, newest first. */
+  shots?: AudienceShot[]
+}
+
+export interface AudienceShot {
+  submissionId: string
+  score: number
+  gradedAt: string | null
+  thumb: string | null
+  /** When results for this shot were last emailed. */
+  sentAt: string | null
 }
 
 export interface AudienceTeam {
@@ -50,10 +63,12 @@ export interface PreviewResponse {
   replyTo: string
   to: string
   includesScore: boolean
+  /** 'setup': this player gets the "finish setting up to see your results" version. */
+  variant?: 'results' | 'setup'
 }
 
 export interface SendResponse {
-  sent: Array<{ name: string; team: string; email: string }>
+  sent: Array<{ name: string; team: string; email: string; setupRequired?: boolean; shotCount?: number }>
   skipped: Array<{ name: string; team: string; reason: string }>
   failed: Array<{ name: string; team: string }>
   total: number
@@ -82,6 +97,11 @@ export function canEmail(p: AudiencePlayer): boolean {
   return blockReason(p) === null
 }
 
+/** With results included, this player gets the "finish setting up to see your results" email. */
+export function getsSetupEmail(p: AudiencePlayer, includeResults: boolean): boolean {
+  return includeResults && !!p.setupPending && !!p.userId && hasGradedShot(p)
+}
+
 /** Server skip codes → plain words. Unknown codes are shown as-is, tidied. */
 export function skipReasonText(reason: string): string {
   switch (reason) {
@@ -99,6 +119,12 @@ export function skipReasonText(reason: string): string {
       return 'Not on a team you can email'
     case 'nothing_to_send':
       return 'No message and no graded shot yet, so nothing was sent'
+    case 'nothing_new':
+      return 'No new shots since their last results email'
+    case 'shots_unavailable':
+      return 'The chosen shots are not available for this player any more'
+    case 'recently_emailed':
+      return "Hasn't set up their account and already got several emails about it in the last hour. Try again later"
     default:
       return reason.replace(/_/g, ' ')
   }
@@ -198,3 +224,22 @@ export const INPUT =
   'focus:outline-none focus:border-ember-500 focus-visible:ring-2 focus-visible:ring-ember-400/60'
 
 export const CHECKBOX = 'w-4 h-4 shrink-0 accent-ember-500 cursor-pointer disabled:cursor-not-allowed'
+
+/** Graded shots a player has on this team (newest first). */
+export function shotsOf(p: AudiencePlayer): AudienceShot[] {
+  return p.shots ?? []
+}
+
+/** Shots whose results haven't been emailed yet. */
+export function unsentShots(p: AudiencePlayer): AudienceShot[] {
+  return shotsOf(p).filter((s) => !s.sentAt)
+}
+
+/** "Sep 30", or "Sep 30, 4:12 PM" with `withTime`. */
+export function shotDate(iso: string | null, withTime = false): string {
+  if (!iso) return 'Undated'
+  const d = new Date(iso)
+  return withTime
+    ? d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+    : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}

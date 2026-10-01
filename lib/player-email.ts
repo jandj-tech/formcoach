@@ -12,7 +12,7 @@ import type { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { getTeamSessionFromRequest } from '@/lib/team-auth'
-import { teamResultsRoster, type RosterPlayer } from '@/lib/org-results'
+import { teamGradedShots, teamResultsRoster, type RosterPlayer, type TeamShot } from '@/lib/org-results'
 import { getPurchasableOffers } from '@/lib/org-offers-db'
 import { effectivePriceCents, type OrgOffer } from '@/lib/org-offers'
 import type { VisibilityTier } from '@/lib/result-visibility'
@@ -20,16 +20,25 @@ import {
   BASE_URL,
   cleanSubject,
   renderPlayerEmail,
+  renderPlayerResultsSetupEmail,
   sendPlayerEmail,
   type PlayerEmailOffersBlock,
   type PlayerEmailResultsBlock,
 } from '@/lib/email'
+import {
+  RESULTS_SETUP_PREVIEW_URL,
+  resultsLandingPath,
+  resultsSetupLink,
+  setupRecipientFacts,
+  type SetupRecipientFacts,
+} from '@/lib/results-setup'
 import { onBehalfFrom } from '@/lib/email-senders'
 import {
   PLAYER_EMAIL_LIMITS,
   PLAYER_EMAIL_TEMPLATES,
   playerEmailTemplate,
   type PlayerEmailContent,
+  type PlayerEmailShotMode,
   type PlayerEmailTemplateId,
 } from '@/lib/player-email-templates'
 
@@ -39,6 +48,16 @@ const GENERIC_COACH = 'Your coach'
 
 /** Stand-in for the stock results text, for a player with no graded shot yet. */
 const NO_SHOT_SUBJECT = '{{first_name}}, an update from {{team}}'
+
+/** The stock results text when an email carries several shots. */
+const MULTI_SHOT_MESSAGE =
+  'Hi {{first_name}},\n\n' +
+  'Your latest shots have been graded. Your scores are below, and each full report shows exactly what to work on next.\n\n' +
+  'Keep practising, and bring any questions to our next session.\n\n' +
+  '{{coach}}'
+
+/** Stand-in for the stock results subject, for a player who must finish setup first. */
+const SETUP_SUBJECT = '{{first_name}}, your shot results from {{org}} are ready'
 const NO_SHOT_MESSAGE =
   'Hi {{first_name}},\n\n' +
   "We don't have a graded shot for you on {{team}} yet. Once your next shot is uploaded and graded, you'll get your score and a full report showing exactly what to work on.\n\n" +
@@ -242,6 +261,8 @@ export interface AudiencePlayer extends RosterPlayer {
   status: PlayerReach
   /** Last time LearnHoops emailed this address on a coach's or org's behalf. */
   lastEmailedAt: string | null
+  /** Every graded shot this team holds for the player, newest first (for the shot picker). */
+  shots: TeamShot[]
 }
 
 export interface AudienceTeam {
@@ -263,6 +284,7 @@ function reachOf(p: RosterPlayer): PlayerReach {
 export async function loadAudience(sender: PlayerEmailSender): Promise<AudienceTeam[]> {
   const teams = await authorizedTeams(sender)
   const rosters = await Promise.all(teams.map((t) => teamResultsRoster(t.id)))
+  const shots = await Promise.all(teams.map((t, i) => teamGradedShots(t.id, rosters[i])))
   const emails = [
     ...new Set(rosters.flat().map((p) => p.email?.toLowerCase()).filter((e): e is string => !!e)),
   ]
@@ -286,6 +308,7 @@ export async function loadAudience(sender: PlayerEmailSender): Promise<AudienceT
       ...p,
       status: reachOf(p),
       lastEmailedAt: p.email ? last.get(p.email.toLowerCase()) ?? null : null,
+      shots: shots[i].get(p.key) ?? [],
     })),
   }))
 }
@@ -337,6 +360,11 @@ export async function audienceMeta(sender: PlayerEmailSender): Promise<AudienceM
 export interface RecipientPick {
   teamId: string
   key: string
+  /**
+   * With shotMode 'pick': the shots chosen for this player. Untrusted — each
+   * is re-checked against the shots this team holds for this player.
+   */
+  submissionIds?: string[]
 }
 
 export type RecipientStatus =
@@ -351,6 +379,12 @@ export type RecipientStatus =
   | 'not_allowed'
   /** No message and no graded shot: the email would be empty, so it isn't sent. */
   | 'nothing_to_send'
+  /** Not set up yet, and already sent several "finish setup" emails recently. */
+  | 'recently_emailed'
+  /** shotMode 'unsent': every graded shot of theirs has already been emailed. */
+  | 'nothing_new'
+  /** shotMode 'pick': none of the chosen shots is one this team holds for them. */
+  | 'shots_unavailable'
 
 export interface ResolvedRecipient {
   teamId: string
@@ -369,6 +403,18 @@ export interface ResolvedRecipient {
   gradedAt: string | null
   orgId: string | null
   orgName: string | null
+  /**
+   * The player's account isn't set up yet (added by email, no password).
+   * With results included they get the "finish setting up to see your
+   * results" email instead of their score.
+   */
+  setupPending: boolean
+  /**
+   * The graded shots this email carries, newest first (shotMode 'unsent' /
+   * 'pick'). null: just the latest shot (submissionId/token/score above),
+   * exactly as before. When set, submissionId/token/score are its newest.
+   */
+  shots: TeamShot[] | null
   status: RecipientStatus
 }
 
@@ -382,12 +428,18 @@ export function parsePicks(value: unknown): RecipientPick[] | null {
   const out: RecipientPick[] = []
   for (const v of value) {
     if (!v || typeof v !== 'object') return null
-    const { teamId, key } = v as { teamId?: unknown; key?: unknown }
+    const { teamId, key, submissionIds } = v as { teamId?: unknown; key?: unknown; submissionIds?: unknown }
     if (typeof teamId !== 'string' || typeof key !== 'string') return null
+    let shots: string[] | undefined
+    if (submissionIds !== undefined) {
+      if (!Array.isArray(submissionIds) || submissionIds.length > 50) return null
+      if (!submissionIds.every((x) => typeof x === 'string' && UUID_RE.test(x))) return null
+      shots = [...new Set((submissionIds as string[]).map((x) => x.toLowerCase()))]
+    }
     const id = `${teamId.toLowerCase()}|${key.toLowerCase()}`
     if (seen.has(id)) continue
     seen.add(id)
-    out.push({ teamId, key })
+    out.push(shots ? { teamId, key, submissionIds: shots } : { teamId, key })
   }
   return out
 }
@@ -409,6 +461,8 @@ function notAllowed(pick: RecipientPick): ResolvedRecipient {
     gradedAt: null,
     orgId: null,
     orgName: null,
+    setupPending: false,
+    shots: null,
     status: 'not_allowed',
   }
 }
@@ -479,6 +533,8 @@ export async function resolveRecipients(
       gradedAt: player.gradedAt,
       orgId: team.orgId,
       orgName: team.orgName,
+      setupPending: !!player.userId && player.setupPending,
+      shots: null,
       status: reach,
     }
   })
@@ -504,6 +560,9 @@ export async function resolveRecipients(
       r.status = dupStatus
     }
   })
+  if (opts.content?.includeResults && opts.content.shotMode && opts.content.shotMode !== 'latest') {
+    await chooseShots(resolved, picks, opts.content.shotMode, rosters)
+  }
   if (opts.content) {
     const content = opts.content
     for (const r of resolved) {
@@ -511,6 +570,63 @@ export async function resolveRecipients(
     }
   }
   return resolved
+}
+
+/**
+ * Picks the shots each reachable recipient's results email carries, from the
+ * shots their team holds for THEM (teamGradedShots) — never from the client:
+ * a picked id that isn't one of those is dropped. At most
+ * PLAYER_EMAIL_LIMITS.shotsPerPlayer, newest first. A player with no graded
+ * shot keeps the no-shot email; one with nothing new / nothing valid picked
+ * is skipped.
+ */
+async function chooseShots(
+  resolved: ResolvedRecipient[],
+  picks: RecipientPick[],
+  mode: PlayerEmailShotMode,
+  rosters: Map<string, Map<string, RosterPlayer>>
+): Promise<void> {
+  const live = resolved.filter((r) => r.status === 'ok' && hasGradedShot(r))
+  const byTeam = new Map<string, ResolvedRecipient[]>()
+  for (const r of live) byTeam.set(r.teamId.toLowerCase(), [...(byTeam.get(r.teamId.toLowerCase()) ?? []), r])
+  const held = new Map<string, TeamShot[]>()
+  await Promise.all(
+    [...byTeam.entries()].map(async ([teamId, list]) => {
+      const roster = rosters.get(teamId)
+      const players = list.map((r) => roster?.get(r.key.toLowerCase())).filter((p): p is RosterPlayer => !!p)
+      const shots = await teamGradedShots(list[0].teamId, players)
+      for (const r of list) held.set(`${teamId}|${r.key.toLowerCase()}`, shots.get(r.key) ?? [])
+    })
+  )
+  const pickOf = new Map(picks.map((p) => [`${p.teamId.toLowerCase()}|${p.key.toLowerCase()}`, p]))
+  const cap = PLAYER_EMAIL_LIMITS.shotsPerPlayer
+  for (const r of live) {
+    const id = `${r.teamId.toLowerCase()}|${r.key.toLowerCase()}`
+    const all = held.get(id) ?? []
+    let chosen: TeamShot[]
+    if (mode === 'unsent') {
+      chosen = all.filter((s) => !s.sentAt).slice(0, cap)
+      if (chosen.length === 0) {
+        r.status = 'nothing_new'
+        continue
+      }
+    } else {
+      const want = pickOf.get(id)?.submissionIds
+      // Not in the picker (one shot only, or untouched): their latest shot.
+      if (!want) continue
+      const ok = new Set(want)
+      chosen = all.filter((s) => ok.has(s.submissionId.toLowerCase())).slice(0, cap)
+      if (chosen.length === 0) {
+        r.status = 'shots_unavailable'
+        continue
+      }
+    }
+    r.shots = chosen
+    r.submissionId = chosen[0].submissionId
+    r.token = chosen[0].token
+    r.score = chosen[0].score
+    r.gradedAt = chosen[0].gradedAt
+  }
 }
 
 function hasGradedShot(r: ResolvedRecipient): boolean {
@@ -525,6 +641,15 @@ function gradedLater(a: ResolvedRecipient, b: ResolvedRecipient): boolean {
   const tb = b.gradedAt ? Date.parse(b.gradedAt) : NaN
   if (Number.isNaN(ta)) return false
   return Number.isNaN(tb) || ta > tb
+}
+
+/**
+ * This player's results email becomes the "finish setting up to see your
+ * results" email: results are included, they have a graded shot, and their
+ * account isn't set up yet. Everyone else's email is unchanged.
+ */
+export function getsSetupEmail(r: ResolvedRecipient, content: PlayerEmailContent): boolean {
+  return content.includeResults && hasGradedShot(r) && r.setupPending && !!r.userId
 }
 
 /**
@@ -590,6 +715,8 @@ export function normalizeContent(raw: unknown, mode: 'send' | 'preview'): Conten
       includeResults,
       includeOffers: c.includeOffers === true,
       includeShopLink: c.includeShopLink === true,
+      // Only meaningful with results; anything unknown is the classic 'latest'.
+      ...(includeResults && (c.shotMode === 'unsent' || c.shotMode === 'pick') ? { shotMode: c.shotMode } : {}),
     },
   }
 }
@@ -623,6 +750,8 @@ export interface BuiltPlayerEmail {
   html: string
   /** True when this player's score card and results link are in the email. */
   includesScore: boolean
+  /** 'setup': the "finish setting up to see your results" email (no score). */
+  variant: 'results' | 'setup'
   /** The org the results release is recorded under (null: no release). */
   releaseOrgId: string | null
   /** Always 'full' when there is a release: team uploads are never paywalled. */
@@ -634,7 +763,12 @@ export async function buildPlayerEmail(
   recipient: ResolvedRecipient,
   content: PlayerEmailContent,
   cache: OrgCache = new Map(),
-  fallbackEmail = 'player@example.com'
+  fallbackEmail = 'player@example.com',
+  setup: {
+    /** The player's real setup link. Omitted (previews): a non-working placeholder. */
+    url?: string
+    facts?: SetupRecipientFacts
+  } = {}
 ): Promise<BuiltPlayerEmail> {
   const sig = senderSignature(sender)
   const orgName = recipient.orgName ?? sender.orgName
@@ -644,6 +778,43 @@ export async function buildPlayerEmail(
     org: orgName || recipient.teamName,
     coach: sig.name,
   }
+
+  if (getsSetupEmail(recipient, content)) {
+    // Not set up yet: no score, no report, no results link — the setup link
+    // only. The stock results text ("your score is below") is swapped for
+    // the setup wording; anything the sender wrote themselves is kept.
+    const stock = playerEmailTemplate('results').defaults
+    const subjectText = content.subject === stock.subject ? SETUP_SUBJECT : content.subject
+    const messageText = content.message === stock.message ? '' : content.message
+    const facts =
+      setup.facts ?? (await setupRecipientFacts([recipient.userId!])).get(recipient.userId!) ?? {
+        sharedInbox: false,
+        accountLabel: null,
+      }
+    const rendered = renderPlayerResultsSetupEmail({
+      recipientEmail: recipient.email ?? fallbackEmail,
+      subject: fillTokens(subjectText, vars),
+      message: fillTokens(messageText, vars),
+      firstName: recipient.firstName,
+      playerLabel: recipient.name || facts.accountLabel,
+      orgName,
+      teamName: recipient.teamName,
+      sender: sig,
+      shotCount: recipient.shots?.length ?? 1,
+      setupUrl: setup.url ?? RESULTS_SETUP_PREVIEW_URL,
+      sharedInbox: facts.sharedInbox,
+    })
+    return {
+      ...rendered,
+      includesScore: false,
+      variant: 'setup',
+      // The release is still recorded, so "Results sent" shows and the
+      // results page knows the org once the player is in.
+      releaseOrgId: recipient.orgId,
+      freeTier: recipient.orgId ? 'full' : null,
+    }
+  }
+
   const ctx = recipient.orgId ? await orgContext(cache, recipient.orgId) : null
 
   const hasScore = content.includeResults && hasGradedShot(recipient)
@@ -661,11 +832,25 @@ export async function buildPlayerEmail(
     if (messageText === stock.message || emptyResults) messageText = NO_SHOT_MESSAGE
     if (subjectText === stock.subject) subjectText = NO_SHOT_SUBJECT
   }
+  const multi = hasScore && !!recipient.shots && recipient.shots.length > 1
+  // Several shots: the stock text's "your latest shot ... score is below"
+  // becomes plural. Anything the sender wrote themselves is kept.
+  if (multi) {
+    const stock = playerEmailTemplate('results').defaults
+    if (messageText === stock.message) messageText = MULTI_SHOT_MESSAGE
+  }
   const results: PlayerEmailResultsBlock | null = hasScore
-    ? {
-        score: recipient.score!,
-        token: recipient.token!,
-      }
+    ? multi
+      ? {
+          score: recipient.score!,
+          token: recipient.token!,
+          gradedAt: recipient.gradedAt,
+          more: recipient.shots!.slice(1).map((s) => ({ score: s.score, token: s.token, gradedAt: s.gradedAt })),
+        }
+      : {
+          score: recipient.score!,
+          token: recipient.token!,
+        }
     : null
 
   let offers: PlayerEmailOffersBlock | null = null
@@ -708,13 +893,23 @@ export async function buildPlayerEmail(
   return {
     ...rendered,
     includesScore: hasScore,
+    variant: 'results',
     releaseOrgId: hasScore && recipient.orgId ? recipient.orgId : null,
     freeTier: ctx ? 'full' : null,
   }
 }
 
 export interface SendReport {
-  sent: Array<{ name: string; team: string; email: string; includesScore: boolean }>
+  /** `setupRequired`: got the "finish setting up to see your results" email. */
+  sent: Array<{
+    name: string
+    team: string
+    email: string
+    includesScore: boolean
+    setupRequired: boolean
+    /** Graded shots in the email (0 for a message-only email). */
+    shotCount: number
+  }>
   skipped: Array<{ name: string; team: string; reason: Exclude<RecipientStatus, 'ok'>; detail: string }>
   failed: Array<{ name: string; team: string }>
   total: number
@@ -728,6 +923,9 @@ export const SKIP_DETAIL: Record<Exclude<RecipientStatus, 'ok'>, string> = {
   same_player: 'Also selected on another team (sent once)',
   not_allowed: 'Not on a team you can email',
   nothing_to_send: 'No message and no graded shot yet, so the email would be empty',
+  recently_emailed: "Hasn't set up their account and already got several emails about it in the last hour. Try again later",
+  nothing_new: 'No new shots since their last results email',
+  shots_unavailable: 'The chosen shots are not available for this player any more',
 }
 
 export function skippedOf(recipients: ResolvedRecipient[]): SendReport['skipped'] {
@@ -754,32 +952,60 @@ export async function sendPlayerEmails(
   for (const r of recipients) {
     if (r.status === 'ok' && wouldBeEmpty(r, content)) r.status = 'nothing_to_send'
   }
-  const report: SendReport = { sent: [], skipped: skippedOf(recipients), failed: [], total: recipients.length }
   const deliverable = recipients.filter((r) => r.status === 'ok' && r.email)
   const cache: OrgCache = new Map()
 
-  for (let i = 0; i < deliverable.length; i += SEND_CHUNK) {
-    const batch = deliverable.slice(i, i + SEND_CHUNK)
+  // Not-set-up players: each gets their own setup link (landing on this
+  // shot), within the per-player cap. Over the cap: skipped, nothing sent.
+  const setupLinks = new Map<ResolvedRecipient, string>()
+  const setupFor = deliverable.filter((r) => getsSetupEmail(r, content))
+  const facts = await setupRecipientFacts(setupFor.map((r) => r.userId!))
+  for (const r of setupFor) {
+    const link = await resultsSetupLink(
+      r.userId!,
+      resultsLandingPath(r.shots ? r.shots.map((s) => s.submissionId) : [r.submissionId!])
+    )
+    if (link.ok) setupLinks.set(r, link.url)
+    // Finished setup a moment ago: they get the normal results email.
+    else if (link.reason === 'not_pending') r.setupPending = false
+    else r.status = 'recently_emailed'
+  }
+
+  const report: SendReport = { sent: [], skipped: skippedOf(recipients), failed: [], total: recipients.length }
+  const toSend = deliverable.filter((r) => r.status === 'ok')
+
+  for (let i = 0; i < toSend.length; i += SEND_CHUNK) {
+    const batch = toSend.slice(i, i + SEND_CHUNK)
     const results = await Promise.allSettled(
       batch.map(async (r) => {
         const email = r.email!
-        const built = await buildPlayerEmail(sender, r, content, cache)
-        let release: { id: string; inserted: boolean } | undefined
-        if (built.releaseOrgId && built.freeTier && r.submissionId) {
-          ;[release] = (await db`
-            INSERT INTO result_releases (
-              org_id, team_id, submission_id, recipient_user_id, recipient_email, free_tier, sent_at
-            ) VALUES (
-              ${built.releaseOrgId}, ${r.teamId}, ${r.submissionId}, ${r.userId}, ${email},
-              ${built.freeTier}, NOW()
-            )
-            ON CONFLICT (submission_id) DO UPDATE
-              SET free_tier = EXCLUDED.free_tier,
-                  recipient_email = EXCLUDED.recipient_email,
-                  recipient_user_id = COALESCE(result_releases.recipient_user_id, EXCLUDED.recipient_user_id),
-                  resent_at = NOW()
-            RETURNING id, (xmax = 0) AS inserted
-          `) as unknown as [{ id: string; inserted: boolean }]
+        const built = await buildPlayerEmail(sender, r, content, cache, undefined, {
+          url: setupLinks.get(r),
+          facts: r.userId ? facts.get(r.userId) : undefined,
+        })
+        // Never send the setup email with the preview placeholder link.
+        if (built.variant === 'setup' && !setupLinks.has(r)) throw new Error('setup link missing')
+        const releases: Array<{ id: string; inserted: boolean }> = []
+        // One release per shot in the email (one, unless several were chosen).
+        const releaseIds = r.shots ? r.shots.map((s) => s.submissionId) : r.submissionId ? [r.submissionId] : []
+        if (built.releaseOrgId && built.freeTier) {
+          for (const submissionId of releaseIds) {
+            const [release] = (await db`
+              INSERT INTO result_releases (
+                org_id, team_id, submission_id, recipient_user_id, recipient_email, free_tier, sent_at
+              ) VALUES (
+                ${built.releaseOrgId}, ${r.teamId}, ${submissionId}, ${r.userId}, ${email},
+                ${built.freeTier}, NOW()
+              )
+              ON CONFLICT (submission_id) DO UPDATE
+                SET free_tier = EXCLUDED.free_tier,
+                    recipient_email = EXCLUDED.recipient_email,
+                    recipient_user_id = COALESCE(result_releases.recipient_user_id, EXCLUDED.recipient_user_id),
+                    resent_at = NOW()
+              RETURNING id, (xmax = 0) AS inserted
+            `) as unknown as [{ id: string; inserted: boolean }]
+            if (release) releases.push(release)
+          }
         }
         try {
           await sendPlayerEmail({
@@ -791,8 +1017,10 @@ export async function sendPlayerEmails(
             html: built.html,
           })
         } catch (err) {
-          if (release?.inserted) {
-            await db`DELETE FROM result_releases WHERE id = ${release.id} AND unlocked = FALSE`.catch(() => {})
+          for (const release of releases) {
+            if (release.inserted) {
+              await db`DELETE FROM result_releases WHERE id = ${release.id} AND unlocked = FALSE`.catch(() => {})
+            }
           }
           throw err
         }
@@ -801,13 +1029,20 @@ export async function sendPlayerEmails(
         } catch (err) {
           console.error('[player-email] email_logs insert failed:', err)
         }
-        return built.includesScore
+        return built
       })
     )
     results.forEach((res, idx) => {
       const r = batch[idx]
       if (res.status === 'fulfilled') {
-        report.sent.push({ name: r.name, team: r.teamName, email: r.email!, includesScore: res.value })
+        report.sent.push({
+          name: r.name,
+          team: r.teamName,
+          email: r.email!,
+          includesScore: res.value.includesScore,
+          setupRequired: res.value.variant === 'setup',
+          shotCount: res.value.includesScore || res.value.variant === 'setup' ? r.shots?.length ?? 1 : 0,
+        })
       } else {
         console.error('[player-email] send failed:', res.reason)
         report.failed.push({ name: r.name, team: r.teamName })

@@ -9,6 +9,7 @@ import Image from 'next/image'
 import PasswordInput from '@/components/PasswordInput'
 import OAuthButtons from '@/components/OAuthButtons'
 import { LoaderCircleIcon } from 'lucide-react'
+import { safeLocalPath } from '@/lib/safe-next'
 
 // Messages for a provider round trip that came back without a session. The
 // callback can only hand back a reason code in the URL, so the wording lives
@@ -25,7 +26,9 @@ const OAUTH_ERRORS: Record<string, string> = {
 function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const next = searchParams.get('next') || '/dashboard'
+  // Where to go after signing in: only a path on this site (lib/safe-next).
+  // `from` is the older name some links still use.
+  const next = safeLocalPath(searchParams.get('next') ?? searchParams.get('from'), '/dashboard') ?? '/dashboard'
   const claimToken = searchParams.get('claimToken') || ''
   const pendingCredits = parseInt(searchParams.get('credits') || '0', 10)
   const [email, setEmail] = useState('')

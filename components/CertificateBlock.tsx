@@ -18,7 +18,11 @@ export default function CertificateBlock({ playerName, firstScore, finalScore }:
   const startScore = startNum.toFixed(1)
   const finalDisplay = finalNum.toFixed(1)
   const diff = finalNum - startNum
-  const improvement = `${diff >= 0 ? '+' : '−'}${Math.abs(diff).toFixed(1)}`
+  // A certificate is never the place to print a red minus: when the score
+  // held or dipped, the slot just reads "Completed" (the completion rule
+  // itself lives with the class enrolment, not here).
+  const improved = diff > 0
+  const improvement = improved ? `+${diff.toFixed(1)}` : 'Completed'
 
   return (
     <div
@@ -89,14 +93,16 @@ export default function CertificateBlock({ playerName, firstScore, finalScore }:
       <div
         className="absolute text-center whitespace-nowrap"
         style={{
-          left: '70%',
-          width: '8%',
-          top: '61.3%',
-          fontSize: '2.7cqw',
+          // The smaller "Completed" starts clear of the printed label and
+          // drops so it sits on the same baseline as the scores.
+          left: improved ? '70%' : '71%',
+          width: improved ? '8%' : '7%',
+          top: improved ? '61.3%' : '62.8%',
+          fontSize: improved ? '2.7cqw' : '1.3cqw',
           fontFamily: 'var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif',
           fontWeight: 700,
           letterSpacing: '0.02em',
-          color: diff >= 0 ? '#16a34a' : '#dc2626',
+          color: improved ? '#16a34a' : '#000000',
           lineHeight: 1,
         }}
       >

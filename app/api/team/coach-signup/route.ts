@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { inviteAcceptPasswordHash, recordInviteInboxProof, signTeamSession, teamSessionCookieOptions } from '@/lib/team-auth'
 import { BCRYPT_COST } from '@/lib/password'
+import { acceptSameOrgCoachInvites } from '@/lib/coach-invite-accept'
 
 // A newly-invited coach sets their password via the signup link, which logs
 // them into the team dashboard.
@@ -16,8 +17,8 @@ export async function POST(req: NextRequest) {
     }
 
     const [coach] = (await db`
-      SELECT id, team_id, email FROM team_coaches WHERE invite_token = ${token}
-    `) as unknown as [{ id: string; team_id: string; email: string } | undefined]
+      SELECT id, team_id, email, invite_emailed_only FROM team_coaches WHERE invite_token = ${token}
+    `) as unknown as [{ id: string; team_id: string; email: string; invite_emailed_only: boolean | null } | undefined]
 
     if (!coach) {
       return NextResponse.json({ error: 'This signup link is invalid or already used.' }, { status: 404 })
@@ -35,6 +36,13 @@ export async function POST(req: NextRequest) {
     // Inbox proof only when the link went solely to this inbox (the inviter
     // was never shown it — see recordInviteInboxProof).
     await recordInviteInboxProof({ coachId: coach.id }, hash)
+    // A link that went only to this inbox proves it, so the coach's other
+    // pending invites in the same organization are accepted too (one email
+    // opened, every team in the switcher). A link the inviter was shown
+    // proves nothing and accepts only itself.
+    if (coach.invite_emailed_only === true) {
+      await acceptSameOrgCoachInvites(coach.email, hash, { coachId: coach.id })
+    }
 
     const sessionToken = await signTeamSession({ teamId: coach.team_id, adminEmail: coach.email }, hash)
     const res = NextResponse.json({ success: true })

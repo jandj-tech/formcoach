@@ -22,6 +22,26 @@ function generateAccessCode(): string {
   return code
 }
 
+// The approved application behind a signup link, so the form can open
+// pre-filled. The token is the secret; nothing is returned without it.
+export async function GET(req: NextRequest) {
+  const token = req.nextUrl.searchParams.get('token')
+  if (!token) return NextResponse.json({ error: 'Missing token' }, { status: 400 })
+  try {
+    const [application] = await db`
+      SELECT org_name, email FROM org_applications
+      WHERE signup_token = ${token} AND status = 'approved'
+    ` as unknown as [{ org_name: string; email: string } | undefined]
+    if (!application) {
+      return NextResponse.json({ error: 'This signup link is invalid or has already been used.' }, { status: 404 })
+    }
+    return NextResponse.json({ orgName: application.org_name, email: application.email.toLowerCase().trim() })
+  } catch (err) {
+    console.error('Org register lookup error:', err)
+    return NextResponse.json({ error: 'Could not load this signup link' }, { status: 500 })
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { name, email, password, token, turnstileToken } = (await req.json().catch(() => ({}))) as {
@@ -56,19 +76,20 @@ export async function POST(req: NextRequest) {
     const orgName = cleanDisplayText(name, 255)
     if (!orgName.ok) return NextResponse.json({ error: orgName.error }, { status: 400 })
 
-    const emailLower = email.toLowerCase().trim()
-
     // Require a valid approval token
     if (typeof token !== 'string' || !token) {
       return NextResponse.json({ error: 'Invalid or missing approval token.' }, { status: 403 })
     }
     const [application] = await db`
-      SELECT id FROM org_applications
+      SELECT id, email FROM org_applications
       WHERE signup_token = ${token} AND status = 'approved'
-    ` as unknown as [{ id: string } | undefined]
+    ` as unknown as [{ id: string; email: string } | undefined]
     if (!application) {
       return NextResponse.json({ error: 'This signup link is invalid or has already been used.' }, { status: 403 })
     }
+    // The account is for the address that applied (and received this link),
+    // not whatever was typed into the form.
+    const emailLower = application.email.toLowerCase().trim()
 
     const existing = await db`SELECT id FROM organizations WHERE LOWER(admin_email) = ${emailLower}`
     if (existing.length > 0) {

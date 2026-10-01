@@ -5,21 +5,27 @@ import Link from 'next/link'
 import { LoaderCircleIcon, RefreshCwIcon } from 'lucide-react'
 import { backendButton } from '@/components/backend/button-styles'
 import {
+  PLAYER_EMAIL_LIMITS,
   playerEmailTemplate,
   type PlayerEmailContent,
+  type PlayerEmailShotMode,
   type PlayerEmailTemplateId,
 } from '@/lib/player-email-templates'
 import RecipientStep from './RecipientStep'
 import ContentStep from './ContentStep'
 import ReviewStep, { type ComposerError, type Excluded } from './ReviewStep'
 import SendResultPanel from './SendResultPanel'
+import ShotPicker, { pickedFor, type ShotPicks } from './ShotPicker'
 import {
   CARD,
   blockReason,
   canEmail,
+  getsSetupEmail,
   pickId,
   plural,
   resolveSelection,
+  shotsOf,
+  unsentShots,
   type Audience,
   type PreviewResponse,
   type Recipient,
@@ -155,6 +161,8 @@ export default function PlayerEmailComposer({
 
   const [content, setContent] = useState<PlayerEmailContent>(() => templateContent(DEFAULT_TEMPLATE, null))
   const [undo, setUndo] = useState<{ content: PlayerEmailContent; label: string } | null>(null)
+  // Per-recipient shot ticks for "Pick shots…" (absent: their latest).
+  const [shotPicks, setShotPicks] = useState<ShotPicks>({})
 
   const [previewId, setPreviewId] = useState<string | null>(null)
   const [preview, setPreview] = useState<PreviewResponse | null>(null)
@@ -295,10 +303,31 @@ export default function PlayerEmailComposer({
     setUndo(null)
   }
 
+  // Selected players with several graded shots: they get the "Which shots?" choice.
+  const multi = useMemo(
+    () => (content.includeResults ? recipients.filter((r) => shotsOf(r.player).length > 1) : []),
+    [recipients, content.includeResults],
+  )
+  const shotMode: PlayerEmailShotMode = content.includeResults && multi.length > 0 ? content.shotMode ?? 'latest' : 'latest'
+
   // What the server gets: offers can only be included when there are some.
-  const outgoing: PlayerEmailContent = useMemo(
-    () => ({ ...content, includeOffers: content.includeOffers && offers.count > 0 }),
-    [content, offers.count],
+  const outgoing: PlayerEmailContent = useMemo(() => {
+    const { shotMode: _mode, ...rest } = content
+    void _mode
+    return {
+      ...rest,
+      includeOffers: content.includeOffers && offers.count > 0,
+      ...(shotMode !== 'latest' ? { shotMode } : {}),
+    }
+  }, [content, offers.count, shotMode])
+
+  /** A recipient as the server gets it: with their ticked shots in 'pick' mode. */
+  const wirePick = useCallback(
+    (r: Recipient) =>
+      shotMode === 'pick' && shotsOf(r.player).length > 1
+        ? { teamId: r.team.id, key: r.player.key, submissionIds: pickedFor(r, shotPicks) }
+        : { teamId: r.team.id, key: r.player.key },
+    [shotMode, shotPicks],
   )
 
   // ── Preview ─────────────────────────────────────────────────────────────
@@ -339,7 +368,7 @@ export default function PlayerEmailComposer({
   const previewKey =
     previewBlocked || !effectivePreview
       ? null
-      : JSON.stringify({ as, content: outgoing, recipient: { teamId: effectivePreview.team.id, key: effectivePreview.player.key } })
+      : JSON.stringify({ as, content: outgoing, recipient: wirePick(effectivePreview) })
 
   useEffect(() => {
     if (!previewKey) return
@@ -399,6 +428,39 @@ export default function PlayerEmailComposer({
 
   // Soft checks: the message points at something the email won't contain.
   const warnings = contentWarnings(content, offers)
+  const cap = PLAYER_EMAIL_LIMITS.shotsPerPlayer
+  // 'unsent': anyone whose graded shots were all emailed already is skipped.
+  const nothingNew =
+    shotMode === 'unsent'
+      ? recipients.filter((r) => shotsOf(r.player).length > 0 && unsentShots(r.player).length === 0)
+      : []
+  if (nothingNew.length > 0) {
+    warnings.push(
+      `${plural(nothingNew.length, 'selected player has', 'selected players have')} no new shots since their last results email, so they will be skipped: ${nothingNew
+        .slice(0, 5)
+        .map((r) => r.player.name)
+        .join(', ')}${nothingNew.length > 5 ? ` and ${nothingNew.length - 5} more` : ''}`.replace(/\.?$/, '.'),
+    )
+  }
+  // Shots across the send, when more than the latest can go out.
+  const shotTotal =
+    shotMode === 'latest'
+      ? null
+      : recipients.reduce((n, r) => {
+          if (r.player.score === null || !r.player.submissionId) return n
+          if (shotMode === 'unsent') return n + Math.min(cap, unsentShots(r.player).length)
+          return n + (shotsOf(r.player).length > 1 ? pickedFor(r, shotPicks).length : 1)
+        }, 0)
+
+  // Not-set-up players get the "finish setup" version: one click shows it.
+  const firstSetup = recipients.find((r) => getsSetupEmail(r.player, content.includeResults)) ?? null
+  function previewSetupVersion() {
+    if (!firstSetup) return
+    setPreviewId(firstSetup.id)
+    requestAnimationFrame(() =>
+      document.getElementById('player-email-preview')?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+    )
+  }
 
   // Roster order of every row — the order the server sees picks in.
   const order = useMemo(() => teams.flatMap((t) => t.players.map((p) => pickId(t.id, p.key))), [teams])
@@ -418,7 +480,7 @@ export default function PlayerEmailComposer({
           // the result lists every ticked player; first occurrence wins.
           recipients: [...recipients, ...duplicates]
             .sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id))
-            .map((r) => ({ teamId: r.team.id, key: r.player.key })),
+            .map(wirePick),
         }),
       })
       const json = await readJson(res)
@@ -446,6 +508,7 @@ export default function PlayerEmailComposer({
     setUndo(null)
     setQuery('')
     setContent(templateContent(DEFAULT_TEMPLATE, offers))
+    setShotPicks({})
     setSelected(
       as === 'coach' ? new Set(teams.flatMap((t) => t.players.filter(canEmail).map((p) => pickId(t.id, p.key)))) : new Set(),
     )
@@ -551,6 +614,18 @@ export default function PlayerEmailComposer({
             onUndo={undoTemplate}
             onPreviewId={setPreviewId}
             onGoToOffers={onGoToOffers}
+            resultsExtra={
+              multi.length > 0 ? (
+                <ShotPicker
+                  mode={shotMode}
+                  multi={multi}
+                  picks={shotPicks}
+                  disabled={sending}
+                  onMode={(m) => patchContent({ shotMode: m })}
+                  onPicks={setShotPicks}
+                />
+              ) : null
+            }
           />
           <ReviewStep
             fromHeader={preview?.fromHeader ?? audience.sender.fromHeader}
@@ -566,6 +641,8 @@ export default function PlayerEmailComposer({
             sending={sending}
             error={sendError}
             onSend={send}
+            onPreviewSetup={firstSetup ? previewSetupVersion : undefined}
+            shotTotal={shotTotal}
           />
         </>
       )}

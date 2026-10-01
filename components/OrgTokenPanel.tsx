@@ -173,7 +173,8 @@ export default function OrgTokenPanel({
         <div>
           <h3 className="text-base font-semibold text-gray-900 dark:text-chalk">Send tokens</h3>
           <p className="text-sm text-gray-500 dark:text-chalk-dim mt-0.5">
-            Move your organization tokens to the people who&apos;ll use them.
+            Move your organization tokens to the people who&apos;ll use them. Your own uploads
+            don&apos;t need this: they use that team&apos;s tokens first, then your organization tokens.
           </p>
         </div>
 

@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import { copyToClipboard } from '@/lib/copy'
 
 // Self-contained "add a coach to this team" control for the org dashboard.
-export default function OrgAddCoach({ teamId }: { teamId: string }) {
+// `coachEmails` is the team's current added-coach list (lowercased).
+export default function OrgAddCoach({ teamId, coachEmails }: { teamId: string; coachEmails: string[] }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [email, setEmail] = useState('')
@@ -20,6 +21,15 @@ export default function OrgAddCoach({ teamId }: { teamId: string }) {
   const [addedExisting, setAddedExisting] = useState('')
   const [copied, setCopied] = useState(false)
   const [selfName, setSelfName] = useState('')
+  // The coach the "Coach added" note is about. Once they drop off the list
+  // (removed, or the invite cancelled) the note is stale, so it clears.
+  const [addedEmail, setAddedEmail] = useState('')
+  const addedListed = !!addedEmail && coachEmails.includes(addedEmail)
+  const [wasListed, setWasListed] = useState(false)
+  if (addedListed !== wasListed) {
+    setWasListed(addedListed)
+    if (wasListed) reset()
+  }
 
   const BASE_URL = typeof window !== 'undefined' ? window.location.origin : 'https://learnhoops.com'
 
@@ -28,6 +38,8 @@ export default function OrgAddCoach({ teamId }: { teamId: string }) {
     setInviteUrl('')
     setEmailedTo('')
     setAddedExisting('')
+    setAddedEmail('')
+    setWasListed(false)
   }
 
   // mode: 'email' emails the coach the signup link; 'link' just returns it.
@@ -60,6 +72,7 @@ export default function OrgAddCoach({ teamId }: { teamId: string }) {
         if (data.inviteToken) setInviteUrl(`${BASE_URL}/team/coach-signup?token=${data.inviteToken}`)
         if (data.emailed) setEmailedTo(value)
       }
+      setAddedEmail(value.toLowerCase())
       setEmail('')
       setCoachName('')
       setLoading(false)

@@ -35,7 +35,15 @@ const nextConfig: NextConfig = {
   // .next/standalone build ships without it and every buyer falls back to USD.
   outputFileTracingIncludes: {
     '/api/**': ['./lib/geo/country.mmdb'],
+    // The ffmpeg binary (ffmpeg-static) is resolved by path at runtime, so the
+    // tracer never sees it. Named here for the ONE route that spawns it; it is
+    // ~75MB and must not ride along in every other API function.
+    '/api/extract-frames': ['./node_modules/ffmpeg-static/ffmpeg'],
   },
+  // Keep ffmpeg-static out of the server bundle: its index.js locates the
+  // binary with __dirname, which only points at node_modules when the module
+  // is loaded from there rather than inlined.
+  serverExternalPackages: ['ffmpeg-static'],
   // No experimental.viewTransition flag: next 16.3 rejects it as an invalid key
   // ("Invalid next.config.ts options detected"). <ViewTransition> in
   // app/layout.tsx renders correctly without it on react 19.2 — verified against

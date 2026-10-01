@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { callVisionModel, detectModel } from '@/lib/model-provider'
+import { detectShotRegion } from '@/lib/shot-detect'
 import { resolveUploader, uploaderKey } from '@/lib/upload-guard'
 import { rateLimit, rateLimitByIp } from '@/lib/rate-limit'
 import { validateFrames } from '@/lib/frame-input'
@@ -43,31 +43,8 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const n = frames.length
-
-  // Routed through callVisionModel so this follows ANALYSIS_MODEL during a
-  // provider switch. It used to hardcode claude-sonnet-4-6, so switching the
-  // grader left this call on Anthropic — and on an account with no credits
-  // that is a hard failure, not a cheaper one.
-  const { text } = await callVisionModel({
-    model: detectModel(),
-    framesBase64: frames,
-    frameMimeTypes: frames.map(() => 'image/jpeg'),
-    maxTokens: 50,
-    userText: `These are ${n} evenly-spaced frames numbered 0 to ${n - 1} covering a basketball video from start to finish.
-
-Which frame number is closest to the basketball shot release — the moment the shooter's arm is extended upward with the ball leaving their hand? If multiple shots, pick the last one. If no obvious release, pick the most likely frame.
-
-Output ONLY this JSON: {"frame": <0 to ${n - 1}>}`,
-  })
-  const match = text.match(/\{[\s\S]*?\}/)
-
-  const fallbackFrame = Math.floor(n * 0.6)
-  if (!match) return NextResponse.json({ region: 60 })
-
-  const parsed = JSON.parse(match[0])
-  const frame = Math.max(0, Math.min(n - 1, Number(parsed.frame ?? fallbackFrame)))
-  const region = Math.round((frame / Math.max(1, n - 1)) * 100)
-
+  // Prompt and parsing live in lib/shot-detect.ts, shared with the server-side
+  // extractor so both decode paths window the clip identically.
+  const region = await detectShotRegion(frames)
   return NextResponse.json({ region })
 }

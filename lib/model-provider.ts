@@ -154,8 +154,17 @@ async function callGatewayModelOnce(params: {
   frameMimeTypes: string[]
   userText: string
   maxTokens: number
+  /**
+   * 'off' for the two shot-LOCALISATION calls only. They answer with one
+   * number and were given a 50-100 token ceiling; a reasoning model spends
+   * that whole budget thinking and returns nothing, so both detectors were
+   * silently falling back to their defaults on every upload. Grading keeps
+   * reasoning on — see the measurement on the `reasoning` parameter below.
+   */
+  reasoning?: 'on' | 'off'
 }): Promise<ModelCallResult> {
   const { model, systemPrompt, framesBase64, frameMimeTypes, userText, maxTokens } = params
+  const reasoningOff = params.reasoning === 'off' || process.env.GATEWAY_REASONING === '0'
 
   const content: Array<Record<string, unknown>> = framesBase64.map((b64, i) => ({
     type: 'image_url',
@@ -193,7 +202,7 @@ async function callGatewayModelOnce(params: {
       // against Sonnet's 1.73. The thinking is most of this model's accuracy.
       // GATEWAY_REASONING=0 disables it, which is only worth doing to
       // reproduce that measurement.
-      ...(isOpenRouter && process.env.GATEWAY_REASONING === '0'
+      ...(isOpenRouter && reasoningOff
         ? { reasoning: { enabled: false } }
         : {}),
       messages: [
@@ -330,11 +339,13 @@ export async function callVisionModel(params: {
   frameMimeTypes: string[]
   userText: string
   maxTokens: number
+  /** See callGatewayModelOnce. Ignored for Anthropic-direct models. */
+  reasoning?: 'on' | 'off'
 }): Promise<ModelCallResult> {
-  const { model, framesBase64, frameMimeTypes, userText, maxTokens } = params
+  const { model, framesBase64, frameMimeTypes, userText, maxTokens, reasoning } = params
 
   if (isGatewayModel(model)) {
-    return callGatewayModel({ model, framesBase64, frameMimeTypes, userText, maxTokens })
+    return callGatewayModel({ model, framesBase64, frameMimeTypes, userText, maxTokens, reasoning })
   }
 
   // Imported lazily so a gateway-only deployment never has to load the

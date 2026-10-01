@@ -27,7 +27,7 @@ interface TeamMode {
   onSuccess: (submissionId: string, token: string) => void
 }
 
-export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { teamMode?: TeamMode; coachSelf?: boolean; coachCredits?: number } = {}) {
+export default function VideoUploader({ teamMode, coachSelf, coachCredits, coachUnlimited }: { teamMode?: TeamMode; coachSelf?: boolean; coachCredits?: number; coachUnlimited?: boolean } = {}) {
   const inApp = useIsInApp()
   const [isDragging, setIsDragging] = useState(false)
   const [status, setStatus] = useState<'idle' | 'extracting' | 'uploading' | 'quality-warning' | 'error'>('idle')
@@ -468,7 +468,8 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits }: { t
   const sessionLoading = !teamMode && !coachSelf && sessionUser === undefined
   const notLoggedIn = !teamMode && !coachSelf && sessionUser === null
   const noTokens = !teamMode && !coachSelf && !!sessionUser && !sessionUser.subscribed && sessionUser.tokens === 0 && !sessionUser.freeUpload
-  const noCredits = !!coachSelf && (coachCredits ?? 0) === 0
+  // A complimentary org (lib/org-complimentary.ts) is never locked on its balance.
+  const noCredits = !!coachSelf && !coachUnlimited && (coachCredits ?? 0) === 0
   const isLocked = sessionLoading || notLoggedIn || noTokens || noCredits
 
   async function handleBuyToken() {

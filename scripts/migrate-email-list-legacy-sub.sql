@@ -30,7 +30,7 @@ WHERE s.user_id IS NULL
   AND LOWER(u.email) = LOWER(s.email)
   AND s.team_id IS NULL
   AND s.team_player_id IS NULL
-  AND COALESCE(s.entitlement_source, '') NOT IN ('coach_credit', 'org_balance')
+  AND COALESCE(s.entitlement_source, '') NOT IN ('coach_credit', 'org_balance', 'org_comp')
   AND (
     u.password_hash IS NOT NULL
     OR EXISTS (SELECT 1 FROM user_oauth_identities oi WHERE oi.user_id = u.id)

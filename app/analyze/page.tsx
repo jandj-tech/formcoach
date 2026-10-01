@@ -9,6 +9,7 @@ import { getUsageSummary, type UsageSummary } from '@/lib/player-dashboard'
 import { getSession } from '@/lib/auth'
 import { getTeamSession, provenCoachCreditsEmail } from '@/lib/team-auth'
 import { getOrgSession } from '@/lib/org-auth'
+import { orgHasComplimentaryAccess } from '@/lib/org-complimentary'
 import { userTier, teamTier, orgTierById } from '@/lib/team-features'
 import type { OrgTier } from '@/lib/team-pricing'
 import { db } from '@/lib/db'
@@ -28,7 +29,7 @@ export default async function AnalyzePage() {
   const orgSession = playerSession || teamSession ? null : await getOrgSession()
 
   const coachEmail = teamSession?.adminEmail ?? orgSession?.adminEmail ?? null
-  let coachSelf: { credits: number; tier: OrgTier } | null = null
+  let coachSelf: { credits: number; tier: OrgTier; unlimited: boolean } | null = null
   const playerTier = playerSession ? await userTier(playerSession.userId) : 'none'
   // Subscribers see their allowance state before uploading — including the
   // explicit "this will use a purchased token" warning. Null for everyone else.
@@ -67,6 +68,9 @@ export default async function AnalyzePage() {
     }
     coachSelf = {
       credits,
+      // Same gate /api/analyze applies: a complimentary org's own uploads
+      // are free, whatever its (separate, sendable) token balance says.
+      unlimited: orgSession ? await orgHasComplimentaryAccess(orgSession.orgId) : false,
       tier: teamSession
         ? await teamTier(teamSession.teamId)
         : orgSession
@@ -100,7 +104,7 @@ export default async function AnalyzePage() {
         {/* The upload flow keeps its light panel so every state stays readable. */}
         <div className="w-full max-w-xl bg-white rounded-3xl p-3 sm:p-5 shadow-[0_0_60px_-20px_rgba(255,92,26,0.35)]">
           {coachSelf ? (
-            <CoachSelfUploader credits={coachSelf.credits} tier={coachSelf.tier} />
+            <CoachSelfUploader credits={coachSelf.credits} tier={coachSelf.tier} unlimited={coachSelf.unlimited} />
           ) : (
             <VideoUploader />
           )}

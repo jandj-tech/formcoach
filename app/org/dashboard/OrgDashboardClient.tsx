@@ -51,6 +51,8 @@ interface Props {
   classPackages: ClassPackage[]
   myUploads: Shot[]
   orgTokenBalance: number
+  /** The org's own uploads are complimentary; the balance is only what it can send. */
+  orgComplimentary?: boolean
   /** The organization plan — sets the token rate and which features are open. */
   orgTier: OrgTier
   /** Personal credit balances held by this org's coaches (credits > 0 only). */
@@ -66,7 +68,7 @@ const PLAYER_SORT_OPTIONS: SortOption<PlayerSortMode>[] = [
   { value: 'score-asc', label: 'Lowest score' },
 ]
 
-export default function OrgDashboardClient({ teams, orgName, classPackages, myUploads, orgTokenBalance, orgTier, coachCreditBalances, hasBilling }: Props) {
+export default function OrgDashboardClient({ teams, orgName, classPackages, myUploads, orgTokenBalance, orgComplimentary = false, orgTier, coachCreditBalances, hasBilling }: Props) {
   const router = useRouter()
   const inApp = useIsInApp()
   const [expanded, setExpanded] = useState<string | null>(null)
@@ -910,6 +912,11 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
           <p className="text-sm text-gray-500 dark:text-chalk-dim mt-0.5">
             Tokens you&apos;ve bought but not sent anywhere yet &mdash; 1 token = 1 shot analysis.
           </p>
+          {orgComplimentary && (
+            <p className="text-sm font-semibold text-ember-600 dark:text-ember-400 mt-1">
+              Your own uploads are complimentary &mdash; this balance is only what you can send to coaches and players.
+            </p>
+          )}
         </div>
         <p className="shrink-0 text-3xl font-bold text-gray-900 dark:text-chalk tabular-nums">{orgTokenBalance}</p>
       </div>

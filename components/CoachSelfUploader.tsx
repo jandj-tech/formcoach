@@ -20,7 +20,7 @@ export default function CoachSelfUploader({ credits, tier, unlimited = false }: 
         <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3">
           <p className="text-sm font-semibold text-black">Unlimited analyses on this account</p>
           <p className="text-xs text-gray-500 mt-0.5">
-            Your own uploads are complimentary. Tokens you send to coaches and players still come from your organization balance.
+            Your own uploads are complimentary, and so are the tokens you send to coaches and players from the organization dashboard.
           </p>
         </div>
       )}

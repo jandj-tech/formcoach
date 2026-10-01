@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { db } from '@/lib/db'
+import { orgHasComplimentaryAccess } from '@/lib/org-complimentary'
 
 // Moves credits from the org's general balance into a specific team's credit
 // pool. Once in that pool the team's coach can spend them on coach uploads or
@@ -33,13 +34,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'That team is not in your organization' }, { status: 404 })
     }
 
+    // A complimentary org (lib/org-complimentary.ts) moves tokens without a
+    // balance: the team is credited, nothing is debited.
+    const complimentary = await orgHasComplimentaryAccess(session.orgId)
+
     // Atomic: deduct from org balance, add to team credits.
     const result = await db.begin(async (sql) => {
-      const updated = (await sql`
-        UPDATE organizations SET token_balance = token_balance - ${qty}
-        WHERE id = ${session.orgId} AND COALESCE(token_balance, 0) >= ${qty}
-        RETURNING token_balance
-      `) as unknown as Array<{ token_balance: number }>
+      const updated = complimentary
+        ? ((await sql`
+            SELECT COALESCE(token_balance, 0)::int AS token_balance FROM organizations WHERE id = ${session.orgId}
+          `) as unknown as Array<{ token_balance: number }>)
+        : ((await sql`
+            UPDATE organizations SET token_balance = token_balance - ${qty}
+            WHERE id = ${session.orgId} AND COALESCE(token_balance, 0) >= ${qty}
+            RETURNING token_balance
+          `) as unknown as Array<{ token_balance: number }>)
       if (updated.length === 0) return null
       const [team] = (await sql`
         UPDATE teams

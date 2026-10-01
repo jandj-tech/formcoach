@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { db } from '@/lib/db'
+import { orgHasComplimentaryAccess } from '@/lib/org-complimentary'
 
 // Assigns tokens from the organization's own balance to selected players on
 // any of the org's teams.
@@ -40,14 +41,22 @@ export async function POST(req: NextRequest) {
 
     const total = ids.length * each
 
+    // A complimentary org (lib/org-complimentary.ts) sends without a balance:
+    // the players are credited, nothing is debited.
+    const complimentary = await orgHasComplimentaryAccess(session.orgId)
+
     // Deduct from the org balance and credit players atomically. The
     // conditional UPDATE matches no row if the balance is short.
     const remaining = await db.begin(async (sql) => {
-      const updated = (await sql`
-        UPDATE organizations SET token_balance = token_balance - ${total}
-        WHERE id = ${session.orgId} AND COALESCE(token_balance, 0) >= ${total}
-        RETURNING token_balance
-      `) as unknown as Array<{ token_balance: number }>
+      const updated = complimentary
+        ? ((await sql`
+            SELECT COALESCE(token_balance, 0)::int AS token_balance FROM organizations WHERE id = ${session.orgId}
+          `) as unknown as Array<{ token_balance: number }>)
+        : ((await sql`
+            UPDATE organizations SET token_balance = token_balance - ${total}
+            WHERE id = ${session.orgId} AND COALESCE(token_balance, 0) >= ${total}
+            RETURNING token_balance
+          `) as unknown as Array<{ token_balance: number }>)
       if (updated.length === 0) return null
       for (const uid of ids) {
         await sql`UPDATE users SET analysis_tokens = COALESCE(analysis_tokens, 0) + ${each} WHERE id = ${uid}`

@@ -9,7 +9,9 @@ import { useRouter } from 'next/navigation'
 import { LoaderCircleIcon, VideoIcon } from 'lucide-react'
 import { upload } from '@vercel/blob/client'
 
-import { extractFrames as extractFramesShared, fitFramesToBudget } from '@/lib/frame-extraction'
+import { fitFramesToBudget } from '@/lib/frame-extraction'
+import { extractFramesAnywhere, type ExtractPhase } from '@/lib/frame-extraction-anywhere'
+import { isVideoFile, VIDEO_ACCEPT } from '@/lib/video-files'
 
 
 interface SessionUser { id: string; email: string; tokens: number; subscribed: boolean; onTeam: boolean; onInitiatedTeam: boolean; orgTier?: string; freeUpload: boolean }
@@ -32,6 +34,9 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits, coach
   const [isDragging, setIsDragging] = useState(false)
   const [status, setStatus] = useState<'idle' | 'extracting' | 'uploading' | 'quality-warning' | 'error'>('idle')
   const [progress, setProgress] = useState(0)
+  // Where extraction is happening. 'uploading'/'server' means the browser
+  // could not decode the file and the original is being read with ffmpeg.
+  const [extractPhase, setExtractPhase] = useState<ExtractPhase>('browser')
   const [previews, setPreviews] = useState<string[]>([])
   const [errorMsg, setErrorMsg] = useState('')
   // Set when the server reports the video contained no analyzable shot.
@@ -80,16 +85,20 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits, coach
   // Frame extraction lives in lib/frame-extraction.ts so the bulk uploader can
   // share it — and so both go through the same tab-wide decoder lock. Running
   // two extractions at once returns solid black frames with no error at all.
+  // extractFramesAnywhere adds the server fallback for codecs this browser
+  // cannot decode (iPhone HEVC on Windows, Dolby Vision, ProRes…).
   const extractFrames = useCallback(
-    (file: File) =>
-      extractFramesShared(file, {
+    (file: File, signal: AbortSignal) =>
+      extractFramesAnywhere(file, {
         teamCode: teamMode?.code ?? null,
         onProgress: setProgress,
+        onPhase: setExtractPhase,
         onStatus: (s) => setStatus(s as never),
         onPreviews: setPreviews,
         onNoShot: setNoShot,
         onError: setErrorMsg,
         isCancelled: () => cancelledRef.current,
+        abortSignal: signal,
       }),
     [teamMode?.code]
   )
@@ -97,7 +106,8 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits, coach
 
   const handleFile = useCallback(
     async (file: File) => {
-      if (!file.type.startsWith('video/')) {
+      // By extension too: Windows reports no MIME type for .mkv/.wmv/.mts.
+      if (!isVideoFile(file)) {
         setErrorMsg('Please upload a video file.')
         return
       }
@@ -113,18 +123,23 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits, coach
       setErrorMsg('')
       setNoShot(false)
       setStatus('extracting')
+      setExtractPhase('browser')
       setProgress(0)
       cancelledRef.current = false
       const controller = new AbortController()
       abortRef.current = controller
 
       try {
-        const rawFrames = await extractFrames(file)
+        const extracted = await extractFrames(file, controller.signal)
         if (cancelledRef.current) return
 
         // Re-encode the frames if needed so the upload can never exceed
         // Vercel's 4.5MB request limit (the cause of the HTTP 413 error).
-        const { frames, reduced } = await fitFramesToBudget(rawFrames)
+        const fitted = await fitFramesToBudget(extracted.frames)
+        const frames = fitted.frames
+        // The server applies the same ladder before answering, so its
+        // `reduced` means the same thing.
+        const reduced = fitted.reduced || extracted.reduced
         if (cancelledRef.current) return
 
         // The video was large enough to need compression — warn the user that
@@ -158,7 +173,11 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits, coach
         // must stay at or below /api/upload-video's maximumSizeInBytes.
         const BLOB_UPLOAD_MAX_BYTES = 100 * 1024 * 1024
         let videoUrl: string | null = null
-        if (file.size <= BLOB_UPLOAD_MAX_BYTES) {
+        if (extracted.videoUrl) {
+          // Already in the store: the original went up for server decoding.
+          videoUrl = extracted.videoUrl
+          setVideoUploadStatus({ state: 'ok', url: videoUrl })
+        } else if (file.size <= BLOB_UPLOAD_MAX_BYTES) {
           setVideoUploadStatus({ state: 'uploading' })
           try {
             const ext = (file.name.split('.').pop() || 'mp4').toLowerCase()
@@ -260,7 +279,9 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits, coach
         // Show the actual reason so a failed upload is diagnosable, not a mystery.
         const detail = err instanceof Error && err.message ? err.message : ''
         setErrorMsg(
-          detail ? `Upload failed: ${detail}` : 'Something went wrong. Please try again.',
+          detail
+            ? `Upload failed: ${detail}`
+            : 'Something went wrong and we could not tell what. Check your connection and try again; if it fails twice, email support with the file name.',
         )
       }
     },
@@ -397,14 +418,18 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits, coach
         <div>
           <p className="text-black font-semibold text-lg mb-2">
             {status === 'extracting'
-              ? progress < 20 ? 'Scanning your video...'
+              ? extractPhase === 'uploading' ? 'Sending your video to our server...'
+              : extractPhase === 'server' ? 'Reading your video on our server...'
+              : progress < 20 ? 'Scanning your video...'
               : progress < 45 ? 'Finding your shot...'
               : 'Capturing your shot...'
               : 'Uploading & analyzing your shot...'}
           </p>
           <p className="text-black text-sm">
             {status === 'extracting'
-              ? progress < 20 ? 'Reading frames from your video'
+              ? extractPhase === 'uploading' ? 'This browser can’t play this video format, so we’re reading it for you'
+              : extractPhase === 'server' ? 'Finding your shot — this can take a minute for long or 4K clips'
+              : progress < 20 ? 'Reading frames from your video'
               : progress < 45 ? 'AI is locating your shot release'
               : 'Extracting frames of your shooting form'
               : 'Our AI is studying your form in detail'}
@@ -632,7 +657,7 @@ export default function VideoUploader({ teamMode, coachSelf, coachCredits, coach
       <input
         ref={inputRef}
         type="file"
-        accept="video/*"
+        accept={VIDEO_ACCEPT}
         aria-label="Upload a video of your shot"
         className="hidden"
         onChange={onInputChange}

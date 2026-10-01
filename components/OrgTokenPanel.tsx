@@ -72,8 +72,11 @@ export default function OrgTokenPanel({
   coaches,
   teams,
   tier,
+  unlimited = false,
 }: {
   balance: number
+  /** Complimentary org (lib/org-complimentary.ts): sends are free, so the balance never gates them. */
+  unlimited?: boolean
   players: OrgPlayerOpt[]
   coaches: OrgCoachOpt[]
   teams: OrgTeamOpt[]
@@ -117,11 +120,11 @@ export default function OrgTokenPanel({
   }, [teams, search])
 
   const sendTotal = mode === 'players' ? selectedPlayerIds.size * Math.max(1, tokensEach) : Math.max(1, sendQty)
-  const notEnough = sendTotal > balance
+  const notEnough = !unlimited && sendTotal > balance
   const canSend =
     !busy &&
     !notEnough &&
-    balance > 0 &&
+    (unlimited || balance > 0) &&
     (mode === 'players' ? selectedPlayerIds.size > 0 : mode === 'team' ? !!sendTeamId : !!sendCoachEmail)
 
   async function buyTokens() {
@@ -339,12 +342,12 @@ export default function OrgTokenPanel({
           </label>
           <span className="text-sm text-gray-500 dark:text-chalk-dim flex-1 min-w-0">
             {mode === 'players' && selectedPlayerIds.size > 0 && (
-              <>Total <span className="font-semibold text-gray-900 dark:text-chalk tabular-nums">{sendTotal}</span> of your {balance} organization tokens</>
+              <>Total <span className="font-semibold text-gray-900 dark:text-chalk tabular-nums">{sendTotal}</span>{unlimited ? ' — complimentary' : <> of your {balance} organization tokens</>}</>
             )}
             {mode === 'coach' && !sendCoachEmail && coaches.length > 0 && <>Pick a coach above</>}
             {mode === 'team' && !sendTeamId && teams.length > 0 && <>Pick a team above</>}
             {((mode === 'coach' && !!sendCoachEmail) || (mode === 'team' && !!sendTeamId)) && (
-              <>From your <span className="font-semibold text-gray-900 dark:text-chalk tabular-nums">{balance}</span> organization tokens</>
+              unlimited ? <>Complimentary — nothing is deducted</> : <>From your <span className="font-semibold text-gray-900 dark:text-chalk tabular-nums">{balance}</span> organization tokens</>
             )}
           </span>
           <button
@@ -362,7 +365,7 @@ export default function OrgTokenPanel({
             Not enough tokens — this send needs {sendTotal}, you have {balance}.
           </p>
         )}
-        {balance === 0 && !notEnough && (
+        {!unlimited && balance === 0 && !notEnough && (
           <p className="text-sm text-gray-500 dark:text-chalk-dim">
             You have no organization tokens{inApp ? '.' : ' — buy tokens below first.'}
           </p>
@@ -372,8 +375,9 @@ export default function OrgTokenPanel({
         )}
       </div>
 
-      {/* ── Buy tokens — hidden in the iOS app (guideline 3.1.1) ─── */}
-      {!inApp && (
+      {/* ── Buy tokens — hidden in the iOS app (guideline 3.1.1) and for a
+          complimentary org, which has nothing to buy ─── */}
+      {!inApp && !unlimited && (
         <div id="buy-tokens" className="bg-white dark:bg-ink-900 border border-gray-200 dark:border-courtline rounded-2xl p-5 space-y-4 scroll-mt-24">
           <div>
             <h3 className="text-base font-semibold text-gray-900 dark:text-chalk">Buy tokens</h3>

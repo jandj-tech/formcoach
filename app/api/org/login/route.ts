@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import bcrypt from 'bcryptjs'
-import { db } from '@/lib/db'
+import { orgLoginForEmail } from '@/lib/org-admins'
 import { signOrgSession, orgSessionCookieOptions } from '@/lib/org-auth'
 import { rateLimitLogin } from '@/lib/rate-limit'
 
@@ -20,21 +19,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Email and password required' }, { status: 400 })
     }
 
-    const emailLower = email.toLowerCase().trim()
-    const [org] = await db`
-      SELECT id, admin_email, password_hash FROM organizations WHERE admin_email = ${emailLower}
-    ` as unknown as [{ id: string; admin_email: string; password_hash: string } | undefined]
-
-    if (!org) {
+    // The owner's login (organizations) or a linked admin's (org_admins) —
+    // whichever this email + password matches. lib/org-admins.ts.
+    const cred = await orgLoginForEmail(String(email), String(password))
+    if (!cred) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
     }
 
-    const valid = await bcrypt.compare(password, org.password_hash)
-    if (!valid) {
-      return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
-    }
-
-    const token = await signOrgSession({ orgId: org.id, adminEmail: org.admin_email }, org.password_hash)
+    const token = await signOrgSession({ orgId: cred.orgId, adminEmail: cred.email }, cred.hash)
     const res = NextResponse.json({ success: true })
     res.cookies.set(orgSessionCookieOptions(token))
     return res

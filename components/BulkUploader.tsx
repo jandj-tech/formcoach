@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ExternalLinkIcon, RotateCwIcon, XIcon } from 'lucide-react'
-import { extractFrames, fitFramesToBudget } from '@/lib/frame-extraction'
+import { fitFramesToBudget } from '@/lib/frame-extraction'
+import { extractFramesAnywhere } from '@/lib/frame-extraction-anywhere'
+import { isVideoFile, VIDEO_ACCEPT } from '@/lib/video-files'
 import { backendButton } from '@/components/backend/button-styles'
 import type { TeamRosterEntry } from '@/lib/team-roster-refs'
 
@@ -37,7 +39,7 @@ export type RosterPlayer = TeamRosterEntry
 type ClipState =
   | { kind: 'waiting' }
   | { kind: 'queued' }
-  | { kind: 'frames'; pct: number }
+  | { kind: 'frames'; pct: number; note?: string }
   | { kind: 'grading' }
   | { kind: 'rate_wait'; seconds: number }
   | { kind: 'done'; token: string; score: number | null; filedUnder: string | null }
@@ -262,7 +264,8 @@ export default function BulkUploader({
 
   const addFiles = useCallback(
     (files: File[]) => {
-      const videos = files.filter((f) => f.type.startsWith('video/'))
+      // By extension too: Windows reports no MIME type for .mkv/.wmv/.mts.
+      const videos = files.filter(isVideoFile)
       // Room is read from `clips`, not from inside the setClips updater: React
       // may run an updater more than once, and setting other state from in
       // there would fire the overflow notice twice.
@@ -311,16 +314,43 @@ export default function BulkUploader({
         // Never decode alongside a poster frame (see runThumbs).
         if (thumbInFlight.current) await thumbInFlight.current.catch(() => undefined)
         setClip(clip.id, { state: { kind: 'frames', pct: 0 } })
-        const raw = await extractFrames(clip.file, {
+        // Browser first; when it cannot decode the codec (iPhone HEVC on a
+        // Windows PC, Dolby Vision, ProRes…) the original goes to the server
+        // and ffmpeg produces the same frames. `note` tells the coach which.
+        let note: string | undefined
+        const extracted = await extractFramesAnywhere(clip.file, {
           teamCode,
+          onPhase: (phase) => {
+            note =
+              phase === 'uploading' ? 'Sending the full video to our server…'
+              : phase === 'server' ? 'Reading the video on our server…'
+              : undefined
+            setClip(clip.id, { state: { kind: 'frames', pct: 0, note } })
+          },
           onProgress: (pct) =>
-            setClip(clip.id, { state: { kind: 'frames', pct: Math.min(100, pct) } }),
+            setClip(clip.id, { state: { kind: 'frames', pct: Math.min(100, pct), note } }),
           isCancelled: () => cancelled.current,
         })
         if (cancelled.current) return
+        const raw = extracted.frames
         if (raw.length === 0) {
           setClip(clip.id, { state: { kind: 'error', message: 'No frames could be read from this video' } })
           return
+        }
+        // The poster frame failed for the same reason the browser could not
+        // decode it; the first server frame shows who is in the clip.
+        if (extracted.viaServer && !clipsRef.current.find((c) => c.id === clip.id)?.thumb) {
+          try {
+            const bitmap = await createImageBitmap(raw[0])
+            const w = 96
+            const h = Math.max(1, Math.round((w * bitmap.height) / bitmap.width))
+            const canvas = document.createElement('canvas')
+            canvas.width = w
+            canvas.height = h
+            canvas.getContext('2d')?.drawImage(bitmap, 0, 0, w, h)
+            bitmap.close()
+            setClip(clip.id, { thumb: canvas.toDataURL('image/jpeg', 0.6) })
+          } catch {}
         }
 
         const { frames } = await fitFramesToBudget(raw)
@@ -331,6 +361,9 @@ export default function BulkUploader({
           frames.forEach((b, i) => form.append('frames', b, `frame-${i}.jpg`))
           form.append('teamCode', teamCode)
           form.append('playerRef', clip.playerRef)
+          // Already stored for server decoding — file it with the analysis so
+          // the results page can play it.
+          if (extracted.videoUrl) form.append('videoUrl', extracted.videoUrl)
 
           const res = await fetch('/api/analyze', { method: 'POST', body: form })
           if (res.status === 429 && attempt < MAX_RATE_WAITS) {
@@ -376,8 +409,10 @@ export default function BulkUploader({
             // fetch() rejects with a TypeError ("Failed to fetch", "Load
             // failed") when the connection drops — say that in plain words.
             message: err instanceof TypeError && /fetch|load failed|network/i.test(err.message)
-              ? 'Connection lost — try again'
-              : err instanceof Error ? err.message : 'Something went wrong',
+              ? 'The connection dropped while this clip was being sent. Check your internet and press Try again — nothing was charged.'
+              : err instanceof Error && err.message
+                ? err.message
+                : 'Something went wrong with this clip and we could not tell what. Press Try again; if it fails twice, email support with the file name.',
           },
         })
       }
@@ -439,7 +474,9 @@ export default function BulkUploader({
       case 'queued':
         return 'Waiting its turn…'
       case 'frames':
-        return `Looking at the video… ${c.state.pct}%`
+        return c.state.note
+          ? `${c.state.note} ${c.state.pct}%`
+          : `Looking at the video… ${c.state.pct}%`
       case 'grading':
         return 'Grading the shot…'
       case 'rate_wait':
@@ -541,7 +578,7 @@ export default function BulkUploader({
         <input
           ref={fileInput}
           type="file"
-          accept="video/*"
+          accept={VIDEO_ACCEPT}
           multiple
           className="hidden"
           onChange={(e) => {
@@ -622,7 +659,7 @@ export default function BulkUploader({
                     </div>
                   )}
                   <span
-                    className={`block truncate text-sm ${
+                    className={`block text-sm ${c.state.kind === 'error' ? 'whitespace-normal break-words' : 'truncate'} ${
                       c.state.kind === 'done'
                         ? 'font-semibold text-green-700 dark:text-green-400'
                         : c.state.kind === 'error'

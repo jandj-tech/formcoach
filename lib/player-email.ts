@@ -16,6 +16,7 @@ import { teamGradedShots, teamResultsRoster, type RosterPlayer, type TeamShot } 
 import { getPurchasableOffers } from '@/lib/org-offers-db'
 import { effectivePriceCents, type OrgOffer } from '@/lib/org-offers'
 import type { VisibilityTier } from '@/lib/result-visibility'
+import { PLAYER_EMAILS_PAUSED } from './player-email-pause'
 import {
   BASE_URL,
   cleanSubject,
@@ -385,6 +386,8 @@ export type RecipientStatus =
   | 'nothing_new'
   /** shotMode 'pick': none of the chosen shots is one this team holds for them. */
   | 'shots_unavailable'
+  /** Player emails are switched off while the org features are being tested (lib/player-email-pause.ts). */
+  | 'paused'
 
 export interface ResolvedRecipient {
   teamId: string
@@ -938,6 +941,7 @@ export const SKIP_DETAIL: Record<Exclude<RecipientStatus, 'ok'>, string> = {
   recently_emailed: "Hasn't set up their account and already got several emails about it in the last hour. Try again later",
   nothing_new: 'No new shots since their last results email',
   shots_unavailable: 'The chosen shots are not available for this player any more',
+  paused: 'Player emails are paused while the org features are being tested',
 }
 
 export function skippedOf(recipients: ResolvedRecipient[]): SendReport['skipped'] {
@@ -963,6 +967,8 @@ export async function sendPlayerEmails(
   // Never send an empty body, even if a caller skipped resolveRecipients' check.
   for (const r of recipients) {
     if (r.status === 'ok' && wouldBeEmpty(r, content)) r.status = 'nothing_to_send'
+    // Testing kill switch: nothing is sent and no result_releases row is written.
+    if (r.status === 'ok' && PLAYER_EMAILS_PAUSED) r.status = 'paused'
   }
   const deliverable = recipients.filter((r) => r.status === 'ok' && r.email)
   const cache: OrgCache = new Map()

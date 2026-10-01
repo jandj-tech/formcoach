@@ -21,6 +21,7 @@ import {
   setupRecipientFacts,
   type SetupRecipientFacts,
 } from '@/lib/results-setup'
+import { PLAYER_EMAILS_PAUSED } from '@/lib/player-email-pause'
 
 // Send at most this many emails concurrently (announce-route convention).
 const SEND_CHUNK = 20
@@ -143,6 +144,7 @@ export async function POST(req: NextRequest) {
     const skippedUnreachable: string[] = []
     const skippedSuppressed: string[] = []
     const skippedRecentlyEmailed: string[] = []
+    const skippedPaused: string[] = []
     const failed: string[] = []
     let sent = 0
     let sentSetup = 0
@@ -197,6 +199,9 @@ export async function POST(req: NextRequest) {
         batch.map(async ([userId, list]) => {
           const s = list[0]
           const email = s.email!.toLowerCase()
+          // Player emails paused for testing (lib/player-email-pause.ts): no
+          // setup link minted, no release row, nothing counted as sent.
+          if (PLAYER_EMAILS_PAUSED) return 'paused' as const
           const link = await resultsSetupLink(userId, resultsLandingPath(list.map((x) => x.submissionId)))
           if (!link.ok) {
             if (link.reason === 'rate_limited') return 'limited' as const
@@ -231,6 +236,8 @@ export async function POST(req: NextRequest) {
           sentSetup += 1
         } else if (r.value === 'limited') {
           skippedRecentlyEmailed.push(label)
+        } else if (r.value === 'paused') {
+          skippedPaused.push(label)
         }
       })
     }
@@ -293,6 +300,8 @@ export async function POST(req: NextRequest) {
       skippedSuppressed,
       // Additive: not set up yet, and already sent several setup emails recently.
       skippedRecentlyEmailed,
+      // Additive: not set up yet, and player emails are paused for testing.
+      skippedPaused,
       // Additive: how many of `sent` were "finish setting up to see your results".
       sentSetup,
       failed,

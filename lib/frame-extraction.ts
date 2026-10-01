@@ -27,6 +27,20 @@ export interface ExtractOptions {
   isCancelled?: () => boolean
 }
 
+/**
+ * The browser could not decode this file's video track. Thrown instead of a
+ * plain Error so callers can tell "this machine lacks the codec" (recoverable:
+ * hand the original to the server, see lib/frame-extraction-anywhere.ts) apart
+ * from a real failure. An iPhone's default HEVC .MOV on a Windows PC lands
+ * here: the container parses, the audio decodes, and the picture is 0×0.
+ */
+export class UndecodableVideoError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'UndecodableVideoError'
+  }
+}
+
 const FRAME_COUNT = 28
 const ROUGH_COUNT = 10      // tiny frames for rough shot location
 const PROBE_COUNT = 30      // low-res frames for precise release detection
@@ -178,7 +192,9 @@ async function extractFramesUnsynchronized(
 
     video.onerror = () => {
       cleanup()
-      reject(new Error('Failed to load video'))
+      // No decodable stream at all (ProRes, a codec this browser has never
+      // heard of, or a container it will not open).
+      reject(new UndecodableVideoError('This browser cannot play this video'))
     }
 
     video.onloadedmetadata = async () => {
@@ -186,7 +202,9 @@ async function extractFramesUnsynchronized(
       const duration = video.duration
       if (!duration || !isFinite(duration) || !video.videoWidth || !video.videoHeight) {
         cleanup()
-        reject(new Error('Could not read this video. Please try a different file.'))
+        // Metadata loaded but the picture is 0×0: the browser decoded the
+        // audio track and dropped a video codec it does not support.
+        reject(new UndecodableVideoError('This browser cannot decode this video'))
         return
       }
 
@@ -219,6 +237,23 @@ async function extractFramesUnsynchronized(
         await seekTo(video, probeTime)
         roughCtx.drawImage(video, 0, 0, roughW, roughH)
         decoderReady = !isBlackFrame(roughCtx, roughW, roughH)
+      }
+      // Still black after three nudges at the midpoint? A dark gym or a fade
+      // could do that legitimately, so look at two more points before deciding
+      // the decoder is simply not producing pictures for this file (the lock
+      // above rules out the concurrent-decode cause). Carrying on would upload
+      // 28 black frames and come back "no shot"; the server can decode it.
+      if (!decoderReady) {
+        for (const frac of [0.25, 0.75]) {
+          await seekTo(video, Math.min(duration * frac, Math.max(0, duration - 0.1)))
+          roughCtx.drawImage(video, 0, 0, roughW, roughH)
+          if (!isBlackFrame(roughCtx, roughW, roughH)) { decoderReady = true; break }
+        }
+      }
+      if (!decoderReady) {
+        cleanup()
+        reject(new UndecodableVideoError('This browser produced no picture for this video'))
+        return
       }
 
       const roughTimestamps = Array.from({ length: ROUGH_COUNT }, (_, i) =>

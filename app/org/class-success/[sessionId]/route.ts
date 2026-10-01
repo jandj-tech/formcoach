@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { currentOrgPasswordHash, getOrgSessionFromRequest } from '@/lib/org-auth'
+import { currentOrgCredentialHash, getOrgSessionFromRequest } from '@/lib/org-auth'
 import { signTeamSession, teamSessionCookieOptions } from '@/lib/team-auth'
 
 // Stripe success URL for class-package checkouts. Runs as a Route Handler
@@ -41,7 +41,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ sessionId: 
   if (pkg && team) {
     const token = await signTeamSession(
       { teamId: team.id, adminEmail: orgSession.adminEmail },
-      await currentOrgPasswordHash(orgSession.orgId),
+      await currentOrgCredentialHash(orgSession),
     )
     const res = NextResponse.redirect(`${baseUrl}/team/dashboard#program`)
     res.cookies.set(teamSessionCookieOptions(token))

@@ -4,6 +4,7 @@ import { db } from '@/lib/db'
 import { addToEmailList } from '@/lib/email-list'
 import { grantFreeOrgTokensIfEligible } from '@/lib/team-tokens'
 import { sendPlayerSetupEmail, sendCoachSignupEmail, sendCoachAddedToTeamEmail } from '@/lib/email'
+import { playerEmailPaused } from '@/lib/player-email-pause'
 import { resolveBaseUrl } from '@/lib/base-url'
 import { cleanDisplayText, cleanOptionalDisplayText } from '@/lib/moderation'
 import { isValidEmail as isValidEmailShared, importRowProblem } from '@/lib/csv'
@@ -232,6 +233,13 @@ export async function resendPlayerSetup(
     team_name: string
     org_name: string | null
   } | undefined]
+
+  // Player emails paused for testing (lib/player-email-pause.ts): carry on as
+  // if it went, without spending the player's hourly / daily setup-email caps
+  // or touching their setup token.
+  if (playerEmailPaused('player setup email', u.email)) {
+    return { ok: true, email: u.email, teamName: m?.team_name ?? null }
+  }
 
   const limit = await rateLimit(`player-setup:${userId}`, 3, 3600)
   if (!limit.ok) return { ok: false, reason: 'rate_limited', email: u.email, teamName: m?.team_name ?? null }
@@ -745,6 +753,8 @@ export async function addPlayerToTeam(input: AddPlayerInput): Promise<AddPlayerR
 
   const sendSetup = async (userId: string): Promise<boolean> => {
     if (!input.sendEmail) return false
+    // Paused for testing: reported as sent (as main's flows do), no cap spent.
+    if (playerEmailPaused('player setup email', email)) return true
     if (!(await setupEmailDailyOk(userId))) return false
     const url = await issuePlayerSetupToken(userId)
     if (!url) return false
@@ -972,7 +982,7 @@ async function sameNameTwinWarning(
  *   - never a team upload (team_id / team_player_id set: the email there, if
  *     any, is the coach's, not the player's),
  *   - never a coach's or org admin's self-upload (entitlement_source
- *     coach_credit / org_balance store the COACH's address in email),
+ *     coach_credit / org_balance / org_comp store the COACH's address in email),
  *   - never when the address belongs to a coach or org admin at all: signup
  *     does not verify the inbox, so a stranger signing up with a coach's email
  *     must not collect (and then delete) that coach's shots.
@@ -988,7 +998,7 @@ export async function adoptLegacySubmissions(userId: string, email: string): Pro
       AND s.user_id IS NULL
       AND s.team_id IS NULL
       AND s.team_player_id IS NULL
-      AND COALESCE(s.entitlement_source, '') NOT IN ('coach_credit', 'org_balance')
+      AND COALESCE(s.entitlement_source, '') NOT IN ('coach_credit', 'org_balance', 'org_comp')
       AND NOT EXISTS (SELECT 1 FROM teams t WHERE LOWER(t.admin_email) = ${e})
       AND NOT EXISTS (SELECT 1 FROM team_coaches c WHERE LOWER(c.email) = ${e})
       AND NOT EXISTS (SELECT 1 FROM organizations o WHERE LOWER(o.admin_email) = ${e})
@@ -1285,7 +1295,10 @@ export async function giveOwnAccount(input: {
 
   const needsSetup = done.status === 'created' || (!!done.account?.rosterPending && !done.account.passwordHash)
   let emailed = false
-  if (needsSetup && input.sendEmail !== false && (await setupEmailDailyOk(done.userId))) {
+  // Paused for testing: reported as sent (as main's flows do), no cap spent.
+  if (needsSetup && input.sendEmail !== false && playerEmailPaused('player setup email', email)) {
+    emailed = true
+  } else if (needsSetup && input.sendEmail !== false && (await setupEmailDailyOk(done.userId))) {
     const url = await issuePlayerSetupToken(done.userId)
     if (url) {
       const ctx = await getTeamContext(input.teamId)

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { currentOrgPasswordHash, getOrgSessionFromRequest } from '@/lib/org-auth'
+import { currentOrgCredentialHash, getOrgSessionFromRequest } from '@/lib/org-auth'
 import { signTeamSession, teamSessionCookieOptions } from '@/lib/team-auth'
 import { db } from '@/lib/db'
 
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     // Bound to the org's own password: an org password reset ends it too.
     const token = await signTeamSession(
       { teamId: team.id, adminEmail: session.adminEmail },
-      await currentOrgPasswordHash(session.orgId),
+      await currentOrgCredentialHash(session),
     )
     const res = NextResponse.json({ success: true })
     res.cookies.set(teamSessionCookieOptions(token))

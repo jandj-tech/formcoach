@@ -115,6 +115,17 @@ export async function issueResetTokens(email: string): Promise<ResetIssue | null
   `) as unknown as Array<{ id: string }>
   if (orgs.length > 0) return { kind: 'single', token }
 
+  // A linked organization admin (lib/org-admins.ts) resets its own row.
+  try {
+    const admins = (await db`
+      UPDATE org_admins SET reset_token = ${token}, reset_token_expires = ${expires}
+      WHERE LOWER(email) = LOWER(${email}) AND accepted_at IS NOT NULL RETURNING id
+    `) as unknown as Array<{ id: string }>
+    if (admins.length > 0) return { kind: 'single', token }
+  } catch (err) {
+    if (!/relation .*org_admins.* does not exist/i.test(err instanceof Error ? err.message : String(err))) throw err
+  }
+
   // A founding coach can own several teams; the token goes on every team row
   // so the reset link resolves no matter which row is read back.
   const teams = (await db`
@@ -257,6 +268,8 @@ export async function playerForResetToken(
   const [other] = (await db`
     SELECT 1 FROM organizations WHERE reset_token = ${token} AND reset_token_expires > NOW()
     UNION ALL
+    SELECT 1 FROM org_admins WHERE reset_token = ${token} AND reset_token_expires > NOW()
+    UNION ALL
     SELECT 1 FROM teams WHERE reset_token = ${token} AND reset_token_expires > NOW()
     UNION ALL
     SELECT 1 FROM team_coaches WHERE reset_token = ${token} AND reset_token_expires > NOW()
@@ -289,6 +302,8 @@ export async function resetTokenStatus(token: string): Promise<
   if (typeof token !== 'string' || !/^[0-9a-f]{16,128}$/i.test(token)) return { valid: false }
   const [other] = (await db`
     SELECT 1 FROM organizations WHERE reset_token = ${token} AND reset_token_expires > NOW()
+    UNION ALL
+    SELECT 1 FROM org_admins WHERE reset_token = ${token} AND reset_token_expires > NOW()
     UNION ALL
     SELECT 1 FROM teams WHERE reset_token = ${token} AND reset_token_expires > NOW()
     UNION ALL
@@ -428,6 +443,25 @@ export async function consumeResetToken(
     // The token only travels to this inbox (link or app code): inbox proof.
     await recordResetInboxProof({ orgId: org.id }, passwordHash)
     return { kind: 'org', orgId: org.id, email: org.admin_email, redirect: '/org/dashboard' }
+  }
+
+  // A linked organization admin (lib/org-admins.ts): its own row only.
+  try {
+    const [admin] = (await db`
+      SELECT id, org_id, email FROM org_admins
+      WHERE reset_token = ${token} AND reset_token_expires > NOW()
+    `) as unknown as [{ id: string; org_id: string; email: string } | undefined]
+    if (admin) {
+      await db`
+        UPDATE org_admins
+        SET password_hash = ${passwordHash}, reset_token = NULL, reset_token_expires = NULL,
+            email_proven_at = NOW(), email_proven_hash = ${passwordHash}
+        WHERE id = ${admin.id}
+      `
+      return { kind: 'org', orgId: admin.org_id, email: admin.email, redirect: '/org/dashboard' }
+    }
+  } catch (err) {
+    if (!/relation .*org_admins.* does not exist/i.test(err instanceof Error ? err.message : String(err))) throw err
   }
 
   const [team] = (await db`

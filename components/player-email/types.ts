@@ -127,6 +127,8 @@ export function skipReasonText(reason: string): string {
       return 'The chosen shots are not available for this player any more'
     case 'recently_emailed':
       return "Hasn't set up their account and already got several emails about it in the last hour. Try again later"
+    case 'paused':
+      return 'Player emails are paused while the org features are being tested'
     default:
       return reason.replace(/_/g, ' ')
   }

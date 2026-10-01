@@ -10,6 +10,7 @@ import OrgRosterImport from '@/components/OrgRosterImport'
 import PlayerEmailComposer from '@/components/player-email/PlayerEmailComposer'
 import OrgOffersPanel from './OrgOffersPanel'
 import { PlayerStatusBadge } from '@/components/PlayerSetupStatus'
+import OrgAdminsPanel, { type OrgAdminItem } from './OrgAdminsPanel'
 import {
   memberDisplayName,
   memberPickLabel,
@@ -53,6 +54,13 @@ interface Props {
   classPackages: ClassPackage[]
   myUploads: Shot[]
   orgTokenBalance: number
+  /** Complimentary org (lib/org-complimentary.ts): its own uploads and everything it sends are free. */
+  orgComplimentary?: boolean
+  /** Linked full-access admin logins (lib/org-admins.ts) and who is signed in now. */
+  orgAdmins: OrgAdminItem[]
+  orgRole: 'owner' | 'admin'
+  ownerEmail: string
+  sessionEmail: string
   /** The organization plan — sets the token rate and which features are open. */
   orgTier: OrgTier
   /** Personal credit balances held by this org's coaches (credits > 0 only). */
@@ -68,7 +76,7 @@ const PLAYER_SORT_OPTIONS: SortOption<PlayerSortMode>[] = [
   { value: 'score-asc', label: 'Lowest score' },
 ]
 
-export default function OrgDashboardClient({ teams, orgName, classPackages, myUploads, orgTokenBalance, orgTier, coachCreditBalances, hasBilling }: Props) {
+export default function OrgDashboardClient({ teams, orgName, classPackages, myUploads, orgTokenBalance, orgComplimentary = false, orgAdmins, orgRole, ownerEmail, sessionEmail, orgTier, coachCreditBalances, hasBilling }: Props) {
   const router = useRouter()
   const inApp = useIsInApp()
   const [expanded, setExpanded] = useState<string | null>(null)
@@ -910,6 +918,15 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
 
   const settingsTab = (
     <div className="space-y-4">
+      <Section
+        title="Organization admins"
+        tipLabel="What is an organization admin?"
+        tip="A full-access login for your organization. Admins see every team and can send tokens, email results and change settings — unlike a coach, who only sees their own team."
+        summary={`${1 + orgAdmins.filter((a) => a.accepted).length} with access${orgAdmins.some((a) => !a.accepted) ? ', invite pending' : ''}`}
+        defaultOpen
+      >
+        <OrgAdminsPanel ownerEmail={ownerEmail} sessionEmail={sessionEmail} role={orgRole} admins={orgAdmins} />
+      </Section>
       <AppearanceSection />
       {/* Only orgs on a Stripe plan have anything to manage; legacy and comped
           orgs were told they would never be billed, so they never see this. */}
@@ -949,8 +966,13 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
           <p className="text-sm text-gray-500 dark:text-chalk-dim mt-0.5">
             Tokens you&apos;ve bought but not sent anywhere yet &mdash; 1 token = 1 shot analysis.
           </p>
+          {orgComplimentary && (
+            <p className="text-sm font-semibold text-ember-600 dark:text-ember-400 mt-1">
+              Complimentary &mdash; your own uploads and every token you send to coaches, teams and players are free.
+            </p>
+          )}
         </div>
-        <p className="shrink-0 text-3xl font-bold text-gray-900 dark:text-chalk tabular-nums">{orgTokenBalance}</p>
+        <p className="shrink-0 text-3xl font-bold text-gray-900 dark:text-chalk tabular-nums">{orgComplimentary ? 'Unlimited' : orgTokenBalance}</p>
       </div>
 
       {/* Where distributed tokens live — collapsed until asked for, and kept
@@ -979,6 +1001,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
         coaches={orgCoaches}
         teams={teams.map(t => ({ id: t.id, name: t.name, coachName: t.coachNickname || t.adminEmail, ageGroup: t.ageGroup, memberCount: t.members.length, credits: t.credits }))}
         tier={orgTier}
+        unlimited={orgComplimentary}
       />
     </div>
   )
@@ -1258,7 +1281,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
               them straight to players or to a coach from the Tokens tab.
             </InfoTip>
           </div>
-          <p className="text-xl font-bold text-gray-900 dark:text-chalk tabular-nums mt-0.5">{orgTokenBalance}</p>
+          <p className="text-xl font-bold text-gray-900 dark:text-chalk tabular-nums mt-0.5">{orgComplimentary ? 'Unlimited' : orgTokenBalance}</p>
           <div className="flex items-center gap-3 mt-1">
             <button
               type="button"

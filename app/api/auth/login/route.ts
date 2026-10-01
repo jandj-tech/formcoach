@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
 import { signSession, sessionCookieOptions } from '@/lib/auth'
 import { signTeamSession, signTeamChoice, teamSessionCookieOptions, findCoachTeamsForLogin } from '@/lib/team-auth'
 import { signOrgSession, orgSessionCookieOptions } from '@/lib/org-auth'
+import { orgLoginForEmail } from '@/lib/org-admins'
 import { clearOtherSessions, PLAYER_COOKIE, TEAM_COOKIE, ORG_COOKIE } from '@/lib/sessions'
 import { rateLimitLogin } from '@/lib/rate-limit'
 import { matchPlayerPassword, playersByEmail, signPlayerChoice } from '@/lib/player-accounts'
@@ -67,12 +67,11 @@ export async function POST(req: NextRequest) {
 
     const emailLower = email.toLowerCase().trim()
 
-    // 1. Organization account
-    const [org] = (await db`
-      SELECT id, admin_email, password_hash FROM organizations WHERE admin_email = ${emailLower}
-    `) as unknown as [{ id: string; admin_email: string; password_hash: string } | undefined]
-    if (org?.password_hash && (await bcrypt.compare(password, org.password_hash))) {
-      const token = await signOrgSession({ orgId: org.id, adminEmail: org.admin_email }, org.password_hash)
+    // 1. Organization account — the owner's login or a linked admin's
+    //    (lib/org-admins.ts), whichever this email + password matches.
+    const orgCred = await orgLoginForEmail(emailLower, String(password))
+    if (orgCred) {
+      const token = await signOrgSession({ orgId: orgCred.orgId, adminEmail: orgCred.email }, orgCred.hash)
       // `token` is for the mobile app (Bearer auth); the web ignores it and
       // follows the cookie + redirect.
       const res = NextResponse.json({ success: true, redirect: '/org/dashboard', token })

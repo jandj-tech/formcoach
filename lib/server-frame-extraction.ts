@@ -1,4 +1,4 @@
-import { chmod, copyFile, mkdtemp, readFile, readdir, rm, stat } from 'node:fs/promises'
+import { chmod, copyFile, mkdtemp, readFile, readdir, rename, rm, stat } from 'node:fs/promises'
 import { createWriteStream } from 'node:fs'
 import { pipeline } from 'node:stream/promises'
 import { Readable } from 'node:stream'
@@ -55,9 +55,17 @@ const MAX_DURATION_S = 10 * 60
 // The frames travel back to the browser in one response, which Vercel caps at
 // 4.5MB — same budget the client uses before posting to /api/analyze.
 const UPLOAD_BUDGET_BYTES = 3.8 * 1024 * 1024
-// When ffmpeg cannot read https itself, the original is downloaded to /tmp
-// first. Vercel gives a function 500MB of /tmp.
-const DOWNLOAD_MAX_BYTES = 450 * 1024 * 1024
+// The original is ALWAYS downloaded to /tmp and ffmpeg only ever opens local
+// files (`-protocol_whitelist file`). Letting ffmpeg fetch the URL itself
+// would also let a crafted playlist named .mp4 make it fetch any URL the
+// server can reach. Vercel gives a function 500MB of /tmp.
+export const DOWNLOAD_MAX_BYTES = 450 * 1024 * 1024
+const DOWNLOAD_TIMEOUT_MS = 180_000
+// Detector calls are best-effort; past this we fall back to defaults rather
+// than let a slow model push the function into Vercel's kill at maxDuration.
+const DETECT_TIMEOUT_MS = 60_000
+// A tmp dir older than this belongs to a request Vercel killed mid-flight.
+const STALE_TMP_MS = 20 * 60 * 1000
 const STDERR_CAP = 64 * 1024
 
 export type VideoReadCode = 'no_video' | 'unreadable' | 'too_long' | 'ffmpeg_missing' | 'timeout'
@@ -80,7 +88,8 @@ export interface ServerExtractResult {
     duration: number
     hdr: boolean
     surveyMode: 'full' | 'seek'
-    downloaded: boolean
+    /** Size of the original, from the download. */
+    bytes: number
     ms: number
   }
 }
@@ -89,6 +98,8 @@ export interface ServerExtractOptions {
   log?: (line: string) => void
   /** Total wall-clock budget; each ffmpeg call gets a slice of what is left. */
   deadlineMs?: number
+  /** Aborting kills any running ffmpeg and stops the pipeline (client went away). */
+  signal?: AbortSignal
 }
 
 // --- ffmpeg process plumbing -------------------------------------------------
@@ -125,9 +136,14 @@ async function ffmpegBinary(): Promise<string> {
     try {
       await stat(copy)
     } catch {
-      await copyFile(candidate, copy)
+      // Copy under a private name and rename into place, so a concurrent cold
+      // start never spawns a half-written binary.
+      const partial = `${copy}.${process.pid}.${Date.now()}.part`
+      await copyFile(candidate, partial)
+      await chmod(partial, 0o755)
+      await rename(partial, copy)
     }
-    await chmod(copy, 0o755)
+    await chmod(copy, 0o755).catch(() => undefined)
     resolvedBinary = copy
   }
   return resolvedBinary
@@ -150,11 +166,14 @@ async function childProcess(): Promise<typeof import('node:child_process')> {
   return import(/* turbopackIgnore: true */ /* webpackIgnore: true */ 'node:child_process')
 }
 
-async function runFfmpeg(args: string[], timeoutMs: number): Promise<RunResult> {
+async function runFfmpeg(args: string[], timeoutMs: number, signal?: AbortSignal): Promise<RunResult> {
+  if (signal?.aborted) throw new AbortedError()
   const bin = await ffmpegBinary()
   const { spawn } = await childProcess()
   return new Promise<RunResult>((resolve, reject) => {
-    const child = spawn(bin, ['-hide_banner', '-nostdin', ...args], {
+    // Local files only — never a URL, never a pipe. The input is always the
+    // copy we downloaded ourselves.
+    const child = spawn(bin, ['-hide_banner', '-nostdin', '-protocol_whitelist', 'file', ...args], {
       stdio: ['ignore', 'ignore', 'pipe'],
     })
     let stderr = ''
@@ -163,34 +182,69 @@ async function runFfmpeg(args: string[], timeoutMs: number): Promise<RunResult> 
       timedOut = true
       child.kill('SIGKILL')
     }, Math.max(1000, timeoutMs))
+    const onAbort = () => child.kill('SIGKILL')
+    signal?.addEventListener('abort', onAbort, { once: true })
     child.stderr.on('data', (chunk: Buffer) => {
       if (stderr.length < STDERR_CAP) stderr += chunk.toString('utf8')
     })
     child.on('error', (err) => {
       clearTimeout(timer)
+      signal?.removeEventListener('abort', onAbort)
       reject(err)
     })
     child.on('close', (code) => {
       clearTimeout(timer)
-      resolve({ code, stderr, timedOut })
+      signal?.removeEventListener('abort', onAbort)
+      if (signal?.aborted) reject(new AbortedError())
+      else resolve({ code, stderr, timedOut })
     })
   })
 }
 
+export class AbortedError extends Error {
+  constructor() {
+    super('Extraction aborted')
+    this.name = 'AbortedError'
+  }
+}
+
 // --- input handling ----------------------------------------------------------
 
-function isHttpUrl(input: string): boolean {
-  return /^https?:\/\//i.test(input)
+/**
+ * The first bytes of every container ffmpeg should see here are binary. A
+ * file that starts as plain text is a playlist or a script (HLS "#EXTM3U",
+ * "ffconcat", SDP…) — formats whose whole job is to make the demuxer open
+ * OTHER files and URLs. Nobody films a jump shot into one of those.
+ */
+function looksLikeText(head: Buffer): boolean {
+  if (head.length === 0) return true
+  let printable = 0
+  for (const b of head) {
+    if ((b >= 0x20 && b < 0x7f) || b === 0x09 || b === 0x0a || b === 0x0d) printable++
+  }
+  return printable / head.length > 0.97
 }
 
-/** Protocols ffmpeg may touch for this input and nothing else (no file:// via a URL, no pipes). */
-function protocolArgs(input: string): string[] {
-  return ['-protocol_whitelist', isHttpUrl(input) ? 'https,http,tls,tcp' : 'file']
-}
-
-/** Stream the original to disk when ffmpeg cannot fetch https itself. */
-async function downloadToTmp(url: string, dir: string, log: (s: string) => void): Promise<string> {
-  const res = await fetch(url)
+/** Stream the uploaded original to /tmp, bounded in size and time, following no redirects. */
+async function downloadToTmp(url: string, dir: string, log: (s: string) => void, signal?: AbortSignal): Promise<{ file: string; bytes: number }> {
+  const tooBig = () =>
+    new VideoReadError(
+      'unreadable',
+      'This video is over 450MB, which is too large for our server to read in one go. Trim it to just the shot (a few seconds) and try again.',
+    )
+  let res: Response
+  try {
+    res = await fetch(url, {
+      redirect: 'error',
+      signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS)]) : AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS),
+    })
+  } catch (err) {
+    if (signal?.aborted) throw new AbortedError()
+    throw new VideoReadError(
+      'unreadable',
+      `Our server could not fetch the uploaded video (${err instanceof Error ? err.message : 'network error'}). The upload probably did not finish — check your connection and try again.`,
+    )
+  }
   if (!res.ok || !res.body) {
     throw new VideoReadError(
       'unreadable',
@@ -198,19 +252,49 @@ async function downloadToTmp(url: string, dir: string, log: (s: string) => void)
     )
   }
   const declared = Number(res.headers.get('content-length') || '0')
-  if (declared > DOWNLOAD_MAX_BYTES) {
-    throw new VideoReadError('unreadable', 'This video is too large for our server to read in one go. Trim it to just the shot (a few seconds) and try again.')
-  }
+  if (declared > DOWNLOAD_MAX_BYTES) throw tooBig()
+
   const dest = path.join(dir, 'input.bin')
   let seen = 0
+  let head: Buffer | null = null
   const body = Readable.fromWeb(res.body as import('node:stream/web').ReadableStream)
   body.on('data', (chunk: Buffer) => {
     seen += chunk.length
-    if (seen > DOWNLOAD_MAX_BYTES) body.destroy(new VideoReadError('unreadable', 'This video is too large for our server to read in one go. Trim it to just the shot (a few seconds) and try again.'))
+    if (!head) head = chunk.subarray(0, 512)
+    if (seen > DOWNLOAD_MAX_BYTES) body.destroy(tooBig())
   })
-  await pipeline(body, createWriteStream(dest))
-  log(`downloaded ${seen} bytes to /tmp`)
-  return dest
+  try {
+    await pipeline(body, createWriteStream(dest))
+  } catch (err) {
+    if (err instanceof VideoReadError) throw err
+    if (signal?.aborted) throw new AbortedError()
+    throw new VideoReadError(
+      'unreadable',
+      'The download of the uploaded video stopped partway. Check your connection and try again.',
+    )
+  }
+  if (!head || looksLikeText(head)) {
+    throw new VideoReadError(
+      'unreadable',
+      'This file is a text document, not a video (a playlist or a link file, for example). Upload the video clip itself.',
+    )
+  }
+  log(`downloaded ${seen} bytes`)
+  return { file: dest, bytes: seen }
+}
+
+/** Remove tmp dirs left behind by requests Vercel killed before their cleanup ran. */
+async function sweepStaleTmp(): Promise<void> {
+  try {
+    const tmp = os.tmpdir()
+    const now = Date.now()
+    for (const name of await readdir(tmp)) {
+      if (!name.startsWith('lh-frames-')) continue
+      const full = path.join(tmp, name)
+      const st = await stat(full).catch(() => null)
+      if (st && now - st.mtimeMs > STALE_TMP_MS) await rm(full, { recursive: true, force: true }).catch(() => undefined)
+    }
+  } catch {}
 }
 
 // --- probing -----------------------------------------------------------------
@@ -226,16 +310,13 @@ interface ProbeInfo {
  * output file) but prints everything we need. ffprobe is not shipped with
  * ffmpeg-static, and this avoids a second 40MB binary in the bundle.
  */
-async function probe(input: string, timeoutMs: number): Promise<ProbeInfo> {
-  const { stderr, timedOut } = await runFfmpeg([...protocolArgs(input), '-i', input], timeoutMs)
+async function probe(input: string, timeoutMs: number, signal?: AbortSignal): Promise<ProbeInfo> {
+  const { stderr, timedOut } = await runFfmpeg(['-i', input], timeoutMs, signal)
   if (timedOut) {
     throw new VideoReadError(
       'timeout',
       'Our server gave up waiting while opening this video — usually a very large file on a slow connection. Try again, or trim the clip to just the shot.',
     )
-  }
-  if (/Protocol not found|Protocol '?https'? not on whitelist|Unknown protocol/i.test(stderr) && isHttpUrl(input)) {
-    throw new ProtocolUnsupported()
   }
   if (/Invalid data found when processing input|No such file|Server returned 4\d\d|Server returned 5\d\d|Unrecognized|moov atom not found/i.test(stderr)) {
     throw new VideoReadError(
@@ -245,9 +326,15 @@ async function probe(input: string, timeoutMs: number): Promise<ProbeInfo> {
   }
   // "Stream #0:0[0x1](und): Video: hevc (Main) (hvc1 / 0x31637668), yuv420p(tv, bt709), 1920x1080 ..."
   // Skip cover-art streams (an MP3's embedded JPEG is "Video: mjpeg ... (attached pic)").
+  // ffmpeg itself grades streams and picks the highest-resolution one, so
+  // do the same when a file carries several (a thumbnail track, say).
   const videoLines = [...stderr.matchAll(/Stream #\d+:\d+[^\n]*?: Video: ([a-z0-9_]+)[^\n]*/gi)]
-    .map((m) => ({ codec: m[1].toLowerCase(), line: m[0] }))
+    .map((m) => {
+      const dims = m[0].match(/, (\d{2,5})x(\d{2,5})/)
+      return { codec: m[1].toLowerCase(), line: m[0], area: dims ? Number(dims[1]) * Number(dims[2]) : 0 }
+    })
     .filter((v) => !/attached pic/i.test(v.line))
+    .sort((a, b) => b.area - a.area)
   if (videoLines.length === 0) {
     throw new VideoReadError(
       'no_video',
@@ -279,8 +366,6 @@ async function probe(input: string, timeoutMs: number): Promise<ProbeInfo> {
   }
 }
 
-class ProtocolUnsupported extends Error {}
-
 // --- filters -----------------------------------------------------------------
 
 /** Scale so the long edge is `edge` px, never upscaling, even dimensions. */
@@ -299,8 +384,11 @@ const TONEMAP =
 function videoFilter(edge: number, fps: number | null, hdr: boolean): string {
   const parts: string[] = []
   if (fps) parts.push(`fps=${fps}`)
+  // Scale FIRST: tone-mapping runs in float per pixel, and doing it on 4K
+  // frames before shrinking them to 320px cost more than the decode itself.
+  parts.push(scaleFilter(edge))
   if (hdr) parts.push(TONEMAP)
-  parts.push(scaleFilter(edge), 'format=yuvj420p')
+  parts.push('format=yuvj420p')
   return parts.join(',')
 }
 
@@ -343,16 +431,21 @@ async function fullSurvey(
   info: ProbeInfo,
   timeoutMs: number,
   log: (s: string) => void,
+  signal?: AbortSignal,
 ): Promise<Survey> {
   const fps = Math.min(SURVEY_FPS, Math.max(2, SURVEY_MAX_FRAMES / info.duration))
+  // -t and -frames:v bound the work by what the header CLAIMED, so a file
+  // whose header understates its length cannot buy itself a longer decode.
   const attempt = (hdr: boolean) =>
     runFfmpeg(
       [
-        '-loglevel', 'error', '-y', ...protocolArgs(input), '-i', input,
+        '-loglevel', 'error', '-y', '-i', input, '-t', (info.duration + 1).toFixed(3),
         '-an', '-sn', '-dn', '-vf', videoFilter(SURVEY_EDGE, fps, hdr), '-q:v', '4',
+        '-frames:v', String(SURVEY_MAX_FRAMES + 24),
         '-f', 'image2', path.join(dir, 's-%05d.jpg'),
       ],
       timeoutMs,
+      signal,
     )
   let result = await attempt(info.hdr)
   if (result.code !== 0 && info.hdr && filterUnavailable(result.stderr)) {
@@ -373,23 +466,30 @@ async function seekSurvey(
   info: ProbeInfo,
   timeoutMs: number,
   log: (s: string) => void,
+  signal?: AbortSignal,
 ): Promise<Survey> {
   const times = Array.from({ length: SEEK_SURVEY_FRAMES }, (_, i) =>
     (info.duration / (SEEK_SURVEY_FRAMES + 1)) * (i + 1),
   )
   const files: string[] = []
   const kept: number[] = []
-  const per = Math.max(3000, Math.floor(timeoutMs / SEEK_SURVEY_FRAMES))
+  const per = Math.max(6000, Math.floor(timeoutMs / SEEK_SURVEY_FRAMES))
   let hdr = info.hdr
+  // One slow seek (a 4K keyframe interval that happens to be long) must not
+  // sink the whole survey; only a run of them means the file is hopeless.
+  let timeouts = 0
+  const started = Date.now()
   for (let i = 0; i < times.length; i++) {
+    if (Date.now() - started > timeoutMs) break
     const out = path.join(dir, `s-${String(i).padStart(5, '0')}.jpg`)
     const run = (useHdr: boolean) =>
       runFfmpeg(
         [
-          '-loglevel', 'error', '-y', ...protocolArgs(input), '-ss', times[i].toFixed(3), '-i', input,
+          '-loglevel', 'error', '-y', '-ss', times[i].toFixed(3), '-i', input,
           '-an', '-sn', '-dn', '-frames:v', '1', '-vf', videoFilter(SURVEY_EDGE, null, useHdr), '-q:v', '4', out,
         ],
         per,
+        signal,
       )
     let result = await run(hdr)
     if (result.code !== 0 && hdr && filterUnavailable(result.stderr)) {
@@ -404,7 +504,8 @@ async function seekSurvey(
         kept.push(times[i])
       } catch {}
     } else if (result.timedOut) {
-      failed(result, 'seek survey')
+      timeouts++
+      if (timeouts >= 6) failed(result, 'seek survey')
     }
   }
   if (files.length < 4) {
@@ -456,16 +557,19 @@ async function decodeWindow(
   end: number,
   timeoutMs: number,
   log: (s: string) => void,
+  signal?: AbortSignal,
 ): Promise<Survey> {
   const span = Math.max(0.2, end - start)
   const attempt = (hdr: boolean) =>
     runFfmpeg(
       [
-        '-loglevel', 'error', '-y', ...protocolArgs(input), '-ss', start.toFixed(3), '-i', input,
+        '-loglevel', 'error', '-y', '-ss', start.toFixed(3), '-i', input,
         '-t', span.toFixed(3), '-an', '-sn', '-dn', '-vf', videoFilter(FINAL_EDGE, FINAL_FPS, hdr), '-q:v', '2',
+        '-frames:v', String(Math.ceil(span * FINAL_FPS) + 5),
         '-f', 'image2', path.join(dir, 'f-%04d.jpg'),
       ],
       timeoutMs,
+      signal,
     )
   let result = await attempt(info.hdr)
   if (result.code !== 0 && info.hdr && filterUnavailable(result.stderr)) {
@@ -515,6 +619,13 @@ async function fitToBudget(frames: Buffer[]): Promise<{ frames: Buffer[]; reduce
   return { frames: current, reduced: true }
 }
 
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(`timed out after ${ms}ms`)), ms)
+    p.then((v) => { clearTimeout(t); resolve(v) }, (e) => { clearTimeout(t); reject(e) })
+  })
+}
+
 // --- the pipeline ------------------------------------------------------------
 
 /**
@@ -528,31 +639,36 @@ export async function extractFramesOnServer(
 ): Promise<ServerExtractResult> {
   const started = Date.now()
   const log = opts.log ?? (() => {})
+  const signal = opts.signal
   const deadline = started + (opts.deadlineMs ?? 540_000)
   const left = () => Math.max(5000, deadline - Date.now())
+  const checkAbort = () => {
+    if (signal?.aborted) throw new AbortedError()
+  }
 
+  await sweepStaleTmp()
   const dir = await mkdtemp(path.join(os.tmpdir(), 'lh-frames-'))
   try {
-    let input = source
-    let downloaded = false
-    let info: ProbeInfo
-    try {
-      info = await probe(input, Math.min(30_000, left()))
-    } catch (err) {
-      if (!(err instanceof ProtocolUnsupported)) throw err
-      // This ffmpeg build cannot fetch over https — pull the file down first.
-      input = await downloadToTmp(source, dir, log)
-      downloaded = true
-      info = await probe(input, Math.min(30_000, left()))
+    let input: string
+    let bytes = 0
+    if (/^https?:\/\//i.test(source)) {
+      const dl = await downloadToTmp(source, dir, log, signal)
+      input = dl.file
+      bytes = dl.bytes
+    } else {
+      input = source
+      bytes = (await stat(source)).size
     }
+    const info = await probe(input, Math.min(30_000, left()), signal)
     log(`probe: ${info.codec} ${info.duration.toFixed(2)}s hdr=${info.hdr}`)
 
     // --- Phase 1: survey + rough region ---------------------------------------
     const surveyMode: 'full' | 'seek' = info.duration <= FULL_DECODE_MAX_S ? 'full' : 'seek'
     const survey =
       surveyMode === 'full'
-        ? await fullSurvey(input, dir, info, Math.min(300_000, left() * 0.6), log)
-        : await seekSurvey(input, dir, info, Math.min(300_000, left() * 0.6), log)
+        ? await fullSurvey(input, dir, info, Math.min(300_000, left() * 0.6), log, signal)
+        : await seekSurvey(input, dir, info, Math.min(300_000, left() * 0.6), log, signal)
+    checkAbort()
     log(`survey: ${survey.files.length} frames (${surveyMode})`)
 
     const duration = info.duration
@@ -564,7 +680,7 @@ export async function extractFramesOnServer(
     }
     let roughCenter = 0.6
     try {
-      roughCenter = Math.max(0, Math.min(100, await detectShotRegion(roughFrames))) / 100
+      roughCenter = Math.max(0, Math.min(100, await withTimeout(detectShotRegion(roughFrames), DETECT_TIMEOUT_MS))) / 100
     } catch (err) {
       log(`region detect failed, using default: ${err instanceof Error ? err.message : err}`)
     }
@@ -592,9 +708,10 @@ export async function extractFramesOnServer(
     }
     if (probeMotion.length > 1) probeMotion[0] = probeMotion[1]
 
+    checkAbort()
     let releaseTime = roughCenterTime
     try {
-      const idx = Math.max(0, Math.min(PROBE_COUNT - 1, await detectShotWindow(probeFrames)))
+      const idx = Math.max(0, Math.min(PROBE_COUNT - 1, await withTimeout(detectShotWindow(probeFrames), DETECT_TIMEOUT_MS)))
       releaseTime = probeTimes[idx]
     } catch (err) {
       log(`window detect failed, using region center: ${err instanceof Error ? err.message : err}`)
@@ -603,7 +720,7 @@ export async function extractFramesOnServer(
     const shotEnd = Math.min(duration, releaseTime + RELEASE_AFTER_S)
 
     // --- Phase 3: full-quality frames from the shot window --------------------
-    const window = await decodeWindow(input, dir, info, shotStart, shotEnd, Math.min(120_000, left()), log)
+    const window = await decodeWindow(input, dir, info, shotStart, shotEnd, Math.min(120_000, left()), log, signal)
     const wanted = motionWeightedTimes(FRAME_COUNT, shotStart, shotEnd, probeTimes, probeMotion)
     // Nearest decoded frame to each wanted time, never the same frame twice:
     // a duplicate would spend grading tokens on a picture the model has seen.
@@ -639,7 +756,7 @@ export async function extractFramesOnServer(
     return {
       frames: fitted.frames,
       reduced: fitted.reduced,
-      info: { codec: info.codec, duration, hdr: info.hdr, surveyMode, downloaded, ms },
+      info: { codec: info.codec, duration, hdr: info.hdr, surveyMode, bytes, ms },
     }
   } finally {
     await rm(dir, { recursive: true, force: true }).catch(() => undefined)

@@ -238,10 +238,18 @@ async function extractFramesUnsynchronized(
         roughCtx.drawImage(video, 0, 0, roughW, roughH)
         decoderReady = !isBlackFrame(roughCtx, roughW, roughH)
       }
-      // Still black after three nudges: the decoder is not going to produce
-      // pictures for this file (the lock above rules out the concurrent-decode
-      // cause). Carrying on would upload 28 black frames and come back "no
-      // shot". Let the server decode it instead.
+      // Still black after three nudges at the midpoint? A dark gym or a fade
+      // could do that legitimately, so look at two more points before deciding
+      // the decoder is simply not producing pictures for this file (the lock
+      // above rules out the concurrent-decode cause). Carrying on would upload
+      // 28 black frames and come back "no shot"; the server can decode it.
+      if (!decoderReady) {
+        for (const frac of [0.25, 0.75]) {
+          await seekTo(video, Math.min(duration * frac, Math.max(0, duration - 0.1)))
+          roughCtx.drawImage(video, 0, 0, roughW, roughH)
+          if (!isBlackFrame(roughCtx, roughW, roughH)) { decoderReady = true; break }
+        }
+      }
       if (!decoderReady) {
         cleanup()
         reject(new UndecodableVideoError('This browser produced no picture for this video'))

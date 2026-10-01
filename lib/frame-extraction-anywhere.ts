@@ -37,9 +37,9 @@ export interface AnywhereResult {
   viaServer: boolean
 }
 
-// Matches the single uploader's own sanity cap and /api/upload-video's
-// server-extract ceiling.
-const SERVER_EXTRACT_MAX_BYTES = 1024 * 1024 * 1024
+// What the server can hold in /tmp while decoding; /api/upload-video applies
+// the same ceiling to the upload token.
+const SERVER_EXTRACT_MAX_BYTES = 450 * 1024 * 1024
 
 export async function extractFramesAnywhere(file: File, opts: AnywhereOptions = {}): Promise<AnywhereResult> {
   opts.onPhase?.('browser')
@@ -53,7 +53,9 @@ export async function extractFramesAnywhere(file: File, opts: AnywhereOptions = 
   }
 
   if (file.size > SERVER_EXTRACT_MAX_BYTES) {
-    throw new Error('Video must be under 1GB. Try trimming the clip to just the shot.')
+    throw new Error(
+      'This browser can’t play this video format, and at over 450MB the file is too large to send to our server to read. Trim it to just the shot (a few seconds) and try again.',
+    )
   }
 
   // --- 1. Original → Blob, directly from the browser ---------------------------
@@ -81,7 +83,7 @@ export async function extractFramesAnywhere(file: File, opts: AnywhereOptions = 
       throw new Error('Your login has expired, so the video could not be uploaded. Refresh the page, sign in again, and try again.')
     }
     if (/too large/i.test(text)) {
-      throw new Error('This video is over 1GB, which is too large to upload. Trim it to just the shot and try again.')
+      throw new Error('This video is over 450MB, which is too large to send to our server. Trim it to just the shot and try again.')
     }
     if (/Too many uploads/i.test(text)) {
       throw new Error('You have uploaded a lot of videos in the last hour and hit our limit. Wait an hour and try again.')
@@ -141,12 +143,15 @@ export async function extractFramesAnywhere(file: File, opts: AnywhereOptions = 
     } catch {}
   }
 
-  return { frames: parsed.frames, videoUrl: blob.url, reduced: parsed.reduced, viaServer: true }
+  // The server removes originals too large to be worth keeping; only a kept
+  // one is filed with the analysis.
+  return { frames: parsed.frames, videoUrl: parsed.keepVideo ? blob.url : null, reduced: parsed.reduced, viaServer: true }
 }
 
 interface FramePayload {
   frames: Blob[]
   reduced: boolean
+  keepVideo: boolean
 }
 
 /** Inverse of the layout /api/extract-frames writes: magic, header length, header JSON, frame bytes. */
@@ -159,6 +164,7 @@ export function parseFramePayload(buf: ArrayBuffer): FramePayload {
     count: number
     sizes: number[]
     reduced: boolean
+    keepVideo?: boolean
   }
   const frames: Blob[] = []
   let offset = 8 + headerLen
@@ -169,7 +175,7 @@ export function parseFramePayload(buf: ArrayBuffer): FramePayload {
   if (frames.length !== header.count || frames.length === 0) {
     throw new Error('The server returned no frames for this video')
   }
-  return { frames, reduced: !!header.reduced }
+  return { frames, reduced: !!header.reduced, keepVideo: header.keepVideo !== false }
 }
 
 function blobToDataUrl(blob: Blob): Promise<string> {

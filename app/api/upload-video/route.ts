@@ -4,6 +4,8 @@ import { resolveUploader, uploaderKey } from '@/lib/upload-guard'
 import { rateLimit, rateLimitByIp } from '@/lib/rate-limit'
 import { storageDriver, putObject } from '@/lib/storage'
 import { VIDEO_EXTENSIONS } from '@/lib/video-files'
+import { UPLOAD_PREFIX } from '@/lib/blob-store'
+import { DOWNLOAD_MAX_BYTES } from '@/lib/server-frame-extraction'
 
 // Video upload handler, one flow per storage backend (STORAGE_DRIVER):
 //   - 'vercel': Vercel Blob's handleUpload mints a browser write token so the
@@ -27,10 +29,10 @@ const ALLOWED_EXTENSIONS: readonly string[] = VIDEO_EXTENSIONS
 // turns into application/octet-stream) for .mkv, .wmv, .mts and friends.
 const ALLOWED_CONTENT_TYPES = ['video/*', 'application/octet-stream']
 const MAX_BYTES = 200 * 1024 * 1024
-// A clip the browser could not decode is uploaded whole so ffmpeg can read it;
-// the single uploader already accepts originals up to 1GB (ProRes runs ~90MB a
-// second), so the ceiling matches rather than refusing them again here.
-const SERVER_EXTRACT_MAX_BYTES = 1024 * 1024 * 1024
+// A clip the browser could not decode is uploaded whole so ffmpeg can read
+// it. The ceiling is what the server can hold in /tmp while decoding (450MB)
+// — a shot clip is seconds long and nowhere near it.
+const SERVER_EXTRACT_MAX_BYTES = DOWNLOAD_MAX_BYTES
 
 // Shared gate for both backends. Throws with a user-facing message on failure.
 async function authorizeUpload(
@@ -54,6 +56,12 @@ async function authorizeUpload(
   const ext = pathname.split('.').pop()?.toLowerCase() ?? ''
   if (!ALLOWED_EXTENSIONS.includes(ext)) {
     throw new Error('Only video files can be uploaded')
+  }
+  // Everything the browser stores lives under one prefix, so the server-side
+  // extractor can refuse any URL outside it, and nothing can be written over
+  // another key in the store.
+  if (!pathname.replace(/^\/+/, '').startsWith(UPLOAD_PREFIX) || pathname.includes('..')) {
+    throw new Error('Upload path not allowed')
   }
 }
 
@@ -116,9 +124,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   // --- Vercel Blob (handleUpload) --------------------------------------------
-  const body = (await request.json()) as HandleUploadBody
-
   try {
+    const body = (await request.json().catch(() => null)) as HandleUploadBody | null
+    if (!body) {
+      return NextResponse.json({ error: 'Send the upload request as JSON' }, { status: 400 })
+    }
     const jsonResponse = await handleUpload({
       body,
       request,
@@ -128,6 +138,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         return {
           allowedContentTypes: ALLOWED_CONTENT_TYPES,
           maximumSizeInBytes: payload.purpose === 'server-extract' ? SERVER_EXTRACT_MAX_BYTES : MAX_BYTES,
+          // Never let one upload land on another's key.
+          addRandomSuffix: true,
+          allowOverwrite: false,
         }
       },
       onUploadCompleted: async () => {

@@ -22,7 +22,6 @@ export async function POST(req: NextRequest) {
 
   const [pkg] = await db`
     SELECT p.id, p.player_count, p.status,
-           (SELECT COUNT(*)::int FROM org_class_enrollments e WHERE e.package_id = p.id) AS enrolled_count,
            t.id AS team_id, t.name AS team_name, o.name AS org_name
     FROM org_class_packages p
     LEFT JOIN teams t ON t.class_package_id = p.id
@@ -31,7 +30,7 @@ export async function POST(req: NextRequest) {
     ORDER BY t.created_at ASC NULLS LAST
     LIMIT 1
   ` as unknown as [{
-    id: string; player_count: number; status: string; enrolled_count: number
+    id: string; player_count: number; status: string
     team_id: string | null; team_name: string | null; org_name: string | null
   } | undefined]
 
@@ -71,10 +70,10 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // An older package with no class team: the enrolment alone, as before.
-    if (pkg.enrolled_count >= pkg.player_count) {
-      return NextResponse.json({ error: 'Package is full — all player slots are taken' }, { status: 400 })
-    }
+    // An older package with no class team: the enrolment alone, as before —
+    // counted and inserted under the same per-package lock as every other
+    // enrolment (lib/roster-players ensureClassEnrollment), so parallel adds
+    // can't overfill it.
     let isFirstClass = true
     if (userId) {
       const [prior] = await db`
@@ -84,13 +83,24 @@ export async function POST(req: NextRequest) {
       ` as unknown as [{ id: string } | undefined]
       isFirstClass = !prior
     }
-    const [enrollment] = await db`
-      INSERT INTO org_class_enrollments
-        (package_id, user_id, first_name, last_name_initial, is_first_class)
-      VALUES
-        (${packageId}, ${userId ?? null}, ${firstName.trim()}, ${lastNameInitial?.trim() ?? null}, ${isFirstClass})
-      RETURNING id
-    ` as unknown as [{ id: string }]
+    const enrollment = await db.begin(async (sql) => {
+      await sql`SELECT pg_advisory_xact_lock(hashtext(${'class-package:' + pkg.id}))`
+      const [{ n }] = await sql`
+        SELECT COUNT(*)::int AS n FROM org_class_enrollments WHERE package_id = ${pkg.id}
+      ` as unknown as [{ n: number }]
+      if (n >= pkg.player_count) return null
+      const [row] = await sql`
+        INSERT INTO org_class_enrollments
+          (package_id, user_id, first_name, last_name_initial, is_first_class)
+        VALUES
+          (${packageId}, ${userId ?? null}, ${firstName.trim()}, ${lastNameInitial?.trim() ?? null}, ${isFirstClass})
+        RETURNING id
+      ` as unknown as [{ id: string }]
+      return row
+    }) as { id: string } | null
+    if (!enrollment) {
+      return NextResponse.json({ error: 'Package is full — all player slots are taken' }, { status: 400 })
+    }
     return NextResponse.json({ enrollmentId: enrollment.id })
   } catch (err) {
     if (err instanceof AddPlayerError) {

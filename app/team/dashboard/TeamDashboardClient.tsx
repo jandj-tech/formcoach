@@ -860,7 +860,7 @@ export default function TeamDashboardClient({
           is never switched over to it. */}
       <p className="text-sm text-gray-600 dark:text-chalk-dim mt-3 leading-relaxed">
         {orgName
-          ? 'Your club runs this program. Buying a package creates a separate class team; ask your director to add you as its coach.'
+          ? 'Your club runs this program on its own class team, not on this one. To coach it, ask your director to add you to the class team.'
           : 'The class runs through an organization — a club, school or academy buys the places, and each package gets its own class team. This team isn’t part of one, so there’s nothing to run here. If your club has a LearnHoops organization, ask your director to add you as the coach of its class team.'}
       </p>
     </div>

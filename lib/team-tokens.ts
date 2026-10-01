@@ -186,12 +186,12 @@ export function teamUploadCopy(
 ): { source: string; getCredits: { href: string; label: string } } {
   if (payer === 'org') {
     return {
-      source: 'Uses this team’s tokens, then your organization’s',
+      source: 'This team’s tokens are used first, then your organization’s',
       getCredits: { href: '/org/dashboard#tokens', label: 'Buy more tokens for your organization' },
     }
   }
   return {
-    source: 'Uses your tokens, then the team’s',
+    source: 'Your tokens are used first, then the team’s',
     getCredits: inOrganization
       ? { href: '/team/dashboard#credits', label: 'Ask your organization for more tokens, or buy some' }
       : { href: '/team/dashboard#credits', label: 'Buy more tokens' },

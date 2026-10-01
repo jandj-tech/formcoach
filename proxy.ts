@@ -61,7 +61,11 @@ export async function proxy(req: NextRequest) {
 
   if (pathname.startsWith('/team/dashboard')) {
     const session = await getTeamSessionFromRequest(req)
-    if (!session) {
+    // One coach shot page also opens for an org login with no team session:
+    // the page itself re-proves the shot against that organization's teams.
+    const orgShotView =
+      !session && pathname.startsWith('/team/dashboard/shot/') && !!(await getOrgSessionFromRequest(req))
+    if (!session && !orgShotView) {
       return NextResponse.redirect(new URL('/login', req.url))
     }
   }

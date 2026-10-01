@@ -709,8 +709,14 @@ export async function POST(req: NextRequest) {
     //   no account) → the class's name-only enrolment (user_id NULL) with the
     //   same name, only on the class team itself. Account matching is
     //   unchanged; this applies only when the shot has no account.
+    //   Only a signed-in coach/org upload of a picked roster player
+    //   (playerRef) counts this way — the anonymous public upload-by-name
+    //   page let anyone with the team code type a class player's name and
+    //   overwrite their baseline/final score — and only when that name is
+    //   unambiguous: two name-only enrolments or two invited players by the
+    //   same name are never guessed between (nothing is credited).
     const enrollmentUserId = submissionUserId
-    if (enrollmentUserId || (teamId && teamPlayerId)) {
+    if (enrollmentUserId || (teamId && teamPlayerId && playerRef)) {
       try {
         // Pick the right enrollment when a player is in more than one class:
         //   - Coach team upload → prefer the enrollment whose package belongs
@@ -741,11 +747,18 @@ export async function POST(req: NextRequest) {
               WHERE e.user_id IS NULL
                 AND LOWER(TRIM(e.first_name)) = LOWER(TRIM(tp.first_name))
                 AND UPPER(COALESCE(NULLIF(TRIM(e.last_name_initial), ''), '?')) = UPPER(TRIM(tp.last_name_initial))
+                AND (
+                  SELECT COUNT(*) FROM pending_team_members pm
+                  WHERE pm.team_id = t.id
+                    AND LOWER(TRIM(pm.first_name)) = LOWER(TRIM(tp.first_name))
+                    AND UPPER(COALESCE(NULLIF(TRIM(pm.last_name_initial), ''), '?')) = UPPER(TRIM(tp.last_name_initial))
+                ) <= 1
               ORDER BY e.created_at ASC
-              LIMIT 1
+              LIMIT 2
             ` as unknown as ActiveEnrollment[]
 
-        const enrollment = activeEnrollment[0]
+        // A name-only match must be the only one (see above).
+        const enrollment = enrollmentUserId || activeEnrollment.length === 1 ? activeEnrollment[0] : undefined
         if (enrollment) {
           if (!enrollment.first_submission_id) {
             // First class shot — record baseline, no boost here

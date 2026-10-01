@@ -11,9 +11,9 @@ interface SendAllResult {
   skipped: { rateLimited: number; failed: number; alreadySetUp?: number }
 }
 
-// "Sent to 6. 1 skipped (already sent 3 times this hour)."
+// "Sent to 6 players. 1 skipped (already sent 3 times this hour)."
 function summary(r: SendAllResult): string {
-  const parts = [r.sent > 0 ? `Sent to ${r.sent}.` : 'None sent.']
+  const parts = [r.sent > 0 ? `Sent to ${r.sent} player${r.sent === 1 ? '' : 's'}.` : 'None sent.']
   if (r.skipped.rateLimited > 0) {
     parts.push(`${r.skipped.rateLimited} skipped (already sent 3 times this hour).`)
   }
@@ -83,7 +83,9 @@ export default function SendSetupToAllButton({
           <span className="whitespace-normal text-left">
             {sending
               ? 'Sending…'
-              : `Email setup link to ${count === 1 ? 'the 1 player' : `all ${count} players`} who haven’t finished`}
+              : count === 1
+                ? 'Email setup link to the 1 player who hasn’t finished'
+                : `Email setup link to all ${count} players who haven’t finished`}
           </span>
         </button>
       )}

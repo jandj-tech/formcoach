@@ -21,6 +21,8 @@ interface ResetPlayerRow {
   first_name: string | null
   nickname: string | null
   login_group_id: string | null
+  /** A roster-pending account's live setup token (lib/roster-players issuePlayerSetupToken), kept by a forgot-password request. */
+  setup_token?: string | null
 }
 
 function norm(email: string): string {
@@ -44,9 +46,15 @@ export function playerFirstName(p: { first_name: string | null; nickname: string
  */
 async function playerRowsForReset(email: string): Promise<ResetPlayerRow[]> {
   const e = norm(email)
+  // A token outliving a 1-hour reset can only be a setup link.
+  const setupFloor = new Date(Date.now() + TOKEN_TTL_MS)
   try {
     return (await db`
-      SELECT id, first_name, nickname, login_group_id FROM users
+      SELECT id, first_name, nickname, login_group_id,
+             CASE WHEN roster_pending = true AND password_hash IS NULL AND reset_token IS NOT NULL
+                       AND reset_token_expires > ${setupFloor}
+                  THEN reset_token END AS setup_token
+      FROM users
       WHERE LOWER(email) = ${e}
       ORDER BY created_at ASC NULLS LAST, id ASC
       LIMIT ${MAX_PLAYERS_PER_EMAIL}
@@ -137,12 +145,18 @@ export async function issueResetTokens(email: string): Promise<ResetIssue | null
   const usedCodes = new Set<string>()
   const links: PlayerResetLink[] = []
   for (const g of groups) {
-    let t = groups.length === 1 ? token : crypto.randomBytes(32).toString('hex')
-    // Distinct codes per email: a typed code must name exactly one account.
-    while (usedCodes.has(resetCodeFromToken(t))) t = crypto.randomBytes(32).toString('hex')
-    usedCodes.add(resetCodeFromToken(t))
     const [rep, ...rest] = g
-    await db`UPDATE users SET reset_token = ${t}, reset_token_expires = ${expires} WHERE id = ${rep.id}`
+    // An account still waiting to be set up keeps its live setup link: a
+    // 1-hour reset token in its place broke every setup / results email
+    // already sent to the family. The same token is re-sent here instead.
+    const kept = rest.length === 0 && rep.setup_token && !usedCodes.has(resetCodeFromToken(rep.setup_token))
+      ? rep.setup_token
+      : null
+    let t = kept ?? (groups.length === 1 ? token : crypto.randomBytes(32).toString('hex'))
+    // Distinct codes per email: a typed code must name exactly one account.
+    while (!kept && usedCodes.has(resetCodeFromToken(t))) t = crypto.randomBytes(32).toString('hex')
+    usedCodes.add(resetCodeFromToken(t))
+    if (!kept) await db`UPDATE users SET reset_token = ${t}, reset_token_expires = ${expires} WHERE id = ${rep.id}`
     if (rest.length > 0) {
       // The rest of a shared login resets with the group's link; a stale
       // token of their own would only make a typed code ambiguous.

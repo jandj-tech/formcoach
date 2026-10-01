@@ -240,7 +240,7 @@ function StatusCell({ row, sameAs, family, onAddAnyway }: { row: EditableRow; sa
           There&rsquo;s already a {name} on this team, so this row is left out.
         </p>
         {onAddAnyway && (
-          <button onClick={onAddAnyway} className="font-semibold text-ember-600 dark:text-ember-400 hover:text-ember-500">
+          <button onClick={onAddAnyway} className="text-left font-semibold text-ember-600 dark:text-ember-400 hover:text-ember-500">
             Add anyway (different player)
           </button>
         )}
@@ -288,7 +288,7 @@ function StatusCell({ row, sameAs, family, onAddAnyway }: { row: EditableRow; sa
           </button>
         )}
         {o.status === 'already_on_team' && o.nameMatch && onAddAnyway && (
-          <button onClick={onAddAnyway} className="font-semibold text-ember-600 dark:text-ember-400 hover:text-ember-500">
+          <button onClick={onAddAnyway} className="text-left font-semibold text-ember-600 dark:text-ember-400 hover:text-ember-500">
             Add anyway (different player)
           </button>
         )}
@@ -298,7 +298,7 @@ function StatusCell({ row, sameAs, family, onAddAnyway }: { row: EditableRow; sa
 }
 
 const cellInput =
-  'w-full min-w-[6rem] bg-white dark:bg-ink-900 border border-red-300 dark:border-red-800 rounded-md px-2 py-1 text-xs text-black dark:text-chalk focus:outline-none focus:border-ember-500'
+  'w-full min-w-[4.5rem] md:min-w-[6rem] bg-white dark:bg-ink-900 border border-red-300 dark:border-red-800 rounded-md px-2 py-1 text-xs text-black dark:text-chalk focus:outline-none focus:border-ember-500'
 
 /**
  * Every row of the file, numbered by its row in the original spreadsheet,
@@ -329,7 +329,7 @@ export function ImportRowsTable({
       <table className="w-full text-xs md:table-fixed">
         <thead className="bg-gray-50 dark:bg-ink-950/60 text-gray-500 dark:text-chalk-dim sticky top-0 z-10">
           <tr>
-            <th className="text-left font-semibold px-2 py-1.5 w-12">Row</th>
+            <th className="text-left font-semibold px-2 py-1.5 w-8 md:w-12">Row</th>
             {showTeam && <th className="text-left font-semibold px-2 py-1.5 md:w-28">Team</th>}
             <th className="text-left font-semibold px-2 py-1.5 md:w-32 whitespace-nowrap">First name</th>
             <th className="text-left font-semibold px-2 py-1.5 md:w-32 whitespace-nowrap">Last name</th>
@@ -584,13 +584,13 @@ export default function CsvPlayerImport({
       {rows.length > 0 && (
         <>
           <div className="text-xs text-gray-600 dark:text-chalk-dim flex flex-wrap gap-x-3 gap-y-1">
-            <span><strong className="text-black dark:text-chalk">{rows.filter(r => !r.removed).length}</strong> rows</span>
+            <span><strong className="text-black dark:text-chalk">{rows.filter(r => !r.removed).length}</strong> {rows.filter(r => !r.removed).length === 1 ? 'row' : 'rows'}</span>
             {imported && <span><strong className="text-green-700 dark:text-green-400">{counts.added}</strong> added</span>}
             {imported && counts.already > 0 && <span><strong className="text-black dark:text-chalk">{counts.already}</strong> already on team</span>}
             {counts.ready > 0 && <span><strong className="text-black dark:text-chalk">{counts.ready}</strong> ready to import</span>}
             {counts.repeats > 0 && <span><strong className="text-black dark:text-chalk">{counts.repeats}</strong> repeated in the file (imported once)</span>}
-            {counts.onTeam > 0 && <span><strong className="text-black dark:text-chalk">{counts.onTeam}</strong> look already on the team (left out)</span>}
-            {counts.needsFix > 0 && <span className="text-red-600 dark:text-red-400"><strong>{counts.needsFix}</strong> need fixing (edit the red cells, or remove the row)</span>}
+            {counts.onTeam > 0 && <span><strong className="text-black dark:text-chalk">{counts.onTeam}</strong> {counts.onTeam === 1 ? 'looks' : 'look'} already on the team (left out)</span>}
+            {counts.needsFix > 0 && <span className="text-red-600 dark:text-red-400"><strong>{counts.needsFix}</strong> {counts.needsFix === 1 ? 'needs' : 'need'} fixing (edit the red cells, or remove the row)</span>}
           </div>
 
           <ImportRowsTable rows={rows} onEdit={edit} onRemove={remove} onAddAnyway={addAnyway} />

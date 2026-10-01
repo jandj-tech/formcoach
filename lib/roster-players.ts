@@ -121,12 +121,26 @@ export function isValidEmail(email: string): boolean {
 }
 
 /**
- * A live setup token with at least this long left is re-sent as-is rather
- * than replaced, so every recent setup / results email for the player keeps
- * working. A shorter-lived token (a 1-hour forgot-password one, or a setup
- * link about to lapse) is replaced with a fresh 14-day one.
+ * A setup token issued within this window is re-sent as-is rather than
+ * replaced, so every recent setup / results email for the player keeps
+ * working. An older one is rotated to a fresh 14-day token, so one leaked link
+ * doesn't stay good for the full 14 days however many emails follow it; a
+ * shorter-lived token (a 1-hour forgot-password one) is always replaced.
+ * Issue time is read off the expiry (expires = issued + SETUP_TOKEN_TTL_MS).
  */
-const SETUP_TOKEN_REUSE_MIN_MS = 24 * 60 * 60 * 1000
+const SETUP_TOKEN_REUSE_WINDOW_MS = 72 * 60 * 60 * 1000
+
+/**
+ * One daily cap across EVERY setup-link email to a player (add, import,
+ * resend, send-to-all, finish-setup-to-see-results), on top of each path's own
+ * hourly limit, so no mix of buttons can mail a family inbox all day.
+ */
+const SETUP_EMAILS_PER_DAY = 10
+
+/** Records one setup-link email to `userId`; false once today's cap is used up. */
+export async function setupEmailDailyOk(userId: string): Promise<boolean> {
+  return (await rateLimit(`player-setup-day:${userId}`, SETUP_EMAILS_PER_DAY, 86400)).ok
+}
 
 /**
  * Returns the link that lets a roster-pending player set a password, issuing
@@ -150,7 +164,7 @@ export async function issuePlayerSetupToken(
 ): Promise<string | null> {
   const fresh = crypto.randomBytes(32).toString('hex')
   const expires = new Date(Date.now() + SETUP_TOKEN_TTL_MS)
-  const reuseUntil = new Date(Date.now() + SETUP_TOKEN_REUSE_MIN_MS)
+  const reuseUntil = new Date(Date.now() + SETUP_TOKEN_TTL_MS - SETUP_TOKEN_REUSE_WINDOW_MS)
   // One statement, so two sends racing each other agree on the token. SET
   // expressions read the row's values from before the update.
   const rows = (await db`
@@ -173,7 +187,7 @@ export async function issuePlayerSetupToken(
 
 export type ResendSetupOutcome =
   | { ok: true; email: string; teamName: string | null }
-  | { ok: false; reason: 'not_pending' | 'rate_limited' | 'send_failed'; email?: string; teamName?: string | null }
+  | { ok: false; reason: 'not_pending' | 'rate_limited' | 'send_failed'; email?: string; teamName?: string | null; daily?: boolean }
 
 /**
  * (Re)sends the setup email to a roster-pending player — the only way a setup
@@ -221,6 +235,9 @@ export async function resendPlayerSetup(
 
   const limit = await rateLimit(`player-setup:${userId}`, 3, 3600)
   if (!limit.ok) return { ok: false, reason: 'rate_limited', email: u.email, teamName: m?.team_name ?? null }
+  if (!(await setupEmailDailyOk(userId))) {
+    return { ok: false, reason: 'rate_limited', daily: true, email: u.email, teamName: m?.team_name ?? null }
+  }
 
   const url = await issuePlayerSetupToken(u.id)
   if (!url) return { ok: false, reason: 'not_pending' }
@@ -377,9 +394,17 @@ function classFullError(places: number): AddPlayerError {
 }
 
 /** Throws when the class is full and none of `who` already holds a place. */
-async function assertClassPlace(seats: ClassSeats | null, ...who: ClassWho[]): Promise<void> {
-  if (!seats || seats.enrolled < seats.places) return
-  for (const w of who) if (await heldEnrollment(db, seats.packageId, w)) return
+async function assertClassPlace(seats: ClassSeats | null, who: ClassWho[], sql?: Sql): Promise<void> {
+  if (!seats) return
+  // Inside the caller's locked transaction the count is re-read there, not
+  // taken from the earlier snapshot.
+  const enrolled = sql
+    ? ((await sql`
+        SELECT COUNT(*)::int AS n FROM org_class_enrollments WHERE package_id = ${seats.packageId}
+      `) as unknown as [{ n: number }])[0].n
+    : seats.enrolled
+  if (enrolled < seats.places) return
+  for (const w of who) if (await heldEnrollment(sql ?? db, seats.packageId, w)) return
   throw classFullError(seats.places)
 }
 
@@ -399,62 +424,78 @@ export async function ensureClassEnrollment(
   teamId: string,
   who: { userId: string | null; firstName: string; li: string | null; newName?: boolean },
 ): Promise<ClassEnrollOutcome> {
-  return (await db.begin(async (tx) => {
-    const sql = tx as unknown as Sql
-    const [pkg] = (await sql`
-      SELECT p.id, p.player_count
-      FROM teams t JOIN org_class_packages p ON p.id = t.class_package_id
-      WHERE t.id = ${teamId} AND p.status = 'active'
-    `) as unknown as [{ id: string; player_count: number } | undefined]
-    if (!pkg) return { outcome: 'none' } as ClassEnrollOutcome
-    await sql`SELECT pg_advisory_xact_lock(hashtext(${'class-package:' + pkg.id}))`
+  return (await db.begin(async (tx) => enrollInTx(tx as unknown as Sql, teamId, who))) as ClassEnrollOutcome
+}
 
-    const first = cleanName(who.firstName)
-    const byName = { firstName: first, li: who.li }
-    if (who.userId) {
-      const own = await heldEnrollment(sql, pkg.id, { userId: who.userId })
-      if (own) return { outcome: 'already', enrollmentId: own } as ClassEnrollOutcome
-      const orphan = await heldEnrollment(sql, pkg.id, byName)
-      if (orphan) {
-        const others = (await findSameNameOnTeam(teamId, first, who.li)).filter(m => m.kind !== 'member' || m.id !== who.userId)
-        if (others.length === 0) {
-          await sql`UPDATE org_class_enrollments SET user_id = ${who.userId} WHERE id = ${orphan} AND user_id IS NULL`
-          return { outcome: 'already', enrollmentId: orphan } as ClassEnrollOutcome
-        }
+/** The per-package lock every place check + enrolment runs under (re-entrant within one transaction). */
+async function lockClassPackage(sql: Sql, packageId: string): Promise<void> {
+  await sql`SELECT pg_advisory_xact_lock(hashtext(${'class-package:' + packageId}))`
+}
+
+/**
+ * ensureClassEnrollment inside the caller's transaction, so a roster add can
+ * check the place, insert the roster row and enrol under ONE lock: checked
+ * separately, parallel adds all saw a free place and the extras landed on the
+ * roster with no enrolment (their shots never counted).
+ */
+async function enrollInTx(
+  sql: Sql,
+  teamId: string,
+  who: { userId: string | null; firstName: string; li: string | null; newName?: boolean },
+): Promise<ClassEnrollOutcome> {
+  const [pkg] = (await sql`
+    SELECT p.id, p.player_count
+    FROM teams t JOIN org_class_packages p ON p.id = t.class_package_id
+    WHERE t.id = ${teamId} AND p.status = 'active'
+  `) as unknown as [{ id: string; player_count: number } | undefined]
+  if (!pkg) return { outcome: 'none' } as ClassEnrollOutcome
+  await lockClassPackage(sql, pkg.id)
+
+  const first = cleanName(who.firstName)
+  const byName = { firstName: first, li: who.li }
+  if (who.userId) {
+    const own = await heldEnrollment(sql, pkg.id, { userId: who.userId })
+    if (own) return { outcome: 'already', enrollmentId: own } as ClassEnrollOutcome
+    const orphan = await heldEnrollment(sql, pkg.id, byName)
+    if (orphan) {
+      const others = (await findSameNameOnTeam(teamId, first, who.li)).filter(m => m.kind !== 'member' || m.id !== who.userId)
+      if (others.length === 0) {
+        await sql`UPDATE org_class_enrollments SET user_id = ${who.userId} WHERE id = ${orphan} AND user_id IS NULL`
+        return { outcome: 'already', enrollmentId: orphan } as ClassEnrollOutcome
       }
-    } else if (!who.newName) {
-      const named = await heldEnrollment(sql, pkg.id, byName)
-      if (named) return { outcome: 'already', enrollmentId: named } as ClassEnrollOutcome
     }
+  } else if (!who.newName) {
+    const named = await heldEnrollment(sql, pkg.id, byName)
+    if (named) return { outcome: 'already', enrollmentId: named } as ClassEnrollOutcome
+  }
 
-    const [{ n }] = (await sql`
-      SELECT COUNT(*)::int AS n FROM org_class_enrollments WHERE package_id = ${pkg.id}
-    `) as unknown as [{ n: number }]
-    if (n >= pkg.player_count) return { outcome: 'full', places: pkg.player_count } as ClassEnrollOutcome
+  const [{ n }] = (await sql`
+    SELECT COUNT(*)::int AS n FROM org_class_enrollments WHERE package_id = ${pkg.id}
+  `) as unknown as [{ n: number }]
+  if (n >= pkg.player_count) return { outcome: 'full', places: pkg.player_count } as ClassEnrollOutcome
 
-    // First-time class flag, as the Program Manager sets it: drives the small
-    // display-score boost in analyze for a player's first class.
-    let isFirstClass = true
-    if (who.userId) {
-      const [prior] = (await sql`
-        SELECT id FROM org_class_enrollments
-        WHERE user_id = ${who.userId} AND final_submission_id IS NOT NULL
-        LIMIT 1
-      `) as unknown as [{ id: string } | undefined]
-      isFirstClass = !prior
-    }
-    const [row] = (await sql`
-      INSERT INTO org_class_enrollments (package_id, user_id, first_name, last_name_initial, is_first_class)
-      VALUES (${pkg.id}, ${who.userId}, ${first}, ${who.li}, ${isFirstClass})
-      ON CONFLICT DO NOTHING
-      RETURNING id
+  // First-time class flag, as the Program Manager sets it: drives the small
+  // display-score boost in analyze for a player's first class.
+  let isFirstClass = true
+  if (who.userId) {
+    const [prior] = (await sql`
+      SELECT id FROM org_class_enrollments
+      WHERE user_id = ${who.userId} AND final_submission_id IS NOT NULL
+      LIMIT 1
     `) as unknown as [{ id: string } | undefined]
-    if (!row) {
-      const again = who.userId ? await heldEnrollment(sql, pkg.id, { userId: who.userId }) : null
-      return again ? { outcome: 'already', enrollmentId: again } : { outcome: 'none' }
-    }
-    return { outcome: 'enrolled', enrollmentId: row.id } as ClassEnrollOutcome
-  })) as ClassEnrollOutcome
+    isFirstClass = !prior
+  }
+  const [row] = (await sql`
+    INSERT INTO org_class_enrollments (package_id, user_id, first_name, last_name_initial, is_first_class)
+    VALUES (${pkg.id}, ${who.userId}, ${first}, ${who.li}, ${isFirstClass})
+    ON CONFLICT DO NOTHING
+    RETURNING id
+  `) as unknown as [{ id: string } | undefined]
+  if (!row) {
+    const again = who.userId ? await heldEnrollment(sql, pkg.id, { userId: who.userId }) : null
+    return again ? { outcome: 'already', enrollmentId: again } : { outcome: 'none' }
+  }
+  return { outcome: 'enrolled', enrollmentId: row.id } as ClassEnrollOutcome
 }
 
 /**
@@ -509,21 +550,20 @@ async function addNameOnly(
     }
   }
 
-  // A second same-named player needs a place of their own.
+  // A second same-named player needs a place of their own. On a class team
+  // the place is taken (enrolment) and the roster row inserted in one
+  // transaction under the package lock: a full class adds nobody.
   const newName = matches.length > 0
-  const seats = await classSeatsForTeam(teamId)
-  if (newName) {
-    if (seats && seats.enrolled >= seats.places) throw classFullError(seats.places)
-  } else {
-    await assertClassPlace(seats, { firstName, li })
-  }
-
   const inviteToken = crypto.randomBytes(24).toString('hex')
-  await db`
-    INSERT INTO pending_team_members (team_id, first_name, last_name_initial, invite_token)
-    VALUES (${teamId}, ${firstName}, ${li}, ${inviteToken})
-  `
-  if (seats) await enrolIfClassTeam(teamId, { userId: null, firstName, li, newName })
+  await db.begin(async (tx) => {
+    const sql = tx as unknown as Sql
+    const out = await enrollInTx(sql, teamId, { userId: null, firstName, li, newName })
+    if (out.outcome === 'full') throw classFullError(out.places)
+    await sql`
+      INSERT INTO pending_team_members (team_id, first_name, last_name_initial, invite_token)
+      VALUES (${teamId}, ${firstName}, ${li}, ${inviteToken})
+    `
+  })
   return {
     status: 'invited',
     inviteUrl: inviteLink(inviteToken),
@@ -705,6 +745,7 @@ export async function addPlayerToTeam(input: AddPlayerInput): Promise<AddPlayerR
 
   const sendSetup = async (userId: string): Promise<boolean> => {
     if (!input.sendEmail) return false
+    if (!(await setupEmailDailyOk(userId))) return false
     const url = await issuePlayerSetupToken(userId)
     if (!url) return false
     try {
@@ -748,7 +789,10 @@ export async function addPlayerToTeam(input: AddPlayerInput): Promise<AddPlayerR
         return { kind: 'link', account: accounts[0] } as Plan
       }
       if (accounts.length >= MAX_PLAYERS_PER_EMAIL) throw emailFullError(email)
-      await assertClassPlace(seats, { firstName, li })
+      // Checked under the package lock, and the enrolment below is made in
+      // this same transaction, so parallel adds can't overfill the class.
+      if (seats) await lockClassPackage(sql, seats.packageId)
+      await assertClassPlace(seats, [{ firstName, li }], sql)
 
       // A new account for this child. When the team already lists this child
       // name-only at this very family address (the old workaround), that entry
@@ -766,6 +810,7 @@ export async function addPlayerToTeam(input: AddPlayerInput): Promise<AddPlayerR
         const claimed = await claimInTx(sql, userId, { pendingId: legacy[0].id })
         if (claimed.ok) converted = { movedShots: claimed.movedShots }
       }
+      if (seats) await enrollInTx(sql, input.teamId, { userId, firstName, li })
       return { kind: 'create', userId, siblings: accounts.filter(a => a.ownerFirst !== want), converted } as Plan
     })) as Plan
   } catch (err) {
@@ -779,7 +824,12 @@ export async function addPlayerToTeam(input: AddPlayerInput): Promise<AddPlayerR
     // details we didn't have, without clobbering anything set.
     const existing = plan.account
     const userId = existing.id
-    if (!existing.onThisTeam) await assertClassPlace(seats, { userId }, { firstName, li })
+    // Joining a class team: the place is taken (atomically, under the
+    // package lock) before the membership, so a full class adds nobody.
+    if (seats && !existing.onThisTeam) {
+      const out = await ensureClassEnrollment(input.teamId, { userId, firstName, li })
+      if (out.outcome === 'full' && !(await heldEnrollment(db, seats.packageId, { firstName, li }))) throw classFullError(out.places)
+    }
     await db`
       UPDATE users
       SET parent_name = COALESCE(parent_name, ${parentName}),
@@ -1220,7 +1270,7 @@ export async function giveOwnAccount(input: {
 
   const needsSetup = done.status === 'created' || (!!done.account?.rosterPending && !done.account.passwordHash)
   let emailed = false
-  if (needsSetup && input.sendEmail !== false) {
+  if (needsSetup && input.sendEmail !== false && (await setupEmailDailyOk(done.userId))) {
     const url = await issuePlayerSetupToken(done.userId)
     if (url) {
       const ctx = await getTeamContext(input.teamId)

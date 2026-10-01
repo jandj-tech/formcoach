@@ -12,7 +12,7 @@
 import { db } from '@/lib/db'
 import { BASE_URL } from '@/lib/email'
 import { rateLimit } from '@/lib/rate-limit'
-import { issuePlayerSetupToken } from '@/lib/roster-players'
+import { issuePlayerSetupToken, setupEmailDailyOk } from '@/lib/roster-players'
 
 /**
  * Shown in previews in place of the player's real setup link: the setup link
@@ -85,6 +85,8 @@ export async function resultsSetupLink(
   if (!hour.ok) return { ok: false, reason: 'rate_limited' }
   const day = await rateLimit(`results-setup-day:${userId}`, PER_DAY, 86400)
   if (!day.ok) return { ok: false, reason: 'rate_limited' }
+  // The daily cap shared by every setup-link email (lib/roster-players.ts).
+  if (!(await setupEmailDailyOk(userId))) return { ok: false, reason: 'rate_limited' }
   const url = await issuePlayerSetupToken(userId, { next: landing })
   return url ? { ok: true, url } : { ok: false, reason: 'not_pending' }
 }

@@ -23,7 +23,7 @@ import BillingHistory from '@/components/BillingHistory'
 import InfoTip from '@/components/InfoTip'
 import LeaderboardTable, { type LeaderboardRow } from '@/components/LeaderboardTable'
 import SortMenu, { type SortOption } from '@/components/SortMenu'
-import { usd, type OrgTier } from '@/lib/team-pricing'
+import type { OrgTier } from '@/lib/team-pricing'
 import OrgTokenPanel from '@/components/OrgTokenPanel'
 import OrgMembershipPanel from '@/components/OrgMembershipPanel'
 import OrgTokenDistribution from '@/components/OrgTokenDistribution'
@@ -410,6 +410,9 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
 
   const classPricePerPlayer = classPlayerCount >= CLASS_BULK_THRESHOLD ? 36.99 : 40
   const classTotalCents = classPriceCents(classPlayerCount)
+  // Class totals run past $1,000, so they get the thousands comma.
+  const classMoney = (cents: number) =>
+    `$${(cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
   // Whole purchase pitch hidden in the iOS app (guideline 3.1.1) — showing a
   // priced buy form with a missing button reads as broken UI or steering.
@@ -558,12 +561,12 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
               <p className="text-sm text-ember-100">{classPlayerCount} players × ${classPricePerPlayer}</p>
               <p className="text-xs text-ember-200 mt-0.5">{classPlayerCount * 2} total analyses + {classPlayerCount} certificates</p>
             </div>
-            <p className="text-2xl font-black text-white">{usd(classTotalCents)}</p>
+            <p className="text-2xl font-black text-white">{classMoney(classTotalCents)}</p>
           </div>
           {/* Just under the bulk threshold, 30 places can cost less than this. */}
           {classPlayerCount >= CLASS_BULK_THRESHOLD - 3 && classPlayerCount < CLASS_BULK_THRESHOLD && (
             <p className="text-xs text-ember-100">
-              At {CLASS_BULK_THRESHOLD}+ players it&apos;s $36.99 each: {CLASS_BULK_THRESHOLD} players would be {usd(classPriceCents(CLASS_BULK_THRESHOLD))}
+              At {CLASS_BULK_THRESHOLD}+ players it&apos;s $36.99 each: {CLASS_BULK_THRESHOLD} players would be {classMoney(classPriceCents(CLASS_BULK_THRESHOLD))}
               {classPriceCents(CLASS_BULK_THRESHOLD) < classTotalCents ? ', less than this order' : ''}.
             </p>
           )}
@@ -577,7 +580,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
               disabled={buyingClass || classPlayerCount < CLASS_MIN_PLAYERS}
               className="w-full bg-white dark:bg-ink-900 hover:bg-ember-50 dark:hover:bg-ember-500/10 disabled:bg-white/60 disabled:text-ember-400 text-ember-600 dark:text-ember-400 font-black py-3 rounded-xl transition-colors"
             >
-              {buyingClass ? 'Redirecting to checkout...' : `Buy Class Package — ${usd(classTotalCents)}`}
+              {buyingClass ? 'Redirecting to checkout...' : `Buy Class Package — ${classMoney(classTotalCents)}`}
             </button>
           )}
         </div>
@@ -1151,7 +1154,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
                           <th className="px-3 py-3 text-right text-xs font-semibold text-gray-500 dark:text-chalk-dim uppercase tracking-wide">Best Score</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-100">
+                      <tbody className="divide-y divide-gray-100 dark:divide-courtline">
                         {rows.map(({ key, member: m, label, teams: memberTeams, score }) => (
                           <tr key={key} className="bg-white dark:bg-ink-900">
                             <td className="px-3 py-2.5">

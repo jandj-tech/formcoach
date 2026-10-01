@@ -665,6 +665,14 @@ export async function teamUploadPayer(
  * the org added the real coach — are never copied: copying one handed the
  * stranger's password the org's new team (pre-registration hijack). An
  * independent team (no organization) never copies.
+ *
+ * The agreed hash must also be INBOX-PROVEN (credentialInboxProven). An
+ * added-coach link the inviter was shown (team/add-coach for an address that
+ * coaches nowhere yet) can be opened by the inviter themselves, so a head
+ * coach could plant their own password under a real coach's address on their
+ * own team; when the org later created a team for that coach, the planted
+ * password was copied onto it with no invite (head-coach slot takeover).
+ * Unproven → null → the real coach gets the emailed invite instead.
  */
 export async function sameOrgCoachCredential(
   email: string,
@@ -684,6 +692,7 @@ export async function sameOrgCoachCredential(
     `) as unknown as Array<{ hash: string; nickname: string | null }>
     if (rows.length === 0) return null
     if (new Set(rows.map((r) => r.hash)).size !== 1) return null
+    if (!(await credentialInboxProven(e, rows[0].hash))) return null
     return { hash: rows[0].hash, nickname: rows.find((r) => r.nickname)?.nickname ?? null }
   } catch {
     return null

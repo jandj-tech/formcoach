@@ -86,7 +86,7 @@ export default function CoachUploadForm({ accessCode, players, credits, creditsS
   function handleOutOfTokens() {
     setBalance(b => ({
       left: 0,
-      source: b?.source ?? 'Uses your tokens, then the team’s',
+      source: b?.source ?? 'Your tokens are used first, then the team’s',
       getCredits: b?.getCredits ?? { href: '/team/dashboard#credits', label: 'Get more tokens' },
     }))
     setStep('pick')

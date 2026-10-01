@@ -161,7 +161,7 @@ export default function BulkUploader({
   teamCode,
   roster,
   credits,
-  creditsSource = 'Uses your tokens, then the team’s',
+  creditsSource = 'Your tokens are used first, then the team’s',
   links,
 }: {
   teamCode: string
@@ -498,9 +498,8 @@ export default function BulkUploader({
           </li>
         </ol>
         <p className="mt-3 text-sm text-gray-700 dark:text-chalk">
-          {creditsSource}:{' '}
-          <span className="font-bold">{creditsLeft} left</span>. One token per graded video; clips with no
-          shot in them are free.
+          <span className="font-bold">{creditsLeft} token{creditsLeft === 1 ? '' : 's'} left</span>. {creditsSource}.
+          One token per graded video; clips with no shot in them are free.
         </p>
       </div>
 
@@ -684,7 +683,7 @@ export default function BulkUploader({
               {reviewGroups.length === 1 ? '' : 's'}
             </h3>
             <p className="mt-1 text-sm text-gray-600 dark:text-chalk-dim">
-              Check each name before grading. Uses {ready.length} of the {creditsLeft} tokens left. {creditsSource}.
+              Check each name before grading. Uses {ready.length} of the {creditsLeft} token{creditsLeft === 1 ? '' : 's'} left. {creditsSource}.
             </p>
           </div>
           <ul className="divide-y divide-gray-200 dark:divide-courtline rounded-xl border border-gray-200 dark:border-courtline bg-white dark:bg-ink-900">

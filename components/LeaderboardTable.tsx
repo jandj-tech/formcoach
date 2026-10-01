@@ -409,7 +409,8 @@ export default function LeaderboardTable({
                         <span className={t.name}>{name}</span>
                       )}
                       {entry.detail && (
-                        <span className={`ml-1.5 text-xs font-normal ${t.avg}`}>({entry.detail})</span>
+                        // Phones: own line, and an email may break after the @.
+                        <span className={`block sm:inline sm:ml-1.5 text-xs font-normal whitespace-normal ${t.avg}`}>({entry.detail.includes('@') ? <>{entry.detail.slice(0, entry.detail.indexOf('@') + 1)}<wbr />{entry.detail.slice(entry.detail.indexOf('@') + 1)}</> : entry.detail})</span>
                       )}
                     </td>
                     {showTeamColumn && (

@@ -259,11 +259,11 @@ export default function OrgRosterImport({ teams }: { teams: TeamOption[] }) {
       {groups.length > 0 && (
         <>
           <div className="text-xs text-gray-600 dark:text-chalk-dim flex flex-wrap gap-x-3 gap-y-1">
-            <span><strong className="text-black dark:text-chalk">{rows.filter(r => !r.removed).length}</strong> rows for <strong className="text-black dark:text-chalk">{groups.length}</strong> team name{groups.length === 1 ? '' : 's'}</span>
+            <span><strong className="text-black dark:text-chalk">{rows.filter(r => !r.removed).length}</strong> {rows.filter(r => !r.removed).length === 1 ? 'row' : 'rows'} for <strong className="text-black dark:text-chalk">{groups.length}</strong> team name{groups.length === 1 ? '' : 's'}</span>
             {imported && <span><strong className="text-green-700 dark:text-green-400">{all.added}</strong> added</span>}
             {imported && all.already > 0 && <span><strong className="text-black dark:text-chalk">{all.already}</strong> already on their team</span>}
-            {all.onTeam > 0 && <span><strong className="text-black dark:text-chalk">{all.onTeam}</strong> look already on their team (left out)</span>}
-            {all.needsFix > 0 && <span className="text-red-600 dark:text-red-400"><strong>{all.needsFix}</strong> need fixing</span>}
+            {all.onTeam > 0 && <span><strong className="text-black dark:text-chalk">{all.onTeam}</strong> {all.onTeam === 1 ? 'looks' : 'look'} already on their team (left out)</span>}
+            {all.needsFix > 0 && <span className="text-red-600 dark:text-red-400"><strong>{all.needsFix}</strong> {all.needsFix === 1 ? 'needs' : 'need'} fixing</span>}
           </div>
 
           <div className="space-y-4">

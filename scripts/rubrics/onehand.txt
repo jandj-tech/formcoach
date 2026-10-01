@@ -1,0 +1,132 @@
+ONE HAND RELEASE / SHOOTING THROUGH THE GUIDE HAND — v2
+
+THE ONE QUESTION. After the ball has left, did the guide hand travel after it, or
+was it left behind? A guide hand that pushes follows the ball toward the target.
+A guide hand that merely rode along stays where the ball used to be.
+
+THE PRIMARY MEASUREMENT, AND THE RULER IS THE BALL. Find the release frame — the
+first frame where the ball is no longer touching the shooting hand. Mark where
+the GUIDE-HAND wrist is in that frame. Now look one and two frames later and
+measure how far that wrist has travelled IN THE DIRECTION THE BALL WENT,
+expressed in BALL WIDTHS using the ball in the release frame.
+
+That distance is the score. One number, two positions of one point, measured
+against an object in the same frame so it holds at any distance from the camera.
+
+WHY THIS AND NOTHING FINER. Earlier drafts of this criterion asked for
+finger-scale evidence: whether the guide-hand fingers straightened into the ball,
+which way the palm ended up facing, whether the ball was still touching both
+hands. On these clips the shooter is about 166 pixels tall, the ball about 21
+pixels across and the whole hand about 15 — and the JPEG blocking artefacts are
+8 pixels. A finger is roughly 3 pixels. Those judgements are not in the image,
+and asking for them produced a score that correlated with the expert at only
+r = 0.38 — it was not offset, it was barely tracking. A wrist moving a ball width
+is a 20-to-30 pixel displacement, which is comfortably above that floor and
+reads from a camera in front, from the side, and from above.
+
+DO NOT SCORE THE SET POSITION. The guide hand is on the ball for most of the
+clip and it is SUPPOSED to be. Where it sits on the ball beforehand belongs to
+"Guide Hand Placement" and must not be charged here. This criterion is about one
+event: what the hand did once the ball was gone.
+
+WHICH FRAMES. Judge this from the release and the frames immediately after it —
+the moment the ball separates through the start of the follow-through. This
+overrides the general instruction to judge this criterion at the apex alone: the
+push happens after separation, so the apex frame by itself cannot show it. Use
+the ball's position as the landmark rather than counting frames, because the
+frames are not evenly spaced in time: the release frame is the first one where
+the ball is clear of the shooting hand.
+
+THIS CRITERION HAS NO SUB-CRITERIA AND NO FORMULA. Ignore any general
+instruction to score sub-criteria individually and combine them with a formula —
+there is nothing here to sum. The measurement above maps directly onto the
+anchors below, and the anchor IS the score.
+
+SCORE ANCHORS — one axis, the distance the guide-hand wrist travelled toward the
+target, in ball widths. Every whole and half point is available; use a half
+point when you are unsure which of two anchors you are looking at.
+  10 — The wrist barely moves: under about a quarter of a ball width. The guide
+       hand is left behind at the ball's old position while the shooting hand
+       finishes over the top. This is ordinary correct form, not elite form, and
+       it is where a competent one-hand release belongs.
+  9  — About a quarter of a ball width. Essentially left behind, with a little
+       drift.
+  8  — Around a third to a half a ball width. The hand gave slightly with the
+       ball. Still plainly a one-hand release — name the small drift as the
+       flaw and score it here rather than dropping further.
+  7  — About half a ball width, with the guide-hand elbow visibly starting to
+       straighten.
+  6  — Around three quarters of a ball width. The hand is following the ball.
+  5  — About one ball width, guide-hand elbow clearly extending toward the
+       target. The guide hand is doing real work.
+  4  — Between one and one and a half ball widths. Both arms are reaching out
+       after the ball.
+  3  — Over one and a half ball widths: the guide arm extends fully toward the
+       target alongside the shooting arm. This is a two-hand shot with a
+       dominant side.
+  2  — The guide arm extends fully AND the ball visibly leaves off both hands
+       together rather than rolling off the shooting hand.
+  1  — A two-hand push from chest height, both arms driving the ball out with
+       no separation at any point.
+
+ONE MANDATED CAP, FROM THE GUIDE HAND FOLLOW THROUGH RUBRIC. If the guide hand
+FLICKED — a fast lateral jab toward the shooting hand at release, or the two
+hands clearly converging to the point of nearly or actually crossing — this
+criterion scores 4 or below regardless of the measurement above, and the Guide
+Hand Follow Through criterion does the same. A flick is charged in both places
+deliberately: it is the one guide-hand fault severe enough to define the release
+as well as the finish. No OTHER guide-hand fault is charged twice.
+
+IF YOU CANNOT MEASURE IT, SCORE IT HIGH — DO NOT RETURN NULL AND DO NOT GO TO
+THE MIDDLE. This criterion is always shown to the player, so it must always
+carry a score. If the guide-hand wrist is not trackable across the release
+frames — occluded, blurred, out of frame, or the release itself is not in the
+clip — then you have not seen a push, and a fault you cannot see is not a fault.
+Score 9 or 10, say the guide hand could not be tracked through the release, and
+do not deduct. Defaulting to the middle of this scale would mean reporting a
+two-hand push on evidence you never had, and it also caps how well this
+criterion can ever track the expert.
+
+DO NOT DEDUCT FOR ANY OF THESE. Each is either correct form or another
+criterion's business:
+  - The guide hand being ON the ball before release. That is its job.
+  - Where the guide hand sits on the ball, under it, or on top of it. That is
+    Guide Hand Placement.
+  - The guide hand finishing HIGH, with both arms extended overhead and the
+    hands apart. That is correct form and scores 9-10 on the follow-through
+    criterion. Height is not travel: measure movement toward the TARGET, not
+    upward. A hand that goes up with the shooter and stays put horizontally has
+    not pushed.
+  - Whether the guide hand is flat, spread, cupped or fisted. That is Guide Hand
+    Follow Through, and it is only scorable when the fingers are countable.
+  - Sidespin or wobble on the ball. That is Ball Rotation. We have no source
+    treating spin as a guide-hand diagnostic, so do not treat it as one here.
+  - The shooting hand's own wrist snap, finger release or follow-through. Those
+    are Shooting Hand Follow Through.
+  - A young or small player who looks like they need the extra hand. Strength is
+    not an excuse and not a deduction: measure the wrist travel and score it.
+    Mention strength in the coaching note if it is relevant, never in the score.
+
+WHY THIS CRITERION CARRIES THE MOST WEIGHT IN THE RUBRIC. Asked to name the most
+important element in shooting, Herb Magee names the guide hand. His instruction
+is to shoot "through" the guide hand, and the fault, in his own words, is that
+players "shoot two-handed". He endorsed a player shooting one-handed for a full
+year as the corrective.
+[Verified Magee: 2015 NABC clinic notes transcribed by Wes Kosel,
+hoopschalktalk.wordpress.com/2015/08/22/herb-magee-how-to-shoot-the-perfect-shot/
+The "shoot two-handed" wording and the one-handed corrective come from a 2018
+Deadspin interview with Magee.]
+
+PROVENANCE, SO THIS IS NOT MISTAKEN FOR DOCTRINE. Verified as Magee's: the guide
+hand as the most important element, shooting "through" the guide hand, the fault
+being a two-handed shot, and one-handed shooting as a corrective. NOT Magee and
+not attributed to him: the wrist-travel measurement, the ball-width ruler, the
+flick cap, and every number on this scale. Magee gives no numeric thresholds
+anywhere and has nothing documented about what the guide hand should do after
+release — the measurement here is ours, chosen because it is the one thing at
+this resolution that separates a push from a ride.
+
+PLAYER-FACING WORDING. Tell them whether the ball left on one hand, and if the
+guide hand pushed, say the off hand should ride along and come off the ball as it
+goes, letting the shooting hand finish alone. Never mention points, ball widths,
+wrists, frames, measurements or any number.

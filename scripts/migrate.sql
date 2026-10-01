@@ -349,8 +349,11 @@ WHEN TO RETURN NULL: only when the feet are not visible at all during the shooti
 
 PLAYER-FACING WORDING: when you do deduct, describe what you saw the body do — the shoulders having to twist back, or the base swinging round to get the shot away — not the angle of the feet. Never tell a player whose open stance is working that they should point their toes straight, and never make a note of a small foot adjustment. Never mention lines, angles or degrees in the reasoning.'
 WHERE name = 'Square to the Basket'
-  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'SQUARE RUBRIC v3%');
+  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'SQUARE RUBRIC v%');
 
+-- NOTE (2026-09-30): the Square/Elbow/Power seeds below only fire on an UNVERSIONED row.
+-- Newer versions live in migrate-rubrics-e54.sql (applied after this file); a guard
+-- that skipped only its own version overwrote v12/v8/v8 on every build.
 -- "Elbow L-Shape" rubric. v1 named the open-V push but scored a CATAPULTED
 -- shot 8: the two-handed heave up the midline is MORE folded than an L, so
 -- "recognisable L" language rewarded it (analysis 197, expert-flagged
@@ -447,7 +450,7 @@ EXPERT CALIBRATION — real graded cases:
 
 PLAYER-FACING WORDING: tell them the shooting hand has to take the ball at face height with the elbow tucked under it — one flat vertical forearm carrying the ball, the other hand just along for the ride — instead of heaving the ball up with both hands. Never mention degrees or angles in the reasoning.'
 WHERE name = 'Elbow L-Shape — Under the Ball'
-  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'ELBOW RUBRIC v5%');
+  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'ELBOW RUBRIC v%');
 
 -- "Source of Shot Power" rubric. v1 read power off legs + elbow angle but had
 -- no shape for the catapult, so a catapulted shot scored 8 off its knee bend
@@ -498,7 +501,7 @@ IF THE ONLY FRAMES YOU HAVE ARE AT OR AFTER THE RELEASE, the evidence for this c
 
 PLAYER-FACING WORDING: tell them to load their legs and let the ball ride up through one folded, vertical arm — the shooting hand taking the ball at face height — instead of heaving or catapulting it with both hands. Calling it "catapulting the ball" is good coaching language. Never mention degrees or angles in the reasoning.'
 WHERE name = 'Source of Shot Power'
-  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'POWER RUBRIC v4%');
+  AND (grading_notes IS NULL OR grading_notes NOT LIKE 'POWER RUBRIC v%');
 
 -- "Guide Hand Follow Through" rubric. v1 named the flick, the hands closing up
 -- and a thrashing finish, but "flat" was left as an impression and the model read

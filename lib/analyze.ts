@@ -1,4 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { anchorsEnabled, renderAnchorHeader, type Anchor } from './anchors'
+import { runFrameChecks, frameCheckBounds, frameCheckFacts, type FrameChecks } from './frame-checks'
+import { observationSpecFor, renderObservationPrompt, scoreFromObservation, OBSERVATION_SPECS } from './observations'
 import { isGatewayModel, callGatewayModel, callVisionModel, analysisModel } from '@/lib/model-provider'
 import { createHash } from 'crypto'
 import { readFileSync } from 'fs'
@@ -13,6 +16,10 @@ interface CriterionResult {
   id: number
   score: number | null
   reasoning: string
+  /** Observation key when OBSERVE=1 — the score is derived from this, not chosen. */
+  observation?: string
+  /** How well the footage actually showed what this criterion asks about. */
+  evidence?: 'clear' | 'partial' | 'none'
   /**
    * How far the ensemble passes disagreed on this criterion (max - min).
    *
@@ -119,6 +126,30 @@ export interface GraderVersion {
   calibration_version: number | null
 }
 
+/**
+ * SETPOINT_CHECK=1 — a two-call, single-frame inspection of the set point.
+ *
+ * Measured (E45): the catapult on shot-196 is in the grader's pinned frames
+ * (7-11 of 28). Asked over all 28 frames, the model LOCATES the set point
+ * correctly and then describes it as "forehead level, elbows tucked, forearms
+ * vertical" — a template, not the image. Asked about that ONE frame in
+ * isolation, the same model answers all three cues correctly. Even on frames
+ * where it picked the right index, the per-cue answers degrade at 28 images.
+ * So the whole-body set-point faults are detected on one frame, and the
+ * result is handed to the grading passes as fact.
+ */
+export interface SetPointCheck {
+  frame: number | null
+  cues: {
+    ball_behind_or_above_head: boolean
+    elbow_flared_shoulder_height: boolean
+    forearm_not_vertical: boolean
+    ball_beside_head: boolean
+    both_hands_mirrored_elbows_out: boolean
+  } | null
+  verdict: 'catapult' | 'v_top' | 'flared' | 'clean' | 'unavailable'
+}
+
 interface AnalysisResult {
   overall_score: number
   shot_detected: boolean
@@ -143,6 +174,10 @@ interface AnalysisResult {
   }
   /** Set by analyzeShot on the merged result; absent on per-pass results. */
   grader_version?: GraderVersion
+  /** SETPOINT_CHECK=1 only. Recorded even when the verdict is clean. */
+  set_point_check?: SetPointCheck
+  /** FRAME_CHECKS=1 only: the cue answers and the caps/floors they produced. */
+  frame_checks?: FrameChecks & { bounds: Array<{ criterion: string; cap?: number; floor?: number; why: string }> }
   criteria: CriterionResult[]
 }
 
@@ -287,11 +322,19 @@ export async function buildCalibrationFeedbackText(): Promise<string> {
  * Adding a draft here is what makes it testable; it does not make it live.
  */
 const RUBRIC_DRAFTS: Record<string, string> = {
+  connected: 'Connected Shot',
+  domfoot: 'Dominant Foot Forward',
   elbow: 'Elbow L-Shape — Under the Ball',
   guidehand: 'Guide Hand Follow Through',
+  handft: 'Shooting Hand Follow Through',
+  knees: 'Knees Bent',
+  onehand: 'Shooting Through Guide Hand / One Hand Release',
+  placement: 'Guide Hand Placement',
+  pocket: 'Shot Pocket — Elbow',
   power: 'Source of Shot Power',
   square: 'Square to the Basket',
   stance: 'Feet Shoulder Width Apart',
+  toes: 'Forward Motion and Toes',
 }
 
 /**
@@ -314,6 +357,35 @@ const RUBRIC_DRAFTS: Record<string, string> = {
  * nothing, because a silent no-op would report "this draft changed nothing"
  * when the draft was never actually loaded.
  */
+/**
+ * Reads a draft rubric ONCE per process and caches it.
+ *
+ * WHY THE CACHE IS THE POINT, not an optimisation: grading_notes is resolved on
+ * every request, so an eval arm that takes 25 minutes was re-reading these files
+ * for every fixture. Editing a draft while an arm was running therefore produced
+ * an arm graded partly by the old text and partly by the new one — which is not
+ * a weaker measurement, it is an uninterpretable one, and it silently invalidated
+ * a 28-fixture baseline mid-run. Reading once makes a run hermetic: whatever the
+ * files said when the process started is what the whole arm was graded by, and a
+ * mid-run edit cannot reach it.
+ *
+ * The sha is logged so an arm's rubric identity is recoverable from its output.
+ */
+const draftCache = new Map<string, string>()
+function readDraftOnce(name: string): string {
+  const cached = draftCache.get(name)
+  if (cached !== undefined) return cached
+  const text = readFileSync(join(process.cwd(), 'scripts', 'rubrics', `${name}.txt`), 'utf8').trim()
+  if (!text) throw new Error(`RUBRIC_OVERRIDE: scripts/rubrics/${name}.txt is empty`)
+  console.log('[analyze] rubric draft pinned for this process', {
+    draft: `${name}.txt`,
+    chars: text.length,
+    sha: createHash('sha256').update(text).digest('hex').slice(0, 12),
+  })
+  draftCache.set(name, text)
+  return text
+}
+
 function applyRubricOverrides(rows: CriteriaRow[]): CriteriaRow[] {
   const requested = (process.env.RUBRIC_OVERRIDE ?? '')
     .split(',')
@@ -335,8 +407,7 @@ function applyRubricOverrides(rows: CriteriaRow[]): CriteriaRow[] {
         `RUBRIC_OVERRIDE: "${name}" maps to criterion "${criterionName}", which is not active in this database`
       )
     }
-    const text = readFileSync(join(process.cwd(), 'scripts', 'rubrics', `${name}.txt`), 'utf8').trim()
-    if (!text) throw new Error(`RUBRIC_OVERRIDE: scripts/rubrics/${name}.txt is empty`)
+    const text = readDraftOnce(name)
     row.grading_notes = text
     console.log('[analyze] RUBRIC OVERRIDE ACTIVE — not the live rubric', {
       criterion: criterionName,
@@ -360,8 +431,16 @@ async function loadGraderContext(): Promise<GraderContext> {
   // still captured in prompt_sha because feedbackText is hashed into it.
   const calibrationVersion: number | null = null
 
+  // OBSERVE=1 replaces "pick a number" with "report what you saw" for the
+  // criteria that have a discrete, visible structure. The score is then computed
+  // in lib/observations.ts rather than chosen by the model.
+  const observeMode = process.env.OBSERVE === '1'
   const criteriaText = activeCriteria
-    .map((c) => `--- ID ${c.id}: "${c.name}"\n${c.grading_notes || c.description}`)
+    .map((c) => {
+      const base = `--- ID ${c.id}: "${c.name}"\n${c.grading_notes || c.description}`
+      const spec = observeMode ? observationSpecFor(c.name) : undefined
+      return spec ? `${base}\n\n${renderObservationPrompt(spec)}` : base
+    })
     .join('\n\n')
 
   // Human-readable rubric markers, e.g. "STANCE RUBRIC v15" — the convention
@@ -381,6 +460,16 @@ async function loadGraderContext(): Promise<GraderContext> {
         // 4 calls is not the same grader as in 1.
         (process.env.CRITERION_GROUPS === '1' ? 'grouped:' : '') +
         (process.env.TWO_STAGE === '1' ? 'twostage:' : '') +
+        // Eval-only switches change what the grader sees or is told; an arm
+        // run with one must not hash identically to the baseline (B1 of the
+        // 2026-09-28 review: --accept would otherwise freeze a checked arm as
+        // an indistinguishable baseline).
+        (process.env.SETPOINT_CHECK === '1' ? 'setpoint:' : '') +
+        (process.env.FRAME_CHECKS === '1' ? 'framechecks:' : '') +
+        (process.env.FRAME_CHECKS === '1' && process.env.FRAME_CHECK_CROP === '0' ? 'nocrop:' : '') +
+        (process.env.SPLIT_FRAMES === '1' ? 'split:' : '') +
+        (process.env.ANCHORS === '1' ? 'anchors:' : '') +
+        (process.env.FAULT_GATE === '1' ? 'faultgate:' : '') +
         buildSystemPrompt({ criteriaText, feedbackText }, SHA_CANONICAL_FRAME_COUNT)
     )
     .digest('hex')
@@ -421,6 +510,7 @@ KEY FORM PRINCIPLES (use these to evaluate):
 - Release: ball rolls off index and middle fingertips with backspin — palm contact reduces control
 - Power: flows from legs upward through core, not arm-muscled
 - One-hand release: shooting hand controls everything at release — two-hand push is a clear flaw
+- WHERE THE TARGET IS, FOR ANY CRITERION THAT MENTIONS THE BASKET OR THE RIM: most clips show only the shooter, with no net anywhere in frame. Two criteria are worded as alignment to the basket — "Square to the Basket" and "Forward Motion and Toes" — and their wording must not be read as requiring a visible rim. Establish the target direction in this order: (1) THE DIRECTION THE BALL TRAVELS once it leaves the hands — if it grows and exits the top of the frame the target is behind the camera, if it shrinks the target is away from the camera, if it exits a side the target is on that side; (2) the rim or backboard, but ONLY if the ball is travelling away from the camera toward it — a rim visible behind a shooter who is shooting toward the camera is the FAR basket, and lining the shooter up against it has scored square shots 4; (3) otherwise judge only what the body can be compared against internally — whether the toes, hips and shoulders agree with EACH OTHER — and say in the reasoning that the target itself was not visible. NEVER take the target to be wherever the player happens to be facing: that assumes the answer and scores every shot as square.
 - Stance: a correct base puts the feet between hip width and shoulder width; clearly narrower or clearly wider are both real flaws. Judge it only as the player rises into the shot, never before. Its grading guide below carries the full method — follow that. In player-facing reasoning always call this "shoulder width" — never write "hip width"
 - Dominant foot: the shooting-side foot being SLIGHTLY ahead is CORRECT form — this should score 9–10, not be penalized. Only deduct if feet are completely even or the wrong foot is leading.
 
@@ -446,13 +536,30 @@ Scoring criteria (read each carefully before scoring):
 ${criteriaText}
 ${feedbackText}
 
-HOW TO SCORE:
+${process.env.FAULT_FIRST === '1' ? `FIND THE FAULTS BEFORE YOU SCORE ANYTHING. Your first output field is "flaws": a list of everything visibly wrong with this shot, worst first. Write it before you look at the criteria list, and write it about the shot as a whole rather than criterion by criterion.
+
+For each flaw name the body part, what it did, and the moment you saw it — "the shooting elbow swings out past the shoulder as the ball comes up", not "elbow issues". If the shot genuinely has no visible flaw, return an empty list and say why in "flaws_note".
+
+WHY THIS COMES FIRST, AND WHY IT IS NOT OPTIONAL. Going criterion by criterion asks you to confirm that each thing is correct, and confirming correctness is easy to do from an assumption — measured on this suite, the grader wrote "your feet and shoulders are square to the target and stay aligned throughout the shot" about a clip with no basket anywhere in it, and scored 9 where the owner scored 3 to 5. Listing faults first asks the opposite question, one you can only answer by pointing at something you actually saw. Whatever you list here must then be reflected in the scores below; a flaw you named and then scored as though it were absent is a contradiction.
+
+` : ''}HOW TO SCORE:
 
 STEP 0 — Before scoring anything, confirm these frames actually show a real shot being taken (see SHOT DETECTION below). If they do not, set shot_detected to false and do not score the criteria — producing a score for a clip that contains no shot is never acceptable.
 
-Use the sub-criteria breakdown in each criterion's grading guide. Score each sub-criterion individually, then calculate using the formula shown.
+SCORING A CRITERION: if its grading guide gives SCORE ANCHORS — a described shot next to each number — then find the anchor that matches what you saw and that anchor IS the score. Do not sum anything and do not compute anything; there is no formula to apply. Only if a guide actually lays out numbered sub-criteria with point values should you score those individually and combine them as it says.
 
-BURDEN OF PROOF — deductions require evidence of a visible flaw: You need to clearly see something wrong to deduct points. Not being able to perfectly confirm something is correct is NOT a flaw. Default to full credit; only deduct when you can describe the specific flaw you observed.
+WHY THIS ORDER MATTERS: the older guides split a criterion into sub-scores worth 4, 3 and 2 points and reserved each top band for "elite" or "perfect" performance. Measured against expert labels, criteria still graded that way missed 12 times too LOW against 1 too high, because summing bands whose tops are reserved for professionals cannot produce a high score for an ordinary correct shot. Where a guide gives anchors instead, trust the anchors.
+
+BURDEN OF PROOF — deductions require evidence of a visible flaw: You need to clearly see something wrong to deduct points. Not being able to perfectly confirm something is correct is NOT a flaw. Only deduct when you can describe the specific flaw you observed.
+
+REPORT YOUR EVIDENCE FOR EVERY CRITERION. Alongside each score, set "evidence":
+- "clear"   — the body part and the moment this criterion asks about are plainly visible, and you are judging what you actually saw.
+- "partial" — you can see something relevant but not well: the shooter is small or distant, the angle hides part of it, motion blur, or the key frame is at the edge of the clip.
+- "none"    — the footage does not show what this criterion asks about at all. The body part is out of frame, occluded in every frame, or the reference it needs is absent — for example judging squareness to the basket when the basket is nowhere in shot.
+
+BE HONEST ABOUT "none" — IT IS NOT A FAILURE, IT IS INFORMATION. A shooter who fills a fiftieth of the frame against a bright sky does not give you a readable guide hand, and saying so is worth far more than a confident number. This was measured: on clips where the shooter is unreadable the grader has been returning 9s for shots the expert scored 3 to 5, because "no visible flaw" and "cannot see anything" produced the same answer. They are not the same answer.
+
+WHEN EVIDENCE IS "none", DO NOT DEFAULT TO FULL CREDIT. Full credit is a claim that the mechanic was correct, and you have no basis for it. Score what a typical shot of this kind would earn — the middle-to-upper part of the criterion's range — and say in the reasoning that the footage did not show it clearly. Reserve the top of the scale for mechanics you actually watched happen.
 
 MANDATORY 10 RULE: If you cannot name a specific visible flaw, the score is 10 — not 9 "to be safe," not 9.5. A score below 10 requires you to state exactly what was wrong. Never give 9 as a hedge when everything looks correct. 9 means you saw one small specific thing off; if you didn't see that thing, the score is 10.
 
@@ -460,7 +567,19 @@ SET POINT ABOVE OR BEHIND THE HEAD — CATCH THE CATAPULT: A distinct, severe se
 
 A CLEAN FINISH NEVER RESCUES A BROKEN SET POINT. The follow-through and the flight of the ball are the most eye-catching part of a clip, and a tidy goose-neck finish — or the ball going in — makes the whole shot read as good. It does not make the set point good. Inspect the frames where the ball is coming up and level with the head, BEFORE it is released, and score the arm on what you see THERE. If the elbow is flared out, the arm is opened well past a right angle into a wide V rather than folded into an L, or the ball is sitting beside the head instead of stacked above the elbow, then the elbow, shot pocket and power criteria are all low — no matter how clean the release and follow-through look afterwards. A shot can finish beautifully and still have been built wrong, and the pre-release frames are the only place that shows.
 
-CONSISTENCY CHECK (apply before finalizing every score): If your reasoning for a criterion describes good mechanics, no flaws, or nothing wrong — the score MUST be 10. A positive or neutral reasoning combined with a score below 10 is a direct contradiction. Fix the score to 10, not the reasoning.
+A POSITIVE CLAIM NEEDS A NAMED OBSERVABLE. Before writing that something is correct, ask what you actually SAW that shows it, and be able to name it: the body part, and roughly when in the sequence you saw it. If you cannot name it, you have not observed correct form — you have assumed it.
+
+This is the single largest measured source of wrong scores, and it does not look like uncertainty. On a clip where the shooter stands about a quarter of the frame tall on an outdoor lot with no basket anywhere in shot, the grader wrote "your feet and shoulders are square to the target and stay aligned throughout the shot" and scored 9. The expert scored that shot between 3 and 5. Nothing in that sentence was observed: the target was not in the footage at all. Elsewhere it wrote "your shooting elbow is stacked under the ball forming a good L-shape" and scored 8 where the expert scored 3 to 5.
+
+Those are not hedges. They are confident, specific, invented descriptions of correct form, and they are indistinguishable from real observations once written down. Do not produce them. If the shooter is too small or too far, or the relevant moment is not in these frames, SAY THAT instead — set evidence to "partial" or "none" and describe what you could and could not make out.
+
+THE TARGET DIRECTION COMES FROM THE BALL, NOT FROM THE BASKET. Most clips uploaded to this product do not show the net at all — they show the shooter and nothing else. So for "Square to the Basket" and anything else measured against where the player is aiming, the reference you use is THE DIRECTION THE BALL TRAVELS AFTER RELEASE. Find the ball in the frames after it leaves the hands and read which way it is going across the image; a shot travels toward the basket, so that direction IS the target direction. Compare the line of the shoulders and the line of the toes against it.
+
+Use the rim or backboard only when the ball is travelling toward it; a rim behind the shooter is almost always the other end of the court. Never infer the target from which way the player happens to be facing — that assumes the very thing the criterion is asking, and it will score every shot as square.
+
+Only when BOTH are unavailable — no visible basket AND the ball cannot be followed after release — set evidence to "none", score the middle of the range, and say the direction of the shot could not be established.
+
+CONSISTENCY CHECK (apply before finalizing every score): a reasoning that describes good mechanics with no flaw, and is GROUNDED in something you named seeing, should score at the top of the criterion's range. But if the positive reasoning is not grounded in a specific observation, the fault is in the reasoning, not the score: rewrite the reasoning to say what you actually could and could not see, then score that. Never resolve the contradiction by inventing the observation.
 
 USER-FACING LANGUAGE RULE: The "reasoning" string is shown directly to the player. Write it as natural, plain-English coaching feedback — say what they did wrong and how to correct it. NEVER mention internal flag names like elbow_severely_out, followthrough_flick_to_side, arc_too_flat, chest_pass_hands, ball_behind_head, or critical_flags. NEVER write meta-phrases like "flag triggered," "cap applied," "score capped at X," or "per the rules." NEVER write "hip width" — stance width is measured against the hips internally, but players are only ever taught the "shoulder width" cue, so always word stance feedback as "shoulder width." Just describe the flaw and a tip to fix it, the way a coach would speak to a player.
 
@@ -478,32 +597,41 @@ These THREE are the only criteria allowed to disappear from a player's report. T
 
 THUMB — MANDATORY NULL CONDITION: Return null for the "Thumb is Spread Wide" criterion if the thumb is not clearly and directly visible in at least one frame. Do not infer thumb position from finger spacing or general hand shape — if you cannot see the thumb clearly, return null.
 
-WITHIN A SCORED CRITERION — VISIBILITY IS NEVER A DEDUCTION REASON: Once you decide to score a criterion (not null), only clearly visible flaws count. The following phrases are FORBIDDEN as justification for any deduction — if you find yourself writing them, change the score to 10 for that criterion: "partially visible," "hard to confirm," "limited at this distance," "cannot fully see," "could not clearly confirm," "may be slightly off," "not fully clear," "difficult to assess," "angle makes it hard," "thumb not fully visible," "cannot confirm thumb," "grip hard to see." If your reasoning contains any of these, you are violating the rules.
+WITHIN A SCORED CRITERION — VISIBILITY IS NEVER A DEDUCTION REASON, AND IT IS NEVER A REASON FOR FULL CREDIT EITHER: If you are about to write "partially visible," "hard to confirm," "limited at this distance," "cannot fully see," "could not clearly confirm," "not fully clear," "difficult to assess," or "angle makes it hard" as the reason for a deduction, you are describing your EVIDENCE, not a flaw. Do not deduct for it — and do not raise the score for it. Set "evidence" to "partial" or "none" for that criterion, apply the criterion's own cannot-measure rule if it has one, and score what its anchors say for what you DID see. A score of 10 is a claim that you watched the mechanic and it was right; it is not the default for a mechanic you could not read.
 
 FOLLOW-THROUGH — ARMS DROPPING DOWN IS NOT A FLAW: After the ball leaves the hand, it is completely normal for both arms to drop down and move apart from each other as the player returns to rest. This must NEVER be scored as a flaw on any follow-through, guide hand, or one-hand-release criterion. Only deduct for those criteria if there is a visible INWARD snap or lateral flick AT the moment of release — not for the natural lowering of both arms afterward.
 
 GUIDE HAND — SCRUTINIZE EVERY RELEASE, FRAME BY FRAME: The guide (off) hand must leave the ball completely BEFORE the ball leaves the shooting hand, and must add zero force. Step through each release and follow-through frame specifically for the guide hand — the peel is a motion, not a pose, and one tidy finish frame proves nothing about the frames before it. A two-hand release — where the guide hand is still on the ball at release, visibly pushes or steers it, or converges on the shooting hand as the arms rise so the two hands finish together — is a real and common flaw, and is NOT the same as the natural post-shot arm drop described above. It is also NOT the same as both arms simply finishing extended overhead: hands high but clearly APART, with the guide hand flat and passive, is correct form. When you see a genuine two-hand release or guide-hand flick, score "Shooting Through Guide Hand / One Hand Release" and "Guide Hand Follow Through" 4 or below and set followthrough_flick_to_side. Do not overlook this — it is one of the most score-relevant flaws, and it is easy to miss from front or elevated camera angles where the two hands overlap.
 
-ESTABLISHING THE TARGET LINE: Direction-based criteria (follow-through direction, feet squared) are judged relative to where the BASKET is. Establish it once per clip: if the rim, backboard, or net is visible in any frame, that is the target line — use it. If the basket is never visible, use the direction the shooter's TORSO faces at the moment of release as the assumed target line — shooters face their target, so the chest at release is the most reliable proxy the footage offers. Never invent a third reference; state in your reasoning which of the two you used.
-
 SHOOTING HAND FOLLOW-THROUGH — THE SNAP MUST BE STRAIGHT AND SMOOTH THROUGH THE WHOLE MOTION: Track the shooting hand across EVERY release and follow-through frame as one continuous motion. A correct snap travels straight along the target line from start to finish — wrist breaking down toward the rim, fingers pointing at the basket, palm settling toward the floor, one smooth uninterrupted path. Any sideways deviation AT ANY POINT in that motion is the flaw: a snap that starts crooked and flicks, a snap that starts clean and then whips left or right mid-motion, the palm rolling outward, or the wrist crossing the body — all of these are the same major fault and all are caught only by following the hand frame to frame. A tidy final pose proves nothing about the frames before it, and a clean start proves nothing about the finish; only a smooth, straight, single-direction snap earns a high score. When you see any of it, score the shooting-hand follow-through criterion 4 or below and set followthrough_flick_to_side.
 
 FEET AND SQUARING — CHECK THE TOES AGAINST THE TARGET LINE, THROUGH THE WHOLE SHOT: At Moment 1, before scoring the base, actively find both feet and read where the toes point relative to the target line established above. Feet pointing clearly sideways — the player's body fully open to the left or right of the target rather than facing it — is a major stance flaw and must pull the stance/squared-to-basket scoring down to 4 or below, even if the width and knee bend look fine. And like the follow-through, the base is a MOTION, not a pose: a player who sets up square but twists open sideways as they rise, or lands with the body rotated away from the target, has the same fault as one who started sideways — check the feet and hips at the set-up, through the rise, AND at the landing, and only a base that stays square to the target throughout earns a high score. A slight, deliberate angling of the feet is normal for many shooters; fully facing the side, or turning to face the side mid-shot, is not. State in your own reasoning which way the toes point — if you cannot say, you have not actually checked.
 
-CAMERA ANGLE — ELBOW ASSESSMENT: When the video is filmed from the side (player facing left or right), a side view can make the elbow appear further out than it really is. Use your best judgment — if the arm forms a clear L-shape with the elbow tucked under the ball even from the side view, give full credit. Only penalize or flag elbow_severely_out if the elbow looks clearly wrong even accounting for the side angle — do not assume it is out simply because the angle is imperfect.
+CAMERA ANGLE — ELBOW ASSESSMENT: A side view (player facing left or right) foreshortens the forearm, so it can make the elbow's SIDEWAYS offset look larger than it is. Do not read a sideways offset off a side view at all — judge the offset from a front-on or angled view, and from a side view judge the fold of the arm instead, which is the thing a side view shows best. What a side angle does NOT do is excuse a flaw you can plainly see: if the elbow is visibly winged out level with the shoulder in the frames you have, score it, whatever the camera position. Withhold judgment on what the angle genuinely hides; never soften what it shows.
 
 CAMERA ANGLE FORGIVENESS HAS A HARD BOUNDARY: An imperfect or unusual camera angle excuses only what the angle actually hides. It is a reason to withhold judgment on details the angle makes AMBIGUOUS — it is never a reason to soften a flaw that is plainly visible despite the angle. Sideways feet, a sideways wrist flick, or a two-hand release that you can clearly see from the footage you have must be scored at full severity no matter how odd the camera position is. Ask yourself: can I see this flaw in these frames? If yes, the angle is irrelevant.
 
 CATCH-AND-SHOOT: If the player catches a pass before shooting, identify catch frames (another player/hand visible passing, ball arriving, player still rotating to face basket) and ignore them completely. The elbow being out during a catch is normal. Only evaluate from when the player has the ball fully in control and is facing the basket.
 
-SCALE (scores must land exactly on a whole or half point — 7, 7.5, 8; never 7.3 or 8.2 — the same shot must always earn the same number):
-- 10 = no visible flaws (default when nothing is clearly wrong)
-- 9 = one small specific thing clearly visible and slightly off — you must name it
-- 8–8.5 = one minor clearly visible issue
-- 7–7.5 = decent, clear room to improve
-- 5–6 = obvious problems
-- 3–4 = poor, obvious mistakes
-- 1–2 = fundamentally wrong
+SCALE. Scores land exactly on a whole or a HALF point — 6, 6.5, 7, 7.5 — never 7.3 or 8.2, and the same shot must always earn the same number.
+
+A CRITERION'S OWN SCORE ANCHORS WIN. If a criterion's grading guide lists anchors — a described shot next to each number — use those and ignore the general bands below. The guide was written for that criterion and the bands below were not; where they disagree, the guide is right.
+
+HALF POINTS ARE EXPECTED, AT EVERY LEVEL. 4.5 and 5.5 are as available as 7.5. Measured across 345 scores, exactly ONE used a half point — the scale was being treated as nine integers, and a third of all scores landed on the single value 9. If what you saw sits between two whole numbers, the answer is the half point between them; do not round to the nearer whole.
+
+THE GENERAL BANDS, for criteria whose guide gives no anchors:
+- 10 = nothing wrong that you can see and name
+- 9 = essentially correct, with one small thing visibly off — name it
+- 8 = correct form with a clear minor issue. THE ORDINARY COMPETENT SHOT BELONGS HERE OR ABOVE, and it is where most sound technique lands
+- 7 = sound but with real room to improve
+- 6 = one clear fault working against the shot
+- 5 = a definite fault a coach would fix first
+- 4 = that fault is severe, or there are several
+- 3 = the mechanic is wrong rather than imperfect
+- 2 = fundamentally wrong
+- 1 = the element is absent altogether
+
+Do not treat 9 as the resting place for a shot you have no strong opinion about. If you named one small thing, 9 is right. If you named a clear issue, that is an 8. If you named nothing, that is a 10.
 
 PLAYER ASSESSMENT — identify one of these player_type values:
 - "child": player clearly looks under 15 (noticeably young, smaller frame)
@@ -543,7 +671,17 @@ CRITICAL FLAGS — these operate on their own detection standard, independent of
   DO NOT set this flag just because both hands are on the ball — every shot starts that way and two hands on the ball during the gather is completely normal. Set it ONLY when ALL of these hold: the ball is shoved from chest-to-chin height without ever loading above the face, the two hands stay mirrored with no hand under the ball, and the release is visibly two-handed. If any one of those is missing, leave the flag low.
   When true: "Shot Pocket — Elbow", "Source of Shot Power" and "Shooting Through Guide Hand / One Hand Release" MUST each score 4 or below. Pushing the ball from the chest with both hands means it is not loaded in a shot pocket, the power is coming from the arms rather than the legs, and the release cannot be one-handed.
 
-- ball_behind_head: the ball is brought DIRECTLY ABOVE or BEHIND the top of the head and released from there — the catapult. The tells: at the set point the ball sits over the crown of the head or behind the hairline rather than in front of and slightly above the forehead; both elbows are high and winged wide; the forearms lay back so the ball is slung forward from over the skull like a soccer throw-in. This is distinct from a normal high set point (ball in front of the forehead, shooting elbow roughly under the ball). Set the 0-10 confidence by how clearly the ball goes above/behind the head. When true (>=7): the elbow, shot pocket, and shot-power criteria are all severe — the whole shot is built on a catapult and none of those three can be credited.
+- ball_behind_head: THE CATAPULT — the ball is slung from a two-armed load rather than pushed up off one hand. There are TWO forms and EITHER ONE counts. Read both before settling on a confidence.
+
+  FORM 1 — BEHIND OR OVER THE HEAD. At the set point the ball sits over the crown of the head or behind the hairline rather than in front of and slightly above the forehead, both elbows are high and winged wide, and the forearms lay back so the ball is slung forward from over the skull like a soccer throw-in.
+
+  FORM 2 — THE V AT THE TOP. The ball stays IN FRONT of the forehead, but both arms form a wide V at the set point: two elbows out to the sides at similar heights, both hands still gripping the ball, and the ball is thrown forward out of that V rather than released off one hand stacked under it. The expert calls this a catapult in exactly these words — "it was a catapult shot, the ball was in a V at the top and out" — and scored that shot's elbow 3.0 and its shot power 3.0.
+
+  FORM 2 IS THE ONE THIS FLAG HAS BEEN MISSING, AND IT IS NOT A MINOR GAP. On that shot the model returned a confidence of 1 out of 10 for this flag, and across 109 production analyses this flag has fired ZERO times. The caps it exists to apply have therefore never once been applied. Do not require the ball to be behind the head; require only that the ball be thrown out of a two-arm V or from over the head.
+
+  WHAT IS NOT A CATAPULT, and the expert has corrected this too: the SHOOTING hand alone being flared out to the side, with the guide hand still resting on the side of the ball and the release coming off one hand. His words: "this wasnt an example of a catapult, this was just the shooting hand being flared out" — he scored that elbow a 4, not a 1. One flared elbow is a flared elbow. A V needs BOTH arms doing the work.
+
+  Set the 0-10 confidence by how clearly EITHER form is present. When true (>=7): the elbow, shot pocket, and shot-power criteria are all severe — the whole shot is built on a catapult and none of those three can be credited.
 - arc_too_flat: the ball travels on a low, flat trajectory rather than a proper high arc (45–60 degrees). If the ball visibly shoots out nearly flat or at a shallow angle with little height, set true. A flat shot has almost no arc and the ball comes in at a low angle toward the basket. Do NOT apply benefit-of-the-doubt here. When true: the shot arc criterion MUST score 4 or below.
 
 NOTE: These flags are the most important flaws to detect. Report each as a 0-10 confidence, not a guess: 0-2 clearly absent, 3-6 borderline or partially suggestive, 7-10 clearly present with a frame you can point to. Confidence 7+ is treated as the flaw being present.
@@ -571,8 +709,8 @@ Return ONLY valid JSON, no other text:
     "chest_pass_hands": <0-10 confidence, same standard>,
     "ball_behind_head": <0-10 confidence, same standard>
   },
-  "criteria": [
-    { "id": <criterion_id>, "score": <1-10 or null>, "reasoning": "<1-2 sentences>" },
+  ${process.env.FAULT_FIRST === '1' ? '"flaws": ["<worst first, each naming the body part, what it did, and when>"],\n  "flaws_note": "<only if the list is empty: why>",\n  ' : ''}"criteria": [
+    { "id": <criterion_id>, "score": <1-10 or null>, "evidence": "clear|partial|none", ${process.env.OBSERVE === '1' ? '"observation": "<the option key, for criteria that ask for one>", ' : ''}"reasoning": "<1-2 sentences>" },
     ...
   ]
 }`
@@ -675,7 +813,7 @@ async function analyzeShotGrouped(
   frameBase64Array: string[],
   frameMimeTypes: string[],
   ctx: GraderContext,
-  opts?: { model?: string; thinking?: 'disabled' | 'adaptive' }
+  opts?: { model?: string; thinking?: 'disabled' | 'adaptive'; anchorHeader?: string }
 ): Promise<AnalysisResult> {
   const groups = splitContextByGroup(ctx)
   const parts = await Promise.all(
@@ -750,7 +888,7 @@ If an observation says something was not visible, return null for that criterion
 
 You may not soften a score because a fault sounds small. If an observation describes a deviation and the guide's anchor for that deviation is a 4, the score is 4.
 
-Return ONLY JSON: {"criteria": [{"id": <number>, "score": <1-10 or null>, "reasoning": "<two or three sentences addressed to the player, no numbers, no mention of guides or steps>"}]}`
+Return ONLY JSON: {"criteria": [{"id": <number>, "score": <1-10 or null>, "evidence": "clear|partial|none", "reasoning": "<two or three sentences addressed to the player, no numbers, no mention of guides or steps>"}]}`
 
 interface ObservationPayload {
   shot_detected?: boolean
@@ -763,7 +901,7 @@ async function analyzeShotTwoStage(
   frameBase64Array: string[],
   frameMimeTypes: string[],
   ctx: GraderContext,
-  opts?: { model?: string; thinking?: 'disabled' | 'adaptive' }
+  opts?: { model?: string; thinking?: 'disabled' | 'adaptive'; anchorHeader?: string }
 ): Promise<AnalysisResult> {
   const model = opts?.model || analysisModel()
   const systemPrompt = buildSystemPrompt(ctx, frameBase64Array.length)
@@ -836,7 +974,34 @@ async function analyzeShotTwoStage(
       id: Number(c.id),
       score: c.score === null || c.score === undefined ? null : Number(c.score),
       reasoning: String(c.reasoning ?? ''),
+      observation: typeof c.observation === 'string' ? c.observation : undefined,
+      evidence:
+        c.evidence === 'none' || c.evidence === 'partial' || c.evidence === 'clear'
+          ? c.evidence
+          : undefined,
     })),
+  }
+}
+
+/**
+ * Replaces the model's chosen number with the score its OBSERVATION earns.
+ *
+ * The model still emits a "score" — asking it not to made it likelier to omit
+ * the observation as well — but for any criterion with a spec that number is
+ * discarded. Keeping it would leave the calibration problem in place for
+ * exactly the criteria this mode exists to fix.
+ */
+function applyObservationScores(res: AnalysisResult, activeCriteria: CriteriaRow[]): void {
+  const nameById = new Map(activeCriteria.map((c) => [c.id, c.name]))
+  for (const c of res.criteria) {
+    const spec = observationSpecFor(nameById.get(c.id) ?? '')
+    if (!spec) continue
+    if (c.score === null) continue // a genuine abstention stays an abstention
+    const derived = scoreFromObservation(spec, c.observation)
+    if (derived !== c.score) {
+      console.log('[observe]', nameById.get(c.id), 'said', c.observation ?? '(none)', '->', derived, '(model had', c.score + ')')
+    }
+    c.score = derived
   }
 }
 
@@ -844,7 +1009,7 @@ async function analyzeShotOnce(
   frameBase64Array: string[],
   frameMimeTypes: string[],
   ctx: GraderContext,
-  opts?: { model?: string; thinking?: 'disabled' | 'adaptive' }
+  opts?: { model?: string; thinking?: 'disabled' | 'adaptive'; anchorHeader?: string }
 ): Promise<AnalysisResult> {
   const model = opts?.model || analysisModel()
   const thinkingMode = opts?.thinking || 'disabled'
@@ -889,7 +1054,10 @@ async function analyzeShotOnce(
       systemPrompt,
       framesBase64: frameBase64Array,
       frameMimeTypes,
-      userText: USER_TEXT,
+      // The anchor header must sit with the images it describes, ahead of the
+      // grading instruction, so the model reads what the reference frames are
+      // before it is told what to do with the shot.
+      userText: opts?.anchorHeader ? `${opts.anchorHeader}\n\n${USER_TEXT}` : USER_TEXT,
       // 6000 is Anthropic's budget here, and it is too tight for the small
       // models: they narrate 18 criteria far more verbosely than Claude and
       // hit the ceiling mid-array, so the JSON never closes and every fixture
@@ -984,6 +1152,11 @@ async function analyzeShotOnce(
     ball_behind_head: conf(rawFlags.ball_behind_head),
   }
   // Within a single pass the flaw counts as present at confidence >= 7.
+  // Derive scores from observations BEFORE anything else reads them, and before
+  // the ensemble merges passes, so the median/gate operate on derived numbers
+  // rather than on the model's own calibration.
+  if (process.env.OBSERVE === '1') applyObservationScores(result, activeCriteria)
+
   result.critical_flags = {
     elbow_severely_out: result.flag_confidence.elbow_severely_out >= 7,
     followthrough_flick_to_side: result.flag_confidence.followthrough_flick_to_side >= 7,
@@ -1328,7 +1501,14 @@ async function findReleaseFrame(
       model,
       framesBase64: frameBase64Array,
       frameMimeTypes,
-      maxTokens: 300,
+      // 4000, not 300. On a reasoning model the 300-token ceiling was spent
+      // entirely on hidden reasoning, the retry at 600 likewise, and the
+      // catch below returned 'error' - on EVERY analysis. The gate has been
+      // silently off since the model switch: no clip was ever refused as
+      // "no shot" by this call, and the set-point check had no release
+      // index to anchor on. The answer is one number; the budget is for the
+      // thinking that precedes it.
+      maxTokens: 4000,
       userText: `These are ${n} frames, numbered 0 to ${n - 1} in order, from one basketball video.
 
 Your ONLY task: find the RELEASE — a frame where the ball is leaving or has just left the shooter's hand(s) at the top of a shooting motion, with the frames immediately before it showing that shooting motion (ball held, rising toward a set point).
@@ -1366,6 +1546,144 @@ function noShotResult(criteriaIds: number[], graderVersion: GraderVersion): Anal
   }
 }
 
+/**
+ * Loads anchor frames from the eval frame cache. Eval-side only: production
+ * would ship curated anchor images rather than reading a fixture cache.
+ * Returns [] on any problem — a missing anchor must never fail a grade.
+ */
+async function loadAnchorFrames(): Promise<{ header: string; frames: string[]; mimes: string[] }> {
+  try {
+    const { readFileSync, existsSync } = await import('fs')
+    const path = 'scripts/eval/anchors.json'
+    if (!existsSync(path)) return { header: '', frames: [], mimes: [] }
+    const anchors = JSON.parse(readFileSync(path, 'utf8')) as Anchor[]
+    if (anchors.length === 0) return { header: '', frames: [], mimes: [] }
+    const { createHash } = await import('crypto')
+    const { db } = await import('./db')
+    const slugs = anchors.map((a) => a.slug)
+    const rows = await db`SELECT slug, frame_urls FROM eval_fixtures WHERE slug = ANY(${slugs})`
+    const urlsBySlug = new Map(rows.map((r) => [r.slug as string, (r.frame_urls ?? []) as string[]]))
+    const dir = process.env.EVAL_FRAME_CACHE ?? '.eval-frame-cache'
+    const frames: string[] = []
+    for (const a of anchors) {
+      const urls = urlsBySlug.get(a.slug) ?? []
+      for (const idx of a.frameIndexes) {
+        const u = urls[idx]
+        if (!u) continue
+        const f = `${dir}/${createHash('sha256').update(u).digest('hex')}.b64`
+        if (existsSync(f)) frames.push(readFileSync(f, 'utf8'))
+      }
+    }
+    if (frames.length === 0) return { header: '', frames: [], mimes: [] }
+    return { header: renderAnchorHeader(anchors), frames, mimes: frames.map(() => 'image/jpeg') }
+  } catch {
+    return { header: '', frames: [], mimes: [] }
+  }
+}
+
+const SETPOINT_CHECK = process.env.SETPOINT_CHECK === '1'
+
+/**
+ * Two cheap calls. Stage 1 asks the sequence which frame is the set point —
+ * the model gets this right (E45: frame 10 on the pinned set, frame 16 on the
+ * tight set, both correct). Stage 2 asks that ONE frame five literal yes/no
+ * questions. The verdict is computed here from the cues, never taken from the
+ * model's own summary: on the control set the model's "catapult" field fired
+ * on a single cue (shot-189), while a two-cue rule caught 2/2 real catapults
+ * and flagged 0/3 good-elbow controls.
+ *
+ * Any failure returns 'unavailable' and the analysis proceeds exactly as if
+ * the check were off. A detection aid must never take an analysis down.
+ */
+async function setPointCheck(
+  frames: string[],
+  mimes: string[],
+  model: string,
+  releaseFrame: number
+): Promise<SetPointCheck> {
+  // The set point is the last frame the ball is still held at the top, which
+  // sits one to three frames before the release the gate has already located.
+  // Inspecting those three frames as single images and taking a majority
+  // replaces the 28-image locate call, which failed on the target clip twice
+  // (budget exhaustion, then a dropped connection). Three small calls, in
+  // parallel, no reasoning blow-up - the shape E45 showed the model answers
+  // from the pixels.
+  const none: SetPointCheck = { frame: null, cues: null, verdict: 'unavailable' }
+  const candidates = [releaseFrame - 1, releaseFrame - 2, releaseFrame - 3].filter((i) => i >= 0 && i < frames.length)
+  if (candidates.length === 0) { console.log(`[setpoint] no candidate frames before release ${releaseFrame} of ${frames.length}`); return none }
+  const KEYS = ['ball_behind_or_above_head', 'elbow_flared_shoulder_height', 'forearm_not_vertical', 'ball_beside_head', 'both_hands_mirrored_elbows_out'] as const
+  type Cues = NonNullable<SetPointCheck['cues']>
+  const askFrame = async (i: number): Promise<Cues | null> => {
+    try {
+      const look = await callVisionModel({
+        model,
+        framesBase64: [frames[i]],
+        frameMimeTypes: [mimes[i]],
+        userText: `This is ONE frame of a basketball shot at or just before the set point, before the upward release.
+Answer literally about what is visible in THIS image. Do not describe what a set point usually looks like.
+1. Is the ball ABOVE or BEHIND the top of the head (rather than in front of the forehead)?
+2. Is the shooting elbow flared OUT to the side at or above shoulder height, the upper arm roughly horizontal?
+3. Is the forearm tilted well away from vertical?
+4. Is the ball level with the EAR and outside the line of the shoulder — off to the side of the head rather than in front of the forehead?
+5. Are BOTH hands mirrored on the sides of the ball with BOTH elbows out wide, like a two-handed throw?
+Answer JSON only: {"ball_behind_or_above_head": true|false, "elbow_flared_shoulder_height": true|false, "forearm_not_vertical": true|false, "ball_beside_head": true|false, "both_hands_mirrored_elbows_out": true|false}`,
+        maxTokens: 8000,
+      })
+      const m = look.text.match(/\{[\s\S]*\}/)
+      if (!m) { console.log(`[setpoint] frame ${i}: no JSON in answer: ${look.text.slice(0, 120).replace(/\n/g, ' ')}`); return null }
+      const raw = JSON.parse(m[0]) as Record<string, unknown>
+      // A non-boolean anywhere means the answer did not parse as an answer.
+      if (!KEYS.every((k) => typeof raw[k] === 'boolean')) { console.log(`[setpoint] frame ${i}: non-boolean cues`, raw); return null }
+      return Object.fromEntries(KEYS.map((k) => [k, raw[k] === true])) as unknown as Cues
+    } catch (err) {
+      console.log(`[setpoint] frame ${i}: ${err instanceof Error ? err.message.slice(0, 140) : String(err)}`)
+      return null
+    }
+  }
+  const answers = await Promise.all(candidates.map(askFrame))
+  const usable = candidates.map((f, k) => ({ frame: f, cues: answers[k] })).filter((x): x is { frame: number; cues: Cues } => x.cues !== null)
+  if (usable.length === 0) { console.log(`[setpoint] release ${releaseFrame}: none of ${candidates.join(',')} answered`); return none }
+  // Catapult = ball over/behind the head AND the elbow flared to the shoulder,
+  // on a MAJORITY of the inspected frames. forearm_not_vertical is not in the
+  // rule: it is the noisiest cue near release. Two-cue on the E45 probe: 2/2
+  // real catapults caught, 0/3 good-elbow controls flagged.
+  const isCat = (c: Cues) => c.ball_behind_or_above_head && c.elbow_flared_shoulder_height
+  const need = Math.ceil(usable.length / 2)
+  const catVotes = usable.filter((u) => isCat(u.cues))
+  const catapult = catVotes.length >= need && catVotes.length > 0
+  // v_top and flared have NO control data yet. Recorded, never injected.
+  const vTop = !catapult && usable.filter((u) => u.cues.both_hands_mirrored_elbows_out && u.cues.elbow_flared_shoulder_height).length >= need
+  const flared = !catapult && !vTop && usable.filter((u) => u.cues.ball_beside_head && u.cues.elbow_flared_shoulder_height).length >= need
+  const verdict: SetPointCheck['verdict'] = catapult ? 'catapult' : vTop ? 'v_top' : flared ? 'flared' : 'clean'
+  // Report the frame that carried the verdict, or the middle candidate.
+  const pick = (catapult ? catVotes[0] : usable[Math.floor(usable.length / 2)])
+  console.log(`[setpoint] release ${releaseFrame}, inspected ${usable.map((u) => u.frame).join(',')} of ${candidates.join(',')} verdict=${verdict}`, pick.cues)
+  return { frame: pick.frame, cues: pick.cues, verdict }
+}
+
+/**
+ * Only a FAULT is passed to the grader. A clean verdict injects nothing, so
+ * this can only ever lower a score — the same bounded-damage shape as E41 —
+ * and a comparison against baseline reads directly as fixed vs broke.
+ */
+function setPointFacts(c: SetPointCheck): string {
+  // Only the verdict with control data is passed to the grader. flared and
+  // v_top are recorded (see the dump) and injected nowhere until an arm has
+  // measured what they do on good shooters.
+  if (!c.cues || c.frame === null || c.verdict !== 'catapult') return ''
+  const yn = (v: boolean) => (v ? 'YES' : 'no')
+  const k = c.cues
+  return [
+    `SET-POINT CHECK — the set-point frame of this shot was inspected ON ITS OWN, as a single image, with these literal questions. The answers are facts about the footage, not impressions:`,
+    `  ball above or behind the top of the head: ${yn(k.ball_behind_or_above_head)}`,
+    `  shooting elbow flared out to shoulder height, upper arm near horizontal: ${yn(k.elbow_flared_shoulder_height)}`,
+    `  forearm tilted well off vertical: ${yn(k.forearm_not_vertical)}`,
+    `  both hands mirrored on the ball with both elbows out: ${yn(k.both_hands_mirrored_elbows_out)}`,
+    `VERDICT: CATAPULT. The ball is launched from over the head with the elbow flared. The elbow guide's behind-the-head floor applies, the power guide's behind-the-head floor applies, and ball_behind_head must be reported at confidence 9 or higher. Say plainly in the reasoning that the ball went behind the head.`,
+    `THIS APPLIES ONLY to the elbow, shot-pocket and shot-power criteria and the ball_behind_head flag. Grade every other criterion from the frames exactly as usual; a catapult says nothing about the feet, the follow-through or the guide hand.`,
+  ].join('\n')
+}
+
 export async function analyzeShot(
   frameBase64Array: string[],
   frameMimeTypes: string[],
@@ -1382,6 +1700,31 @@ export async function analyzeShot(
   // the only thing standing between us and the accuracy we can afford.
   const passes = Math.max(1, Math.min(9, opts?.passes ?? envPasses))
   const model = opts?.model || analysisModel()
+
+  // IDEA 5 — SPLIT-FRAME SELF-CONSISTENCY. Repeated passes over the SAME frames
+  // are correlated, which is why averaging bought nothing: three looks at one
+  // photograph are not three observations. Splitting the frames gives each pass
+  // genuinely different evidence of the same shot, so disagreement between them
+  // is a real reliability signal rather than sampling noise — and agreement
+  // means two independent views of the footage reached the same reading.
+  //
+  // Frames are motion-weighted, so alternating indices keeps both halves spread
+  // across the whole shot rather than giving one pass the wind-up and the other
+  // the follow-through.
+  const splitFrames = process.env.SPLIT_FRAMES === '1' && frameBase64Array.length >= 8
+  const frameSets: Array<{ frames: string[]; mimes: string[] }> = splitFrames
+    ? [
+        {
+          frames: frameBase64Array.filter((_, i) => i % 2 === 0),
+          mimes: frameMimeTypes.filter((_, i) => i % 2 === 0),
+        },
+        {
+          frames: frameBase64Array.filter((_, i) => i % 2 === 1),
+          mimes: frameMimeTypes.filter((_, i) => i % 2 === 1),
+        },
+      ]
+    : [{ frames: frameBase64Array, mimes: frameMimeTypes }]
+  const framesForPass = (i: number) => frameSets[i % frameSets.length]
 
   // One grader context for the whole ensemble: every pass grades with the
   // byte-identical prompt, even if an admin correction lands mid-analysis.
@@ -1415,13 +1758,65 @@ export async function analyzeShot(
   // the merge below deterministic.
   // CRITERION_GROUPS=1 splits each pass into independent per-moment calls so
   // criteria cannot anchor on each other. See analyzeShotGrouped.
-  const onePass =
+  const onePassRaw =
     process.env.TWO_STAGE === '1'
       ? analyzeShotTwoStage
       : process.env.CRITERION_GROUPS === '1'
         ? analyzeShotGrouped
         : analyzeShotOnce
-  const firstPass = await onePass(frameBase64Array, frameMimeTypes, ctx, { ...opts, model })
+  // A grading response that does not parse is not a grading outcome, it is a
+  // dropped answer. It has killed a fixture in three separate arms (194, 204,
+  // 210 - about 7% per arm) and makes those arms non-comparable, and in
+  // production it fails the analysis outright. One same-call retry; a second
+  // failure propagates. This cannot change a graded cell, only rescue one.
+  const onePass: typeof onePassRaw = async (...args) => {
+    try {
+      return await onePassRaw(...args)
+    } catch (err) {
+      if (!(err instanceof SyntaxError)) throw err
+      console.log('[analyze] grading pass returned malformed JSON; retrying the pass once')
+      return await onePassRaw(...args)
+    }
+  }
+  // Anchor frames go in FRONT of the shot's own frames, with a header saying
+  // what they are and that they are not to be graded. Loaded once and reused by
+  // every pass so the ensemble sees identical reference material.
+  const anchor = anchorsEnabled()
+    ? await loadAnchorFrames()
+    : { header: '', frames: [] as string[], mimes: [] as string[] }
+  const withAnchors = (set: { frames: string[]; mimes: string[] }) =>
+    anchor.frames.length > 0
+      ? { frames: [...anchor.frames, ...set.frames], mimes: [...anchor.mimes, ...set.mimes] }
+      : set
+  if (anchor.frames.length > 0) {
+    console.log('[anchors] prepending', anchor.frames.length, 'reference frames')
+  }
+
+  // Set-point check runs ONCE on the full frame set (never a split half) and
+  // its facts go to every pass, so the ensemble sees the same evidence.
+  const checkable = isGatewayModel(model) && process.env.CRITERION_GROUPS !== '1' && process.env.TWO_STAGE !== '1'
+  if (SETPOINT_CHECK && !checkable) console.log('[setpoint] skipped: facts only reach the gateway single-pass path')
+  // The gate returns 'error' when its own call failed; there is then no
+  // release index to anchor on, and the check is skipped rather than guessed.
+  if (SETPOINT_CHECK) console.log(`[setpoint] gate release=${String(releaseFrame)} checkable=${checkable} frames=${frameBase64Array.length}`)
+  const spc = SETPOINT_CHECK && checkable && typeof releaseFrame === 'number'
+    ? await setPointCheck(frameBase64Array, frameMimeTypes, model, releaseFrame)
+    : null
+  // FRAME_CHECKS supersedes the set-point check when both are on: it asks the
+  // same set-point questions plus dip, release, landing and feet.
+  const FRAME_CHECKS = process.env.FRAME_CHECKS === '1'
+  const fc = FRAME_CHECKS && checkable && typeof releaseFrame === 'number'
+    ? await runFrameChecks(frameBase64Array, frameMimeTypes, model, releaseFrame)
+    : null
+  // Frame-check facts are NOT injected into the passes. e51: a Feet cap on
+  // shot-156 dragged seven unrelated criteria from 8 to 5 - the injected
+  // header haloed the whole grade (E34's shape). Bounds are applied in code
+  // on the merged result and the affected criterion's reasoning gets a
+  // one-line note, so score and text still agree.
+  const passHeader = [anchor.header, spc ? setPointFacts(spc) : ''].filter(Boolean).join('\n\n')
+
+  const firstSet = withAnchors(framesForPass(0))
+  const firstPass = await onePass(firstSet.frames, firstSet.mimes, ctx, { ...opts, model, anchorHeader: passHeader })
   // Passes 2..N run in bounded batches, not all at once.
   //
   // Firing them together uploads N x 28 images simultaneously — about 7MB in
@@ -1443,9 +1838,10 @@ export async function analyzeShot(
     const batch = Math.min(passConcurrency, passes - 1 - i)
     laterPasses.push(
       ...(await Promise.all(
-        Array.from({ length: batch }, () =>
-          onePass(frameBase64Array, frameMimeTypes, ctx, { ...opts, model }),
-        ),
+        Array.from({ length: batch }, (_, k) => {
+          const fs_ = withAnchors(framesForPass(i + k + 1))
+          return onePass(fs_.frames, fs_.mimes, ctx, { ...opts, model, anchorHeader: passHeader })
+        }),
       )),
     )
   }
@@ -1496,7 +1892,30 @@ export async function analyzeShot(
         }
       }
       const nums = scoredPasses.map(c => c.score as number)
-      const med = median(nums)
+      // FAULT-DETECTION GATE. Across passes the median lets a pass that saw
+      // nothing outvote a pass that saw the flaw, and the measured error is
+      // strongly asymmetric: on shots the owner graded BAD the grader was too
+      // high 9 times and too low ZERO times — it misses faults but does not
+      // invent them. A low reading is therefore strong evidence and a high
+      // reading is weak evidence, so they must not be averaged as equals.
+      //
+      // Measured specificity of a <=4 reading on one pass: 9 of 18 BAD cells,
+      // against 1 of 54 GOOD cells (1.9%). Byte-identical duplicate clips make
+      // the same point — shot-196 and shot-200 are the same footage and the
+      // same fault was caught on one copy and missed on the other in one run,
+      // so this is nondeterminism, not the footage.
+      //
+      // So when any pass reports a real fault, take the lowest reading rather
+      // than the middle one. Off by default: FAULT_GATE=1 enables it, and
+      // FAULT_GATE_AT sets the threshold.
+      const faultGateAt = Number(process.env.FAULT_GATE_AT ?? '4')
+      const faultGated = process.env.FAULT_GATE === '1' && nums.some((n) => n <= faultGateAt)
+      const rank = { none: 0, partial: 1, clear: 2 }
+      const worstEvidence = scoredPasses
+        .map((c) => c.evidence)
+        .filter((e): e is 'clear' | 'partial' | 'none' => !!e)
+        .sort((a, b) => rank[a] - rank[b])[0]
+      const med = faultGated ? Math.min(...nums) : median(nums)
       const closest = scoredPasses.reduce((best, c) =>
         Math.abs((c.score as number) - med) < Math.abs((best.score as number) - med) ? c : best
       )
@@ -1512,6 +1931,7 @@ export async function analyzeShot(
         id: Number(ac.id),
         score: Math.round(med * 10) / 10,
         reasoning: closest.reasoning,
+        evidence: worstEvidence,
         spread,
         passes_scored: scoredPasses.length,
         passes_total: perPass.length,
@@ -1532,7 +1952,139 @@ export async function analyzeShot(
       ?.player_assessment?.player_name ?? null,
   }
 
+  // A catapult found on the single frame is a fact the ensemble median must not
+  // outvote: finalizeResult caps the elbow, pocket and power criteria off this
+  // flag, and E45 showed the passes report it at confidence 1 on real catapults.
+  if (spc) {
+    merged.set_point_check = spc
+    // Only the catapult verdict acts (see setPointFacts); v_top is recorded.
+    if (spc.verdict === 'catapult') {
+      merged.critical_flags.ball_behind_head = true
+      if (merged.flag_confidence) merged.flag_confidence.ball_behind_head = Math.max(merged.flag_confidence.ball_behind_head, 9)
+    }
+  }
+  // Frame-check caps and floors are applied in CODE on the merged scores,
+  // then finalizeResult recomputes the overall. A cap stops a catapult
+  // scoring 9; a floor stops a clean elbow scoring 4. Both only ever move a
+  // score that the pixels contradict.
+  if (fc) {
+    const bounds = frameCheckBounds(fc)
+    const applied: string[] = []
+    for (const b of bounds) {
+      const [id] = idsForNames(activeCriteria, [b.criterion])
+      const c = merged.criteria.find((x) => x.id === id)
+      if (!c || c.score === null) continue
+      const before = c.score as number
+      if (b.cap !== undefined && before > b.cap) {
+        c.score = b.cap; applied.push(`${b.criterion}: ${before} -> cap ${b.cap}`)
+        c.reasoning = `Looking closely at the key frame, ${b.why}. ${c.reasoning ?? ''}`.trim()
+      }
+      if (b.floor !== undefined && before < b.floor) {
+        c.score = b.floor; applied.push(`${b.criterion}: ${before} -> floor ${b.floor}`)
+        c.reasoning = `Looking closely at the key frame, ${b.why}, which is what matters most here. ${c.reasoning ?? ''}`.trim()
+      }
+    }
+    if (fc.elbow?.catapult) {
+      merged.critical_flags.ball_behind_head = true
+      if (merged.flag_confidence) merged.flag_confidence.ball_behind_head = Math.max(merged.flag_confidence.ball_behind_head, 9)
+    }
+    fc.applied = applied
+    merged.frame_checks = { ...fc, bounds }
+    if (applied.length) console.log('[framechecks] applied', applied)
+  }
   const final = finalizeResult(merged, activeCriteria)
   final.grader_version = graderVersion
+  if (process.env.VERIFY_HIGH === '1') {
+    await verifyHighScores(final, activeCriteria, frameBase64Array, frameMimeTypes)
+  }
   return final
+}
+
+/**
+ * Second look at the criteria the grader scored HIGH, checking its own stated
+ * reason against the frames.
+ *
+ * WHY THIS AND NOT MORE PASSES. Re-grading draws again from the same biased
+ * distribution. The measured failure is not randomness in the score, it is that
+ * the grader writes a confident, specific description of correct form it never
+ * saw and then scores to match: on an outdoor clip with NO BASKET anywhere in
+ * frame it wrote "your feet and shoulders are square to the target and stay
+ * aligned throughout the shot" and scored 9, where the owner scored 3-5.
+ *
+ * Verifying one concrete claim against the frames is a far narrower question
+ * than grading, and it is the question the first pass never gets asked. Of cells
+ * scored 8 or above, 20 of 60 (33%) are wrong and 19 of those 20 are too high —
+ * so this is where the product risk lives: a player with a real fault being told
+ * their form is fine.
+ *
+ * Only the claim is re-examined. A CONTRADICTED claim moves the score to the
+ * verifier's reading; UNVERIFIABLE means the footage never supported the claim,
+ * which is not the same as the mechanic being correct, so it lands mid-scale.
+ * CONFIRMED leaves the score untouched.
+ */
+async function verifyHighScores(
+  result: AnalysisResult,
+  activeCriteria: CriteriaRow[],
+  frameBase64Array: string[],
+  frameMimeTypes: string[]
+): Promise<void> {
+  const at = Number(process.env.VERIFY_HIGH_AT ?? '8')
+  const nameById = new Map(activeCriteria.map((c) => [c.id, c.name]))
+  const targets = result.criteria.filter((c) => c.score !== null && (c.score as number) >= at && c.reasoning)
+  if (targets.length === 0) return
+
+  const claims = targets
+    .map((c, i) => `${i + 1}. [${nameById.get(c.id) ?? c.id}] scored ${c.score}. Stated reason: "${c.reasoning}"`)
+    .join('\n')
+
+  const prompt = `These frames are one basketball shot. Another grader has already scored it and written a reason for each high score below. Your ONLY job is to check each stated reason against what these frames actually show.
+
+${claims}
+
+For each numbered item answer with one of:
+  CONFIRMED     — you can see this in the frames. Name the moment you see it.
+  CONTRADICTED  — the frames show something different. Say what you actually see, and give the score you would give instead.
+  UNVERIFIABLE  — the frames do not show what the claim is about at all: the body part is out of frame or hidden in every frame, or the claim refers to something not in shot such as alignment to a basket that never appears.
+
+Be strict. A claim about the basket needs the basket, or the direction the ball travels after release, to be visible. A claim about the feet needs the feet in frame. A claim about the elbow at the set point needs a frame showing the ball held at the face before release. "It looks about right" is not confirmation — if you cannot point to the moment, it is UNVERIFIABLE.
+
+Do not re-grade the whole shot and do not comment on anything not listed.
+
+Return ONLY JSON:
+{"checks": [{"n": <number>, "verdict": "CONFIRMED"|"CONTRADICTED"|"UNVERIFIABLE", "saw": "<what you actually see, one sentence>", "score": <the score you would give, only when CONTRADICTED>}]}`
+
+  try {
+    const res = await callVisionModel({
+      model: analysisModel(),
+      framesBase64: frameBase64Array,
+      frameMimeTypes,
+      userText: prompt,
+      maxTokens: 16000,
+    })
+    const m = res.text.match(/\{[\s\S]*\}/)
+    if (!m) return
+    const parsed = JSON.parse(m[0]) as { checks?: Array<{ n?: number; verdict?: string; saw?: string; score?: number }> }
+    for (const chk of parsed.checks ?? []) {
+      const idx = Number(chk.n) - 1
+      const target = targets[idx]
+      if (!target) continue
+      if (chk.verdict === 'CONTRADICTED' && typeof chk.score === 'number') {
+        console.log('[verify] CONTRADICTED', nameById.get(target.id), target.score, '->', chk.score, '|', chk.saw)
+        target.score = chk.score
+        if (chk.saw) target.reasoning = chk.saw
+      } else if (chk.verdict === 'UNVERIFIABLE') {
+        // The claim was never supported by the footage. That is not evidence the
+        // mechanic was correct, so it must not keep a top-of-scale score.
+        const softened = Math.min(target.score as number, 7)
+        if (softened !== target.score) {
+          console.log('[verify] UNVERIFIABLE', nameById.get(target.id), target.score, '->', softened, '|', chk.saw)
+          target.score = softened
+        }
+        target.evidence = 'none'
+      }
+    }
+  } catch (err) {
+    // A failed verification must never lose the grade it was checking.
+    console.warn('[verify] verification pass failed, keeping original scores:', (err as Error).message)
+  }
 }

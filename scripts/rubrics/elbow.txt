@@ -1,94 +1,47 @@
-ELBOW RUBRIC v9 — is the shooting elbow stacked UNDER the ball, or off to the side of it?
+ELBOW RUBRIC v12 — where is the ball relative to the head, where is the elbow relative to the shoulder, and does the forearm stand or lean?
 
-WHAT AN L LOOKS LIKE. Ball over hand over forearm over elbow, in one vertical stack. The forearm points up at the ceiling, the elbow points down at the floor, and the set point sits around FOREHEAD height on the shooting side of the head. That stack is the whole target.
+READ THE ARM AS A SILHOUETTE AT THE SET POINT — the highest frame where the ball is still held, before the arms extend. Everything here is a coarse shape question that stays readable when the shooter is small. You are never asked to measure an angle or a gap; you are asked which of a few pictures the frame matches.
 
-THE PRIMARY MEASUREMENT IS SIDEWAYS OFFSET, AND THE RULER IS THE SHOULDERS — NOT THE BALL. Pick the frame where the ball is at its set point — up around the face, still held, not yet released. Drop a vertical line down the centre of the ball. Find the point of the elbow. Now measure the gap between them as a fraction of the player's SHOULDER WIDTH, measured in that same frame from the outside of one shoulder to the outside of the other.
+THE THREE SHAPES:
 
-WHY THE SHOULDERS AND NOT THE BALL. Earlier versions of this rubric used ball widths, and it was measured to fail: on these clips the shooter is about a fifth of the frame tall, which makes the ball roughly 21 pixels across, so "half a ball width" is an 11-pixel judgement on a compressed frame whose blocking artefacts are 8 pixels. The distinction was not in the image. The result was a criterion that scored only 4 or 8 — never 5, 6 or 7 — while the expert's own scores on the same shots spread across 3, 4, 5.5, 6.5, 7 and 7.5. It was not biased in either direction (three cells too high by more than a point, three too low) — it simply could not tell the gradations apart.
+1. THE BALL AGAINST THE HEAD.
+   - IN FRONT: above the forehead, on the shooting side. Normal.
+   - BESIDE: level with the ear and outside the line of the shoulder, off to the side of the head. The upper arm has swung out to put it there.
+   - OVER OR BEHIND: on the crown or behind the head, both hands still on it. Check the frames before: a ball that travelled UP AND BACK to get there and paused before coming forward is the catapult. That path is visible before the set point, not at the release.
 
-The shoulders are about 45 pixels across on the same frame, so every step of this measurement is roughly 2.2 times larger than the ball-width version, and a quarter-shoulder judgement is about as resolvable as a half-ball one used to be. Measure against the shoulders. If the shoulders are not both visible, say so in your reasoning and fall back to the ball as the ruler — but expect to land in the middle of the range rather than at its ends, because you are then working at the resolution that produced the failure above.
+2. THE ELBOW AGAINST THE SHOULDER LINE. Two states only.
+   - INSIDE: the elbow sits inside the outer line of the shoulder, under the ball region. The arm is carrying the ball from underneath.
+   - AT OR BEYOND: the elbow is level with or outside the shoulder's outer edge and the upper arm is near horizontal. The arm is winged.
+   - Also note whether BOTH elbows are out wide with the ball in the middle — a W or a wide V — which is a two-arm load, not a one-arm shot.
 
-THE MEASUREMENT DECIDES THE SCORE, AND SOFTENING WORDS MAY NOT RAISE IT. Once
-you have the measurement, the anchor for that measurement IS the score. You may
-not move it up because the fault looked minor, because the rest of the shot was
-good, because the deviation corrected itself, or because the player is clearly
-trying.
+3. THE FOREARM: A POST OR A LEAN.
+   - POST: standing up under the ball, close to upright.
+   - LEAN: tilted so the hand is inboard and the elbow outboard — a V rather than an L.
+   - LAID BACK: folded back so the hand is behind the elbow. Catapult territory — check the ball again.
 
-This is the measured failure mode on this criterion. Every correction the expert
-made here was DOWNWARD, and the reasoning that earned them reads the same way
-every time:
+THE COACH'S OWN TELL, when the hand is readable: you should NOT see the little finger on the side of the ball. A visible pinky means the hand is on the side and the elbow is out. When the hand is not readable, the three shapes decide.
 
-  "elbow reasonably tucked under the ball, forming a recognizable L-shape …
-   a slight outward angle but nothing severe"          scored 8.0 → expert 3.0 (a catapult)
-  "the elbow drifts slightly outside the ball line on the way up, which costs
-   a little efficiency"                                scored 7.5 → expert 3.0 (ball behind the head)
-  "a slight opening of the angle at the set point but it's within a workable
-   range"                                              scored 8.0 → expert 6.5
+SCORE ANCHORS — every whole and half point from 1 to 10 is available; land between anchors when the shot sits between them. Do not round toward the milder anchor. Pick the picture that matches.
+  10 — Ball IN FRONT. Elbow INSIDE. Forearm a POST. One hand finishes, the guide hand peels off the side. Nothing to name.
+  9  — As 10 with one small thing you can name: a brief drift on the rise that is gone by the set point, or a forearm just off upright.
+  8  — Ball IN FRONT, elbow INSIDE, forearm in a mild LEAN. The ordinary good shot.
+  7  — Ball IN FRONT, elbow still INSIDE but the upper arm visibly angled out from the body, forearm in a LEAN. The pinky often shows here.
+  6  — Ball IN FRONT, the elbow drifting out toward the shoulder line, a clear LEAN. Still a one-hand finish.
+  5  — ONE of the two faults, not both: the ball BESIDE the head with the elbow still inside the shoulder line, OR the elbow AT the shoulder edge with the ball still in front. Forearm in a LEAN. One-hand finish.
+  4  — Elbow AT OR BEYOND the shoulder edge AND the ball BESIDE the head. Winged out, ball at the ear. Write it as a flared elbow with the ball beside the head. One-hand finish.
+  3  — Any of: the ball beside the head with the forearm LAID BACK; the sideways L (bent arm rotated so the forearm points sideways, not up); a two-arm V with the ball IN FRONT of the head and both hands throwing it (the expert scored exactly this a 3); or the two-hand chest shove — the ball never loads above the chin and both arms push it out together.
+  1-2 — CATAPULT: the ball went OVER OR BEHIND the head, both hands on it, both elbows high and wide, up-and-back then slung forward.
 
-In each of those the deviation was SEEN and then discounted. "Reasonably",
-"recognisable", "slight", "minor", "nothing severe", "workable", "a little",
-"small natural", "within range" and "not significant" are the signature of that
-discount. If you are about to write one of them about something you measured,
-stop — the measurement is the score. Report what you measured and let the anchor
-set the number.
+WHAT SEPARATES 4 FROM 3 FROM 2. All have the elbow far out. A 4 keeps the ball in front of or beside the head and releases off ONE hand. A 3 is where two arms start doing the work, or the forearm has folded back, but the ball stayed in front. A 2 is the ball over or behind the head. The expert has corrected the confusion in both directions — "this was NOT a catapult, this was just the shooting hand being flared out" (he scored that elbow 4), and "it was a catapult shot, the ball was in a V at the top and out" (he scored that elbow 3). NEVER write catapult, heave, sling or hoist about a shot that released off one hand with the ball in front of the head. If a block headed SET-POINT CHECK appears anywhere in this request, its answers decide which side of these lines the shot is on.
 
-A player is better served by a 4 that names the real fault than by an 8 that
-tells them a real fault is nothing.
+DO NOT SOFTEN A SHAPE YOU SAW. "Reasonably tucked", "slight outward angle", "nothing severe", "within a workable range" have each been written about shots the expert scored 3. If the elbow was at the shoulder edge, the score is 5 or below, however good the follow-through looked afterward. A player is better served by a 4 that names the fault than by an 8 that calls it nothing.
 
-MOST SHOTS LAND BETWEEN 4 AND 8. READ THIS BEFORE THE ANCHORS. Across every
-correction the expert has made on this criterion the scores run from 3 to 8,
-with a median of 6.5. Nine and ten are rare and two and below are rare. The
-measured failure is not that this criterion scores too high or too low — it is
-that it scores at the ENDS while the expert scores in the MIDDLE. Two runs on
-the same shots produced almost nothing but 9s and almost nothing but 4s, on
-shots the expert had placed at 6 to 8 both times.
+DO NOT MARK DOWN A GOOD ARM FOR NOT BEING PERFECT. An elite shooter seen from the side — ball above the shooting shoulder, forearm standing under it, elbow pointing down — is a 9 to 9.5 even when the bend is a little shy of a right angle. Calling that a V, or docking it for not being exactly square, is the error in the other direction and the expert has corrected it too.
 
-So there is a check to run before you commit a number:
-  - About to write 9 or 10? The offset must be about a TENTH of shoulder width
-    — roughly one wrist. A quarter of shoulder width is a 7, not a 9.
-  - About to write 4 or below? The elbow must be out about HALF the shoulder
-    width, level with the edge of the shoulder, winged so the ball rests beside
-    the head rather than above the arm. A third of shoulder width is a 6.
-  - Neither extreme clearly applies? Then the answer is in 5 to 8, and you must
-    pick from inside that band rather than rounding to a rung.
+THE FOLD ANGLE IS NOT SCORED FROM THE FRONT. From a camera in front of the shooter the forearm is foreshortened and any bend you appear to see comes from how the player is turned. Judge the three shapes and take nothing off for the fold. From a side camera, an arm that has plainly given up its bend — upper arm and forearm in a near-straight line with the ball out beside the head — caps at 4 (the open push); a forearm folded back over the player caps at 3 and sends you to the catapult check. A straight arm AT FULL EXTENSION is the finish of a good shot, not an open push.
 
-SCORE ANCHORS — ALL MEASURED AT THE SET POINT, IN FRACTIONS OF SHOULDER WIDTH.
-Every whole and half point from 1 to 10 is available, and landing BETWEEN two
-anchors is the normal outcome, not a failure to decide. A useful sanity check:
-a tenth of shoulder width is about the width of the player's own wrist, and a
-quarter is about the width of their head.
-  10 — Elbow essentially on the line: offset under a TENTH of shoulder width. One vertical column, ball directly above the forearm. Genuinely rare.
-  9  — Offset about a tenth of shoulder width — roughly one wrist. Still a column; a shooter having a good day.
-  8  — Offset about a fifth of shoulder width. Clearly stacked, slightly off centre. This is what a solid competent shot looks like.
-  7  — Offset about a quarter of shoulder width — roughly one head width. Recognisably stacked, clearly on the shooting side, but visibly off the ball's centre; or drifting out during the rise and recovering by the set point.
-  6  — Offset about a third of shoulder width. Off the ball but still on the shooting side of the body, arm still working underneath. The single most common real shot.
-  5  — Offset about four tenths of shoulder width: starting to wing, the ball drifting toward the side of the head rather than above the arm.
-  4  — Offset about HALF the shoulder width — the elbow is out level with the edge of the shoulder. Winged out to the side with the ball resting beside the head rather than above the elbow. A one-hand shot with a flared elbow — write it as exactly that.
-  3  — Offset beyond half the shoulder width: the arm is pushing from the side, the stack is gone at the set point.
-  1  — No stack at any point: the ball never sits above the elbow, the arm pushes it from beside the shoulder, or the elbow is out so far the upper arm is level with the shoulders.
+SCORE THE REP IN FRONT OF YOU. Do not average a clean rep down because nobody is perfect, and do not carry a good early frame over a rep where the arm plainly swung out.
 
-TWO SHAPE FLOORS, EACH NEEDING A FRAME YOU CAN POINT AT. These override the offset anchors:
-  - BALL BEHIND THE HEAD (the catapult): a frame where the ball is level with or behind the top of the head with both hands still gripping it and both elbows raised beside the ears, then slung forward. Score 1-3 and say the ball is launched from behind the head.
-  - TWO-HAND CHEST SHOT: the ball clearly never loads above the chin and is shoved out from chest height by both arms together, both elbows winged wide. Score 3-4.
-  - A SIDEWAYS L — arm bent but rotated so the forearm points sideways rather than up — scores 3-4, the same as an elbow completely out.
-IF NEITHER OF THOSE FRAMES EXISTS, NO FLOOR APPLIES: score the sideways offset and use flared-elbow wording. NEVER write catapult, heave, sling, hoist, chest pass or two-hand about a shot that released off one hand. The expert has corrected exactly that: "this was NOT a catapult — this was just the shooting hand being flared out" (he scored that elbow a 4). When torn between a floor and the offset anchors, take the milder one.
+RETURN NULL WHEN the shooting elbow is hidden in every frame between the rise and the set point, or every frame you have is at or after the release.
 
-THE FOLD ANGLE IS ONLY SCORABLE FROM THE SIDE — READ THIS BEFORE DEDUCTING FOR IT.
-  FROM A CAMERA IN FRONT OF THE SHOOTER, including the usual view from under or behind the basket looking back at them, THE FOLD ANGLE AT THE ELBOW IS NOT MEASURABLE. The forearm points toward the camera and is foreshortened, so the angle you appear to see is produced by how the player is turned, not by how the arm is folded. Score the sideways offset alone from this angle and take NOTHING off for the fold. Do not write that the arm looked open, straight, or over-folded from a front view — that is the single most repeatable way this criterion gets two different scores on the same shot.
-  FROM A SIDE CAMERA, where you can see the upper arm and the forearm as two separate segments, the fold is readable and adds to the score:
-    - Forearm standing under the ball with a working bend, anywhere from about a right angle to somewhat more open: normal, no deduction.
-    - THE OPEN PUSH — the arm has plainly given up the bend: upper arm and forearm in a near-straight line and the ball out beside the head rather than above the elbow, so there is no bend left to load the wrist. Cap at 4.
-    - THE LAY-BACK — the forearm folded back toward the head instead of standing under the ball, the ball travelling back over the player. Cap at 3, and check the catapult floor.
-  A straight arm AT FULL EXTENSION is the finish of a good shot, not an open push. Judge the fold from the rise through the set point only.
-
-SCORE THE REP IN FRONT OF YOU, NOT THE SHOOTER. The same player produces a clean stack on most attempts and a visibly worse one now and then. Do not average an obviously good rep down because nobody is perfect, and do not carry a good early frame forward over a rep where the arm plainly collapsed.
-
-RETURN NULL WHEN: the shooting elbow is never visible in any frame between the rise and the set point, or the only frames you have are at or after the release. Do not score the extension in place of the set point.
-
-EXPERT CALIBRATION:
-  - An elite shooter at his set point from the side: ball above the shooting shoulder, forearm under it, elbow pointing down and sitting under the ball, the bend a little shy of a right angle. 9-9.5. Marking this down for not measuring exactly 90, or calling it a V, is the error.
-  - Player square to the camera, ball beside his head, elbow well out to the side rather than under the ball, pushing the shot from the side of his body — the expert said this player "did not have an L shape at all": 1-3, not 5 or 6.
-  - Player who carried the ball up the middle of his body with both hands mirrored on it, both elbows winged wide, ball riding above and behind his head before whipping out: the catapult floor, a clear failure, never 7-8.
-  - Symmetric-looking rise, ball loading in front of the face, then a one-hand release with the shooting elbow flared and the guide hand hanging close: 4, written up as a flared elbow and nothing else.
-
-PLAYER-FACING WORDING: tell them to get the shooting hand under the ball with the elbow pointing at the floor — one vertical forearm carrying the ball at face height, the other hand just along for the ride. Never mention degrees, angles, ball widths, lines or frames in the reasoning.
+PLAYER-FACING WORDING: tell them to get the shooting hand under the ball with the elbow pointing at the floor, the ball up in front of the forehead on the shooting side, the other hand only along for the ride. Never mention angles, lines, shapes by letter, studies, frames or the camera in the reasoning.

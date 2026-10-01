@@ -23,6 +23,20 @@ import { basename } from 'path'
 const args = process.argv.slice(2)
 const BY_CRITERION = args.includes('--criteria')
 const files = args.filter((a) => !a.startsWith('--'))
+
+/**
+ * Grace band outside the expected range, in points, set by the owner
+ * (2026-09-15): a score within this much of the band is close enough to be
+ * correct for a player-facing grade.
+ *
+ * BOTH numbers are always reported — strict and tolerant — and the strict one
+ * stays first. A tolerance is a legitimate product specification about what
+ * "correct" means, but it is also the easiest way in the world to manufacture
+ * an improvement, so it does not get to quietly replace the original metric.
+ * 13% of observed misses sit within 0.5 points of the band, so this is worth
+ * real cells and the difference should be visible, not absorbed.
+ */
+const TOLERANCE = Number(process.env.EVAL_TOLERANCE ?? '0.3') || 0
 if (files.length === 0) {
   console.error('usage: analyze-runs.mjs [--criteria] <run.txt>...')
   process.exit(1)
@@ -67,6 +81,7 @@ function parseRun(path) {
   const ran = new Set()
   const lost = new Set()
   const failed = new Set()
+  const margin = new Map()
   let cur = null
   for (const line of readFileSync(path, 'utf8').split('\n')) {
     if (line.startsWith('Done:') || line.startsWith('⚠')) {
@@ -86,10 +101,19 @@ function parseRun(path) {
     }
     // Both markers are failures; '·' is the ai-seeded prefix, '✗' the expert one.
     const m = line.match(/[✗·] ACCURACY (?:\[ai-seeded\] )?"([^"]+)"/)
-    if (m) failed.add(`${cur}|${m[1]}`)
+    if (!m) continue
+    const key = `${cur}|${m[1]}`
+    failed.add(key)
+    // A numeric miss also records HOW FAR outside, so the tolerant count can be
+    // recomputed from the same output rather than needing a fresh run.
+    const num = line.match(/"[^"]+" ([\d.]+) outside expected \[([\d.]+), ([\d.]+)\]/)
+    if (num) {
+      const s = +num[1], lo = +num[2], hi = +num[3]
+      margin.set(key, s > hi ? s - hi : lo - s)
+    }
   }
   for (const s of lost) ran.delete(s)
-  return { ran, lost, failed }
+  return { ran, lost, failed, margin }
 }
 
 /** Wilson score interval — correct at small n and near 0, unlike normal approx. */
@@ -115,18 +139,29 @@ const abstainCells = expertCells.filter((k) => ABSTAIN_OK.has(k.split('|')[1]))
 console.log(`MUST-SCORE criteria — the target metric. ${mustScoreCells.length} expert cells`)
 console.log(`(excludes ${abstainCells.length} cells on ${[...ABSTAIN_OK].join(', ')},`)
 console.log(` which are allowed to be hidden; reported separately below)\n`)
-console.log(`${'run'.padEnd(24)}${'lost'.padStart(5)}${'cells'.padStart(7)}${'miss'.padStart(6)}${'rate'.padStart(8)}   95% CI${'   vs 5%'.padStart(10)}`)
+console.log(`${'run'.padEnd(22)}${'lost'.padStart(5)}${'cells'.padStart(6)}` +
+  `${'STRICT'.padStart(9)}${'95% CI'.padStart(17)}` +
+  `${`+${TOLERANCE} GRACE`.padStart(13)}${'vs 5%'.padStart(14)}`)
 for (const r of runs) {
   const scope = mustScoreCells.filter((k) => r.ran.has(k.split('|')[0]))
-  const miss = scope.filter((k) => r.failed.has(k)).length
+  const failedKeys = scope.filter((k) => r.failed.has(k))
+  const miss = failedKeys.length
+  // A cell with no recorded margin was an abstention or a rename, not a numeric
+  // near-miss, so grace cannot rescue it.
+  const tolMiss = failedKeys.filter((k) => !(r.margin.get(k) <= TOLERANCE)).length
   const [lo, hi] = wilson(miss, scope.length)
-  const verdict = hi < 0.05 ? 'MET' : lo > 0.05 ? 'NOT MET' : 'inconclusive'
+  const [tlo, thi] = wilson(tolMiss, scope.length)
+  const verdict = thi < 0.05 ? 'MET' : tlo > 0.05 ? 'NOT MET' : 'inconclusive'
   console.log(
-    `${r.name.padEnd(24)}${String(r.lost.size).padStart(5)}${String(scope.length).padStart(7)}` +
-    `${String(miss).padStart(6)}${pct(miss / (scope.length || 1)).padStart(8)}   [${pct(lo)}, ${pct(hi)}]` +
-    `${verdict.padStart(10)}`
+    `${r.name.padEnd(22)}${String(r.lost.size).padStart(5)}${String(scope.length).padStart(6)}` +
+    `${`${miss} ${pct(miss / (scope.length || 1))}`.padStart(9)}` +
+    `${`[${pct(lo)}, ${pct(hi)}]`.padStart(17)}` +
+    `${`${tolMiss} ${pct(tolMiss / (scope.length || 1))}`.padStart(13)}` +
+    `${verdict.padStart(14)}`
   )
 }
+console.log(`  STRICT = outside the expected band at all. GRACE = allows ${TOLERANCE} points of slack`)
+console.log('  (owner spec 2026-09-15). The "vs 5%" verdict is judged on the GRACE column.')
 
 console.log('\nABSTAIN-OK criteria — hiding these is the correct answer, not a miss')
 console.log(`${'run'.padEnd(24)}${'cells'.padStart(7)}${'miss'.padStart(6)}${'rate'.padStart(8)}`)

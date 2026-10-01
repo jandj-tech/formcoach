@@ -1,0 +1,62 @@
+KNEES BENT RUBRIC v2 — did the legs load before the shot went up?
+
+WHY THIS REPLACES THE POINTS-SUM VERSION. The previous rubric split this
+criterion into three sub-scores worth 4, 3 and 2 points, summed them and scaled
+by (pts ÷ 9) × 10. Its top bands read "4 = elite athletic load", "3 = fully
+controlled", "2 = explosive and efficient". The arithmetic that produces is
+brutal: a good-but-not-elite shooter earning 3 + 2 + 1.5 lands on 6.5/9 = 7.2,
+and an ordinary competent one earning 2.5 + 1.5 + 1 lands on 5/9 = 5.6.
+
+Measured against the expert's own labels, this criterion missed 14 times out of
+14 and EVERY SINGLE MISS WAS TOO LOW — by 1.0 to 4.0 points, averaging 2.1. The
+scores it produced were 3, 4, 5, 6 and 7 against expected bands of [7, 9] and
+[8, 10]. It was not misreading the footage; it was reserving its top marks for
+professional athletes while the expert was grading schoolchildren on whether
+they bent their knees at all.
+
+So: no sub-points, no scaling. One judgement, scored directly, with the top of
+the scale reachable by a normal player doing the thing correctly.
+
+WHAT YOU ARE LOOKING FOR. A dip. Somewhere between the gather and the start of
+the rise the knees should visibly flex and then extend to drive the shot upward.
+That is the whole target. It is not depth for its own sake, it is not squatting,
+and it is emphatically not athleticism — a small player with a modest, smooth
+dip who pushes up off it has done this correctly and belongs at the top of the
+scale.
+
+THE RULER IS THE PLAYER'S OWN HEAD. Measure the dip as how far the crown of the
+head drops between standing and the lowest point of the gather, in HEAD HEIGHTS.
+The head stays readable when the shooter is small and far away, and it shrinks
+with them, so half a head is half a head at any distance. Never in inches or
+degrees.
+
+JUDGE IT BETWEEN THE GATHER AND THE START OF THE RISE. If the clip begins at or
+after the release, the evidence is not present — say so and return null. Do not
+infer a knee bend from a completed jump.
+
+SCORE ANCHORS — every whole and half point is available. Most players who bend
+their knees at all belong at 7 or above; the expert's own scores on this
+criterion sit in the 7-to-10 range and a 5 should feel like a real finding.
+  10 — A clear dip of roughly a third of a head height or more, smooth, both knees together, flowing straight into the upward drive with no pause. Normal good form, not elite form.
+  9  — A clear dip that flows into the rise, with one small blemish: slightly uneven knees, or a brief hitch between the load and the drive.
+  8  — A visible dip of about a quarter of a head, used to push upward. This is the ordinary competent shot and it belongs here, NOT at 5 or 6.
+  7  — A shallow but real dip — an eighth of a head or so — or a good dip that the player does not fully convert into upward drive.
+  6  — Barely perceptible knee flex: the legs are doing something but the shot is mostly arms.
+  5  — No usable dip. The player shoots from a standing position with straight or near-straight legs. This is a genuine fault and should be rare.
+  3  — Straight legs throughout AND the body working against itself, leaning back or sideways because the legs contributed nothing.
+  1  — No lower-body involvement at any point, or the knees collapse inward or buckle under the load.
+
+DO NOT DEDUCT FOR ANY OF THESE. They are the reasons the old rubric scored too
+low, and each one is either correct form or a different criterion's business:
+  - A shallow dip on a close-range or quick-release shot. Shooters load less
+    when the shot needs less.
+  - A dip that looks unathletic, stiff or slow. This criterion asks whether the
+    knees bent, not whether the player is a good athlete.
+  - Lack of visible explosiveness or "elite" loading. There is no such band.
+  - Feet leaving the floor, or not leaving the floor. Not this criterion.
+  - Balance, lean or landing position. Those belong to the base and
+    forward-motion criteria.
+
+PLAYER-FACING WORDING: tell them what their legs did and, if there is a fault,
+that the shot should start from a bend and push up through the legs. Never
+mention points, sub-scores, head heights, fractions or any number.

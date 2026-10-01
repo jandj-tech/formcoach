@@ -23,7 +23,7 @@ export interface EvalRun {
   grader: EvalGrader | null
   /** SETPOINT_CHECK=1 only: the single-frame set-point inspection. */
   set_point?: { frame: number | null; verdict: string } | null
-  frame_checks?: { applied: string[]; bounds: unknown[] } | null
+  frame_checks?: { applied: string[]; bounds: unknown[]; cues?: Record<string, unknown> } | null
 }
 
 /** Repeat runs of one fixture merged into a single comparable record. */

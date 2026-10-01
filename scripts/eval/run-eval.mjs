@@ -249,6 +249,10 @@ for (const fixture of fixtures) {
         set_point: runs.map((r) => r.set_point?.verdict ?? null),
         set_point_frame: runs.map((r) => r.set_point?.frame ?? null),
         frame_checks_applied: runs.map((r) => r.frame_checks?.applied ?? null),
+        // Per-run score and the full cue record for that run: the miss review
+        // (scripts/eval/miss-review.mjs) reads WHY a check fired or not here.
+        run_scores: runs.map((r) => r.criteria?.find((c) => c.name === name)?.score ?? null),
+        frame_checks: runs.map((r) => r.frame_checks?.cues ?? null),
         missed:
           exp === 'null'
             ? score !== null

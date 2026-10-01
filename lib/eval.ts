@@ -384,7 +384,16 @@ export async function runFixtureOnce(
     set_point: result.set_point_check
       ? { frame: result.set_point_check.frame, verdict: result.set_point_check.verdict }
       : null,
-    frame_checks: result.frame_checks ? { applied: result.frame_checks.applied, bounds: result.frame_checks.bounds } : null,
+    // The whole cue record goes to the dump: a miss review has to say WHY a
+    // check did or did not fire, and the [framechecks] log lines carry no
+    // fixture id once fixtures run concurrently.
+    frame_checks: result.frame_checks
+      ? {
+          applied: result.frame_checks.applied,
+          bounds: result.frame_checks.bounds,
+          cues: { release: result.frame_checks.release, crop: result.frame_checks.crop ?? null, elbow: result.frame_checks.elbow, power: result.frame_checks.power, square: result.frame_checks.square, feet: result.frame_checks.feet, hands: result.frame_checks.hands },
+        }
+      : null,
   }
 }
 

@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useIsInApp } from '@/lib/useIsInApp'
-import { SearchIcon, UsersIcon, UserIcon } from 'lucide-react'
+import { SearchIcon, UsersIcon, UserIcon, ShieldIcon } from 'lucide-react'
 import OrgPlayerPicker from '@/components/OrgPlayerPicker'
 import VolumeSavings, { VolumeTierList } from '@/components/VolumeSavings'
 import {
@@ -36,9 +36,11 @@ export interface OrgTeamOpt {
   coachName: string
   ageGroup: string | null
   memberCount: number
+  /** Team tokens already in this team's pool (teams.credits). */
+  credits?: number
 }
 
-type SendMode = 'players' | 'coach'
+type SendMode = 'players' | 'coach' | 'team'
 
 const SEND_MODES: Array<{ id: SendMode; label: string; blurb: string }> = [
   {
@@ -50,6 +52,11 @@ const SEND_MODES: Array<{ id: SendMode; label: string; blurb: string }> = [
     id: 'coach',
     label: 'A coach',
     blurb: 'Tokens go to the coach personally, for analyzing their own shots or uploading for players.',
+  },
+  {
+    id: 'team',
+    label: 'A team',
+    blurb: 'Tokens go into the team’s pool. Any coach on that team can spend them on uploads (after their own tokens) or give them to players.',
   },
 ]
 
@@ -92,6 +99,7 @@ export default function OrgTokenPanel({
   const [tokensEach, setTokensEach] = useState(1)
   const [sendCoachEmail, setSendCoachEmail] = useState('') // No preselection: sending credits to the wrong coach is easy to miss.
   const [sendQty, setSendQty] = useState(1)
+  const [sendTeamId, setSendTeamId] = useState('') // No preselection, same as coaches.
 
   // Every organization gets the team rate — no roster minimum, nothing to unlock.
   const buyTotal = usd(orderPricing(tier, buyQty).totalCents)
@@ -103,13 +111,18 @@ export default function OrgTokenPanel({
     return q ? coaches.filter(c => c.label.toLowerCase().includes(q)) : coaches
   }, [coaches, search])
 
+  const filteredTeams = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return q ? teams.filter(t => `${t.name} ${t.ageGroup ?? ''} ${t.coachName}`.toLowerCase().includes(q)) : teams
+  }, [teams, search])
+
   const sendTotal = mode === 'players' ? selectedPlayerIds.size * Math.max(1, tokensEach) : Math.max(1, sendQty)
   const notEnough = sendTotal > balance
   const canSend =
     !busy &&
     !notEnough &&
     balance > 0 &&
-    (mode === 'players' ? selectedPlayerIds.size > 0 : !!sendCoachEmail)
+    (mode === 'players' ? selectedPlayerIds.size > 0 : mode === 'team' ? !!sendTeamId : !!sendCoachEmail)
 
   async function buyTokens() {
     setBusy(true)
@@ -154,6 +167,14 @@ export default function OrgTokenPanel({
         `Sent ${each} token${each !== 1 ? 's' : ''} to ${ids.length} player${ids.length !== 1 ? 's' : ''}${pickedTeam ? ` on ${pickedTeam.name}` : ''}.`,
       )
       setSelectedPlayerIds(new Set())
+    } else if (mode === 'team') {
+      const team = teams.find(t => t.id === sendTeamId)
+      const qty = Math.max(1, sendQty)
+      post(
+        '/api/org/allocate-team-credits',
+        { teamId: sendTeamId, quantity: qty },
+        `Sent ${qty} token${qty === 1 ? '' : 's'} to ${team?.name ?? 'the team'}’s team tokens.`,
+      )
     } else {
       const coach = coaches.find(c => c.email === sendCoachEmail)
       post(
@@ -179,10 +200,10 @@ export default function OrgTokenPanel({
         </div>
 
         {/* Destination segmented control */}
-        <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Send to">
+        <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Send to">
           {SEND_MODES.map(m => {
             const active = mode === m.id
-            const Icon = m.id === 'players' ? UsersIcon : UserIcon
+            const Icon = m.id === 'players' ? UsersIcon : m.id === 'team' ? ShieldIcon : UserIcon
             return (
               <button
                 key={m.id}
@@ -213,6 +234,19 @@ export default function OrgTokenPanel({
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search coaches…"
+              className="w-full border border-gray-200 dark:border-courtline rounded-xl pl-9 pr-3 py-2.5 text-sm text-gray-900 dark:text-chalk dark:bg-ink-900 placeholder:text-gray-400 focus:outline-none focus:border-ember-500"
+            />
+          </div>
+        )}
+
+        {mode === 'team' && teams.length > 6 && (
+          <div className="relative">
+            <SearchIcon className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" aria-hidden />
+            <input
+              type="search"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search teams…"
               className="w-full border border-gray-200 dark:border-courtline rounded-xl pl-9 pr-3 py-2.5 text-sm text-gray-900 dark:text-chalk dark:bg-ink-900 placeholder:text-gray-400 focus:outline-none focus:border-ember-500"
             />
           </div>
@@ -253,6 +287,35 @@ export default function OrgTokenPanel({
           )
         )}
 
+        {mode === 'team' && (
+          teams.length === 0 ? (
+            <p className="text-sm text-gray-400 dark:text-chalk-dim">No teams yet — add one in the Teams tab.</p>
+          ) : (
+            <div className="border border-gray-200 dark:border-courtline rounded-xl max-h-72 overflow-y-auto divide-y divide-gray-100 dark:divide-courtline">
+              {filteredTeams.length === 0 && (
+                <p className="text-sm text-gray-400 dark:text-chalk-dim px-4 py-4">No teams match &ldquo;{search}&rdquo;.</p>
+              )}
+              {filteredTeams.map(t => (
+                <label key={t.id} className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-ink-800">
+                  <input
+                    type="radio"
+                    name="send-team"
+                    checked={sendTeamId === t.id}
+                    onChange={() => setSendTeamId(t.id)}
+                    className="w-4 h-4 accent-ember-500 shrink-0"
+                  />
+                  <span className="flex-1 min-w-0 text-sm text-gray-900 dark:text-chalk truncate">
+                    {t.name}{t.ageGroup ? <span className="text-gray-500 dark:text-chalk-dim"> · {t.ageGroup}</span> : null}
+                  </span>
+                  {typeof t.credits === 'number' && (
+                    <span className="text-xs text-gray-400 dark:text-chalk-dim shrink-0 tabular-nums">{t.credits} team token{t.credits !== 1 ? 's' : ''}</span>
+                  )}
+                </label>
+              ))}
+            </div>
+          )
+        )}
+
         {/* Amount + summary + send */}
         <div className="flex flex-wrap items-center gap-3 pt-1">
           <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-chalk-dim">
@@ -278,8 +341,9 @@ export default function OrgTokenPanel({
             {mode === 'players' && selectedPlayerIds.size > 0 && (
               <>Total <span className="font-semibold text-gray-900 dark:text-chalk tabular-nums">{sendTotal}</span> of your {balance} organization tokens</>
             )}
-            {mode !== 'players' && !sendCoachEmail && coaches.length > 0 && <>Pick a coach above</>}
-            {mode !== 'players' && !!sendCoachEmail && (
+            {mode === 'coach' && !sendCoachEmail && coaches.length > 0 && <>Pick a coach above</>}
+            {mode === 'team' && !sendTeamId && teams.length > 0 && <>Pick a team above</>}
+            {((mode === 'coach' && !!sendCoachEmail) || (mode === 'team' && !!sendTeamId)) && (
               <>From your <span className="font-semibold text-gray-900 dark:text-chalk tabular-nums">{balance}</span> organization tokens</>
             )}
           </span>

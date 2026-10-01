@@ -272,6 +272,60 @@ export async function playerForResetToken(
   return u ?? null
 }
 
+/**
+ * Read-only: is this reset / setup token live (any account kind), and, for a
+ * player, the facts the page may show. Never consumes or rotates the token.
+ * `rosterSetup`: a coach/org-added player finishing setup (roster_pending, no
+ * password yet), labelled "First L." for the page heading.
+ */
+export async function resetTokenStatus(token: string): Promise<
+  | { valid: false }
+  | { valid: true; player: null }
+  | {
+      valid: true
+      player: { firstName: string | null; label: string | null; rosterSetup: boolean; siblings: number; setup: boolean }
+    }
+> {
+  if (typeof token !== 'string' || !/^[0-9a-f]{16,128}$/i.test(token)) return { valid: false }
+  const [other] = (await db`
+    SELECT 1 FROM organizations WHERE reset_token = ${token} AND reset_token_expires > NOW()
+    UNION ALL
+    SELECT 1 FROM teams WHERE reset_token = ${token} AND reset_token_expires > NOW()
+    UNION ALL
+    SELECT 1 FROM team_coaches WHERE reset_token = ${token} AND reset_token_expires > NOW()
+    LIMIT 1
+  `) as unknown as [unknown | undefined]
+  if (other) return { valid: true, player: null }
+  const [u] = (await db`
+    SELECT u.first_name, u.nickname, NULLIF(TRIM(u.last_initial), '') AS last_initial,
+           u.password_hash IS NULL AS setup,
+           (COALESCE(u.roster_pending, false) AND u.password_hash IS NULL) AS roster_setup,
+           (SELECT COUNT(*)::int FROM users o WHERE LOWER(o.email) = LOWER(u.email) AND o.id <> u.id) AS siblings
+    FROM users u
+    WHERE u.reset_token = ${token} AND u.reset_token_expires > NOW()
+  `) as unknown as [{
+    first_name: string | null
+    nickname: string | null
+    last_initial: string | null
+    setup: boolean
+    roster_setup: boolean
+    siblings: number
+  } | undefined]
+  if (!u) return { valid: false }
+  const first = playerFirstName(u)
+  const li = u.last_initial ? u.last_initial.charAt(0).toUpperCase() : null
+  return {
+    valid: true,
+    player: {
+      firstName: first,
+      label: first ? (li ? `${first} ${li}.` : first) : null,
+      rosterSetup: u.roster_setup,
+      siblings: u.siblings,
+      setup: u.setup,
+    },
+  }
+}
+
 /** Stable machine code for the different-password refusal. */
 export const SIBLING_PASSWORD_CODE = 'password_matches_sibling'
 

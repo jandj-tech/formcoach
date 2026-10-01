@@ -4,7 +4,7 @@ import { useId, useState, type ReactNode } from 'react'
 import { AlertTriangleIcon, ChevronRightIcon, EyeIcon, LoaderCircleIcon, SendIcon, UserRoundPlusIcon } from 'lucide-react'
 import { backendButton } from '@/components/backend/button-styles'
 import StepCard from './StepCard'
-import { CHECKBOX, getsSetupEmail, plural, type Duplicate, type Recipient } from './types'
+import { CHECKBOX, plural, type Duplicate, type PlannedEmail, type SendPlan } from './types'
 
 // Step 3 — review and send. Everything the sender needs to be sure of before
 // a real email goes out: who it is from, where replies go, the exact
@@ -41,7 +41,7 @@ export default function ReviewStep({
   subject,
   personalized,
   includeResults,
-  recipients,
+  plan,
   duplicates,
   excluded,
   problems,
@@ -50,14 +50,14 @@ export default function ReviewStep({
   error,
   onSend,
   onPreviewSetup,
-  shotTotal = null,
 }: {
   fromHeader: string
   replyTo: string
   subject: string
   personalized: boolean
   includeResults: boolean
-  recipients: Recipient[]
+  /** Who gets what (the composer's send plan): the button and every count read it. */
+  plan: SendPlan
   duplicates: Duplicate[]
   excluded: Excluded[]
   problems: string[]
@@ -68,25 +68,23 @@ export default function ReviewStep({
   onSend: () => void
   /** Shows a not-set-up player's version in the step 2 preview. */
   onPreviewSetup?: () => void
-  /** Graded shots across the send, when more than each latest is going (else null). */
-  shotTotal?: number | null
 }) {
   const confirmId = useId()
   const [confirmedFor, setConfirmedFor] = useState<number | null>(null)
+  const recipients = plan.sending
   const n = recipients.length
   const large = n >= LARGE_SEND
   const confirmed = !large || confirmedFor === n
 
-  const byTeam = new Map<string, { name: string; list: Recipient[] }>()
+  const byTeam = new Map<string, { name: string; list: PlannedEmail[] }>()
   for (const r of recipients) {
     const g = byTeam.get(r.team.id) ?? { name: r.team.name, list: [] }
     g.list.push(r)
     byTeam.set(r.team.id, g)
   }
-  const withScore = recipients.filter((r) => r.player.submissionId && r.player.score !== null).length
-  const withoutScore = n - withScore
+  const { withScore, needSetup, shotTotal } = plan
+  const withoutScore = plan.messageOnly
   // Not set up yet: they get "finish setting up to see your results" instead of their score.
-  const needSetup = recipients.filter((r) => getsSetupEmail(r.player, includeResults)).length
 
   const left: Excluded[] = [
     ...duplicates.map((d) => ({
@@ -120,8 +118,8 @@ export default function ReviewStep({
             </p>
             {includeResults && (
               <p className="mt-1 text-sm text-gray-700 dark:text-chalk">
-                Score included for {withScore - needSetup}
-                {shotTotal !== null && shotTotal !== withScore && ` · ${plural(shotTotal, 'shot')} in total`}
+                Score included for {withScore}
+                {shotTotal !== withScore + needSetup && ` · ${plural(shotTotal, 'shot')} in total`}
                 {withoutScore > 0 && ` · ${withoutScore} ${withoutScore === 1 ? 'has' : 'have'} no graded shot yet (message only)`}
               </p>
             )}
@@ -184,10 +182,12 @@ export default function ReviewStep({
                             {r.player.email}
                             {r.player.emailSource === 'family' && (r.player.familyOf ? ` (${r.player.familyOf}'s family email)` : ' (family email)')}
                             {includeResults &&
-                              (getsSetupEmail(r.player, includeResults)
+                              (r.kind === 'setup'
                                 ? ' · finish-setup email'
-                                : r.player.score !== null
-                                  ? ` · score ${r.player.score.toFixed(1)}`
+                                : r.kind === 'results'
+                                  ? r.shots > 1
+                                    ? ` · ${plural(r.shots, 'shot')}`
+                                    : ` · score ${r.score?.toFixed(1)}`
                                   : ' · message only')}
                           </span>
                         </li>

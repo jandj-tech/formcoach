@@ -31,6 +31,10 @@ export interface EditableRow extends PlayerImportRow {
    * person chooses "Add anyway" (allowDuplicateName).
    */
   onTeam?: boolean
+  /** Preview: its email's account for this child is already on the team (always skipped, no "Add anyway"). */
+  onTeamByEmail?: boolean
+  /** Preview: the same-name note the import would add for this row. */
+  previewWarning?: string
   /** Being fixed by hand: keep its cells editable even once the value is valid. */
   fixing?: boolean
   outcome?: RowOutcome
@@ -114,8 +118,11 @@ export function fieldProblems(r: EditableRow): { firstName: boolean; lastName: b
 
 /** Looks already on the team, and nobody said "Add anyway" yet. */
 export function rowLooksOnTeam(r: EditableRow): boolean {
-  return !!r.onTeam && !r.allowDuplicateName && !r.outcome
+  return (!!r.onTeamByEmail || (!!r.onTeam && !r.allowDuplicateName)) && !r.outcome
 }
+
+/** What the preview check found for a row, cleared again when the row is edited. */
+export const NOT_CHECKED = { onTeam: false, onTeamByEmail: false, previewWarning: undefined } as const
 
 /** Rows still to send: not done, not removed, not skipped, valid, not a repeat, not already on the team. */
 export function rowsToSend(rows: EditableRow[]): EditableRow[] {
@@ -124,18 +131,21 @@ export function rowsToSend(rows: EditableRow[]): EditableRow[] {
 }
 
 /**
- * Asks the import endpoint (check mode, adds nothing) which rows without an
- * email name a player already on the team, and marks them `onTeam`. Best
- * effort: on any failure the rows are left as they were, and the import
+ * Asks the import endpoint (check mode, adds nothing) which rows are already
+ * on the team — name-only rows naming a player there (`onTeam`), and rows
+ * whose email's account is a member (`onTeamByEmail`) — and the same-name
+ * note the import would add (`previewWarning`). Returns a patch per row key.
+ * Best effort: on any failure the rows are left as they were, and the import
  * itself still skips those players.
  */
 export async function markRowsOnTeam(
   endpoint: string,
   extra: Record<string, unknown>,
   rows: EditableRow[],
-): Promise<Set<string>> {
-  const batch = rows.filter(r => !r.removed && !r.skippedReason && !r.outcome && !r.email.trim() && r.firstName.trim())
-  if (batch.length === 0) return new Set()
+): Promise<Map<string, Partial<EditableRow>>> {
+  const out = new Map<string, Partial<EditableRow>>()
+  const batch = rows.filter(r => !r.removed && !r.skippedReason && !r.outcome && r.firstName.trim())
+  if (batch.length === 0) return out
   try {
     const res = await fetch(endpoint, {
       method: 'POST',
@@ -143,15 +153,27 @@ export async function markRowsOnTeam(
       body: JSON.stringify({
         ...extra,
         check: true,
-        rows: batch.map(r => ({ firstName: r.firstName.trim(), lastName: r.lastName.trim() || undefined })),
+        rows: batch.map(r => ({
+          firstName: r.firstName.trim(),
+          lastName: r.lastName.trim() || undefined,
+          email: r.email.trim() || undefined,
+          parentName: r.parentName.trim() || undefined,
+        })),
       }),
     })
-    if (!res.ok) return new Set()
+    if (!res.ok) return out
     const data = await res.json().catch(() => ({}))
-    const matches = Array.isArray(data.matches) ? (data.matches as number[]) : []
-    return new Set(matches.map(i => batch[i]?.key).filter((k): k is string => !!k))
+    const patch = (i: number, p: Partial<EditableRow>) => {
+      const key = batch[i]?.key
+      if (key) out.set(key, { ...out.get(key), ...p })
+    }
+    for (const i of Array.isArray(data.matches) ? (data.matches as number[]) : []) patch(i, { onTeam: true })
+    for (const i of Array.isArray(data.onTeam) ? (data.onTeam as number[]) : []) patch(i, { onTeamByEmail: true })
+    const notes = data.warnings && typeof data.warnings === 'object' ? (data.warnings as Record<string, unknown>) : {}
+    for (const [i, w] of Object.entries(notes)) if (typeof w === 'string') patch(Number(i), { previewWarning: w })
+    return out
   } catch {
-    return new Set()
+    return out
   }
 }
 
@@ -233,6 +255,14 @@ function StatusCell({ row, sameAs, family, onAddAnyway }: { row: EditableRow; sa
   }
   if (rowLooksOnTeam(row) && !importRowProblem(row)) {
     const name = `${row.firstName.trim()}${row.lastName.trim() ? ` ${row.lastName.trim().charAt(0).toUpperCase()}.` : ''}`
+    if (row.onTeamByEmail) {
+      return (
+        <div className="space-y-0.5">
+          <p className="font-semibold text-gray-600 dark:text-chalk-dim">Already on team</p>
+          <p className="text-gray-500 dark:text-chalk-dim">{name} is already on this team with this email, so this row is left out.</p>
+        </div>
+      )
+    }
     return (
       <div className="space-y-0.5">
         <p className="font-semibold text-gray-600 dark:text-chalk-dim">Already on team?</p>
@@ -256,6 +286,12 @@ function StatusCell({ row, sameAs, family, onAddAnyway }: { row: EditableRow; sa
       <span className="text-gray-500 dark:text-chalk-dim">
         {o?.status === 'error' ? 'Fixed — ready to import' : 'Ready'}
         {family && <span className="block">{family}</span>}
+        {row.previewWarning && (
+          <span className="mt-0.5 flex items-start gap-1 text-amber-700 dark:text-amber-400">
+            <AlertTriangleIcon aria-hidden className="w-3.5 h-3.5 mt-px shrink-0" />
+            <span>{row.previewWarning}</span>
+          </span>
+        )}
       </span>
     )
   }
@@ -469,8 +505,8 @@ export default function CsvPlayerImport({
         setUnmapped(parsed.unmapped)
         const list = applyLeaveOut(parsed.rows, leaveOutOthers)
         setRows(list)
-        void markRowsOnTeam(endpoint, extra, list).then(keys => {
-          if (keys.size) setRows(cur => cur.map(r => (keys.has(r.key) ? { ...r, onTeam: true } : r)))
+        void markRowsOnTeam(endpoint, extra, list).then(found => {
+          if (found.size) setRows(cur => cur.map(r => (found.has(r.key) && !r.outcome ? { ...r, ...found.get(r.key) } : r)))
         })
       } catch {
         setError('Could not read that file. Save it as a .csv file from your spreadsheet app and try again.')
@@ -481,7 +517,7 @@ export default function CsvPlayerImport({
 
   function edit(key: string, patch: Partial<PlayerImportRow>) {
     // A changed name or email is no longer the same name check; the import still skips a match.
-    setRows(list => list.map(r => (r.key === key ? { ...r, ...patch, fixing: true, onTeam: false, outcome: r.outcome?.status === 'error' ? undefined : r.outcome } : r)))
+    setRows(list => list.map(r => (r.key === key ? { ...r, ...patch, fixing: true, ...NOT_CHECKED, outcome: r.outcome?.status === 'error' ? undefined : r.outcome } : r)))
   }
   function remove(key: string) {
     setRows(list => list.map(r => (r.key === key ? { ...r, removed: true } : r)))

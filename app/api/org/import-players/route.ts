@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { orgIsEntitledById, SUBSCRIPTION_ENDED_MESSAGE } from '@/lib/team-features'
 import { importPlayersToTeam, importNameMatches, MAX_IMPORT_ROWS, type ImportRowInput } from '@/lib/roster-players'
+import { importEmailRowCheck } from '@/lib/roster-import-check'
 
 export type { ImportRowInput }
 
@@ -25,7 +26,7 @@ export async function POST(req: NextRequest) {
     teamId?: string
     rows?: ImportRowInput[]
     sendEmail?: boolean
-    /** Preview only: which name-only rows are already on the team. Adds nothing. */
+    /** Preview only: which rows are already on the team, plus same-name notes. Adds nothing. */
     check?: boolean
   }
   if (!body.teamId) return NextResponse.json({ error: 'Pick a team to import into.' }, { status: 400 })
@@ -54,7 +55,9 @@ export async function POST(req: NextRequest) {
 
 // The import preview's look-ahead for one team: the rows without an email
 // whose name is already on that team (the import skips them unless told to
-// add anyway), plus enough about the team to tell two same-named teams apart.
+// add anyway), the email rows already on it (always skipped), the same-name
+// notes the import would add, plus enough about the team to tell two
+// same-named teams apart.
 async function checkRows(orgId: string, teamId: string, rows: ImportRowInput[] | undefined) {
   const [team] = (await db`
     SELECT t.id, t.name, NULLIF(TRIM(t.coach_nickname), '') AS coach_nickname, t.admin_email,
@@ -71,5 +74,6 @@ async function checkRows(orgId: string, teamId: string, rows: ImportRowInput[] |
     players: team.players,
     coach: team.coach_nickname ?? team.admin_email ?? null,
     matches: await importNameMatches(team.id, list),
+    ...(await importEmailRowCheck(team.id, list)),
   })
 }

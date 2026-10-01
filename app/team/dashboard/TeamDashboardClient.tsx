@@ -9,7 +9,7 @@ import CoachUploadForm from './CoachUploadForm'
 import CsvPlayerImport from '@/components/CsvPlayerImport'
 import { PlayerStatusBadge, ResendSetupButton } from '@/components/PlayerSetupStatus'
 import SendSetupToAllButton from '@/components/SendSetupToAllButton'
-import GiveOwnAccountButton, { SharedEmailNote, membersSharingEmail } from '@/components/GiveOwnAccountButton'
+import GiveOwnAccountButton, { AddPlayerEmailButton, SharedEmailNote, membersSharingEmail } from '@/components/GiveOwnAccountButton'
 import TeamCoaches from './TeamCoaches'
 import CoachAssignPanel from '@/components/CoachAssignPanel'
 import TokenBalances from '@/components/TokenBalances'
@@ -279,7 +279,11 @@ export default function TeamDashboardClient({
   async function cancelPendingPlayer(playerId: string) {
     const p = pendingMembers.find(x => x.id === playerId)
     const who = p ? formatPlayerName(p.first_name, p.last_name_initial) : 'this player'
-    if (!confirm(`Remove ${who} from ${team.name}? They were added by name and haven’t joined yet.`)) return
+    const shots = shotsByRef.get(`pending:${playerId}`) ?? 0
+    const shotNote = shots > 0
+      ? `\n\n${who} has ${shots} shot${shots === 1 ? '' : 's'} — ${shots === 1 ? 'it' : 'they'} will be removed from this team. To keep ${shots === 1 ? 'it' : 'them'}, cancel and use ${p?.contact_email ? 'Give own account' : 'Add email'} instead.`
+      : ''
+    if (!confirm(`Remove ${who} from ${team.name}? They were added by name and haven’t joined yet.${shotNote}`)) return
     setCancelling(playerId)
     try {
       const res = await fetch('/api/team/remove-pending-player', {
@@ -451,7 +455,7 @@ export default function TeamDashboardClient({
     return (
       <div key={m.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2 px-3 bg-white dark:bg-ink-900 rounded-xl border border-gray-200 dark:border-courtline">
         {/* Wraps the actions under the name on a phone instead of letting
-            the badge and "Resend setup email" collide. */}
+            the badge and "Email setup link" collide. */}
         <div className="flex-1 min-w-[11rem]">
           <div className="flex items-center gap-2 min-w-0 flex-wrap">
             <Link
@@ -474,7 +478,7 @@ export default function TeamDashboardClient({
           {m.first_name && <p className="text-xs text-gray-500 dark:text-chalk-dim truncate">{m.email}</p>}
         </div>
         <div className="flex items-center gap-3 shrink-0 ml-auto">
-          {m.roster_pending && (
+          {m.roster_pending && !!m.email && (
             <ResendSetupButton endpoint="/api/team/resend-player-setup" userId={m.id} />
           )}
           <span className="text-xs text-gray-500 dark:text-chalk-dim tabular-nums">{shotsLabel(`member:${m.id}`)}</span>
@@ -662,7 +666,7 @@ export default function TeamDashboardClient({
 
           {rosterGroup('Account ready', readyMembers.length, readyMembers.map(memberRow))}
           {rosterGroup('Setup not finished', setupMembers.length, setupMembers.map(memberRow),
-            'Added with an email. They get a link to set up their account — resend it if it got lost.',
+            'Added with an email. They get a link to set up their account — email it again if it got lost.',
             <SendSetupToAllButton endpoint="/api/team/resend-player-setup-all" count={setupMembers.filter(m => m.email).length} extra={{ teamId: team.id }} />)}
           {rosterGroup('Name only (no account)', pendingMembers.length, pendingMembers.map(p => {
             const inviteUrl = p.invite_token ? `${BASE_URL}/signup?teamInvite=${p.invite_token}` : null
@@ -681,12 +685,18 @@ export default function TeamDashboardClient({
                 </div>
                 <div className="flex items-center gap-3 shrink-0 ml-auto">
                 <span className="text-xs text-gray-500 dark:text-chalk-dim tabular-nums">{shotsLabel(`pending:${p.id}`)}</span>
-                {p.contact_email && (
+                {p.contact_email ? (
                   <GiveOwnAccountButton
                     endpoint="/api/team/give-own-account"
                     pendingId={p.id}
                     playerName={p.first_name}
                     email={p.contact_email}
+                  />
+                ) : (
+                  <AddPlayerEmailButton
+                    endpoint="/api/team/give-own-account"
+                    pendingId={p.id}
+                    playerName={p.first_name}
                   />
                 )}
                 {inviteUrl && (
@@ -707,7 +717,7 @@ export default function TeamDashboardClient({
                 </div>
               </div>
             )
-          }), 'Added by name only. Share their invite link so they can join, or remove them and add them again with an email.')}
+          }), 'Added by name only. Share their invite link so they can join, or use Add email to give them an account — their shots stay with them.')}
         </div>
       </Section>
 
@@ -1109,7 +1119,9 @@ export default function TeamDashboardClient({
         back={fromOrg ? { href: '/org/dashboard', label: 'Back to organization dashboard' } : undefined}
         actions={
           <>
-            {!inApp && (
+            {/* /team is the organization sales page: useful to an independent
+                coach, not to one whose team already belongs to an organization. */}
+            {!inApp && !orgName && (
               <Link href="/team" className={backendButton('quiet')}>
                 <Building2Icon aria-hidden />
                 Organization Hub

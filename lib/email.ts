@@ -1390,7 +1390,7 @@ export async function sendClassPurchaseConfirmationEmail(
       </td></tr>
 
       <tr><td style="padding:20px 32px 32px;">
-        <a href="${dashboardUrl.startsWith('https://') ? dashboardUrl : 'https://learnhoops.com/org/dashboard'}" style="display:inline-block;background:#F97316;color:#ffffff;padding:13px 26px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">
+        <a href="${/^https?:\/\//.test(dashboardUrl) ? dashboardUrl : `${BASE_URL}/org/dashboard`}" style="display:inline-block;background:#F97316;color:#ffffff;padding:13px 26px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">
           Go to my dashboard
         </a>
       </td></tr>
@@ -1459,7 +1459,7 @@ export async function sendTeamCreatedEmail(
         </div>
       </td></tr>
       <tr><td style="padding:20px 32px 32px;">
-        <a href="${dashboardUrl.startsWith('https://') ? dashboardUrl : 'https://learnhoops.com/org/dashboard'}" style="display:inline-block;background:#F97316;color:#fff;padding:13px 26px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">Go to dashboard</a>
+        <a href="${/^https?:\/\//.test(dashboardUrl) ? dashboardUrl : `${BASE_URL}/org/dashboard`}" style="display:inline-block;background:#F97316;color:#fff;padding:13px 26px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">Go to dashboard</a>
       </td></tr>
     </table>
   </td></tr></table>
@@ -1547,7 +1547,7 @@ export async function sendTokenPurchaseConfirmationEmail(
         </p>
       </td></tr>
       <tr><td style="padding:20px 32px 32px;">
-        <a href="${dashboardUrl.startsWith('https://') ? dashboardUrl : 'https://learnhoops.com/org/dashboard'}" style="display:inline-block;background:#F97316;color:#fff;padding:13px 26px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">Go to dashboard</a>
+        <a href="${/^https?:\/\//.test(dashboardUrl) ? dashboardUrl : `${BASE_URL}/org/dashboard`}" style="display:inline-block;background:#F97316;color:#fff;padding:13px 26px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">Go to dashboard</a>
       </td></tr>
     </table>
   </td></tr></table>
@@ -2311,6 +2311,8 @@ export interface PlayerResultsSetupEmailInput {
   sender: PlayerEmailRenderInput['sender']
   /** Graded shots waiting in the account (1 or more). */
   shotCount: number
+  /** How many of them were never emailed before (default: all of them). Only those are "new". */
+  newShotCount?: number
   /** The player's own setup link (or a non-working placeholder in previews). */
   setupUrl: string
   /** Other player accounts share this address (siblings). */
@@ -2350,7 +2352,8 @@ export function renderPlayerResultsSetupEmail(input: PlayerResultsSetupEmailInpu
     `Finish setting up your free LearnHoops account to see your score and the full breakdown of what to work on next.`
   const paragraphs = paragraphsOf(input.message.trim() ? input.message : intro)
   const waitingFor = label ? `Waiting for ${label}` : 'Waiting in your account'
-  const waitingWhat = n === 1 ? '1 new shot result' : `${n} new shot results`
+  const allNew = input.newShotCount === undefined || input.newShotCount >= n
+  const waitingWhat = `${n} ${allNew ? 'new ' : ''}shot result${n === 1 ? '' : 's'}`
   const waitingWhere = [team, org].filter(Boolean).join(' · ')
   const cta = 'Finish setting up to see your results'
   const easy = 'It takes under a minute and it’s free. Just choose a password.'

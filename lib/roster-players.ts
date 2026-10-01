@@ -863,7 +863,7 @@ export async function addPlayerToTeam(input: AddPlayerInput): Promise<AddPlayerR
       message: pendingSetup
         ? emailed
           ? `Added. ${displayName} is also on another team but hasn’t finished setting up, so we emailed the setup link again for this team.`
-          : `Added. ${displayName} is also on another team and hasn’t finished setting up yet — use Resend setup to email them the link.`
+          : `Added. ${displayName} is also on another team and hasn’t finished setting up yet — use Email setup link on the roster to send it.`
         : `Added. ${displayName} already has an account, so this team shows up next time they log in.`,
     }
   }
@@ -889,7 +889,7 @@ export async function addPlayerToTeam(input: AddPlayerInput): Promise<AddPlayerR
     ? shared
       ? `We emailed ${email} a link to set up ${firstName}’s account.`
       : `We emailed ${email} a link to finish setting up the account.`
-    : `They haven’t been emailed yet — use Resend setup when you’re ready to send them the setup link.`
+    : `They haven’t been emailed yet — use Email setup link on the roster when you’re ready.`
   const moved = converted && converted.movedShots > 0
     ? ` ${converted.movedShots} shot${converted.movedShots === 1 ? '' : 's'} moved to it.`
     : ''
@@ -954,6 +954,9 @@ async function sameNameTwinWarning(
   const matches = (await findSameNameOnTeam(teamId, first, li)).filter(m => !(m.kind === 'member' && m.id === userId))
   if (matches.length === 0) return undefined
   const label = nameLabel(first, li)
+  if (matches.some(m => m.kind === 'pending')) {
+    return `There’s also a ${label} on this team without an email. If that’s the same player, use Add email on that row with this same email — their shots move to this account and the extra entry goes away.`
+  }
   if (matches.some(m => !m.hasEmail)) {
     return `There’s also a ${label} on this team without an email. If that’s the same player, remove the extra entry.`
   }
@@ -1177,6 +1180,10 @@ export type GiveOwnAccountResult =
  * When the address already has an account for a child of the same first name
  * (they joined elsewhere), that account is used instead of a second one.
  *
+ * The same move backs "Add email" on a name-only row that has no email saved
+ * (`input.email`): re-adding the player with an email and removing the
+ * name-only entry used to strand that entry's shots on a hidden row.
+ *
  * `teamId` is the team the caller is allowed to manage; an invite on any other
  * team is refused with 403.
  */
@@ -1185,6 +1192,11 @@ export async function giveOwnAccount(input: {
   pendingId: string
   addedBy?: string | null
   sendEmail?: boolean
+  /**
+   * "Add email" on a name-only row with no family email saved: the address
+   * to give them an account on. Ignored when the row already has one.
+   */
+  email?: string | null
 }): Promise<GiveOwnAccountResult> {
   if (!UUID_RE.test(input.pendingId ?? '')) return { ok: false, httpStatus: 400, error: 'Pick a player.' }
 
@@ -1194,13 +1206,15 @@ export async function giveOwnAccount(input: {
   `) as unknown as [{ id: string; team_id: string; first_name: string; last_name_initial: string | null; contact_email: string | null } | undefined]
   if (!p) return { ok: false, httpStatus: 404, error: 'That player is no longer on the roster — reload the page.' }
   if (p.team_id !== input.teamId) return { ok: false, httpStatus: 403, error: 'That player isn’t on your team.' }
-  const email = p.contact_email
-  if (!email || !isValidEmail(email)) {
-    return {
-      ok: false,
-      httpStatus: 409,
-      error: 'This player has no family email saved. Remove them and add them again with an email.',
-    }
+  const given = typeof input.email === 'string' ? input.email.toLowerCase().trim() : ''
+  // A row with no family email saved takes the one typed into "Add email".
+  const fromInput = !p.contact_email
+  const email = p.contact_email ?? given
+  if (!email) {
+    return { ok: false, httpStatus: 400, error: 'Enter their email.' }
+  }
+  if (!isValidEmail(email)) {
+    return { ok: false, httpStatus: 400, error: 'That email doesn’t look right. Check it for a typo.' }
   }
 
   const limit = await rateLimit(`give-own-account:${input.teamId}`, 30, 3600)
@@ -1219,7 +1233,8 @@ export async function giveOwnAccount(input: {
       await lockEmail(sql, email)
       const [still] = (await sql`
         SELECT id FROM pending_team_members
-        WHERE id = ${p.id} AND team_id = ${input.teamId} AND LOWER(TRIM(contact_email)) = ${email}
+        WHERE id = ${p.id} AND team_id = ${input.teamId}
+          AND (LOWER(TRIM(contact_email)) = ${email} OR (${fromInput} AND COALESCE(TRIM(contact_email), '') = ''))
         FOR UPDATE
       `) as unknown as [{ id: string } | undefined]
       if (!still) throw new AddPlayerError('This player changed in the meantime — reload the page and try again.')
@@ -1294,7 +1309,7 @@ export async function giveOwnAccount(input: {
     ? ''
     : emailed
       ? ` We emailed ${email} a link to set up ${firstName}’s account.`
-      : ' Use Resend setup to email them the setup link.'
+      : ' Use Email setup link on the roster to send it.'
   const shared = done.siblings.length > 0
   const message = done.status === 'created'
     ? `${displayName} now has their own account${shared ? ` ${sharesNote(null, done.siblings)}` : ''}.${sent}${moved}`
@@ -1311,6 +1326,66 @@ export async function giveOwnAccount(input: {
     sharedEmail: shared,
     message,
   }
+}
+
+// ── Removing a name-only entry ────────────────────────────────────────────
+
+/**
+ * Removes a name-only player (pending_team_members) from `teamId` — a team the
+ * caller has already been allowed to manage. Their shots on this team (filed
+ * on the name-only team_players row made for them, the same link claimInTx
+ * moves) go with them: they used to stay behind on that row, which the roster
+ * no longer listed but the upload picker and leaderboard still did. The shots
+ * are only taken off the team; nothing is deleted.
+ */
+export async function removeNameOnlyEntry(
+  teamId: string,
+  pendingId: string,
+): Promise<{ removed: boolean; removedShots: number }> {
+  if (!UUID_RE.test(pendingId ?? '') || !UUID_RE.test(teamId ?? '')) return { removed: false, removedShots: 0 }
+  return (await db.begin(async (tx) => {
+    const sql = tx as unknown as Sql
+    const [p] = (await sql`
+      SELECT id FROM pending_team_members WHERE id = ${pendingId} AND team_id = ${teamId} FOR UPDATE
+    `) as unknown as [{ id: string } | undefined]
+    if (!p) return { removed: false, removedShots: 0 }
+    // Mirrors loadPendingShotLinks (lib/team-roster-refs.ts) for one invite.
+    const [link] = (await sql`
+      SELECT tp.id::text AS team_player_id,
+             (tp.created_at >= (p.created_at AT TIME ZONE current_setting('TimeZone'))) AS created_after,
+             (SELECT COUNT(*)::int FROM pending_team_members p2
+               WHERE p2.team_id = p.team_id AND p2.id <> p.id
+                 AND LOWER(TRIM(p2.first_name)) = LOWER(TRIM(p.first_name))
+                 AND UPPER(COALESCE(NULLIF(TRIM(p2.last_name_initial), ''), '?'))
+                   = UPPER(COALESCE(NULLIF(TRIM(p.last_name_initial), ''), '?'))) AS same_name_pending
+      FROM pending_team_members p
+      LEFT JOIN LATERAL (
+        SELECT t.id, t.created_at FROM team_players t
+        WHERE t.team_id = p.team_id
+          AND LOWER(t.first_name) = LOWER(TRIM(p.first_name))
+          AND UPPER(t.last_name_initial) = UPPER(COALESCE(NULLIF(TRIM(p.last_name_initial), ''), '?'))
+        ORDER BY (t.first_name = TRIM(p.first_name)) DESC, t.created_at ASC
+        LIMIT 1
+      ) tp ON TRUE
+      WHERE p.id = ${pendingId}
+    `) as unknown as [{ team_player_id: string | null; created_after: boolean | null; same_name_pending: number } | undefined]
+    let removedShots = 0
+    if (link?.team_player_id && link.created_after && link.same_name_pending === 0) {
+      const off = (await sql`
+        UPDATE submissions SET team_id = NULL, team_player_id = NULL
+        WHERE team_id = ${teamId} AND team_player_id = ${link.team_player_id} AND user_id IS NULL
+        RETURNING id
+      `) as unknown as Array<{ id: string }>
+      removedShots = off.length
+      await sql`
+        DELETE FROM team_players tp
+        WHERE tp.id = ${link.team_player_id}
+          AND NOT EXISTS (SELECT 1 FROM submissions s WHERE s.team_player_id = tp.id)
+      `
+    }
+    await sql`DELETE FROM pending_team_members WHERE id = ${pendingId}`
+    return { removed: true, removedShots }
+  })) as { removed: boolean; removedShots: number }
 }
 
 // ── Roster exits (security audit 2026-09-28, item 4) ──────────────────────

@@ -4,7 +4,7 @@ import { useId, useMemo, useState } from 'react'
 import { ChevronRightIcon, SearchIcon } from 'lucide-react'
 import type { PlayerEmailShotMode } from '@/lib/player-email-templates'
 import { PLAYER_EMAIL_LIMITS } from '@/lib/player-email-templates'
-import { CHECKBOX, INPUT, plural, shotDate, shotsOf, unsentShots, type Recipient } from './types'
+import { CHECKBOX, INPUT, pickedFor, plural, shotDate, shotsOf, type Recipient, type ShotPicks } from './types'
 
 // "Which shots?" — shown under "Each player's latest score" when a selected
 // player has more than one graded shot. Latest (the classic email), every
@@ -15,14 +15,7 @@ import { CHECKBOX, INPUT, plural, shotDate, shotsOf, unsentShots, type Recipient
 
 const MAX = PLAYER_EMAIL_LIMITS.shotsPerPlayer
 
-export type ShotPicks = Record<string, string[]>
-
-/** The shots a recipient gets in 'pick' mode: their ticks, else their latest. */
-export function pickedFor(r: Recipient, picks: ShotPicks): string[] {
-  const all = shotsOf(r.player)
-  const mine = picks[r.id]?.filter((id) => all.some((s) => s.submissionId === id))
-  return mine && mine.length ? mine : all.length ? [all[0].submissionId] : []
-}
+export { pickedFor, type ShotPicks }
 
 function scoreTone(score: number): string {
   if (score >= 8) return 'text-green-700 dark:text-green-400'
@@ -33,6 +26,7 @@ function scoreTone(score: number): string {
 export default function ShotPicker({
   mode,
   multi,
+  unsent,
   picks,
   disabled,
   onMode,
@@ -41,6 +35,8 @@ export default function ShotPicker({
   mode: PlayerEmailShotMode
   /** Selected recipients with 2+ graded shots. */
   multi: Recipient[]
+  /** The whole send in 'unsent' mode (the composer's send plan), for its hint. */
+  unsent: { shots: number; skipped: number }
   picks: ShotPicks
   disabled: boolean
   onMode: (mode: PlayerEmailShotMode) => void
@@ -50,8 +46,6 @@ export default function ShotPicker({
   const [query, setQuery] = useState('')
   const q = query.trim().toLowerCase()
 
-  const noneNew = multi.filter((r) => unsentShots(r.player).length === 0).length
-  const newTotal = multi.reduce((n, r) => n + Math.min(MAX, unsentShots(r.player).length), 0)
   const pickedTotal = multi.reduce((n, r) => n + pickedFor(r, picks).length, 0)
 
   const byTeam = useMemo(() => {
@@ -87,9 +81,9 @@ export default function ShotPicker({
     {
       id: 'unsent',
       label: 'New since their last results email',
-      hint: noneNew
-        ? `${plural(newTotal, 'shot')} not emailed yet. ${plural(noneNew, 'player has', 'players have')} nothing new and will be skipped.`
-        : `${plural(newTotal, 'shot')} not emailed yet.`,
+      hint: unsent.skipped
+        ? `${plural(unsent.shots, 'shot')} not emailed yet. ${plural(unsent.skipped, 'player has', 'players have')} nothing new and will be skipped.`
+        : `${plural(unsent.shots, 'shot')} not emailed yet.`,
     },
     { id: 'pick', label: 'Pick shots…', hint: 'Choose the shots for each player.' },
   ]

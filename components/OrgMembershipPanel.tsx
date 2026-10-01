@@ -683,7 +683,7 @@ function BuySection({
         rows.push(row)
       }
       for (const p of t.pendingPlayers) {
-        rows.push({ id: `pending:${p.id}`, label: p.label, teamId: t.id, disabled: true, note: 'Add an email to give a membership' })
+        rows.push({ id: `pending:${p.id}`, label: p.label, teamId: t.id, disabled: true, note: 'Use Add email on their Teams tab roster row to give a membership' })
       }
     }
     return rows
@@ -1244,7 +1244,7 @@ function YourMemberships({
                           <li key={p.id} className="px-4 py-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 opacity-70">
                             <span className="text-sm text-gray-900 dark:text-chalk min-w-0 break-words flex-1 basis-40">{p.label}</span>
                             <Badge tone="gray">No account yet</Badge>
-                            <span className="text-xs text-gray-500 dark:text-chalk-dim">Add an email to give a membership</span>
+                            <span className="text-xs text-gray-500 dark:text-chalk-dim">Use Add email on their Teams tab roster row to give a membership</span>
                           </li>
                         ))}
                       </ul>

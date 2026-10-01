@@ -753,6 +753,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
             onGiveCredits={(ids, each) => giveTeamCreditsToPlayers(team.id, ids, each)}
             onBuy={(dest, quantity, ids) => handleBuy(team, dest, quantity, ids)}
             buying={buying}
+            orgTokenBalance={orgTokenBalance}
           />
         ))}
       </div>
@@ -976,7 +977,7 @@ export default function OrgDashboardClient({ teams, orgName, classPackages, myUp
         balance={orgTokenBalance}
         players={orgPlayers}
         coaches={orgCoaches}
-        teams={teams.map(t => ({ id: t.id, name: t.name, coachName: t.coachNickname || t.adminEmail, ageGroup: t.ageGroup, memberCount: t.members.length }))}
+        teams={teams.map(t => ({ id: t.id, name: t.name, coachName: t.coachNickname || t.adminEmail, ageGroup: t.ageGroup, memberCount: t.members.length, credits: t.credits }))}
         tier={orgTier}
       />
     </div>

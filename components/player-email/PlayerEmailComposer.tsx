@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { LoaderCircleIcon, RefreshCwIcon } from 'lucide-react'
 import { backendButton } from '@/components/backend/button-styles'
 import {
-  PLAYER_EMAIL_LIMITS,
   playerEmailTemplate,
   type PlayerEmailContent,
   type PlayerEmailShotMode,
@@ -15,22 +14,24 @@ import RecipientStep from './RecipientStep'
 import ContentStep from './ContentStep'
 import ReviewStep, { type ComposerError, type Excluded } from './ReviewStep'
 import SendResultPanel from './SendResultPanel'
-import ShotPicker, { pickedFor, type ShotPicks } from './ShotPicker'
+import ShotPicker from './ShotPicker'
 import {
   CARD,
   blockReason,
   canEmail,
-  getsSetupEmail,
   pickId,
+  pickedFor,
+  planSend,
   plural,
   resolveSelection,
   shotsOf,
-  unsentShots,
+  skipReasonText,
   type Audience,
   type PreviewResponse,
   type Recipient,
   type SendResponse,
   type SenderAs,
+  type ShotPicks,
 } from './types'
 
 // "Email players" — one composer for org admins and coaches. Three numbered
@@ -321,6 +322,15 @@ export default function PlayerEmailComposer({
     }
   }, [content, offers.count, shotMode])
 
+  // Who actually gets what: every count, the Send button, the warnings and
+  // the preview come from this one plan (it mirrors the server's resolve).
+  const plan = useMemo(() => planSend(recipients, content, shotMode, shotPicks), [recipients, content, shotMode, shotPicks])
+  // The same send with "New since their last results email", for that option's hint.
+  const unsentPlan = useMemo(
+    () => (multi.length > 0 ? planSend(recipients, content, 'unsent', shotPicks) : null),
+    [multi.length, recipients, content, shotPicks],
+  )
+
   /** A recipient as the server gets it: with their ticked shots in 'pick' mode. */
   const wirePick = useCallback(
     (r: Recipient) =>
@@ -331,10 +341,10 @@ export default function PlayerEmailComposer({
   )
 
   // ── Preview ─────────────────────────────────────────────────────────────
-  // Recipients once some are picked; before that, anyone reachable, so the
-  // sender can see the email while still deciding who gets it.
+  // Whoever this send reaches once players are picked; before that, anyone
+  // reachable, so the sender can see the email while still deciding.
   const previewCandidates: Recipient[] = useMemo(() => {
-    if (recipients.length > 0) return recipients
+    if (recipients.length > 0) return plan.sending
     const all: Recipient[] = []
     const seen = new Set<string>()
     for (const team of teams) {
@@ -347,7 +357,7 @@ export default function PlayerEmailComposer({
       }
     }
     return all
-  }, [recipients, teams])
+  }, [recipients.length, plan.sending, teams])
 
   const effectivePreview =
     previewCandidates.find((r) => r.id === previewId) ??
@@ -358,7 +368,9 @@ export default function PlayerEmailComposer({
   const previewBlocked = !audience
     ? 'Loading…'
     : previewCandidates.length === 0
-      ? 'No player has an email address yet, so there is nobody to preview as.'
+      ? recipients.length > 0
+        ? 'None of the selected players would get this email, so there is nobody to preview as.'
+        : 'No player has an email address yet, so there is nobody to preview as.'
       : !content.subject.trim()
         ? 'Add a subject to see the preview.'
         : !content.message.trim() && !content.includeResults
@@ -417,23 +429,19 @@ export default function PlayerEmailComposer({
     return out
   }, [teams, teamIds, selected])
 
-  const withoutScore = recipients.filter((r) => r.player.score === null || !r.player.submissionId).length
+  const emptyFor = plan.skipped.filter((x) => x.reason === 'nothing_to_send').length
   const problems: string[] = []
   if (!content.subject.trim()) problems.push('Add a subject in step 2.')
   if (!content.message.trim() && !content.includeResults) problems.push("Write a message in step 2, or include each player's score.")
-  if (!content.message.trim() && content.includeResults && withoutScore > 0)
+  if (emptyFor > 0)
     problems.push(
-      `${plural(withoutScore, 'selected player has', 'selected players have')} no graded shot yet, so with an empty message their email would be blank. Write a short message, or untick them.`,
+      `${plural(emptyFor, 'selected player has', 'selected players have')} no graded shot yet, so with an empty message their email would be blank. Write a short message, or untick them.`,
     )
 
   // Soft checks: the message points at something the email won't contain.
   const warnings = contentWarnings(content, offers)
-  const cap = PLAYER_EMAIL_LIMITS.shotsPerPlayer
-  // 'unsent': anyone whose graded shots were all emailed already is skipped.
-  const nothingNew =
-    shotMode === 'unsent'
-      ? recipients.filter((r) => shotsOf(r.player).length > 0 && unsentShots(r.player).length === 0)
-      : []
+  // 'unsent': anyone with no shot that hasn't been emailed yet is skipped.
+  const nothingNew = plan.skipped.filter((x) => x.reason === 'nothing_new')
   if (nothingNew.length > 0) {
     warnings.push(
       `${plural(nothingNew.length, 'selected player has', 'selected players have')} no new shots since their last results email, so they will be skipped: ${nothingNew
@@ -442,18 +450,17 @@ export default function PlayerEmailComposer({
         .join(', ')}${nothingNew.length > 5 ? ` and ${nothingNew.length - 5} more` : ''}`.replace(/\.?$/, '.'),
     )
   }
-  // Shots across the send, when more than the latest can go out.
-  const shotTotal =
-    shotMode === 'latest'
-      ? null
-      : recipients.reduce((n, r) => {
-          if (r.player.score === null || !r.player.submissionId) return n
-          if (shotMode === 'unsent') return n + Math.min(cap, unsentShots(r.player).length)
-          return n + (shotsOf(r.player).length > 1 ? pickedFor(r, shotPicks).length : 1)
-        }, 0)
+  // Not getting it: unreachable players (whole teams) plus the plan's skips.
+  const notSent: Excluded[] = useMemo(
+    () => [
+      ...plan.skipped.map((x) => ({ id: x.id, name: x.player.name, team: x.team.name, reason: skipReasonText(x.reason) })),
+      ...excluded,
+    ],
+    [plan.skipped, excluded],
+  )
 
   // Not-set-up players get the "finish setup" version: one click shows it.
-  const firstSetup = recipients.find((r) => getsSetupEmail(r.player, content.includeResults)) ?? null
+  const firstSetup = plan.sending.find((r) => r.kind === 'setup') ?? null
   function previewSetupVersion() {
     if (!firstSetup) return
     setPreviewId(firstSetup.id)
@@ -466,7 +473,7 @@ export default function PlayerEmailComposer({
   const order = useMemo(() => teams.flatMap((t) => t.players.map((p) => pickId(t.id, p.key))), [teams])
 
   async function send() {
-    if (recipients.length === 0 || problems.length > 0) return
+    if (plan.sending.length === 0 || problems.length > 0) return
     setSending(true)
     setSendError(null)
     try {
@@ -619,6 +626,7 @@ export default function PlayerEmailComposer({
                 <ShotPicker
                   mode={shotMode}
                   multi={multi}
+                  unsent={{ shots: unsentPlan?.shotTotal ?? 0, skipped: unsentPlan?.skipped.filter((x) => x.reason === 'nothing_new').length ?? 0 }}
                   picks={shotPicks}
                   disabled={sending}
                   onMode={(m) => patchContent({ shotMode: m })}
@@ -633,16 +641,15 @@ export default function PlayerEmailComposer({
             subject={previewBlocked ? content.subject : (preview?.subject ?? content.subject)}
             personalized={/\{\{\s*first_name\s*\}\}/.test(content.subject)}
             includeResults={content.includeResults}
-            recipients={recipients}
+            plan={plan}
             duplicates={duplicates}
-            excluded={excluded}
+            excluded={notSent}
             problems={problems}
             warnings={warnings}
             sending={sending}
             error={sendError}
             onSend={send}
             onPreviewSetup={firstSetup ? previewSetupVersion : undefined}
-            shotTotal={shotTotal}
           />
         </>
       )}

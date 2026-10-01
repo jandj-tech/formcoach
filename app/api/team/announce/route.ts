@@ -103,6 +103,7 @@ export async function POST(req: NextRequest) {
       token: null,
       score: null,
       gradedAt: null,
+      latestSentAt: null,
       orgId: team.organization_id,
       orgName,
       // A message-only blast: never a results email, so never the setup variant.

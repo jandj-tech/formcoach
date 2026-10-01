@@ -4,7 +4,7 @@ import {
   consumeResetToken,
   peekResetTokenByEmail,
   playerForResetToken,
-  playerFirstName,
+  resetTokenStatus,
   siblingPasswordClash,
   SIBLING_PASSWORD_CODE,
 } from '@/lib/password-reset'
@@ -27,17 +27,25 @@ import { safeLocalPath } from '@/lib/safe-next'
 // code names ONE account, and the new password may not be one that already
 // opens a sibling's account (lib/password-reset.ts siblingPasswordClash).
 
-// GET ?token= — which player the link is for, so the page can say "Reset
-// Harper's password" when a family email holds several. Only the token's
-// holder (the inbox) learns the name; nothing is consumed.
+// GET ?token= — read-only status for the page: whether the link still works
+// (so a used or expired link says so before a password is typed), and which
+// player it is for when that helps — the name on a family email, or "First L."
+// for a coach/org-added player finishing setup. Only the token's holder (the
+// inbox) learns the name; nothing is consumed or rotated.
 export async function GET(req: NextRequest) {
   const limit = await rateLimitByIp(req, 'reset-password-peek', 120, 3600)
-  if (!limit.ok) return NextResponse.json({ valid: false }, { status: 429 })
+  if (!limit.ok) return NextResponse.json({ valid: null }, { status: 429 })
   const token = req.nextUrl.searchParams.get('token') ?? ''
-  const player = token ? await playerForResetToken(token) : null
-  // Only a family email needs the name; a one-account link reads as before.
-  if (!player || player.siblings === 0) return NextResponse.json({ valid: null })
-  return NextResponse.json({ valid: true, firstName: playerFirstName(player), setup: player.setup })
+  const status = await resetTokenStatus(token)
+  if (!status.valid) return NextResponse.json({ valid: false })
+  const p = status.player
+  if (!p) return NextResponse.json({ valid: true })
+  return NextResponse.json({
+    valid: true,
+    // A one-account reset link reads as before: no name.
+    ...(p.siblings > 0 && p.firstName ? { firstName: p.firstName, setup: p.setup } : {}),
+    ...(p.rosterSetup && p.label ? { rosterSetup: true, setupName: p.label } : {}),
+  })
 }
 
 export async function POST(req: NextRequest) {

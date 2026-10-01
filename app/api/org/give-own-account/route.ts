@@ -4,9 +4,10 @@ import { getOrgSessionFromRequest } from '@/lib/org-auth'
 import { orgIsEntitledById, SUBSCRIPTION_ENDED_MESSAGE } from '@/lib/team-features'
 import { giveOwnAccount } from '@/lib/roster-players'
 
-// Org gives a name-only player who uses a sibling's family email their own
-// account on that email (lib/roster-players giveOwnAccount). Only teams the
-// org owns; the setup link is emailed to that inbox, never returned here.
+// Org gives a name-only player their own account, keeping their shots
+// (lib/roster-players giveOwnAccount): on the sibling's family email saved for
+// them, or — "Add email" — on the email typed in. Only teams the org owns;
+// the setup link is emailed to that inbox, never returned here.
 export async function POST(req: NextRequest) {
   try {
     const session = await getOrgSessionFromRequest(req)
@@ -16,7 +17,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: SUBSCRIPTION_ENDED_MESSAGE, subscriptionEnded: true }, { status: 402 })
     }
 
-    const { teamId, pendingId } = (await req.json().catch(() => ({}))) as { teamId?: string; pendingId?: string }
+    const { teamId, pendingId, email } = (await req.json().catch(() => ({}))) as { teamId?: string; pendingId?: string; email?: unknown }
     if (!teamId || typeof teamId !== 'string' || !pendingId || typeof pendingId !== 'string') {
       return NextResponse.json({ error: 'Pick a player.' }, { status: 400 })
     }
@@ -28,7 +29,12 @@ export async function POST(req: NextRequest) {
     `) as unknown as [{ id: string; org_name: string } | undefined]
     if (!team) return NextResponse.json({ error: 'That team isn’t in your organization.' }, { status: 403 })
 
-    const out = await giveOwnAccount({ teamId: team.id, pendingId, addedBy: team.org_name })
+    const out = await giveOwnAccount({
+      teamId: team.id,
+      pendingId,
+      addedBy: team.org_name,
+      email: typeof email === 'string' ? email : null,
+    })
     if (!out.ok) return NextResponse.json({ error: out.error }, { status: out.httpStatus })
     return NextResponse.json(out)
   } catch (err) {

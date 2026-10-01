@@ -3,6 +3,18 @@ import { db } from '@/lib/db'
 import { inviteAcceptPasswordHash, recordInviteInboxProof, signTeamSession, teamSessionCookieOptions } from '@/lib/team-auth'
 import { BCRYPT_COST } from '@/lib/password'
 import { acceptSameOrgCoachInvites } from '@/lib/coach-invite-accept'
+import { rateLimitByIp } from '@/lib/rate-limit'
+
+// GET ?token= — read-only: is this coach invite link still unused? Nothing
+// else is returned, and nothing is consumed or rotated.
+export async function GET(req: NextRequest) {
+  const limit = await rateLimitByIp(req, 'coach-signup-peek', 120, 3600)
+  if (!limit.ok) return NextResponse.json({ valid: null }, { status: 429 })
+  const token = req.nextUrl.searchParams.get('token') ?? ''
+  if (!/^[0-9a-f]{16,128}$/i.test(token)) return NextResponse.json({ valid: false })
+  const rows = (await db`SELECT 1 FROM team_coaches WHERE invite_token = ${token} LIMIT 1`) as unknown as unknown[]
+  return NextResponse.json({ valid: rows.length > 0 })
+}
 
 // A newly-invited coach sets their password via the signup link, which logs
 // them into the team dashboard.

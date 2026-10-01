@@ -9,6 +9,7 @@ import {
   MAX_IMPORT_ROWS,
   type ImportRowInput,
 } from '@/lib/roster-players'
+import { importEmailRowCheck } from '@/lib/roster-import-check'
 
 // Coach bulk-adds a CSV's players to their own team. Same per-row path as a
 // single add (lib/roster-players), so dedupe-by-email, sibling handling and
@@ -25,11 +26,15 @@ export async function POST(req: NextRequest) {
   }
 
   // `check`: preview only — which name-only rows are already on the team
-  // (the import skips them unless told to add anyway). Adds nothing.
+  // (the import skips them unless told to add anyway), which email rows are
+  // (always skipped), and the same-name notes the import would add. Adds nothing.
   const body = (await req.json().catch(() => ({}))) as { rows?: ImportRowInput[]; sendEmail?: boolean; check?: boolean }
   if (body.check) {
     const rows = Array.isArray(body.rows) ? body.rows.slice(0, MAX_IMPORT_ROWS) : []
-    return NextResponse.json({ matches: await importNameMatches(session.teamId, rows) })
+    return NextResponse.json({
+      matches: await importNameMatches(session.teamId, rows),
+      ...(await importEmailRowCheck(session.teamId, rows)),
+    })
   }
   if (!Array.isArray(body.rows) || body.rows.length === 0) {
     return NextResponse.json({ error: 'There are no players to import.' }, { status: 400 })

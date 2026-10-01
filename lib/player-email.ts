@@ -409,6 +409,8 @@ export interface ResolvedRecipient {
    * results" email instead of their score.
    */
   setupPending: boolean
+  /** When the latest shot's results were last emailed (null: never). */
+  latestSentAt: string | null
   /**
    * The graded shots this email carries, newest first (shotMode 'unsent' /
    * 'pick'). null: just the latest shot (submissionId/token/score above),
@@ -462,6 +464,7 @@ function notAllowed(pick: RecipientPick): ResolvedRecipient {
     orgId: null,
     orgName: null,
     setupPending: false,
+    latestSentAt: null,
     shots: null,
     status: 'not_allowed',
   }
@@ -534,6 +537,7 @@ export async function resolveRecipients(
       orgId: team.orgId,
       orgName: team.orgName,
       setupPending: !!player.userId && player.setupPending,
+      latestSentAt: player.resentAt ?? player.sentAt,
       shots: null,
       status: reach,
     }
@@ -576,9 +580,10 @@ export async function resolveRecipients(
  * Picks the shots each reachable recipient's results email carries, from the
  * shots their team holds for THEM (teamGradedShots) — never from the client:
  * a picked id that isn't one of those is dropped. At most
- * PLAYER_EMAIL_LIMITS.shotsPerPlayer, newest first. A player with no graded
- * shot keeps the no-shot email; one with nothing new / nothing valid picked
- * is skipped.
+ * PLAYER_EMAIL_LIMITS.shotsPerPlayer, newest first. With 'pick', a player
+ * with no graded shot keeps the no-shot email; one with nothing new (no
+ * graded shot counts) / nothing valid picked is skipped. Mirrored client-side
+ * by planSend (components/player-email/types.ts).
  */
 async function chooseShots(
   resolved: ResolvedRecipient[],
@@ -586,6 +591,11 @@ async function chooseShots(
   mode: PlayerEmailShotMode,
   rosters: Map<string, Map<string, RosterPlayer>>
 ): Promise<void> {
+  // "New since their last results email": no graded shot is nothing new
+  // either, so they don't get the "no graded shot yet" email again.
+  if (mode === 'unsent') {
+    for (const r of resolved) if (r.status === 'ok' && !hasGradedShot(r)) r.status = 'nothing_new'
+  }
   const live = resolved.filter((r) => r.status === 'ok' && hasGradedShot(r))
   const byTeam = new Map<string, ResolvedRecipient[]>()
   for (const r of live) byTeam.set(r.teamId.toLowerCase(), [...(byTeam.get(r.teamId.toLowerCase()) ?? []), r])
@@ -801,6 +811,8 @@ export async function buildPlayerEmail(
       teamName: recipient.teamName,
       sender: sig,
       shotCount: recipient.shots?.length ?? 1,
+      // "1 new shot result" only when it really is new (not emailed before).
+      newShotCount: recipient.shots ? recipient.shots.filter((s) => !s.sentAt).length : recipient.latestSentAt ? 0 : 1,
       setupUrl: setup.url ?? RESULTS_SETUP_PREVIEW_URL,
       sharedInbox: facts.sharedInbox,
     })

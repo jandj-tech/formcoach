@@ -10,6 +10,7 @@ import {
   countOutcomes,
   downloadCsv,
   markRowsOnTeam,
+  NOT_CHECKED,
   postImportRows,
   readRosterFile,
   rowIsDone,
@@ -72,11 +73,11 @@ export default function OrgRosterImport({ teams }: { teams: TeamOption[] }) {
     return `${t.name} — ${info.players} player${info.players === 1 ? '' : 's'}${info.coach ? `, coach ${info.coach}` : ''}`
   }
 
-  /** Flags this team's name-only rows whose player is already on it (preview only). */
+  /** Flags this team's rows already on it, and the import's same-name notes (preview only). */
   function checkTeamRows(teamId: string, list: EditableRow[]) {
     if (!teamId || teamId === LEAVE_OUT) return
-    void markRowsOnTeam('/api/org/import-players', { teamId }, list).then(keys => {
-      if (keys.size) setRows(cur => cur.map(r => (keys.has(r.key) ? { ...r, onTeam: true } : r)))
+    void markRowsOnTeam('/api/org/import-players', { teamId }, list).then(found => {
+      if (found.size) setRows(cur => cur.map(r => (found.has(r.key) && !r.outcome ? { ...r, ...found.get(r.key) } : r)))
     })
   }
   const teamName = (id: string) => teams.find(t => t.id === id)?.name ?? ''
@@ -139,12 +140,12 @@ export default function OrgRosterImport({ teams }: { teams: TeamOption[] }) {
   function pick(key: string, teamId: string) {
     setGroups(gs => gs.map(g => (g.key === key ? { ...g, teamId } : g)))
     // A different team: its own "already on the team" check.
-    const list = rows.filter(r => normTeamName(r.teamName) === key).map(r => (r.outcome ? r : { ...r, onTeam: false }))
-    setRows(cur => cur.map(r => (normTeamName(r.teamName) === key && !r.outcome ? { ...r, onTeam: false } : r)))
+    const list = rows.filter(r => normTeamName(r.teamName) === key).map(r => (r.outcome ? r : { ...r, ...NOT_CHECKED }))
+    setRows(cur => cur.map(r => (normTeamName(r.teamName) === key && !r.outcome ? { ...r, ...NOT_CHECKED } : r)))
     checkTeamRows(teamId, list)
   }
   function edit(rowKey: string, patch: Partial<PlayerImportRow>) {
-    setRows(list => list.map(r => (r.key === rowKey ? { ...r, ...patch, fixing: true, onTeam: false, outcome: r.outcome?.status === 'error' ? undefined : r.outcome } : r)))
+    setRows(list => list.map(r => (r.key === rowKey ? { ...r, ...patch, fixing: true, ...NOT_CHECKED, outcome: r.outcome?.status === 'error' ? undefined : r.outcome } : r)))
   }
   function remove(rowKey: string) {
     setRows(list => list.map(r => (r.key === rowKey ? { ...r, removed: true } : r)))

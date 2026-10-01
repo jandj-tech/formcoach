@@ -27,6 +27,7 @@ import {
   shotsOf,
   skipReasonText,
   type Audience,
+  type PlannedEmail,
   type PreviewResponse,
   type Recipient,
   type SendResponse,
@@ -343,7 +344,7 @@ export default function PlayerEmailComposer({
   // ── Preview ─────────────────────────────────────────────────────────────
   // Whoever this send reaches once players are picked; before that, anyone
   // reachable, so the sender can see the email while still deciding.
-  const previewCandidates: Recipient[] = useMemo(() => {
+  const previewCandidates: Array<Recipient | PlannedEmail> = useMemo(() => {
     if (recipients.length > 0) return plan.sending
     const all: Recipient[] = []
     const seen = new Set<string>()
@@ -583,7 +584,12 @@ export default function PlayerEmailComposer({
     <div ref={rootRef} className="space-y-4 min-w-0">
       {header}
       {result ? (
-        <SendResultPanel ref={resultRef} result={result} onAnother={writeAnother} />
+        <SendResultPanel
+          ref={resultRef}
+          result={result}
+          replyTo={preview?.replyTo ?? audience.sender.replyTo}
+          onAnother={writeAnother}
+        />
       ) : (
         <>
           <RecipientStep

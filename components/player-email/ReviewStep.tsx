@@ -100,11 +100,19 @@ export default function ReviewStep({
 
   const canSend = n > 0 && problems.length === 0 && confirmed && !sending
 
+  // Players are ticked, but the plan skips every one of them.
+  const allSkipped = n === 0 && plan.skipped.length > 0
+  const emptyText = !allSkipped
+    ? 'Pick at least one player in step 1.'
+    : plan.skipped.every((x) => x.reason === 'nothing_new')
+      ? `${plan.skipped.length === 1 ? 'This player has no' : 'None of the selected players have'} new shots since their last results email. In step 2, choose Latest shot or Pick shots… to send one again.`
+      : `${plan.skipped.length === 1 ? 'This player has no' : 'None of the selected players have a'} graded shot yet, so the email would be blank. Write a short message in step 2.`
+
   return (
     <StepCard step={3} title="Review and send" description="Check this once. Emails go out as soon as you press send.">
       {n === 0 ? (
         <p className="rounded-xl border border-dashed border-gray-200 dark:border-courtline px-4 py-6 text-center text-sm text-gray-500 dark:text-chalk-dim">
-          Pick at least one player in step 1.
+          {emptyText}
         </p>
       ) : (
         <div className="space-y-4">

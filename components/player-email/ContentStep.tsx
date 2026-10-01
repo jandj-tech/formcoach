@@ -19,7 +19,16 @@ import {
   type PlayerEmailTemplateId,
 } from '@/lib/player-email-templates'
 import StepCard from './StepCard'
-import { CHECKBOX, INPUT, getsSetupEmail, type PreviewResponse, type Recipient, type SenderAs } from './types'
+import {
+  CHECKBOX,
+  INPUT,
+  getsSetupEmail,
+  previewScoreLabel,
+  type PlannedEmail,
+  type PreviewResponse,
+  type Recipient,
+  type SenderAs,
+} from './types'
 
 // Step 2 — what it says. A template is only a starting point: it fills the
 // subject, message and "Include" boxes, and everything stays editable. The
@@ -60,7 +69,8 @@ export default function ContentStep({
   offers: { count: number; titles: string[] }
   undoLabel: string | null
   disabled: boolean
-  previewCandidates: Recipient[]
+  /** Before players are picked: anyone reachable; after: the plan's emails. */
+  previewCandidates: Array<Recipient | PlannedEmail>
   previewId: string | null
   preview: PreviewResponse | null
   previewLoading: boolean
@@ -297,7 +307,7 @@ export default function ContentStep({
                     {previewCandidates.map((r) => (
                       <option key={r.id} value={r.id}>
                         {r.player.name}
-                        {r.player.score !== null ? ` (${r.player.score.toFixed(1)})` : ''}
+                        {previewScoreLabel(r)}
                         {getsSetupEmail(r.player, content.includeResults) ? ' · not set up' : ''}
                         {previewCandidates.some((o) => o.team.id !== r.team.id) ? ` · ${r.team.name}` : ''}
                         {/* Two "Jayden M" on one team: the email tells them apart. */}

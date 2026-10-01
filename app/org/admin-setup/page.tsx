@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { KeyRoundIcon, LoaderCircleIcon } from 'lucide-react'
 import TopNav from '@/components/TopNav'
@@ -15,6 +15,17 @@ function OrgAdminSetupForm() {
   const [confirm, setConfirm] = useState('')
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [error, setError] = useState('')
+  // Checked on load (read-only): a used or expired link says so up front.
+  const [linkDead, setLinkDead] = useState(false)
+  useEffect(() => {
+    if (!token) return
+    let cancelled = false
+    fetch(`/api/org/admin-setup?token=${encodeURIComponent(token)}`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (!cancelled && d?.valid === false) setLinkDead(true) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [token])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -39,6 +50,7 @@ function OrgAdminSetupForm() {
 
       if (!res.ok) {
         setError(data.error || 'Setup failed')
+        if (res.status === 404) setLinkDead(true)
         setStatus('error')
         return
       }
@@ -67,7 +79,17 @@ function OrgAdminSetupForm() {
             </p>
           </div>
 
-          {!token ? (
+          {token && linkDead ? (
+            <div className="rounded-xl border border-gray-200 dark:border-courtline bg-gray-50 dark:bg-ink-900 p-4 text-sm text-gray-600 dark:text-chalk-dim text-center space-y-2">
+              <p className="font-semibold text-gray-900 dark:text-chalk">This setup link has already been used or has expired.</p>
+              <p>
+                Already set your password?{' '}
+                <a href="/org/login" className="font-semibold text-ember-600 dark:text-ember-400 hover:text-ember-500">Log in</a>.
+                {' '}Otherwise ask your organization&rsquo;s owner to send a new invite, or{' '}
+                <a href="/forgot-password" className="font-semibold text-ember-600 dark:text-ember-400 hover:text-ember-500">reset your password</a>.
+              </p>
+            </div>
+          ) : !token ? (
             <p className="text-center text-red-600 dark:text-red-400 text-sm font-medium">Invalid setup link.</p>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-3">

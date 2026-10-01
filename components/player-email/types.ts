@@ -267,6 +267,17 @@ export interface PlannedEmail extends Recipient {
   score: number | null
 }
 
+/**
+ * The score shown next to a name in "Previewing as": once players are picked
+ * it is the shot(s) the plan actually sends them (" (2.6 · 2 shots)"), not
+ * just their latest.
+ */
+export function previewScoreLabel(r: Recipient | PlannedEmail): string {
+  if (!('kind' in r)) return r.player.score !== null ? ` (${r.player.score.toFixed(1)})` : ''
+  if (r.score === null) return ''
+  return ` (${r.score.toFixed(1)}${r.shots > 1 ? ` · ${r.shots} shots` : ''})`
+}
+
 export interface PlannedSkip extends Recipient {
   /** Server skip code (skipReasonText). */
   reason: 'nothing_new' | 'nothing_to_send'

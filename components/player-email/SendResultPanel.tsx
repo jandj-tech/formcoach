@@ -7,8 +7,12 @@ import { CARD, plural, skipReasonText, type SendResponse } from './types'
 
 // What happened, per player, after a send. Shown in place of the three steps
 // so there is no doubt the email already went out.
-const SendResultPanel = forwardRef<HTMLElement, { result: SendResponse; onAnother: () => void }>(function SendResultPanel(
-  { result, onAnother },
+const SendResultPanel = forwardRef<
+  HTMLElement,
+  /** replyTo: where this send's replies go (the same address step 3 showed). */
+  { result: SendResponse; replyTo: string; onAnother: () => void }
+>(function SendResultPanel(
+  { result, replyTo, onAnother },
   ref,
 ) {
   const sent = result.sent.length
@@ -27,9 +31,14 @@ const SendResultPanel = forwardRef<HTMLElement, { result: SendResponse; onAnothe
             {ok ? `Sent to ${plural(sent, 'player')}` : 'No emails were sent'}
           </h3>
           <p className="text-sm text-gray-500 dark:text-chalk-dim">
-            {ok
-              ? 'They are on their way now. Replies come straight to your email.'
-              : 'None of the selected players could get this email. The reasons are below.'}
+            {ok ? (
+              <>
+                They are on their way now. Replies go to{' '}
+                <span className="font-semibold text-gray-700 dark:text-chalk [overflow-wrap:anywhere]">{replyTo}</span>.
+              </>
+            ) : (
+              'None of the selected players could get this email. The reasons are below.'
+            )}
           </p>
           {setup > 0 && (
             <p className="mt-1 text-sm text-gray-700 dark:text-chalk">

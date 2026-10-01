@@ -1,7 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { acceptOrgAdminInvite } from '@/lib/org-admins'
+import { acceptOrgAdminInvite, orgAdminInviteValid } from '@/lib/org-admins'
 import { signOrgSession, orgSessionCookieOptions } from '@/lib/org-auth'
 import { rateLimitByIp } from '@/lib/rate-limit'
+
+// GET ?token= — read-only: is this admin setup link still unused? Lets the
+// page say "already used" before a password is typed. Nothing else is
+// returned, and nothing is consumed or rotated.
+export async function GET(req: NextRequest) {
+  const limit = await rateLimitByIp(req, 'org-admin-setup-peek', 120, 3600)
+  if (!limit.ok) return NextResponse.json({ valid: null }, { status: 429 })
+  const token = req.nextUrl.searchParams.get('token') ?? ''
+  return NextResponse.json({ valid: await orgAdminInviteValid(token) })
+}
 
 // Trades an org-admin invite token (emailed link) for a password and an org
 // session. Rate-limited like /api/team/setup: an unlimited endpoint is a

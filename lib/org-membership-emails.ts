@@ -3,6 +3,7 @@ import { resolveBaseUrl } from './base-url'
 import { NOTIFICATION_FROM } from './email-senders'
 import { type MembershipPlan, type MembershipTerm, membershipPerMonthCents, termLabel } from './org-membership-pricing'
 import { PLAYER_PLANS } from './player-plans'
+import { playerEmailPaused } from './player-email-pause'
 
 /**
  * Emails for org-sponsored player memberships (a club prepays seats and gives
@@ -263,6 +264,12 @@ async function send(to: string, email: RenderedEmail, what: string): Promise<voi
   console.log(`[email] ${what} sent:`, data?.id)
 }
 
+/** Player-facing notices go through the testing kill switch; org receipts do not. */
+async function sendToPlayer(to: string, email: RenderedEmail, what: string): Promise<void> {
+  if (playerEmailPaused(what, to)) return
+  await send(to, email, what)
+}
+
 function hello(first: string | null): string {
   return first ? `Hi ${first},` : 'Hi there,'
 }
@@ -382,7 +389,7 @@ export function renderPlayerCoveredEmail(a: PlayerCoveredInput): RenderedEmail {
 }
 
 export async function sendPlayerCoveredEmail(to: string, a: PlayerCoveredInput): Promise<void> {
-  await send(to, renderPlayerCoveredEmail(a), 'player membership covered')
+  await sendToPlayer(to, renderPlayerCoveredEmail(a), 'player membership covered')
 }
 
 // ---------------------------------------------------------------------------
@@ -456,7 +463,7 @@ export function renderPlayerMembershipEndingEmail(a: PlayerMembershipEndingInput
 }
 
 export async function sendPlayerMembershipEndingEmail(to: string, a: PlayerMembershipEndingInput): Promise<void> {
-  await send(to, renderPlayerMembershipEndingEmail(a), `player membership ending (${a.daysLeft}d)`)
+  await sendToPlayer(to, renderPlayerMembershipEndingEmail(a), `player membership ending (${a.daysLeft}d)`)
 }
 
 // ---------------------------------------------------------------------------
@@ -486,7 +493,7 @@ export function renderSeatRemovedEmail(a: SeatRemovedInput): RenderedEmail {
 }
 
 export async function sendSeatRemovedEmail(to: string, a: SeatRemovedInput): Promise<void> {
-  await send(to, renderSeatRemovedEmail(a), 'membership seat removed')
+  await sendToPlayer(to, renderSeatRemovedEmail(a), 'membership seat removed')
 }
 
 // ---------------------------------------------------------------------------
@@ -551,7 +558,7 @@ export function renderPersonalPlanPausedEmail(a: PersonalPlanPausedInput): Rende
 }
 
 export async function sendPersonalPlanPausedEmail(to: string, a: PersonalPlanPausedInput): Promise<void> {
-  await send(to, renderPersonalPlanPausedEmail(a), `personal plan paused (${a.billedVia})`)
+  await sendToPlayer(to, renderPersonalPlanPausedEmail(a), `personal plan paused (${a.billedVia})`)
 }
 
 // ---------------------------------------------------------------------------
@@ -581,5 +588,5 @@ export function renderPersonalPlanResumedEmail(a: PersonalPlanResumedInput): Ren
 }
 
 export async function sendPersonalPlanResumedEmail(to: string, a: PersonalPlanResumedInput): Promise<void> {
-  await send(to, renderPersonalPlanResumedEmail(a), 'personal plan resumed')
+  await sendToPlayer(to, renderPersonalPlanResumedEmail(a), 'personal plan resumed')
 }

@@ -329,7 +329,11 @@ export function frameCheckBounds(fc: FrameChecks): Array<{ criterion: string; ca
     // together) before it can act. The counts stay in the dump.
     else if (fc.elbow.v_top) { b.push({ criterion: ELBOW, cap: 4, why: 'both hands were on the sides of the ball with both elbows out, and the ball was thrown from that two-handed V' }); b.push({ criterion: POCKET, cap: 4, why: 'the ball was held in a two-handed V rather than loaded in a one-hand pocket' }); b.push({ criterion: POWER, cap: 6, why: 'the ball was pushed out of a two-handed V by the arms' }); b.push({ criterion: ONEHAND, cap: 5, why: 'the ball left off both hands rather than through the guide hand' }) }
     else if (fc.elbow.flared) b.push({ criterion: ELBOW, cap: 4, why: 'the elbow was out at the shoulder with the ball beside the head' })
-    else if (fc.elbow.elbow_out) b.push({ criterion: ELBOW, cap: 5, why: 'the elbow was out at shoulder height, outside the line of the shoulder, even though the ball stayed in front' })
+    // ELBOW-OUT: RECORDED, NOT ACTED ON. e58 early read (2026-10-01): the
+    // elbow-height cue fired on shot-125 (expert Elbow [6.5,8]) on 2 of 3 runs
+    // and cut a 9 to 5, and on shot-156 3/3. A high set point reads as "elbow
+    // at the shoulder" from the front. It never caught shot-198 anyway (2/8).
+    else if (fc.elbow.elbow_out && process.env.FRAME_CHECK_ELBOW_OUT === '1') b.push({ criterion: ELBOW, cap: 5, why: 'the elbow was out at shoulder height, outside the line of the shoulder, even though the ball stayed in front' })
     else if (fc.elbow.clean) b.push({ criterion: ELBOW, floor: 6, why: 'the ball was in front of the forehead with the elbow inside the shoulder line and one hand under it' })
   }
   if (fc.power) {
@@ -347,7 +351,12 @@ export function frameCheckBounds(fc: FrameChecks): Array<{ criterion: string; ca
     if (fc.square.one_shoulder_hidden && !fc.square.both_shoulders_visible) b.push({ criterion: SQUARE, cap: 5, why: 'the torso was side-on at the release' })
     // Chest to the camera while the ball leaves toward a side edge: the
     // target was off to the side and the shoulders were not turned to it.
-    else if (fc.square.both_shoulders_visible && fc.square.ball_sideways) b.push({ criterion: SQUARE, cap: 5, why: 'the ball left toward the side of the picture while the chest stayed facing the camera, so the shoulders were not turned to the target' })
+    // BALL-SIDEWAYS CAP: RECORDED, NOT ACTED ON. e58 early read: it fired on
+    // shot-125 (expert Square [8.5,10]: 10 -> 5) and shot-180 ([8,10]: 9 -> 5).
+    // "Toward a side edge" is true of a normal arc filmed from an angle. It
+    // was right on shot-198 (probe 2/2), but a cap that is wrong on two good
+    // shots for one bad one is the miss this project exists to remove.
+    else if (fc.square.both_shoulders_visible && fc.square.ball_sideways && process.env.FRAME_CHECK_SQUARE_SIDEWAYS === '1') b.push({ criterion: SQUARE, cap: 5, why: 'the ball left toward the side of the picture while the chest stayed facing the camera, so the shoulders were not turned to the target' })
     // The floor E50 removed, now guarded by the ball's path: it only fires
     // when the ball rose over the shooter toward a target ahead.
     else if (fc.square.both_shoulders_visible && fc.square.ball_up && fc.square.lands_same_direction) b.push({ criterion: SQUARE, floor: 6, why: 'the chest faced the target, the ball rose straight over the shooter toward it, and the landing faced the same way' })

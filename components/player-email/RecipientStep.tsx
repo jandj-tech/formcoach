@@ -64,7 +64,7 @@ function matches(p: AudiencePlayer, q: string): boolean {
 /** Where to fix a missing email, by who is looking and what kind of row it is. */
 function noEmailHint(as: SenderAs): string {
   const where = as === 'org' ? 'the Teams tab' : 'the Players tab'
-  return ` — to email them, add the player again with an email in ${where} (then remove this name-only entry), or share their join link`
+  return ` — to email them, use Add email on their row in ${where} (their shots stay with them), or share their join link`
 }
 
 function PlayerRow({
@@ -112,6 +112,11 @@ function PlayerRow({
             <span className="block text-xs text-gray-500 dark:text-chalk-dim [overflow-wrap:anywhere]">{player.email}</span>
           ) : null}
           {family && <span className="block text-xs font-medium text-gray-600 dark:text-chalk">{family}</span>}
+          {player.setupPending && player.email && (
+            <span className="block text-xs text-gray-500 dark:text-chalk-dim">
+              Setup incomplete{player.score !== null ? ' · results go out as a “finish setup” email' : ''}
+            </span>
+          )}
           {player.sameNameAsAnother && player.detail && player.detail !== player.email && (
             <span className="block text-xs text-gray-500 dark:text-chalk-dim">{player.detail}</span>
           )}

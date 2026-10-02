@@ -8,6 +8,14 @@
 
 export type PlayerEmailTemplateId = 'results' | 'program' | 'gear' | 'message'
 
+/**
+ * Which graded shots a results email carries, for players with several:
+ *  - 'latest': each player's newest shot (the default, and the classic email).
+ *  - 'unsent': every shot whose results haven't been emailed yet.
+ *  - 'pick': the shots the sender ticked per player (sent with each recipient).
+ */
+export type PlayerEmailShotMode = 'latest' | 'unsent' | 'pick'
+
 export interface PlayerEmailContent {
   template: PlayerEmailTemplateId
   subject: string
@@ -19,6 +27,8 @@ export interface PlayerEmailContent {
   includeOffers: boolean
   /** A button to the LearnHoops basketball shop. */
   includeShopLink: boolean
+  /** With results: which shots (absent = 'latest'). */
+  shotMode?: PlayerEmailShotMode
 }
 
 export interface PlayerEmailTemplate {
@@ -104,4 +114,6 @@ export const PLAYER_EMAIL_LIMITS = {
   subject: 150,
   message: 5000,
   recipients: 1000,
+  /** Most shots one player's results email can carry. */
+  shotsPerPlayer: 10,
 } as const

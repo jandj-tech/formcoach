@@ -68,6 +68,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Organization not found' }, { status: 404 })
     }
 
+    // One name per team within the org, ignoring case and spacing: pickers and
+    // spreadsheet imports match teams by name, so a twin can't be told apart.
+    const [twin] = await db`
+      SELECT name FROM teams
+      WHERE organization_id = ${org.id}
+        AND LOWER(REGEXP_REPLACE(TRIM(name), ${'\\s+'}, ' ', 'g')) = ${name.trim().replace(/\s+/g, ' ').toLowerCase()}
+      LIMIT 1
+    ` as unknown as [{ name: string } | undefined]
+    if (twin) {
+      return NextResponse.json(
+        { error: `You already have a team called "${twin.name}". Pick a different name, for example with the season or age group.` },
+        { status: 409 },
+      )
+    }
+
     const ageGroupValue = ageGroup.value
 
     // Generate a unique access code (retry on rare collision)

@@ -3,8 +3,9 @@ import { getTeamSessionFromRequest } from '@/lib/team-auth'
 import { teamIsEntitled, SUBSCRIPTION_ENDED_MESSAGE } from '@/lib/team-features'
 import { giveOwnAccount, coachDisplayName } from '@/lib/roster-players'
 
-// Coach gives a name-only player who uses a sibling's family email their own
-// account on that email (lib/roster-players giveOwnAccount). Only players on
+// Coach gives a name-only player their own account, keeping their shots
+// (lib/roster-players giveOwnAccount): on the sibling's family email saved for
+// them, or — "Add email" — on the email typed in. Only players on
 // the coach's own team; the setup link is emailed to that inbox, never
 // returned here.
 export async function POST(req: NextRequest) {
@@ -16,7 +17,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: SUBSCRIPTION_ENDED_MESSAGE, subscriptionEnded: true }, { status: 402 })
     }
 
-    const { pendingId } = (await req.json().catch(() => ({}))) as { pendingId?: string }
+    const { pendingId, email } = (await req.json().catch(() => ({}))) as { pendingId?: string; email?: unknown }
     if (!pendingId || typeof pendingId !== 'string') {
       return NextResponse.json({ error: 'Pick a player.' }, { status: 400 })
     }
@@ -25,6 +26,7 @@ export async function POST(req: NextRequest) {
       teamId: session.teamId,
       pendingId,
       addedBy: await coachDisplayName(session.teamId, session.adminEmail),
+      email: typeof email === 'string' ? email : null,
     })
     if (!out.ok) return NextResponse.json({ error: out.error }, { status: out.httpStatus })
     return NextResponse.json(out)

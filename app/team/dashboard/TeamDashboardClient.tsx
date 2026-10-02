@@ -8,7 +8,8 @@ import Link from 'next/link'
 import CoachUploadForm from './CoachUploadForm'
 import CsvPlayerImport from '@/components/CsvPlayerImport'
 import { PlayerStatusBadge, ResendSetupButton } from '@/components/PlayerSetupStatus'
-import GiveOwnAccountButton, { SharedEmailNote, membersSharingEmail } from '@/components/GiveOwnAccountButton'
+import SendSetupToAllButton from '@/components/SendSetupToAllButton'
+import GiveOwnAccountButton, { AddPlayerEmailButton, SharedEmailNote, membersSharingEmail } from '@/components/GiveOwnAccountButton'
 import TeamCoaches from './TeamCoaches'
 import CoachAssignPanel from '@/components/CoachAssignPanel'
 import TokenBalances from '@/components/TokenBalances'
@@ -68,6 +69,8 @@ interface LeaderboardEntry {
   best_score: number
   avg_score: number | string | null
   upload_count: number
+  /** Same-name players only: what tells them apart (lib/team-shots.ts withTwinDetails). */
+  detail?: string
 }
 
 interface ImprovedEntry {
@@ -167,6 +170,8 @@ export default function TeamDashboardClient({
   const [addEmail, setAddEmail] = useState('')
   const [addParent, setAddParent] = useState('')
   const [addPhone, setAddPhone] = useState('')
+  // Only asked once an email is typed; off means "add now, email them later".
+  const [addSendEmail, setAddSendEmail] = useState(true)
   const [addStatus, setAddStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [addError, setAddError] = useState('')
   const [addMessage, setAddMessage] = useState('')
@@ -254,7 +259,8 @@ export default function TeamDashboardClient({
   }
 
   async function kickMember(userId: string) {
-    if (!confirm('Remove this player from the team?')) return
+    const m = members.find(x => x.id === userId)
+    if (!confirm(`Remove ${m ? pickLabel(m) : 'this player'} from ${team.name}?`)) return
     setKicking(userId)
     try {
       const res = await fetch('/api/team/remove-member', {
@@ -271,7 +277,13 @@ export default function TeamDashboardClient({
   }
 
   async function cancelPendingPlayer(playerId: string) {
-    if (!confirm('Cancel this player? They were added by name and haven’t joined yet.')) return
+    const p = pendingMembers.find(x => x.id === playerId)
+    const who = p ? formatPlayerName(p.first_name, p.last_name_initial) : 'this player'
+    const shots = shotsByRef.get(`pending:${playerId}`) ?? 0
+    const shotNote = shots > 0
+      ? `\n\n${who} has ${shots} shot${shots === 1 ? '' : 's'} — ${shots === 1 ? 'it' : 'they'} will be removed from this team. To keep ${shots === 1 ? 'it' : 'them'}, cancel and use ${p?.contact_email ? 'Give own account' : 'Add email'} instead.`
+      : ''
+    if (!confirm(`Remove ${who} from ${team.name}? They were added by name and haven’t joined yet.${shotNote}`)) return
     setCancelling(playerId)
     try {
       const res = await fetch('/api/team/remove-pending-player', {
@@ -329,7 +341,7 @@ export default function TeamDashboardClient({
           email: addEmail.trim() || undefined,
           parentName: addParent.trim() || undefined,
           phone: addPhone.trim() || undefined,
-          sendEmail: true,
+          sendEmail: addSendEmail,
           allowDuplicateName: allowDuplicateName || undefined,
         }),
       })
@@ -431,11 +443,19 @@ export default function TeamDashboardClient({
   // Siblings on this team with their own accounts on one family email.
   const sharedEmailIds = membersSharingEmail(members)
 
+  // Graded shots per roster row, from the upload roster already loaded
+  // (lib/team-roster-refs.ts), so "who hasn't uploaded" shows on the roster.
+  const shotsByRef = new Map(uploadRoster.map(r => [r.ref, r.shotCount]))
+  function shotsLabel(ref: string) {
+    const n = shotsByRef.get(ref) ?? 0
+    return n > 0 ? `${n} shot${n === 1 ? '' : 's'}` : 'No shots yet'
+  }
+
   function memberRow(m: Member) {
     return (
       <div key={m.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2 px-3 bg-white dark:bg-ink-900 rounded-xl border border-gray-200 dark:border-courtline">
         {/* Wraps the actions under the name on a phone instead of letting
-            the badge and "Resend setup email" collide. */}
+            the badge and "Email setup link" collide. */}
         <div className="flex-1 min-w-[11rem]">
           <div className="flex items-center gap-2 min-w-0 flex-wrap">
             <Link
@@ -458,9 +478,10 @@ export default function TeamDashboardClient({
           {m.first_name && <p className="text-xs text-gray-500 dark:text-chalk-dim truncate">{m.email}</p>}
         </div>
         <div className="flex items-center gap-3 shrink-0 ml-auto">
-          {m.roster_pending && (
+          {m.roster_pending && !!m.email && (
             <ResendSetupButton endpoint="/api/team/resend-player-setup" userId={m.id} />
           )}
+          <span className="text-xs text-gray-500 dark:text-chalk-dim tabular-nums">{shotsLabel(`member:${m.id}`)}</span>
           <span className="text-xs text-gray-500 dark:text-chalk-dim tabular-nums">{m.tokens} token{m.tokens !== 1 ? 's' : ''}</span>
           <button
             onClick={() => kickMember(m.id)}
@@ -474,7 +495,7 @@ export default function TeamDashboardClient({
     )
   }
 
-  function rosterGroup(label: string, count: number, rows: React.ReactNode[], note?: string) {
+  function rosterGroup(label: string, count: number, rows: React.ReactNode[], note?: string, action?: React.ReactNode) {
     if (count === 0) return null
     return (
       <div className="space-y-1">
@@ -482,6 +503,7 @@ export default function TeamDashboardClient({
           {label} <span className="tabular-nums text-gray-400 dark:text-chalk-dim">({count})</span>
         </p>
         {note && <p className="text-xs text-gray-500 dark:text-chalk-dim">{note}</p>}
+        {action && <div className="py-1">{action}</div>}
         {rows}
       </div>
     )
@@ -550,8 +572,13 @@ export default function TeamDashboardClient({
 
           {addOpen && (
             <div className="bg-white dark:bg-ink-900 border border-gray-200 dark:border-courtline rounded-2xl p-5 space-y-3">
+              {/* Same wording as the org's AddPlayerForm. */}
               <p className="text-sm text-gray-500 dark:text-chalk-dim">
-                No password needed. With an email we create the player&apos;s account and email them a link to finish setting it up — the link goes only to their inbox. Without an email, they join with an invite link you share.
+                No password needed. {!addEmail.trim()
+                  ? 'Add an email to create their account and send results; without one they join with an invite link you share.'
+                  : addSendEmail
+                    ? 'We email them a link to finish setting up their own account. The link goes only to that inbox. Brothers and sisters can share one family email; each still gets their own account.'
+                    : 'Their account is created now; you can send the setup email later from the roster.'}
               </p>
               <form onSubmit={addPlayer} className="space-y-2">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -579,6 +606,12 @@ export default function TeamDashboardClient({
                   <input type="text" aria-label="Parent name" placeholder="Parent name (optional)" value={addParent} onChange={e => setAddParent(e.target.value)} className="bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl px-4 py-2.5 text-black dark:text-chalk text-sm placeholder-gray-400 focus:outline-none focus:border-ember-500 transition-colors" />
                   <input type="text" aria-label="Phone" placeholder="Phone (optional)" value={addPhone} onChange={e => setAddPhone(e.target.value)} className="bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-xl px-4 py-2.5 text-black dark:text-chalk text-sm placeholder-gray-400 focus:outline-none focus:border-ember-500 transition-colors" />
                 </div>
+                {addEmail.trim() && (
+                  <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-chalk-dim cursor-pointer">
+                    <input type="checkbox" checked={addSendEmail} onChange={e => setAddSendEmail(e.target.checked)} className="w-4 h-4 accent-ember-500" />
+                    Email them a link to finish setting up their account
+                  </label>
+                )}
                 {addError && <p className="text-red-500 text-sm">{addError}</p>}
                 <button
                   type="submit"
@@ -633,7 +666,8 @@ export default function TeamDashboardClient({
 
           {rosterGroup('Account ready', readyMembers.length, readyMembers.map(memberRow))}
           {rosterGroup('Setup not finished', setupMembers.length, setupMembers.map(memberRow),
-            'Added with an email. They get a link to set up their account — resend it if it got lost.')}
+            'Added with an email. They get a link to set up their account — email it again if it got lost.',
+            <SendSetupToAllButton endpoint="/api/team/resend-player-setup-all" count={setupMembers.filter(m => m.email).length} extra={{ teamId: team.id }} />)}
           {rosterGroup('Name only (no account)', pendingMembers.length, pendingMembers.map(p => {
             const inviteUrl = p.invite_token ? `${BASE_URL}/signup?teamInvite=${p.invite_token}` : null
             return (
@@ -650,12 +684,19 @@ export default function TeamDashboardClient({
                   )}
                 </div>
                 <div className="flex items-center gap-3 shrink-0 ml-auto">
-                {p.contact_email && (
+                <span className="text-xs text-gray-500 dark:text-chalk-dim tabular-nums">{shotsLabel(`pending:${p.id}`)}</span>
+                {p.contact_email ? (
                   <GiveOwnAccountButton
                     endpoint="/api/team/give-own-account"
                     pendingId={p.id}
                     playerName={p.first_name}
                     email={p.contact_email}
+                  />
+                ) : (
+                  <AddPlayerEmailButton
+                    endpoint="/api/team/give-own-account"
+                    pendingId={p.id}
+                    playerName={p.first_name}
                   />
                 )}
                 {inviteUrl && (
@@ -676,7 +717,7 @@ export default function TeamDashboardClient({
                 </div>
               </div>
             )
-          }), 'Added by name only. Share their invite link so they can join, or remove them and add them again with an email.')}
+          }), 'Added by name only. Share their invite link so they can join, or use Add email to give them an account — their shots stay with them.')}
         </div>
       </Section>
 
@@ -688,6 +729,8 @@ export default function TeamDashboardClient({
       >
         <div className="pt-2">
           <TeamCoaches
+            teamName={team.name}
+            isHeadCoach={adminEmail.toLowerCase() === foundingCoachEmail.toLowerCase()}
             foundingCoachEmail={foundingCoachEmail}
             foundingCoachNickname={foundingCoachNickname}
             coaches={coaches}
@@ -814,13 +857,6 @@ export default function TeamDashboardClient({
   const programTab = classProgram ? (
     <div className="space-y-4">
       <ClassManager packages={[classProgram]} canManage />
-
-      {classProgram.tokenPool > 0 && (
-        <p className="text-xs text-gray-500 dark:text-chalk-dim">
-          The class came with {classProgram.tokenPool} analysis token{classProgram.tokenPool === 1 ? '' : 's'} for this
-          team. They sit in unassigned team tokens and are handed out from the Tokens tab.
-        </p>
-      )}
     </div>
   ) : (
     <div className="rounded-2xl border border-gray-200 dark:border-courtline p-5">
@@ -830,12 +866,12 @@ export default function TeamDashboardClient({
         through grip, elbow, stance, release and arc, to a final evaluation and a
         certificate. Every place includes {CLASS_ANALYSES_PER_PLAYER} analyses and a training ball.
       </p>
+      {/* Buying a package always creates a new class team; an existing team
+          is never switched over to it. */}
       <p className="text-sm text-gray-600 dark:text-chalk-dim mt-3 leading-relaxed">
-        The class runs through an organization — a club, school or academy buys
-        the places and assigns them to its teams. This team isn&apos;t part of one
-        yet, so there&apos;s nothing to run here. If your club already has a
-        LearnHoops organization, ask them to add this team to it; the class then
-        shows up on this tab.
+        {orgName
+          ? 'Your club runs this program on its own class team, not on this one. To coach it, ask your director to add you to the class team.'
+          : 'The class runs through an organization — a club, school or academy buys the places, and each package gets its own class team. This team isn’t part of one, so there’s nothing to run here. If your club has a LearnHoops organization, ask your director to add you as the coach of its class team.'}
       </p>
     </div>
   )
@@ -930,7 +966,7 @@ export default function TeamDashboardClient({
         <Section
           title="Buy tokens"
           tipLabel="What do tokens pay for?"
-          tip="1 token = 1 AI shot analysis. Purchases land in My tokens, your personal balance. Use them for your own uploads, uploading on behalf of players, or hand them to any player."
+          tip="1 token = 1 AI shot analysis. Purchases land in My tokens, your personal balance. Your uploads (your own shots and shots for players) use these first, then the team's tokens. You can also hand them to any player."
           summary={`$${creditRate} per token`}
         >
           <div className="space-y-4 pt-2">
@@ -1083,7 +1119,9 @@ export default function TeamDashboardClient({
         back={fromOrg ? { href: '/org/dashboard', label: 'Back to organization dashboard' } : undefined}
         actions={
           <>
-            {!inApp && (
+            {/* /team is the organization sales page: useful to an independent
+                coach, not to one whose team already belongs to an organization. */}
+            {!inApp && !orgName && (
               <Link href="/team" className={backendButton('quiet')}>
                 <Building2Icon aria-hidden />
                 Organization Hub
@@ -1143,17 +1181,22 @@ export default function TeamDashboardClient({
           }
         />
 
-        <StatCard
-          label="My tokens"
-          value={coachCredits}
-          hint={
-            <InfoTip label="What are my tokens?" align="left">
-              Your personal balance — 1 token = 1 AI shot analysis. Tokens
-              you buy or that your organization gives you personally land
-              here. Spend them on your own uploads or hand them to players.
-            </InfoTip>
-          }
-        />
+        {/* Not shown to an organization that opened this team: its uploads
+            are paid from team tokens, then organization tokens, never these. */}
+        {!fromOrg && (
+          <StatCard
+            label="My tokens"
+            value={coachCredits}
+            hint={
+              <InfoTip label="What are my tokens?" align="left">
+                Your personal balance — 1 token = 1 AI shot analysis. Tokens
+                you buy or that your organization gives you personally land
+                here. Uploads you make use these first, then the team&apos;s
+                tokens. You can also hand them to players.
+              </InfoTip>
+            }
+          />
+        )}
 
         <StatCard
           label="Team tokens"
@@ -1161,14 +1204,16 @@ export default function TeamDashboardClient({
           hint={
             <InfoTip label="What are team tokens?" align="left">
               A shared balance that belongs to the team — usually funded by
-              your organization. Spend them on this team&apos;s players (or
-              your own uploads once your own tokens run out).
+              your organization. Your uploads use it once your own tokens run
+              out (organization uploads use it first). You can also give it
+              to this team&apos;s players.
             </InfoTip>
           }
         />
 
-        {/* Legacy unassigned pool — a card only while it still holds tokens. */}
-        {team.tokenPool > 0 && <StatCard
+        {/* Legacy unassigned pool — a card only while it still holds tokens.
+            Hidden on class teams, whose tokens are Team tokens. */}
+        {team.tokenPool > 0 && !classProgram && <StatCard
           label="Unassigned team tokens"
           value={team.tokenPool}
           hint={
@@ -1224,7 +1269,7 @@ export default function TeamDashboardClient({
             ),
           },
           { id: 'chat', label: 'Chat', content: <TeamChatPanel teamId={team.id} /> },
-          { id: 'email', label: 'Email Players', content: <PlayerEmailComposer as="coach" /> },
+          { id: 'email', label: 'Email Players', content: <PlayerEmailComposer key={team.id} as="coach" /> },
           { id: 'uploads', label: 'Uploads', content: uploadsTab },
           { id: 'leaderboard', label: leaderboardTabLabel(leaderboardVisibility), count: leaderboard.length, content: leaderboardTab },
           // Program sits next to Chat: it is week-to-week coaching work, not

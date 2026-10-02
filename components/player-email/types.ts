@@ -2,6 +2,8 @@
 // helpers the composer's steps share. The server re-resolves every recipient,
 // so nothing here is trusted — it only drives what the sender sees.
 
+import { PLAYER_EMAIL_LIMITS, type PlayerEmailContent, type PlayerEmailShotMode } from '@/lib/player-email-templates'
+
 export type SenderAs = 'org' | 'coach'
 
 export interface AudiencePlayer {
@@ -27,6 +29,19 @@ export interface AudiencePlayer {
   unlocked: boolean
   unsubscribed: boolean
   bounced: boolean
+  /** Added by email, account not set up yet: results go out as a "finish setup" email. */
+  setupPending?: boolean
+  /** Every graded shot the team holds for this player, newest first. */
+  shots?: AudienceShot[]
+}
+
+export interface AudienceShot {
+  submissionId: string
+  score: number
+  gradedAt: string | null
+  thumb: string | null
+  /** When results for this shot were last emailed. */
+  sentAt: string | null
 }
 
 export interface AudienceTeam {
@@ -50,10 +65,12 @@ export interface PreviewResponse {
   replyTo: string
   to: string
   includesScore: boolean
+  /** 'setup': this player gets the "finish setting up to see your results" version. */
+  variant?: 'results' | 'setup'
 }
 
 export interface SendResponse {
-  sent: Array<{ name: string; team: string; email: string }>
+  sent: Array<{ name: string; team: string; email: string; setupRequired?: boolean; shotCount?: number }>
   skipped: Array<{ name: string; team: string; reason: string }>
   failed: Array<{ name: string; team: string }>
   total: number
@@ -82,6 +99,11 @@ export function canEmail(p: AudiencePlayer): boolean {
   return blockReason(p) === null
 }
 
+/** With results included, this player gets the "finish setting up to see your results" email. */
+export function getsSetupEmail(p: AudiencePlayer, includeResults: boolean): boolean {
+  return includeResults && !!p.setupPending && !!p.userId && hasGradedShot(p)
+}
+
 /** Server skip codes → plain words. Unknown codes are shown as-is, tidied. */
 export function skipReasonText(reason: string): string {
   switch (reason) {
@@ -99,6 +121,14 @@ export function skipReasonText(reason: string): string {
       return 'Not on a team you can email'
     case 'nothing_to_send':
       return 'No message and no graded shot yet, so nothing was sent'
+    case 'nothing_new':
+      return 'No new shots since their last results email'
+    case 'shots_unavailable':
+      return 'The chosen shots are not available for this player any more'
+    case 'recently_emailed':
+      return "Hasn't set up their account and already got several emails about it in the last hour. Try again later"
+    case 'paused':
+      return 'Player emails are paused while the org features are being tested'
     default:
       return reason.replace(/_/g, ' ')
   }
@@ -198,3 +228,116 @@ export const INPUT =
   'focus:outline-none focus:border-ember-500 focus-visible:ring-2 focus-visible:ring-ember-400/60'
 
 export const CHECKBOX = 'w-4 h-4 shrink-0 accent-ember-500 cursor-pointer disabled:cursor-not-allowed'
+
+/** Graded shots a player has on this team (newest first). */
+export function shotsOf(p: AudiencePlayer): AudienceShot[] {
+  return p.shots ?? []
+}
+
+/** Shots whose results haven't been emailed yet. */
+export function unsentShots(p: AudiencePlayer): AudienceShot[] {
+  return shotsOf(p).filter((s) => !s.sentAt)
+}
+
+/** "Sep 30", or "Sep 30, 4:12 PM" with `withTime`. */
+export function shotDate(iso: string | null, withTime = false): string {
+  if (!iso) return 'Undated'
+  const d = new Date(iso)
+  return withTime
+    ? d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+    : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
+/** Per-recipient shot ticks for "Pick shots…" (absent: their latest). */
+export type ShotPicks = Record<string, string[]>
+
+/** The shots a recipient gets in 'pick' mode: their ticks, else their latest. */
+export function pickedFor(r: Recipient, picks: ShotPicks): string[] {
+  const all = shotsOf(r.player)
+  const mine = picks[r.id]?.filter((id) => all.some((s) => s.submissionId === id))
+  return mine && mine.length ? mine : all.length ? [all[0].submissionId] : []
+}
+
+export interface PlannedEmail extends Recipient {
+  /** 'setup': the "finish setting up" email; 'message': no score in it. */
+  kind: 'results' | 'setup' | 'message'
+  /** Graded shots in the email (0 for 'message'). */
+  shots: number
+  /** Score of the newest shot in it (null for 'message'). */
+  score: number | null
+}
+
+/**
+ * The score shown next to a name in "Previewing as": once players are picked
+ * it is the shot(s) the plan actually sends them (" (2.6 · 2 shots)"), not
+ * just their latest.
+ */
+export function previewScoreLabel(r: Recipient | PlannedEmail): string {
+  if (!('kind' in r)) return r.player.score !== null ? ` (${r.player.score.toFixed(1)})` : ''
+  if (r.score === null) return ''
+  return ` (${r.score.toFixed(1)}${r.shots > 1 ? ` · ${r.shots} shots` : ''})`
+}
+
+export interface PlannedSkip extends Recipient {
+  /** Server skip code (skipReasonText). */
+  reason: 'nothing_new' | 'nothing_to_send'
+}
+
+export interface SendPlan {
+  sending: PlannedEmail[]
+  skipped: PlannedSkip[]
+  /** Graded shots across every email going out. */
+  shotTotal: number
+  /** Emails carrying a score card (not the setup version). */
+  withScore: number
+  needSetup: number
+  messageOnly: number
+}
+
+/**
+ * Who gets what, mirroring the server (lib/player-email.ts resolveRecipients
+ * + chooseShots + wouldBeEmpty) for the recipients resolveSelection kept. Every
+ * count, the Send button, the warnings and the preview read this one plan.
+ */
+export function planSend(
+  recipients: Recipient[],
+  content: Pick<PlayerEmailContent, 'includeResults' | 'message' | 'template'>,
+  shotMode: PlayerEmailShotMode,
+  picks: ShotPicks,
+): SendPlan {
+  const cap = PLAYER_EMAIL_LIMITS.shotsPerPlayer
+  const plan: SendPlan = { sending: [], skipped: [], shotTotal: 0, withScore: 0, needSetup: 0, messageOnly: 0 }
+  for (const r of recipients) {
+    const graded = content.includeResults && hasGradedShot(r.player)
+    let shots = graded ? 1 : 0
+    let score = graded ? r.player.score : null
+    if (content.includeResults && shotMode === 'unsent') {
+      // Only shots not emailed yet; no graded shot at all is nothing new either.
+      const fresh = graded ? unsentShots(r.player) : []
+      shots = Math.min(cap, fresh.length)
+      if (shots === 0) {
+        plan.skipped.push({ ...r, reason: 'nothing_new' })
+        continue
+      }
+      score = fresh[0].score
+    } else if (graded && shotMode === 'pick' && shotsOf(r.player).length > 1) {
+      const ids = new Set(pickedFor(r, picks))
+      const chosen = shotsOf(r.player).filter((s) => ids.has(s.submissionId))
+      shots = Math.max(1, chosen.length)
+      if (chosen.length) score = chosen[0].score
+    }
+    // Results on, no score and no message: the email would be empty (the
+    // stock results template has its own no-shot text, so it never is).
+    if (content.includeResults && !graded && !content.message.trim() && content.template !== 'results') {
+      plan.skipped.push({ ...r, reason: 'nothing_to_send' })
+      continue
+    }
+    const kind = !graded ? 'message' : getsSetupEmail(r.player, content.includeResults) ? 'setup' : 'results'
+    plan.sending.push({ ...r, kind, shots, score })
+    plan.shotTotal += shots
+    if (kind === 'results') plan.withScore++
+    else if (kind === 'setup') plan.needSetup++
+    else plan.messageOnly++
+  }
+  return plan
+}

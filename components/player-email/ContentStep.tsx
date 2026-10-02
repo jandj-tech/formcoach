@@ -19,7 +19,16 @@ import {
   type PlayerEmailTemplateId,
 } from '@/lib/player-email-templates'
 import StepCard from './StepCard'
-import { CHECKBOX, INPUT, type PreviewResponse, type Recipient, type SenderAs } from './types'
+import {
+  CHECKBOX,
+  INPUT,
+  getsSetupEmail,
+  previewScoreLabel,
+  type PlannedEmail,
+  type PreviewResponse,
+  type Recipient,
+  type SenderAs,
+} from './types'
 
 // Step 2 — what it says. A template is only a starting point: it fills the
 // subject, message and "Include" boxes, and everything stays editable. The
@@ -53,13 +62,15 @@ export default function ContentStep({
   onUndo,
   onPreviewId,
   onGoToOffers,
+  resultsExtra,
 }: {
   as: SenderAs
   content: PlayerEmailContent
   offers: { count: number; titles: string[] }
   undoLabel: string | null
   disabled: boolean
-  previewCandidates: Recipient[]
+  /** Before players are picked: anyone reachable; after: the plan's emails. */
+  previewCandidates: Array<Recipient | PlannedEmail>
   previewId: string | null
   preview: PreviewResponse | null
   previewLoading: boolean
@@ -71,6 +82,8 @@ export default function ContentStep({
   onUndo: () => void
   onPreviewId: (id: string) => void
   onGoToOffers?: () => void
+  /** Shown under the results box while it is ticked (the "Which shots?" choice). */
+  resultsExtra?: ReactNode
 }) {
   const subjectId = useId()
   const messageId = useId()
@@ -243,6 +256,7 @@ export default function ContentStep({
                   'includeResults',
                   "Each player's latest score and results link",
                   'Players without a graded shot yet get your message only.',
+                  { extra: content.includeResults ? resultsExtra : null },
                 )}
                 {includeRow(
                   'includeOffers',
@@ -272,7 +286,7 @@ export default function ContentStep({
           </div>
 
           {/* Preview */}
-          <div className="min-w-0 space-y-2">
+          <div id="player-email-preview" className="min-w-0 space-y-2 scroll-mt-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-900 dark:text-chalk">
                 <EyeIcon className="w-4 h-4 text-gray-500 dark:text-chalk-dim" aria-hidden />
@@ -293,7 +307,8 @@ export default function ContentStep({
                     {previewCandidates.map((r) => (
                       <option key={r.id} value={r.id}>
                         {r.player.name}
-                        {r.player.score !== null ? ` (${r.player.score.toFixed(1)})` : ''}
+                        {previewScoreLabel(r)}
+                        {getsSetupEmail(r.player, content.includeResults) ? ' · not set up' : ''}
                         {previewCandidates.some((o) => o.team.id !== r.team.id) ? ` · ${r.team.name}` : ''}
                         {/* Two "Jayden M" on one team: the email tells them apart. */}
                         {r.player.email && previewCandidates.some((o) => o.id !== r.id && o.player.name === r.player.name && o.team.id === r.team.id)
@@ -321,6 +336,15 @@ export default function ContentStep({
                   </>
                 )}
               </dl>
+              {preview?.variant === 'setup' && !previewBlocked && !previewError && (
+                <p className="flex items-start gap-2 border-b border-gray-200 dark:border-courtline bg-ember-500/10 px-3.5 py-2 text-xs text-gray-800 dark:text-chalk">
+                  <UserPlusIcon className="mt-px w-3.5 h-3.5 shrink-0 text-ember-600 dark:text-ember-400" aria-hidden />
+                  <span>
+                    {previewCandidates.find((r) => r.id === previewId)?.player.name ?? 'This player'} hasn’t set up their account yet, so they get this
+                    “finish setting up to see your results” version. Their score shows once they’re in.
+                  </span>
+                </p>
+              )}
               {previewBlocked ? (
                 <div className="flex min-h-[12rem] flex-col items-center justify-center gap-2 px-6 py-10 text-center">
                   <FileTextIcon className="w-6 h-6 text-gray-300 dark:text-chalk-dim" aria-hidden />

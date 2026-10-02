@@ -8,6 +8,7 @@ import { resolveBaseUrl } from '@/lib/base-url'
 import { getOfferById, getOrgResultSettings, getOrgSellingState } from '@/lib/org-offers-db'
 import { effectivePriceCents, isBreakdownOnlyOffer, shareRuleFor } from '@/lib/org-offers'
 import { stripeAttributionMetadata } from '@/lib/meta-server'
+import { isSizeInStock, outOfStockMessage, type BallSize } from '@/lib/ball-inventory'
 
 const BASE_URL = resolveBaseUrl()
 
@@ -80,6 +81,11 @@ export async function POST(req: NextRequest) {
       ballVariant = body.variant === 'left' || body.variant === 'right' ? body.variant : ''
       if (!ballSize || !ballVariant) {
         return NextResponse.json({ error: 'Choose a ball size and shooting hand first.' }, { status: 400 })
+      }
+      // Same sold-out guard as the shop and class checkouts — a stale page
+      // must not be able to sell a size we can't ship.
+      if (!isSizeInStock(ballSize as BallSize)) {
+        return NextResponse.json({ error: outOfStockMessage(ballSize as BallSize) }, { status: 400 })
       }
     }
 

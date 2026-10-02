@@ -25,6 +25,9 @@ export async function POST(req: NextRequest) {
   if (out.reason === 'not_pending') {
     return NextResponse.json({ error: 'This player has already finished setting up their account.' }, { status: 409 })
   }
+  if (out.reason === 'rate_limited' && out.daily) {
+    return NextResponse.json({ error: 'We’ve already emailed this player’s setup link the most times allowed today. Try again tomorrow.' }, { status: 429 })
+  }
   if (out.reason === 'rate_limited') {
     return NextResponse.json({ error: 'We already sent this a few times in the last hour. Try again later.' }, { status: 429 })
   }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getOrgSessionFromRequest } from '@/lib/org-auth'
-import { retireOrphanStubs } from '@/lib/roster-players'
+import { removeNameOnlyEntry, retireOrphanStubs } from '@/lib/roster-players'
 import { releaseSeatIfLeftOrg } from '@/lib/org-membership'
 
 // Lets an org admin remove a player from one of their organization's teams:
@@ -16,15 +16,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Missing teamId and userId or pendingId' }, { status: 400 })
   }
 
-  // Only remove the player if the team belongs to this organization.
-  const rows = body.pendingId
+  // Only remove the player if the team belongs to this organization. A
+  // name-only player's shots on the team go with them (removeNameOnlyEntry).
+  const owned = body.pendingId
     ? ((await db`
-        DELETE FROM pending_team_members
-        WHERE id = ${body.pendingId}
-          AND team_id = ${body.teamId}
-          AND team_id IN (SELECT id FROM teams WHERE organization_id = ${session.orgId})
-        RETURNING id
+        SELECT id FROM teams WHERE id::text = ${body.teamId} AND organization_id = ${session.orgId}
       `) as unknown as Array<{ id: string }>)
+    : []
+  const rows = body.pendingId
+    ? (owned.length > 0 && (await removeNameOnlyEntry(owned[0].id, body.pendingId)).removed ? [{ id: body.pendingId }] : [])
     : ((await db`
         DELETE FROM team_memberships
         WHERE user_id = ${body.userId!}

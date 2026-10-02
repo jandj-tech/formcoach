@@ -59,6 +59,23 @@ export default async function OrgMemberShotsPage({ params }: { params: Promise<{
     ? `${player.first_name}${player.last_name_initial ? ` ${player.last_name_initial}.` : ''}`
     : (player.nickname || player.email)
 
+  // Another player on one of these teams shows the same name ("Liam B."
+  // twice): the email under the heading says which one this is.
+  let sharesName = false
+  if (player.first_name) {
+    const [twin] = (await db`
+      SELECT 1 AS hit
+      FROM team_memberships tm
+      JOIN teams t ON t.id = tm.team_id AND t.organization_id = ${session.orgId}
+      WHERE tm.team_id IN (SELECT team_id FROM team_memberships WHERE user_id = ${player.id})
+        AND tm.user_id <> ${player.id}
+        AND LOWER(TRIM(tm.first_name)) = LOWER(TRIM(${player.first_name}))
+        AND UPPER(COALESCE(TRIM(tm.last_name_initial), '')) = UPPER(COALESCE(TRIM(${player.last_name_initial}), ''))
+      LIMIT 1
+    `) as unknown as Array<{ hit: number }>
+    sharesName = !!twin
+  }
+
   return (
     <main className="min-h-screen bg-white dark:bg-ink-950 flex flex-col">
       <TopNav />
@@ -66,7 +83,7 @@ export default async function OrgMemberShotsPage({ params }: { params: Promise<{
         <DashboardHeader
           eyebrow="Player"
           title={<h1 className="text-2xl sm:text-3xl font-black text-black dark:text-chalk">{playerName}</h1>}
-          meta={`${teamNames.join(' · ')} · ${shots.length} shot${shots.length !== 1 ? 's' : ''} analyzed`}
+          meta={`${sharesName ? `${player.email} · ` : ''}${teamNames.join(' · ')} · ${shots.length} shot${shots.length !== 1 ? 's' : ''} analyzed`}
           back={{ href: '/org/dashboard', label: 'Back to organization dashboard' }}
         />
 

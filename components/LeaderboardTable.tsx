@@ -14,6 +14,9 @@ export interface LeaderboardRow {
   upload_count: number
   // Set for the organization-wide list, so the player's team can be shown.
   team_name?: string
+  // Coach/org boards only (lib/team-shots.ts withTwinDetails): what tells two
+  // same-name players on one team apart, e.g. a short email.
+  detail?: string
 }
 
 type SortMode = 'score-desc' | 'score-asc' | 'avg-desc' | 'name' | 'team'
@@ -404,6 +407,10 @@ export default function LeaderboardTable({
                         </Link>
                       ) : (
                         <span className={t.name}>{name}</span>
+                      )}
+                      {entry.detail && (
+                        // Phones: own line, and an email may break after the @.
+                        <span className={`block sm:inline sm:ml-1.5 text-xs font-normal whitespace-normal ${t.avg}`}>({entry.detail.includes('@') ? <>{entry.detail.slice(0, entry.detail.indexOf('@') + 1)}<wbr />{entry.detail.slice(entry.detail.indexOf('@') + 1)}</> : entry.detail})</span>
                       )}
                     </td>
                     {showTeamColumn && (

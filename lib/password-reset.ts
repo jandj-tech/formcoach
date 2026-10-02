@@ -21,6 +21,8 @@ interface ResetPlayerRow {
   first_name: string | null
   nickname: string | null
   login_group_id: string | null
+  /** A roster-pending account's live setup token (lib/roster-players issuePlayerSetupToken), kept by a forgot-password request. */
+  setup_token?: string | null
 }
 
 function norm(email: string): string {
@@ -44,9 +46,15 @@ export function playerFirstName(p: { first_name: string | null; nickname: string
  */
 async function playerRowsForReset(email: string): Promise<ResetPlayerRow[]> {
   const e = norm(email)
+  // A token outliving a 1-hour reset can only be a setup link.
+  const setupFloor = new Date(Date.now() + TOKEN_TTL_MS)
   try {
     return (await db`
-      SELECT id, first_name, nickname, login_group_id FROM users
+      SELECT id, first_name, nickname, login_group_id,
+             CASE WHEN roster_pending = true AND password_hash IS NULL AND reset_token IS NOT NULL
+                       AND reset_token_expires > ${setupFloor}
+                  THEN reset_token END AS setup_token
+      FROM users
       WHERE LOWER(email) = ${e}
       ORDER BY created_at ASC NULLS LAST, id ASC
       LIMIT ${MAX_PLAYERS_PER_EMAIL}
@@ -148,12 +156,18 @@ export async function issueResetTokens(email: string): Promise<ResetIssue | null
   const usedCodes = new Set<string>()
   const links: PlayerResetLink[] = []
   for (const g of groups) {
-    let t = groups.length === 1 ? token : crypto.randomBytes(32).toString('hex')
-    // Distinct codes per email: a typed code must name exactly one account.
-    while (usedCodes.has(resetCodeFromToken(t))) t = crypto.randomBytes(32).toString('hex')
-    usedCodes.add(resetCodeFromToken(t))
     const [rep, ...rest] = g
-    await db`UPDATE users SET reset_token = ${t}, reset_token_expires = ${expires} WHERE id = ${rep.id}`
+    // An account still waiting to be set up keeps its live setup link: a
+    // 1-hour reset token in its place broke every setup / results email
+    // already sent to the family. The same token is re-sent here instead.
+    const kept = rest.length === 0 && rep.setup_token && !usedCodes.has(resetCodeFromToken(rep.setup_token))
+      ? rep.setup_token
+      : null
+    let t = kept ?? (groups.length === 1 ? token : crypto.randomBytes(32).toString('hex'))
+    // Distinct codes per email: a typed code must name exactly one account.
+    while (!kept && usedCodes.has(resetCodeFromToken(t))) t = crypto.randomBytes(32).toString('hex')
+    usedCodes.add(resetCodeFromToken(t))
+    if (!kept) await db`UPDATE users SET reset_token = ${t}, reset_token_expires = ${expires} WHERE id = ${rep.id}`
     if (rest.length > 0) {
       // The rest of a shared login resets with the group's link; a stale
       // token of their own would only make a typed code ambiguous.
@@ -269,6 +283,62 @@ export async function playerForResetToken(
     WHERE u.reset_token = ${token} AND u.reset_token_expires > NOW()
   `) as unknown as [{ id: string; email: string; first_name: string | null; nickname: string | null; setup: boolean; siblings: number } | undefined]
   return u ?? null
+}
+
+/**
+ * Read-only: is this reset / setup token live (any account kind), and, for a
+ * player, the facts the page may show. Never consumes or rotates the token.
+ * `rosterSetup`: a coach/org-added player finishing setup (roster_pending, no
+ * password yet), labelled "First L." for the page heading.
+ */
+export async function resetTokenStatus(token: string): Promise<
+  | { valid: false }
+  | { valid: true; player: null }
+  | {
+      valid: true
+      player: { firstName: string | null; label: string | null; rosterSetup: boolean; siblings: number; setup: boolean }
+    }
+> {
+  if (typeof token !== 'string' || !/^[0-9a-f]{16,128}$/i.test(token)) return { valid: false }
+  const [other] = (await db`
+    SELECT 1 FROM organizations WHERE reset_token = ${token} AND reset_token_expires > NOW()
+    UNION ALL
+    SELECT 1 FROM org_admins WHERE reset_token = ${token} AND reset_token_expires > NOW()
+    UNION ALL
+    SELECT 1 FROM teams WHERE reset_token = ${token} AND reset_token_expires > NOW()
+    UNION ALL
+    SELECT 1 FROM team_coaches WHERE reset_token = ${token} AND reset_token_expires > NOW()
+    LIMIT 1
+  `) as unknown as [unknown | undefined]
+  if (other) return { valid: true, player: null }
+  const [u] = (await db`
+    SELECT u.first_name, u.nickname, NULLIF(TRIM(u.last_initial), '') AS last_initial,
+           u.password_hash IS NULL AS setup,
+           (COALESCE(u.roster_pending, false) AND u.password_hash IS NULL) AS roster_setup,
+           (SELECT COUNT(*)::int FROM users o WHERE LOWER(o.email) = LOWER(u.email) AND o.id <> u.id) AS siblings
+    FROM users u
+    WHERE u.reset_token = ${token} AND u.reset_token_expires > NOW()
+  `) as unknown as [{
+    first_name: string | null
+    nickname: string | null
+    last_initial: string | null
+    setup: boolean
+    roster_setup: boolean
+    siblings: number
+  } | undefined]
+  if (!u) return { valid: false }
+  const first = playerFirstName(u)
+  const li = u.last_initial ? u.last_initial.charAt(0).toUpperCase() : null
+  return {
+    valid: true,
+    player: {
+      firstName: first,
+      label: first ? (li ? `${first} ${li}.` : first) : null,
+      rosterSetup: u.roster_setup,
+      siblings: u.siblings,
+      setup: u.setup,
+    },
+  }
 }
 
 /** Stable machine code for the different-password refusal. */

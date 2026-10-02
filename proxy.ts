@@ -51,15 +51,21 @@ export async function proxy(req: NextRequest) {
   if (pathname.startsWith('/dashboard')) {
     const session = await getSessionFromRequest(req)
     if (!session) {
+      // The login page sends players back to `next` (checked there by
+      // lib/safe-next), query string included.
       const loginUrl = new URL('/login', req.url)
-      loginUrl.searchParams.set('from', pathname)
+      loginUrl.searchParams.set('next', `${pathname}${req.nextUrl.search}`)
       return NextResponse.redirect(loginUrl)
     }
   }
 
   if (pathname.startsWith('/team/dashboard')) {
     const session = await getTeamSessionFromRequest(req)
-    if (!session) {
+    // One coach shot page also opens for an org login with no team session:
+    // the page itself re-proves the shot against that organization's teams.
+    const orgShotView =
+      !session && pathname.startsWith('/team/dashboard/shot/') && !!(await getOrgSessionFromRequest(req))
+    if (!session && !orgShotView) {
       return NextResponse.redirect(new URL('/login', req.url))
     }
   }

@@ -100,7 +100,7 @@ export default async function TeamLandingPage() {
       {/* Coach / org: jump straight to the admin dashboard */}
       {(teamSession || orgSession) && (
         <div className="bg-ink-900 border-b border-courtline px-6 py-4 flex items-center justify-center gap-4 flex-wrap">
-          <p className="text-chalk-dim text-sm">You&apos;re signed in as a {orgSession ? 'organization' : 'coach'} —</p>
+          <p className="text-chalk-dim text-sm">You&apos;re signed in as {orgSession ? 'an organization' : 'a coach'} —</p>
           <Link
             href={orgSession ? '/org/dashboard' : '/team/dashboard'}
             className="inline-flex items-center gap-1.5 bg-ember-500 hover:bg-ember-400 text-ink-950 font-bold px-5 py-2 rounded-full text-sm transition-colors"

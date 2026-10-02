@@ -492,9 +492,17 @@ export function Uploading() {
           <>Open the <b>Tokens</b> tab.</>,
           <>Click <b>Buy tokens</b>. Buying 10 or more gets the organization bulk rate of <b>$2.49 each</b>. Tokens are bought on the website only, not in the iOS app.</>,
           <>Hand tokens out with the <b>Send</b> panel: send them to a player, or to a coach so the coach can upload for anyone on their roster.</>,
-          <>Or click <b>Allocate to team</b> to give a team a block of tokens.</>,
         ]}
       />
+      <P>
+        Uploads you make from the organization login use that <b>team&apos;s tokens first</b>, then your <b>organization tokens</b>, automatically. You do not need to move tokens to a team before you upload.
+        A coach&apos;s uploads use that coach&apos;s own tokens first, then the team&apos;s.
+      </P>
+      <Sub>Memberships — prepaid plans for players</Sub>
+      <P>
+        Instead of tokens, you can buy players a prepaid <b>Player</b> or <b>Pro</b> membership in the <b>Memberships</b> tab. Each one lasts <b>3, 6 or 12 months</b>, and you assign it to a player.
+        The price per player drops at <b>10+</b>, <b>25+</b> and <b>50+</b> memberships. Memberships are bought on the website only, not in the iOS app.
+      </P>
       <Figure caption="The Tokens tab: balance, Buy tokens, and the Send panel.">
         <div className="flex items-center justify-between gap-3 mb-2">
           <div>

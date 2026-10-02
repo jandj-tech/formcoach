@@ -163,14 +163,18 @@ export default function BulkUploader({
   teamCode,
   roster,
   credits,
-  creditsOwner = 'the head coach’s',
+  creditsSource = 'Your tokens are used first, then the team’s',
   links,
 }: {
   teamCode: string
   roster: RosterPlayer[]
-  /** What /api/analyze will actually draw on: head coach credits + team budget. */
+  /**
+   * What /api/analyze will actually draw on for this login (teamUploadBalance):
+   * a coach's own tokens + the team's, or the team's + the organization's.
+   */
   credits: number
-  creditsOwner?: string
+  /** Where those tokens come from, in spending order — teamUploadCopy().source. */
+  creditsSource?: string
   links?: { emailResults: NextStepLink; getCredits: NextStepLink }
 }) {
   const [clips, setClips] = useState<Clip[]>([])
@@ -531,9 +535,8 @@ export default function BulkUploader({
           </li>
         </ol>
         <p className="mt-3 text-sm text-gray-700 dark:text-chalk">
-          Uses {creditsOwner} tokens and team tokens:{' '}
-          <span className="font-bold">{creditsLeft} left</span>. One token per graded video; clips with no
-          shot in them are free.
+          <span className="font-bold">{creditsLeft} token{creditsLeft === 1 ? '' : 's'} left</span>. {creditsSource}.
+          One token per graded video; clips with no shot in them are free.
         </p>
       </div>
 
@@ -717,7 +720,7 @@ export default function BulkUploader({
               {reviewGroups.length === 1 ? '' : 's'}
             </h3>
             <p className="mt-1 text-sm text-gray-600 dark:text-chalk-dim">
-              Check each name before grading. Uses {ready.length} of the {creditsLeft} tokens left ({creditsOwner} tokens and team tokens).
+              Check each name before grading. Uses {ready.length} of the {creditsLeft} token{creditsLeft === 1 ? '' : 's'} left. {creditsSource}.
             </p>
           </div>
           <ul className="divide-y divide-gray-200 dark:divide-courtline rounded-xl border border-gray-200 dark:border-courtline bg-white dark:bg-ink-900">

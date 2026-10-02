@@ -15,6 +15,7 @@
 import { SignJWT, jwtVerify, createRemoteJWKSet, importPKCS8, type JWTPayload } from 'jose'
 import { requireEnv, jwtSecret } from '@/lib/env'
 import { resolveBaseUrl } from '@/lib/base-url'
+import { safeLocalPath } from '@/lib/safe-next'
 
 export type OAuthProvider = 'google' | 'apple'
 
@@ -120,9 +121,9 @@ export async function verifyState(token: string): Promise<OAuthState | null> {
  * redirect that launders our domain's reputation.
  */
 export function safeNext(next: string | null | undefined, fallback = '/dashboard'): string {
-  if (!next) return fallback
-  if (!next.startsWith('/') || next.startsWith('//')) return fallback
-  return next
+  // One rule for every redirect target: also refuses "/\evil.com" (browsers
+  // read "/\" as "//") and smuggled control characters.
+  return safeLocalPath(next, fallback) ?? fallback
 }
 
 // ---------------------------------------------------------------------------

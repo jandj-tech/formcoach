@@ -84,7 +84,7 @@ function nameKey(first: string, initial: string): string {
 }
 
 /** "liam.stone.shotlab@parents.test" -> "liam.stone…@parents.test" */
-function shortEmail(email: string): string {
+export function shortEmail(email: string): string {
   const [local, domain] = email.split('@')
   if (!domain) return email
   return local.length > 14 ? `${local.slice(0, 12)}…@${domain}` : email

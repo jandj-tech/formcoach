@@ -116,14 +116,23 @@ export default function BillingHistory({
             <tr>
               <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-chalk-dim">Date</th>
               <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-chalk-dim">Purchase</th>
-              <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-chalk-dim">Qty</th>
-              <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-chalk-dim">Amount</th>
-              <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-chalk-dim">Status</th>
+              <th className="hidden sm:table-cell px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-chalk-dim">Qty</th>
+              <th className="hidden sm:table-cell px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-chalk-dim">Amount</th>
+              <th className="hidden sm:table-cell px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-chalk-dim">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-courtline/60">
             {purchases.map(p => {
               const chip = kindLabel(p.kind)
+              const statusChip = (
+                <span className={`inline-block text-[11px] font-semibold rounded-full px-2 py-0.5 ${
+                  p.status === 'paid'
+                    ? 'bg-ember-500/10 text-ember-600 dark:text-ember-400'
+                    : 'bg-gray-100 dark:bg-ink-800 text-gray-500 dark:text-chalk-dim'
+                }`}>
+                  {p.status === 'paid' ? 'Paid' : p.status}
+                </span>
+              )
               return (
                 <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-ink-800/60 transition-colors">
                   <td className="px-4 py-3 text-sm text-gray-500 dark:text-chalk-dim whitespace-nowrap">{formatDate(p.date)}</td>
@@ -134,21 +143,22 @@ export default function BillingHistory({
                         {chip}
                       </span>
                     )}
+                    {/* Phones: the Qty / Amount / Status columns are hidden,
+                        so they ride under the item instead. */}
+                    <div className="sm:hidden mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500 dark:text-chalk-dim">
+                      {p.quantity > 0 && <span className="tabular-nums">Qty {p.quantity}</span>}
+                      <span className="font-semibold text-gray-900 dark:text-chalk tabular-nums">{formatAmount(p.amountTotal, p.currency)}</span>
+                      {statusChip}
+                    </div>
                   </td>
-                  <td className="px-4 py-3 text-right text-sm text-gray-500 dark:text-chalk-dim tabular-nums">
+                  <td className="hidden sm:table-cell px-4 py-3 text-right text-sm text-gray-500 dark:text-chalk-dim tabular-nums">
                     {p.quantity > 0 ? p.quantity : '—'}
                   </td>
-                  <td className="px-4 py-3 text-right text-sm font-semibold text-gray-900 dark:text-chalk tabular-nums whitespace-nowrap">
+                  <td className="hidden sm:table-cell px-4 py-3 text-right text-sm font-semibold text-gray-900 dark:text-chalk tabular-nums whitespace-nowrap">
                     {formatAmount(p.amountTotal, p.currency)}
                   </td>
-                  <td className="px-4 py-3 text-right">
-                    <span className={`inline-block text-[11px] font-semibold rounded-full px-2 py-0.5 ${
-                      p.status === 'paid'
-                        ? 'bg-ember-500/10 text-ember-600 dark:text-ember-400'
-                        : 'bg-gray-100 dark:bg-ink-800 text-gray-500 dark:text-chalk-dim'
-                    }`}>
-                      {p.status === 'paid' ? 'Paid' : p.status}
-                    </span>
+                  <td className="hidden sm:table-cell px-4 py-3 text-right">
+                    {statusChip}
                   </td>
                 </tr>
               )

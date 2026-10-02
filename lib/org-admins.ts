@@ -199,6 +199,13 @@ export async function inviteOrgAdmin(input: {
   return { id, resent: !!existing, emailed }
 }
 
+/** Read-only: is this admin invite link still unused? Nothing is consumed or rotated. */
+export async function orgAdminInviteValid(token: string): Promise<boolean> {
+  if (!token || !/^[0-9a-f]{64}$/i.test(token)) return false
+  const rows = (await db`SELECT 1 FROM org_admins WHERE invite_token = ${token} LIMIT 1`) as unknown as unknown[]
+  return rows.length > 0
+}
+
 /**
  * Accepts an invite: sets the password on the invited row and records inbox
  * proof (the link only ever went to that inbox). Returns the credential to

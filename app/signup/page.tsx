@@ -15,6 +15,7 @@ import { PurchasePixelFromSession } from '@/components/PurchasePixel'
 import { useCart } from '@/lib/cart'
 import { PLAYER_PLANS, isPlayerPlan } from '@/lib/player-plans'
 import { usd } from '@/lib/team-pricing'
+import { safeLocalPath } from '@/lib/safe-next'
 
 function SignupForm() {
   const router = useRouter()
@@ -54,7 +55,8 @@ function SignupForm() {
   const teamInviteToken = searchParams.get('teamInvite') || ''
   const claimToken = searchParams.get('claimToken') || ''
   const pendingCredits = parseInt(searchParams.get('credits') || '0', 10)
-  const nextPath = searchParams.get('next') || ''
+  // ?next= comes from the URL: only a path on this site (lib/safe-next.ts).
+  const nextPath = safeLocalPath(searchParams.get('next'), '') ?? ''
   // A guest who just paid for a ball is sent here to claim their analyses, so
   // this — not /shop/success — is where their purchase gets reported and their
   // cart gets emptied.
@@ -147,8 +149,7 @@ function SignupForm() {
       // context about which team they were joining.
       router.push(`/join/${encodeURIComponent(tc.toUpperCase())}`)
     } else {
-      const next = searchParams.get('next') || '/dashboard'
-      router.push(next)
+      router.push(nextPath || '/dashboard')
     }
   }
 

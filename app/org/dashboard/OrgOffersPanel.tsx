@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { backendButton } from '@/components/backend/button-styles'
 import { useIsInApp } from '@/lib/useIsInApp'
 import { copyToClipboard } from '@/lib/copy'
@@ -595,6 +595,20 @@ function OffersSection({
   const [editingId, setEditingId] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  // "Add offer" has to create the row so the editor can PATCH it. Until it is
+  // saved (or switched on) it is an untouched blank draft — closing its editor
+  // deletes it again so a stray "New offer" never lingers in the list.
+  const freshIdRef = useRef<string | null>(null)
+
+  function changeEditing(next: string | null) {
+    const fresh = freshIdRef.current
+    if (fresh && fresh !== next) {
+      freshIdRef.current = null
+      onOffersChange((prev) => prev.filter((x) => x.id !== fresh))
+      fetch(`/api/org/offers/${fresh}`, { method: 'DELETE' }).catch(() => {})
+    }
+    setEditingId(next)
+  }
 
   async function addOffer() {
     setAdding(true)
@@ -617,7 +631,8 @@ function OffersSection({
         }),
       })
       onOffersChange((prev) => [...prev, json.offer])
-      setEditingId(json.offer.id)
+      changeEditing(json.offer.id)
+      freshIdRef.current = json.offer.id
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Could not add an offer')
     } finally {
@@ -650,9 +665,13 @@ function OffersSection({
             orgPercent={selling.platformSharePercent}
             sellingEnabled={selling.enabled}
             editing={editingId === o.id}
-            onEdit={(open) => setEditingId(open ? o.id : null)}
-            onChange={(u) => onOffersChange((prev) => prev.map((x) => (x.id === u.id ? u : x)))}
+            onEdit={(open) => changeEditing(open ? o.id : null)}
+            onChange={(u) => {
+              if (u.id === freshIdRef.current) freshIdRef.current = null
+              onOffersChange((prev) => prev.map((x) => (x.id === u.id ? u : x)))
+            }}
             onDelete={(id) => {
+              if (id === freshIdRef.current) freshIdRef.current = null
               onOffersChange((prev) => prev.filter((x) => x.id !== id))
               setEditingId(null)
             }}

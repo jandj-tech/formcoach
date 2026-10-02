@@ -7,6 +7,8 @@ import { orgHasComplimentaryAccess } from '@/lib/org-complimentary'
 // pool. Once in that pool the team's coach can spend them on coach uploads or
 // assign them to players — but only within this team. The org can also still
 // use them (via Open team dashboard or by assigning to players directly).
+// Optional for org uploads: those already spend the team's tokens first, then
+// the org balance, automatically (/api/analyze, teamUploadPayer).
 export async function POST(req: NextRequest) {
   const session = await getOrgSessionFromRequest(req)
   if (!session) {
@@ -16,15 +18,18 @@ export async function POST(req: NextRequest) {
   try {
     const { teamId, quantity } = await req.json()
     const tid = typeof teamId === 'string' ? teamId.trim() : ''
-    const qty = typeof quantity === 'number' ? Math.floor(quantity) : 0
+    const qty = typeof quantity === 'number' && Number.isFinite(quantity) ? Math.floor(quantity) : 0
     if (!tid) {
       return NextResponse.json({ error: 'Team is required' }, { status: 400 })
     }
-    if (qty < 1) {
+    if (qty < 1 || qty > 100000) {
       return NextResponse.json({ error: 'Invalid quantity' }, { status: 400 })
     }
 
     // The team must belong to this org.
+    if (!/^[0-9a-f-]{36}$/i.test(tid)) {
+      return NextResponse.json({ error: 'That team is not in your organization' }, { status: 404 })
+    }
     const teamRows = (await db`
       SELECT id FROM teams
       WHERE id = ${tid} AND organization_id = ${session.orgId}

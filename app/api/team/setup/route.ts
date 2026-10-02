@@ -3,6 +3,19 @@ import { db } from '@/lib/db'
 import { inviteAcceptPasswordHash, recordInviteInboxProof, signTeamSession, teamSessionCookieOptions } from '@/lib/team-auth'
 import { BCRYPT_COST } from '@/lib/password'
 import { rateLimitByIp } from '@/lib/rate-limit'
+import { acceptSameOrgCoachInvites } from '@/lib/coach-invite-accept'
+
+// GET ?token= — read-only: is this head-coach setup link still unused? Lets
+// the page say "already used" before a password is typed. Nothing else is
+// returned, and nothing is consumed or rotated.
+export async function GET(req: NextRequest) {
+  const limit = await rateLimitByIp(req, 'team-setup-peek', 120, 3600)
+  if (!limit.ok) return NextResponse.json({ valid: null }, { status: 429 })
+  const token = req.nextUrl.searchParams.get('token') ?? ''
+  if (!/^[0-9a-f]{16,128}$/i.test(token)) return NextResponse.json({ valid: false })
+  const rows = (await db`SELECT 1 FROM teams WHERE coach_invite_token = ${token} LIMIT 1`) as unknown as unknown[]
+  return NextResponse.json({ valid: rows.length > 0 })
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -46,6 +59,9 @@ export async function POST(req: NextRequest) {
     // so accepting it proves this inbox: the coach's tokens and self-uploads
     // unlock now, even if a squatter holds another row on this address.
     await recordInviteInboxProof({ teamId: team.id }, hash)
+    // That proven inbox also accepts this coach's other pending invites in
+    // the same organization, so every team shows in the switcher right away.
+    await acceptSameOrgCoachInvites(team.admin_email, hash, { teamId: team.id })
 
     const sessionToken = await signTeamSession({ teamId: team.id, adminEmail: team.admin_email }, hash)
     const res = NextResponse.json({ success: true })

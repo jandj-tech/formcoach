@@ -44,6 +44,12 @@ export interface RosterPlayer {
   /** Suppression flags from email_list. */
   unsubscribed: boolean
   bounced: boolean
+  /**
+   * An account added by a coach/org that hasn't been set up yet (no password
+   * chosen). Results emailed to them become a "finish setting up to see your
+   * results" email. Always false for name-only rows.
+   */
+  setupPending: boolean
 }
 
 /** ["Liam S."] -> "Liam S."; ["Liam S.", "Ava S."] -> "Liam S. and Ava S." */
@@ -97,6 +103,7 @@ export async function teamResultsRoster(teamId: string): Promise<RosterPlayer[]>
         NULLIF(split_part(TRIM(u.nickname), ' ', 1), '')
       ) AS first_name,
       u.email, u.parent_name,
+      (COALESCE(u.roster_pending, false) AND u.password_hash IS NULL) AS setup_pending,
       latest.id AS submission_id, latest.token, latest.overall_score, latest.graded_at,
       r.sent_at, r.resent_at, r.unlocked,
       el.unsubscribed_at, el.bounced_at, el.complained_at
@@ -123,6 +130,7 @@ export async function teamResultsRoster(teamId: string): Promise<RosterPlayer[]>
     first_name: string | null
     email: string
     parent_name: string | null
+    setup_pending: boolean | null
     submission_id: string | null
     token: string | null
     overall_score: string | null
@@ -301,6 +309,7 @@ export async function teamResultsRoster(teamId: string): Promise<RosterPlayer[]>
       ...shot(m),
       unsubscribed: !!m.unsubscribed_at || !!m.complained_at,
       bounced: !!m.bounced_at,
+      setupPending: !!m.setup_pending,
     })),
     ...pending.map((p) => {
       const row = rowById.get(linkedRowOf.get(p.pending_id) ?? '')
@@ -320,6 +329,7 @@ export async function teamResultsRoster(teamId: string): Promise<RosterPlayer[]>
           ? 'invited, no account · another invite has this name, so shots stay under the name-only entry'
           : 'invited, no account',
         ...shot(row),
+        setupPending: false,
       }
     }),
     ...rosterRows
@@ -336,6 +346,7 @@ export async function teamResultsRoster(teamId: string): Promise<RosterPlayer[]>
         sameNameAsAnother: false,
         detail: 'name only, no account',
         ...shot(r),
+        setupPending: false,
       })),
   ]
 
@@ -365,6 +376,8 @@ export interface SendableSubmission {
   playerName: string | null
   unsubscribed: boolean
   bounced: boolean
+  /** The account hasn't been set up yet (see RosterPlayer.setupPending). */
+  setupPending: boolean
 }
 
 /**
@@ -386,6 +399,7 @@ export async function sendableSubmissions(
       s.id AS submission_id, s.token, s.user_id,
       a.overall_score,
       u.email,
+      (COALESCE(u.roster_pending, false) AND u.password_hash IS NULL) AS setup_pending,
       COALESCE(
         NULLIF(TRIM(CONCAT(tm.first_name, ' ', NULLIF(TRIM(tm.last_name_initial), '') || '.')), ''),
         NULLIF(u.nickname, ''),
@@ -409,6 +423,7 @@ export async function sendableSubmissions(
     user_id: string | null
     overall_score: string | null
     email: string | null
+    setup_pending: boolean | null
     player_name: string | null
     unsubscribed_at: Date | null
     bounced_at: Date | null
@@ -425,6 +440,7 @@ export async function sendableSubmissions(
       playerName: r.player_name,
       unsubscribed: !!r.unsubscribed_at || !!r.complained_at,
       bounced: !!r.bounced_at,
+      setupPending: !!r.user_id && !!r.setup_pending,
     }))
 }
 
@@ -439,4 +455,87 @@ export async function orgTeam(
   `
   const row = rows[0] as { id: string; name: string; admin_email: string; access_code: string } | undefined
   return row ? { id: row.id, name: row.name, adminEmail: row.admin_email, accessCode: row.access_code } : null
+}
+
+/** One graded shot a team holds for a roster player (newest first in lists). */
+export interface TeamShot {
+  submissionId: string
+  token: string
+  score: number
+  gradedAt: string | null
+  /** A middle frame, for a thumbnail. Null when the shot has no stored frames. */
+  thumb: string | null
+  /** When results for this shot were last emailed (sent or resent), if ever. */
+  sentAt: string | null
+}
+
+/** Most shots listed per player in the composer's picker. */
+export const MAX_LISTED_SHOTS = 20
+
+/**
+ * Every graded shot this team holds for each of `players`, keyed by roster
+ * key, newest first (at most MAX_LISTED_SHOTS each). "Holds" is the same rule
+ * as teamResultsRoster / sendableSubmissions: a member's shot tagged with
+ * this team, or a name-only row's shot that no account owns. Never a
+ * player's personal shot or another team's.
+ */
+export async function teamGradedShots(
+  teamId: string,
+  players: Array<Pick<RosterPlayer, 'key' | 'kind' | 'userId' | 'teamPlayerId'>>
+): Promise<Map<string, TeamShot[]>> {
+  const out = new Map<string, TeamShot[]>()
+  const userIds = [...new Set(players.filter((p) => p.kind === 'member' && p.userId).map((p) => p.userId!))]
+  const rowIds = [...new Set(players.filter((p) => p.kind !== 'member' && p.teamPlayerId).map((p) => p.teamPlayerId!))]
+  if (userIds.length === 0 && rowIds.length === 0) return out
+  const rows = (await db`
+    SELECT s.id, s.token, s.user_id, s.team_player_id,
+           a.overall_score, a.created_at AS graded_at,
+           a.frame_urls[GREATEST(1, (COALESCE(cardinality(a.frame_urls), 0) + 1) / 2)] AS thumb,
+           COALESCE(r.resent_at, r.sent_at) AS sent_at
+    FROM submissions s
+    JOIN LATERAL (
+      SELECT overall_score, created_at, frame_urls FROM analyses
+      WHERE submission_id = s.id ORDER BY created_at DESC LIMIT 1
+    ) a ON TRUE
+    LEFT JOIN team_players tp ON tp.id = s.team_player_id AND tp.team_id = ${teamId}
+    LEFT JOIN result_releases r ON r.submission_id = s.id
+    WHERE s.status = 'complete'
+      AND a.overall_score IS NOT NULL
+      AND s.token IS NOT NULL
+      AND (
+        (s.team_id = ${teamId} AND s.user_id = ANY(${userIds}::uuid[]))
+        OR (s.user_id IS NULL AND tp.id IS NOT NULL AND s.team_player_id = ANY(${rowIds}::uuid[]))
+      )
+    ORDER BY a.created_at DESC
+  `) as unknown as Array<{
+    id: string
+    token: string
+    user_id: string | null
+    team_player_id: string | null
+    overall_score: string
+    graded_at: Date | null
+    thumb: string | null
+    sent_at: Date | null
+  }>
+  const keyOf = new Map<string, string>()
+  for (const p of players) {
+    if (p.kind === 'member' && p.userId) keyOf.set(`u:${p.userId}`, p.key)
+    else if (p.teamPlayerId) keyOf.set(`t:${p.teamPlayerId}`, p.key)
+  }
+  for (const r of rows) {
+    const key = r.user_id ? keyOf.get(`u:${r.user_id}`) : r.team_player_id ? keyOf.get(`t:${r.team_player_id}`) : undefined
+    if (!key) continue
+    const list = out.get(key) ?? []
+    if (list.length >= MAX_LISTED_SHOTS) continue
+    list.push({
+      submissionId: r.id,
+      token: r.token,
+      score: Number(r.overall_score),
+      gradedAt: r.graded_at ? new Date(r.graded_at).toISOString() : null,
+      thumb: r.thumb || null,
+      sentAt: r.sent_at ? new Date(r.sent_at).toISOString() : null,
+    })
+    out.set(key, list)
+  }
+  return out
 }

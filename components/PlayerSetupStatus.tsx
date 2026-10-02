@@ -68,10 +68,10 @@ export function ResendSetupButton({
     <button
       onClick={resend}
       disabled={state === 'sending'}
-      title="Email the setup link again (it goes to the player's inbox only)"
+      title="Email the setup link (it goes to the player's inbox only)"
       className="text-xs font-semibold text-ember-600 dark:text-ember-400 hover:text-ember-500 disabled:opacity-50 transition-colors"
     >
-      {state === 'sending' ? 'Sending…' : state === 'error' ? (msg || 'Retry') : 'Resend setup email'}
+      {state === 'sending' ? 'Sending…' : state === 'error' ? (msg || 'Retry') : 'Email setup link'}
     </button>
   )
 }

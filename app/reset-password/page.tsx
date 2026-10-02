@@ -6,6 +6,7 @@ import TopNav from '@/components/TopNav'
 import SiteFooter from '@/components/SiteFooter'
 import Image from 'next/image'
 import PasswordInput from '@/components/PasswordInput'
+import { safeLocalPath } from '@/lib/safe-next'
 
 function ResetPasswordForm() {
   const router = useRouter()
@@ -19,15 +20,26 @@ function ResetPasswordForm() {
   // Carried from a link bound to one account (confirm / setup link) so a comp
   // on a shared family email lands on that account in this one step.
   const chosen = params.get('chosen') || ''
+  // Where a player lands once the password is set (a "finish setup to see your
+  // results" link carries their results). Same-site paths only.
+  const next = safeLocalPath(params.get('next'))
   // Several players can share a family email: name the one this link is for.
   const [playerName, setPlayerName] = useState('')
+  // A coach/org-added player finishing setup: "Uma V." (read-only check).
+  const [setupName, setSetupName] = useState('')
+  // The link was already used (account set up) or has run out. Checked on
+  // load (read-only — nothing is consumed), and again on submit.
+  const [linkDead, setLinkDead] = useState(false)
   useEffect(() => {
     if (!token) return
     let cancelled = false
     fetch(`/api/auth/reset-password?token=${encodeURIComponent(token)}`)
       .then(r => (r.ok ? r.json() : null))
       .then(d => {
-        if (!cancelled && d?.valid && typeof d.firstName === 'string') setPlayerName(d.firstName)
+        if (cancelled || !d) return
+        if (d.valid === false) { setLinkDead(true); return }
+        if (d.valid && typeof d.firstName === 'string') setPlayerName(d.firstName)
+        if (d.valid && d.rosterSetup && typeof d.setupName === 'string') setSetupName(d.setupName)
       })
       .catch(() => {})
     return () => { cancelled = true }
@@ -49,11 +61,12 @@ function ResetPasswordForm() {
       const res = await fetch('/api/auth/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(chosen ? { token, password, chosen } : { token, password }),
+        body: JSON.stringify({ token, password, ...(chosen ? { chosen } : {}), ...(next ? { next } : {}) }),
       })
       const data = await res.json()
       if (!res.ok) {
         setError(data.error || 'Could not reset your password')
+        if (res.status === 400 && !data.code && /invalid or has expired/i.test(data.error || '')) setLinkDead(true)
         setStatus('error')
         return
       }
@@ -76,6 +89,10 @@ function ResetPasswordForm() {
             <h1 className="font-display font-black uppercase text-2xl leading-tight">
               {activate
                 ? 'Activate your free membership'
+                : linkDead
+                  ? setup ? 'This setup link has been used or expired' : 'This reset link has expired'
+                : setupName
+                  ? `Finish setting up ${setupName}’s account`
                 : playerName
                   ? setup ? `Set ${playerName}’s password` : `Reset ${playerName}’s password`
                   : 'Set a new password'}
@@ -83,6 +100,12 @@ function ResetPasswordForm() {
             <p className="text-chalk-dim text-sm">
               {activate
                 ? 'Someone may have created this account with your email. Set your password to take control and activate your free membership.'
+                : linkDead
+                  ? null
+                : setupName
+                  ? playerName
+                    ? `Choose a password for ${setupName}. Each player on a family email has their own.`
+                    : 'Choose a password to see your shot results. It’s free and takes under a minute.'
                 : playerName
                   ? setup
                     ? `Each player on a family email has their own password. This one is for ${playerName}.`
@@ -91,7 +114,25 @@ function ResetPasswordForm() {
             </p>
           </div>
 
-          {!token ? (
+          {token && linkDead ? (
+            <div className="bg-ink-900 border border-courtline rounded-2xl p-5 text-sm text-chalk-dim text-center space-y-3">
+              {setup ? (
+                <p>
+                  This link has already been used or has expired. Already set a password?{' '}
+                  <a href={`/login${next ? `?next=${encodeURIComponent(next)}` : ''}`} className="text-ember-400 hover:text-ember-500 font-semibold transition-colors">Log in</a>
+                  {' '}to see your results. Otherwise{' '}
+                  <a href="/forgot-password" className="text-ember-400 hover:text-ember-500 font-semibold transition-colors">get a new link</a>.
+                </p>
+              ) : (
+                <p>
+                  This reset link is invalid or has expired.{' '}
+                  <a href="/forgot-password" className="text-ember-400 hover:text-ember-500 font-semibold transition-colors">Request a new one</a>
+                  {' '}or{' '}
+                  <a href="/login" className="text-ember-400 hover:text-ember-500 font-semibold transition-colors">log in</a>.
+                </p>
+              )}
+            </div>
+          ) : !token ? (
             <p className="text-red-400 text-sm text-center">
               This reset link is missing its token. Request a new one from the{' '}
               <a href="/forgot-password" className="text-ember-400 hover:text-ember-500 transition-colors">forgot password</a> page.
@@ -119,7 +160,20 @@ function ResetPasswordForm() {
                 onChange={e => setConfirm(e.target.value)}
                 className="w-full bg-ink-800 border border-courtline rounded-xl pl-4 pr-11 py-3 text-chalk placeholder-chalk-dim focus:outline-none focus:border-ember-500 transition-colors"
               />
-              {error && <p className="text-red-400 text-sm">{error}</p>}
+              {error && (
+                <p className="text-red-400 text-sm">
+                  {linkDead && setup ? (
+                    <>
+                      This setup link has already been used or has expired. Already set a password?{' '}
+                      <a href={`/login${next ? `?next=${encodeURIComponent(next)}` : ''}`} className="text-ember-400 hover:text-ember-500 font-semibold transition-colors">Log in</a>
+                      {' '}to see your results. Otherwise{' '}
+                      <a href="/forgot-password" className="text-ember-400 hover:text-ember-500 font-semibold transition-colors">get a new link</a>.
+                    </>
+                  ) : (
+                    error
+                  )}
+                </p>
+              )}
               <button
                 type="submit"
                 disabled={status === 'loading'}

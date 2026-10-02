@@ -26,7 +26,8 @@ export interface DistCoach {
 
 /**
  * "Where are my tokens?" — a collapsed-by-default breakdown of every token
- * the organization has distributed: each team's shared credits and pool,
+ * held inside the organization (sent by the org, or free starter tokens
+ * players got on joining a team): each team's shared credits and pool,
  * every player holding tokens, and coaches with personal credits. Kept
  * separate from the org's own balance so the two never blur together.
  */
@@ -66,7 +67,7 @@ export default function OrgTokenDistribution({
           <p className="text-sm text-gray-500 dark:text-chalk-dim mt-0.5">
             {totalDistributed === 0
               ? 'Nothing distributed yet — you still hold every token you’ve bought.'
-              : `${totalDistributed} token${totalDistributed !== 1 ? 's' : ''} out with your teams, players, and coaches.`}
+              : `${totalDistributed} token${totalDistributed !== 1 ? 's' : ''} held by your teams, players, and coaches, including free starter tokens.`}
           </p>
         </div>
         <span className="shrink-0 inline-flex items-center gap-2 text-sm font-semibold text-ember-600 dark:text-ember-400">
@@ -180,6 +181,7 @@ export default function OrgTokenDistribution({
           <p className="px-5 py-3 text-xs text-gray-400 border-t border-gray-100 dark:border-courtline flex items-center gap-1.5">
             <WalletIcon className="w-3.5 h-3.5 shrink-0" aria-hidden />
             These balances belong to your teams, players, and coaches — separate from your organization tokens.
+            Player tokens include the free starter token each player gets on joining a team, not only ones you sent.
             Coaches can return unused tokens to you from their team dashboard.
           </p>
         </div>

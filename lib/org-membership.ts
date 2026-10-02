@@ -32,8 +32,9 @@ import {
   sendPlayerMembershipEndingEmail,
   sendSeatRemovedEmail,
 } from './org-membership-emails'
-import { issuePlayerSetupToken } from './roster-players'
+import { issuePlayerSetupToken, setupEmailDailyOk } from './roster-players'
 import { isMarketingSuppressed } from './email-list'
+import { playerEmailPaused } from './player-email-pause'
 
 /**
  * Org-sponsored player memberships: orders, seats, assignment, release,
@@ -622,8 +623,16 @@ export async function assignSeat(orgId: string, seatId: string, userId: string, 
 async function notifyCovered(orgId: string, userId: string, seat: SeatRow, moved: boolean): Promise<void> {
   const u = await holder(userId, orgId)
   if (!u?.email) return
+  // Player emails paused for testing (lib/player-email-pause.ts): no notice,
+  // and no setup link minted or counted against the daily cap.
+  if (playerEmailPaused('player membership covered', u.email)) return
   try {
-    const setupUrl = u.roster_pending ? (await issuePlayerSetupToken(userId)) ?? undefined : undefined
+    // The setup link counts toward the player's daily setup-email cap, so an
+    // assign/unassign loop can't flood a family inbox with links. Over the cap
+    // the covered notice still goes out, just without the link.
+    const setupUrl = u.roster_pending && (await setupEmailDailyOk(userId))
+      ? (await issuePlayerSetupToken(userId)) ?? undefined
+      : undefined
     await sendPlayerCoveredEmail(u.email, {
       playerFirstName: u.first_name,
       orgName: await orgName(orgId),

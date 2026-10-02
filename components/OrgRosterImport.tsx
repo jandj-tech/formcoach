@@ -9,6 +9,8 @@ import {
   ImportRowsTable,
   countOutcomes,
   downloadCsv,
+  markRowsOnTeam,
+  NOT_CHECKED,
   postImportRows,
   readRosterFile,
   rowIsDone,
@@ -33,7 +35,12 @@ interface Group {
   /** Matched or chosen team id, LEAVE_OUT, or '' when still to pick. */
   teamId: string
   matched: boolean
+  /** How many of the org's teams have this name, when it's more than one. */
+  sameName?: number
 }
+
+/** For telling two same-named teams apart in the picker. */
+interface TeamInfo { players: number; coach: string | null }
 
 // Org-level roster import: ONE spreadsheet with a Team column, split across
 // the org's teams. Each row's team is matched by name (case and spacing
@@ -53,8 +60,26 @@ export default function OrgRosterImport({ teams }: { teams: TeamOption[] }) {
   const [importing, setImporting] = useState(false)
   const [imported, setImported] = useState(false)
   const [error, setError] = useState('')
+  const [teamInfo, setTeamInfo] = useState<Record<string, TeamInfo>>({})
 
-  const byName = new Map(teams.map(t => [normTeamName(t.name), t]))
+  // Every team per name: an older org can have two teams with one name, and
+  // a row must not be filed under whichever came last.
+  const byName = new Map<string, TeamOption[]>()
+  for (const t of teams) byName.set(normTeamName(t.name), [...(byName.get(normTeamName(t.name)) ?? []), t])
+  const sameNamed = (id: string) => (byName.get(normTeamName(teamName(id)))?.length ?? 0) > 1
+  const optionLabel = (t: TeamOption) => {
+    const info = sameNamed(t.id) ? teamInfo[t.id] : undefined
+    if (!info) return t.name
+    return `${t.name} — ${info.players} player${info.players === 1 ? '' : 's'}${info.coach ? `, coach ${info.coach}` : ''}`
+  }
+
+  /** Flags this team's rows already on it, and the import's same-name notes (preview only). */
+  function checkTeamRows(teamId: string, list: EditableRow[]) {
+    if (!teamId || teamId === LEAVE_OUT) return
+    void markRowsOnTeam('/api/org/import-players', { teamId }, list).then(found => {
+      if (found.size) setRows(cur => cur.map(r => (found.has(r.key) && !r.outcome ? { ...r, ...found.get(r.key) } : r)))
+    })
+  }
   const teamName = (id: string) => teams.find(t => t.id === id)?.name ?? ''
 
   function reset() {
@@ -76,11 +101,35 @@ export default function OrgRosterImport({ teams }: { teams: TeamOption[] }) {
         for (const r of parsed.rows) {
           const key = normTeamName(r.teamName)
           if (seen.has(key)) continue
-          const match = key ? byName.get(key) : undefined
-          seen.set(key, { key, label: r.teamName.trim(), teamId: match?.id ?? '', matched: !!match })
+          const found = key ? byName.get(key) ?? [] : []
+          const match = found.length === 1 ? found[0] : undefined
+          seen.set(key, {
+            key,
+            label: r.teamName.trim(),
+            teamId: match?.id ?? '',
+            matched: !!match,
+            ...(found.length > 1 ? { sameName: found.length } : {}),
+          })
         }
-        setGroups(Array.from(seen.values()))
+        const gs = Array.from(seen.values())
+        setGroups(gs)
         setRows(parsed.rows)
+        for (const g of gs) {
+          if (g.matched) checkTeamRows(g.teamId, parsed.rows.filter(r => normTeamName(r.teamName) === g.key))
+          // Same-named teams: fetch enough to tell them apart in the picker.
+          if (g.sameName) {
+            for (const t of byName.get(g.key) ?? []) {
+              void fetch('/api/org/import-players', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ teamId: t.id, check: true, rows: [] }),
+              })
+                .then(res => (res.ok ? res.json() : null))
+                .then(d => { if (d) setTeamInfo(cur => ({ ...cur, [t.id]: { players: Number(d.players) || 0, coach: d.coach ?? null } })) })
+                .catch(() => {})
+            }
+          }
+        }
       } catch {
         setError('Could not read that file. Save it as a .csv file from your spreadsheet app and try again.')
       }
@@ -90,9 +139,13 @@ export default function OrgRosterImport({ teams }: { teams: TeamOption[] }) {
 
   function pick(key: string, teamId: string) {
     setGroups(gs => gs.map(g => (g.key === key ? { ...g, teamId } : g)))
+    // A different team: its own "already on the team" check.
+    const list = rows.filter(r => normTeamName(r.teamName) === key).map(r => (r.outcome ? r : { ...r, ...NOT_CHECKED }))
+    setRows(cur => cur.map(r => (normTeamName(r.teamName) === key && !r.outcome ? { ...r, ...NOT_CHECKED } : r)))
+    checkTeamRows(teamId, list)
   }
   function edit(rowKey: string, patch: Partial<PlayerImportRow>) {
-    setRows(list => list.map(r => (r.key === rowKey ? { ...r, ...patch, fixing: true, outcome: r.outcome?.status === 'error' ? undefined : r.outcome } : r)))
+    setRows(list => list.map(r => (r.key === rowKey ? { ...r, ...patch, fixing: true, ...NOT_CHECKED, outcome: r.outcome?.status === 'error' ? undefined : r.outcome } : r)))
   }
   function remove(rowKey: string) {
     setRows(list => list.map(r => (r.key === rowKey ? { ...r, removed: true } : r)))
@@ -132,6 +185,8 @@ export default function OrgRosterImport({ teams }: { teams: TeamOption[] }) {
     if (!row) return
     const retry = { ...row, allowDuplicateName: true, outcome: undefined }
     setRows(list => list.map(r => (r.key === rowKey ? retry : r)))
+    // Still in the preview: it simply joins the rows to import.
+    if (!row.outcome) return
     try {
       const outcomes = await postImportRows('/api/org/import-players', { teamId }, [retry], sendEmail)
       setRows(list => list.map(r => (outcomes.has(r.key) ? { ...r, outcome: outcomes.get(r.key) } : r)))
@@ -205,10 +260,11 @@ export default function OrgRosterImport({ teams }: { teams: TeamOption[] }) {
       {groups.length > 0 && (
         <>
           <div className="text-xs text-gray-600 dark:text-chalk-dim flex flex-wrap gap-x-3 gap-y-1">
-            <span><strong className="text-black dark:text-chalk">{rows.filter(r => !r.removed).length}</strong> rows for <strong className="text-black dark:text-chalk">{groups.length}</strong> team name{groups.length === 1 ? '' : 's'}</span>
+            <span><strong className="text-black dark:text-chalk">{rows.filter(r => !r.removed).length}</strong> {rows.filter(r => !r.removed).length === 1 ? 'row' : 'rows'} for <strong className="text-black dark:text-chalk">{groups.length}</strong> team name{groups.length === 1 ? '' : 's'}</span>
             {imported && <span><strong className="text-green-700 dark:text-green-400">{all.added}</strong> added</span>}
             {imported && all.already > 0 && <span><strong className="text-black dark:text-chalk">{all.already}</strong> already on their team</span>}
-            {all.needsFix > 0 && <span className="text-red-600 dark:text-red-400"><strong>{all.needsFix}</strong> need fixing</span>}
+            {all.onTeam > 0 && <span><strong className="text-black dark:text-chalk">{all.onTeam}</strong> {all.onTeam === 1 ? 'looks' : 'look'} already on their team (left out)</span>}
+            {all.needsFix > 0 && <span className="text-red-600 dark:text-red-400"><strong>{all.needsFix}</strong> {all.needsFix === 1 ? 'needs' : 'need'} fixing</span>}
           </div>
 
           <div className="space-y-4">
@@ -227,7 +283,9 @@ export default function OrgRosterImport({ teams }: { teams: TeamOption[] }) {
                     {!g.matched && (
                       <div className="flex flex-wrap items-center gap-2">
                         <span className={`text-xs ${g.teamId ? 'text-gray-500 dark:text-chalk-dim' : 'text-amber-700 dark:text-amber-400 font-semibold'}`}>
-                          {g.label ? `No team called “${g.label}” — pick one:` : 'These rows have no team — pick one:'}
+                          {g.sameName
+                            ? `${g.sameName} teams are called “${g.label}” — pick one:`
+                            : g.label ? `No team called “${g.label}” — pick one:` : 'These rows have no team — pick one:'}
                         </span>
                         <select
                           aria-label={`Team for ${g.label || 'rows with no team'}`}
@@ -236,7 +294,9 @@ export default function OrgRosterImport({ teams }: { teams: TeamOption[] }) {
                           className="bg-white dark:bg-ink-900 border border-gray-300 dark:border-courtline rounded-lg px-2 py-1 text-xs text-black dark:text-chalk focus:outline-none focus:border-ember-500"
                         >
                           <option value="">Choose a team&hellip;</option>
-                          {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                          {/* The same-named teams first, told apart by roster size and coach. */}
+                          {[...(g.sameName ? byName.get(g.key) ?? [] : []), ...teams.filter(t => !(g.sameName && normTeamName(t.name) === g.key))]
+                            .map(t => <option key={t.id} value={t.id}>{optionLabel(t)}</option>)}
                           <option value={LEAVE_OUT}>Leave these rows out</option>
                         </select>
                       </div>
@@ -279,6 +339,11 @@ export default function OrgRosterImport({ teams }: { teams: TeamOption[] }) {
                   ? `Import the fixed rows (${totalToSend})`
                   : `Import ${totalToSend} player${totalToSend === 1 ? '' : 's'} into ${teamsToSend} team${teamsToSend === 1 ? '' : 's'}`}
             </button>
+          )}
+          {imported && !sendEmail && rows.some(r => !r.removed && !!r.email.trim() && (r.outcome?.status === 'created' || r.outcome?.status === 'linked')) && (
+            <p className="text-sm text-gray-600 dark:text-chalk-dim">
+              No setup emails were sent. You can email setup links later from the roster.
+            </p>
           )}
           {imported && totalToSend === 0 && all.needsFix > 0 && (
             <p className="text-sm text-gray-600 dark:text-chalk-dim">

@@ -23,11 +23,15 @@ import ChangeHeadCoachPanel, { type HeadCoachChange } from '@/components/ChangeH
 import AddPlayerForm from '@/components/AddPlayerForm'
 import CsvPlayerImport from '@/components/CsvPlayerImport'
 import { PlayerStatusBadge, ResendSetupButton } from '@/components/PlayerSetupStatus'
-import GiveOwnAccountButton, { SharedEmailNote, membersSharingEmail } from '@/components/GiveOwnAccountButton'
+import SendSetupToAllButton from '@/components/SendSetupToAllButton'
+import GiveOwnAccountButton, { AddPlayerEmailButton, SharedEmailNote, membersSharingEmail } from '@/components/GiveOwnAccountButton'
 import {
   memberDisplayName,
   memberPickLabel,
+  memberShotCount,
   memberStatus,
+  pendingShotCount,
+  shotCountLabel,
   type ClassPackage,
   type Member,
   type PlayerSortMode,
@@ -76,11 +80,86 @@ interface Props {
    */
   onBuy: (dest: string, quantity: number, playerUserIds: string[]) => Promise<string>
   buying: boolean
+  /** The organization's own token balance (organizations.token_balance). */
+  orgTokenBalance: number
 }
 
 interface TeamExtras {
   headCoach: 'ready' | 'invite_sent' | 'org'
   pendingPlayers: Array<{ id: string; inviteUrl: string | null }>
+}
+
+// Moves organization tokens into this team's pool (teams.credits) — what
+// coach uploads spend after the coach's own tokens. Same route as the Tokens
+// tab's "Send → A team".
+function SendOrgTokensToTeam({ teamId, teamName, orgBalance }: { teamId: string; teamName: string; orgBalance: number }) {
+  const router = useRouter()
+  const [qty, setQty] = useState(1)
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const notEnough = qty > orgBalance
+
+  async function send() {
+    setBusy(true); setMsg(null)
+    try {
+      const res = await fetch('/api/org/allocate-team-credits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teamId, quantity: qty }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) { setMsg({ ok: false, text: data.error || 'Could not send tokens' }); return }
+      setMsg({ ok: true, text: `Sent ${qty} token${qty === 1 ? '' : 's'} to ${teamName}’s team tokens.` })
+      router.refresh()
+    } catch {
+      setMsg({ ok: false, text: 'Something went wrong. Please try again.' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="pt-2 space-y-3">
+      <p className="text-xs text-gray-500 dark:text-chalk-dim">
+        Moves tokens from your organization tokens into this team&apos;s team tokens. Coaches spend team
+        tokens on uploads once their own run out, and can give them to players.
+      </p>
+      <div className="flex flex-wrap items-center gap-3">
+        <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-chalk-dim">
+          Amount
+          <input
+            type="number"
+            min={1}
+            value={qty || ''}
+            onChange={e => {
+              const n = parseInt(e.target.value)
+              setQty(Number.isNaN(n) ? 0 : Math.min(10000, Math.max(0, n)))
+            }}
+            onBlur={() => { if (qty < 1) setQty(1) }}
+            className="w-20 border border-gray-200 dark:border-courtline rounded-xl px-2 py-2 text-center text-gray-900 dark:text-chalk dark:bg-ink-900 text-sm focus:outline-none focus:border-ember-500"
+          />
+        </label>
+        <span className="text-sm text-gray-500 dark:text-chalk-dim flex-1 min-w-0">
+          From your <span className="font-semibold text-gray-900 dark:text-chalk tabular-nums">{orgBalance}</span> organization tokens
+        </span>
+        <button
+          type="button"
+          onClick={send}
+          disabled={busy || qty < 1 || notEnough || orgBalance === 0}
+          className="bg-ember-500 hover:bg-ember-400 disabled:bg-ember-300 text-ink-950 font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors"
+        >
+          {busy ? 'Sending…' : 'Send'}
+        </button>
+      </div>
+      {notEnough && orgBalance > 0 && (
+        <p className="text-sm font-medium text-red-600 dark:text-red-400">Not enough tokens — you have {orgBalance}.</p>
+      )}
+      {orgBalance === 0 && <p className="text-sm text-gray-500 dark:text-chalk-dim">You have no organization tokens to send.</p>}
+      {msg && (
+        <p className={`text-sm font-medium ${msg.ok ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{msg.text}</p>
+      )}
+    </div>
+  )
 }
 
 // Re-sends a coach's setup invite (head coach, or an added coach by id).
@@ -163,6 +242,7 @@ export default function OrgTeamCard({
   onGiveCredits,
   onBuy,
   buying,
+  orgTokenBalance,
 }: Props) {
   const router = useRouter()
   const [tab, setTab] = useState('roster')
@@ -197,7 +277,13 @@ export default function OrgTeamCard({
   }, [isOpen, team.id, pendingKey, team.adminEmail])
 
   async function removePending(pendingId: string) {
-    if (!confirm('Remove this player from the team? Their invite link will stop working.')) return
+    const p = team.pendingPlayers.find(x => x.id === pendingId)
+    const who = p ? `${p.first_name}${p.last_name_initial ? ` ${p.last_name_initial}.` : ''}` : 'this player'
+    const shots = p ? pendingShotCount(team, p) : 0
+    const shotNote = shots > 0
+      ? `\n\n${who} has ${shots} shot${shots === 1 ? '' : 's'} — ${shots === 1 ? 'it' : 'they'} will be removed from this team. To keep ${shots === 1 ? 'it' : 'them'}, cancel and use ${p?.contact_email ? 'Give own account' : 'Add email'} instead.`
+      : ''
+    if (!confirm(`Remove ${who} from ${team.name}? Their invite link will stop working.${shotNote}`)) return
     setRemovingPending(pendingId)
     try {
       const res = await fetch('/api/org/remove-player', {
@@ -233,6 +319,8 @@ export default function OrgTeamCard({
   const rosterCount = team.members.length + team.pendingPlayers.length
   // Siblings on this team with their own accounts on one family email.
   const sharedEmailIds = membersSharingEmail(team.members)
+  // Added with an email but setup not finished: who "Email setup link to all" reaches.
+  const setupPendingCount = team.members.filter(m => memberStatus(m) === 'pending' && m.email).length
 
   function copyLink() {
     copyToClipboard(signupLink, 'Invite link copied!').then(() => {
@@ -367,7 +455,7 @@ export default function OrgTeamCard({
           </div>
         )}
         <div className="mt-2">
-          <OrgAddCoach teamId={team.id} />
+          <OrgAddCoach teamId={team.id} coachEmails={team.coaches.map(c => c.email.toLowerCase())} />
         </div>
       </Section>
 
@@ -391,6 +479,11 @@ export default function OrgTeamCard({
             </div>
           )}
         </div>
+        {setupPendingCount > 0 && (
+          <div className="pb-1">
+            <SendSetupToAllButton endpoint="/api/org/resend-player-setup-all" count={setupPendingCount} extra={{ teamId: team.id }} />
+          </div>
+        )}
 
         {team.members.length === 0 && team.pendingPlayers.length === 0 ? (
           <p className="text-sm text-gray-400 dark:text-chalk-dim mt-0.5">No players yet. Add one above, or share the invite link below.</p>
@@ -422,7 +515,8 @@ export default function OrgTeamCard({
                     {m.email && <p className="text-xs text-gray-400 dark:text-chalk-dim truncate mt-0.5">{m.email}</p>}
                   </div>
                   <div className="flex items-center gap-3 shrink-0 ml-auto">
-                    {memberStatus(m) === 'pending' && (
+                    <span className="text-xs text-gray-500 dark:text-chalk-dim tabular-nums">{shotCountLabel(memberShotCount(team, m.id))}</span>
+                    {memberStatus(m) === 'pending' && !!m.email && (
                       <ResendSetupButton endpoint="/api/org/resend-player-setup" userId={m.id} extra={{ teamId: team.id }} />
                     )}
                     <button
@@ -454,12 +548,20 @@ export default function OrgTeamCard({
                       )}
                     </div>
                     <div className="flex items-center gap-3 shrink-0 ml-auto">
-                      {p.contact_email && (
+                      <span className="text-xs text-gray-500 dark:text-chalk-dim tabular-nums">{shotCountLabel(pendingShotCount(team, p))}</span>
+                      {p.contact_email ? (
                         <GiveOwnAccountButton
                           endpoint="/api/org/give-own-account"
                           pendingId={p.id}
                           playerName={p.first_name}
                           email={p.contact_email}
+                          extra={{ teamId: team.id }}
+                        />
+                      ) : (
+                        <AddPlayerEmailButton
+                          endpoint="/api/org/give-own-account"
+                          pendingId={p.id}
+                          playerName={p.first_name}
                           extra={{ teamId: team.id }}
                         />
                       )}
@@ -538,7 +640,7 @@ export default function OrgTeamCard({
           {team.members.length === 0 ? (
             <p className="text-sm text-gray-400 dark:text-chalk-dim">No players have joined this team yet.</p>
           ) : team.credits === 0 ? (
-            <p className="text-sm text-gray-500 dark:text-chalk-dim">No team tokens yet. Buy some below (pick Team tokens), or send your organization tokens straight to players from the Tokens tab at the top of the page.</p>
+            <p className="text-sm text-gray-500 dark:text-chalk-dim">No team tokens yet. Your uploads to this team use your organization tokens when the team has none; its coaches&rsquo; uploads don&rsquo;t, so send organization tokens to this team below. To give players tokens, send or buy team tokens below, or send organization tokens straight to players from the Tokens tab at the top of the page.</p>
           ) : (
             <GiveTokensForm
               players={team.members.map(m => ({ id: m.id, label: memberPickLabel(m, team.members), tokens: m.tokens }))}
@@ -548,6 +650,11 @@ export default function OrgTeamCard({
             />
           )}
         </div>
+      </Section>
+
+      {/* Not a purchase, so it shows in the app too. */}
+      <Section title="Send organization tokens to this team" summary={`${orgTokenBalance} available`}>
+        <SendOrgTokensToTeam teamId={team.id} teamName={team.name} orgBalance={orgTokenBalance} />
       </Section>
 
       {/* Hidden in the iOS app: digital purchases there must use native IAP. */}
@@ -837,8 +944,9 @@ export default function OrgTeamCard({
               <StatCard label="Players" value={rosterCount} />
               <StatCard label="Team tokens" value={team.credits} accent />
               <StatCard label="Coaches" value={team.coaches.length + 1} />
-              {/* Legacy shared pool — only worth a card while it still holds tokens. */}
-              {team.tokenPool > 0 && <StatCard label="Unassigned team tokens" value={team.tokenPool} />}
+              {/* Legacy shared pool — only worth a card while it still holds
+                  tokens. Hidden on class teams, whose tokens are Team tokens. */}
+              {team.tokenPool > 0 && !team.classPackageId && <StatCard label="Unassigned team tokens" value={team.tokenPool} />}
               <StatCard label="Ranked" value={team.leaderboard.length} />
             </StatGrid>
 

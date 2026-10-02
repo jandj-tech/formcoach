@@ -19,6 +19,40 @@ const ONLY = onlyArg !== -1 ? args[onlyArg + 1].split(',').map((s) => s.trim()) 
 const dumpArg = args.indexOf('--dump')
 const DUMP = dumpArg !== -1 ? args[dumpArg + 1] : null
 const dumpRows = []
+const { writeFileSync: writeDumpFile } = await import('fs')
+// The dump is written after EVERY fixture (partial: true) and at the end, so
+// a run that dies late - breaker, kill, laptop asleep - leaves what it graded.
+// 2026-10-01: three launches of a mini-arm and most of a full arm were lost
+// to late failures with nothing on disk.
+function writeDump(partial) {
+  writeDumpFile(
+    DUMP,
+    JSON.stringify(
+      {
+        partial,
+        grader,
+        model: grader?.model ?? null,
+        passes: grader?.passes ?? null,
+        env: {
+          ANALYSIS_MODEL: process.env.ANALYSIS_MODEL ?? null,
+          SETPOINT_CHECK: process.env.SETPOINT_CHECK ?? null,
+          FRAME_CHECKS: process.env.FRAME_CHECKS ?? null,
+          SPLIT_FRAMES: process.env.SPLIT_FRAMES ?? null,
+          ANCHORS: process.env.ANCHORS ?? null,
+          FAULT_GATE: process.env.FAULT_GATE ?? null,
+          RUBRIC_OVERRIDE: process.env.RUBRIC_OVERRIDE ?? null,
+          CRITERION_GROUPS: process.env.CRITERION_GROUPS ?? null,
+          GATEWAY_REASONING: process.env.GATEWAY_REASONING ?? null,
+        },
+        ranFixtures: partial ? new Set(dumpRows.map((r) => r.fixture)).size : fixtures.length - runFailures,
+        lostFixtures: runFailures,
+        cells: dumpRows,
+      },
+      null,
+      1
+    )
+  )
+}
 
 const { db } = await import('../../lib/db.ts')
 const { runFixtureOnce } = await import('../../lib/eval.ts')
@@ -124,12 +158,14 @@ const breaker = {
   failure(msg) {
     if (/\b402\b|Insufficient credits|requires more credits/i.test(msg)) {
       console.error(`\n*** ARM CANCELLED: OpenRouter credits exhausted (${msg.slice(0, 120)}). ***`)
+      if (DUMP && dumpRows.length) writeDump(true)
       process.exit(3)
     }
     if (TRANSPORT.test(msg)) {
       this.consecutive++
       if (this.consecutive >= BREAKER_FAILURES) {
         console.error(`\n*** ARM CANCELLED: ${this.consecutive} consecutive transport failures - the network is down. Nothing more is spent. ***`)
+        if (DUMP && dumpRows.length) writeDump(true)
         process.exit(4)
       }
     }
@@ -189,6 +225,27 @@ async function gradeFixture(fixture) {
 // comparison silently changes its conditions. Raise it deliberately.
 const FIXTURE_CONCURRENCY = Math.max(1, Number(process.env.EVAL_FIXTURE_CONCURRENCY ?? 1))
 const graded = new Map()
+// RUNS CACHE. Grading is the long phase (hours on a slow gateway) and the dump
+// only exists after it, so a breaker cancel or a dead laptop at 3am lost every
+// graded fixture (2026-10-01: 9 of 28, six hours). With EVAL_RUNS_CACHE=<file>
+// each fixture's finished runs are appended as one JSON line the moment they
+// complete, and a relaunch with the same file reuses them instead of grading
+// again. Only complete, successful fixtures are stored, so a partial fixture
+// is simply re-graded.
+const RUNS_CACHE = process.env.EVAL_RUNS_CACHE || null
+if (RUNS_CACHE) {
+  const { existsSync, readFileSync } = await import('fs')
+  if (existsSync(RUNS_CACHE)) {
+    for (const line of readFileSync(RUNS_CACHE, 'utf8').split('\n')) {
+      if (!line.trim()) continue
+      try {
+        const e = JSON.parse(line)
+        if (e.slug && Array.isArray(e.runs) && e.runs.length >= RUNS && fixtures.some((f) => f.slug === e.slug)) graded.set(e.slug, { runs: e.runs.slice(0, RUNS), failed: undefined })
+      } catch { /* a torn last line from a crash: ignore it */ }
+    }
+    if (graded.size) console.log(`Reusing ${graded.size} fixture(s) already graded in ${RUNS_CACHE}`)
+  }
+}
 if (FIXTURE_CONCURRENCY > 1) {
   console.log(`Grading ${fixtures.length} fixture(s) ${FIXTURE_CONCURRENCY} at a time\n`)
 }
@@ -198,7 +255,13 @@ if (FIXTURE_CONCURRENCY > 1) {
   const worker = async () => {
     while (next < fixtures.length) {
       const fixture = fixtures[next++]
-      graded.set(fixture.slug, await gradeFixture(fixture))
+      if (graded.has(fixture.slug)) { done++; continue }
+      const result = await gradeFixture(fixture)
+      graded.set(fixture.slug, result)
+      if (RUNS_CACHE && !result.failed && result.runs.length >= RUNS) {
+        const { appendFileSync } = await import('fs')
+        appendFileSync(RUNS_CACHE, JSON.stringify({ slug: fixture.slug, runs: result.runs }) + '\n')
+      }
       done++
       if (FIXTURE_CONCURRENCY > 1) {
         console.log(`  … ${done}/${fixtures.length} graded (${fixture.slug})`)
@@ -249,12 +312,17 @@ for (const fixture of fixtures) {
         set_point: runs.map((r) => r.set_point?.verdict ?? null),
         set_point_frame: runs.map((r) => r.set_point?.frame ?? null),
         frame_checks_applied: runs.map((r) => r.frame_checks?.applied ?? null),
+        // Per-run score and the full cue record for that run: the miss review
+        // (scripts/eval/miss-review.mjs) reads WHY a check fired or not here.
+        run_scores: runs.map((r) => r.criteria?.[name] ?? null),
+        frame_checks: runs.map((r) => r.frame_checks?.cues ?? null),
         missed:
           exp === 'null'
             ? score !== null
             : score === null || score < exp[0] || score > exp[1],
       })
     }
+    writeDump(true)
   }
 
   if (RUNS > 1 && summary.overall_spread !== null) {
@@ -346,33 +414,7 @@ console.log(
     ' the old grader\'s own output, so they show change, not correctness.'
 )
 if (DUMP) {
-  const { writeFileSync } = await import('fs')
-  writeFileSync(
-    DUMP,
-    JSON.stringify(
-      {
-        grader,
-        model: grader?.model ?? null,
-        passes: grader?.passes ?? null,
-        env: {
-          ANALYSIS_MODEL: process.env.ANALYSIS_MODEL ?? null,
-          SETPOINT_CHECK: process.env.SETPOINT_CHECK ?? null,
-          FRAME_CHECKS: process.env.FRAME_CHECKS ?? null,
-          SPLIT_FRAMES: process.env.SPLIT_FRAMES ?? null,
-          ANCHORS: process.env.ANCHORS ?? null,
-          FAULT_GATE: process.env.FAULT_GATE ?? null,
-          RUBRIC_OVERRIDE: process.env.RUBRIC_OVERRIDE ?? null,
-          CRITERION_GROUPS: process.env.CRITERION_GROUPS ?? null,
-          GATEWAY_REASONING: process.env.GATEWAY_REASONING ?? null,
-        },
-        ranFixtures: fixtures.length - runFailures,
-        lostFixtures: runFailures,
-        cells: dumpRows,
-      },
-      null,
-      1
-    )
-  )
+  writeDump(false)
   console.log(`\nwrote ${dumpRows.length} cell results to ${DUMP}`)
 }
 

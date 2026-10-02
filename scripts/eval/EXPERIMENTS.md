@@ -2076,3 +2076,106 @@ Big misses (>= 3) on these 7: e55 had 4 (196 E, 196 P, 202 E, 198 E) plus 200 at
 on the two fixtures accepted as unsolved this round. KEPT. A full 28-fixture arm
 of this config has not been run; the E54 paired numbers stand as the last full
 measurement.
+
+## E58 — Cues for the four remaining big-miss families · REVERTED (worse, p = 0.02); tooling and the crop stay
+
+**Built (2026-10-01):** a release-side "both arms extend together" cue so the
+two-hand V could act (shot-202); an "elbow level with or above the shoulder"
+cue -> cap 5 (shot-198's shape); a ball-direction cue for Square: chest to the
+camera + ball toward a side edge -> cap 5, chest to the camera + ball rising
+over the shooter + no twist -> floor 6 (E50's shot-208 and the floor E50
+removed); Elbow v13 / Power v9 with the dead SET-POINT CHECK sentences replaced.
+
+**Probe (checks only, 2 fixtures before the gateway got too slow to continue):**
+202 V fired 2/2 with the throw cue agreeing, caps inside the expert bands;
+198 Square cap 2/2 (right), 198 Elbow unsolved (elbow-height cue 2/8).
+
+**Full arm, five launches.** Attempt 1 (12:10-18:06) cancelled by the breaker
+with the laptop offline, 9/28 graded, nothing written (the dump only existed
+after the grading phase). Runner changes since: dump after every fixture and
+before a breaker exit (4c1a08b) - in the wrong phase, so EVAL_RUNS_CACHE
+(50efc0f) appends each finished fixture's runs to a JSONL file and reuses them
+on relaunch; run_scores + the full cue record per run in the dump; miss-review.mjs.
+Attempt 3's first four fixtures (e58.runs.attempt3.jsonl) already showed two
+rules wrong on good shots: the elbow-height cap cut shot-125 Elbow 9 -> 5
+(expert [6.5,8]) on 2/3 runs; the ball-sideways cap cut 125 Square 10 -> 5
+([8.5,10]) and 180 9 -> 5 ([8,10]). Both set to recorded-only, cache cleared,
+relaunched (22:39), cut to 2 runs at 01:22 for budget ($1.45 left), stopped at
+14:10 on 2026-10-02 with 9/28 fixtures cached: the overnight link produced 12
+ECONNRESET, 12 timeouts and 105 failed check calls for three new fixtures and
+$0.57, with $0.88 left.
+
+**Partial arm = the 9 cached fixtures x 2 runs** (report built from the cache,
+zero model calls): 19/48 = 39.6% any miss, 3/48 = 6.3% over 1.5, 2/48 = 4.2%
+over 2. PAIRED against e54 on the same 9 fixtures (53 cells):
+
+```
+e54          miss 12/53 = 22.6%  CI [13.5, 35.5]
+e58 partial  miss 20/53 = 37.7%  CI [25.9, 51.2]
+FIXED 1, BROKE 9    McNemar exact p = 0.0215
+Elbow 2 -> 5, Pocket 0 -> 1, Power 1 -> 2, One-Hand 1 -> 2, SHFT 0 -> 1, GHFT 1 -> 2
+```
+The V rule, with its release-side guard, still fired on BOTH runs of shot-187
+(one-hand shot, expert Elbow [6,8], One-Hand [7.5,9.5]): 8/9 -> 4 and 8 -> 5.
+One fixture gained (202), two big misses made. The rest of the regression
+cannot be attributed on 9 fixtures x 2 runs: it is some mix of Elbow v13 /
+Power v9, the 8-question set-point prompt, and 2 runs instead of 3.
+
+**DECISION.** Everything that scores is REVERTED to the E54 + crop config that
+is live: V, elbow-height and ball-sideways caps and the Square floor are
+recorded-only (env switches to act); Elbow v12 / Power v8 restored and the e58
+migration removed; the extra questions run only under FRAME_CHECK_EXTRA=1 so
+production asks the prompt #79 measured. KEPT: the tooling (runs cache,
+incremental dump, cue record, miss-review). One note for next time: the
+guarded Square floor fired exactly once, on shot-156 run 2, and lifted a 2 to
+6 against [7,8] - the right direction, one data point.
+
+**What this round says about the misses.** Elbow: the model cannot see the
+shot-198 flare even zoomed (0/8 on the flared cue, 2/8 on the height cue), and
+every cue strong enough to catch it also reads true on a high, clean set
+point from the front. Square: "where the ball goes" is not readable from two
+frames of an angled arc. The V: the set point and the release both read as
+two-handed on a one-hand shot whose guide hand stays on the ball late. The
+remaining big misses (198 Elbow/Square, 202, 156 Square variance) are not
+reachable with single-frame yes/no cues on this model; the next lever is a
+different kind of evidence (pose keypoints, or the expert labelling the
+specific frame), not another cue.
+
+## E59 — Pose probe: does a measured skeleton reach the remaining misses? · NO, not at this resolution · NOT PURSUED
+
+MediaPipe pose (classic CPU solution, model_complexity 2) on the re-extracted
+frames cropped to the cached shooter box, 28 fixtures, no API cost
+(scripts/eval/pose-probe.py, results .eval-arms/pose-probe.json). Set point
+derived from the skeleton: the four frames before the shooting elbow first
+opens past 150 deg with the wrist above the nose.
+
+```
+                        detected  elbow above shoulder  elbow outward  two-hand sig   expert Elbow
+shot-196 catapult        28/28        +0.42                +0.49         (0.07 gap)      [2,4]
+shot-200 catapult        28/28        +0.43                +0.46         (0.06 gap)      [2,4]
+shot-201 two-hand        28/28        +0.41                +0.46         TRUE            [0,3]
+shot-202 two-hand V      28/28        +0.10                +0.01         false           [3,5]
+shot-198 flared elbow     9/28        no set-point frames found                          [3,5]
+shot-187 one-hand (ctrl) 28/28        -0.32                -0.08         false           [6,8]
+shot-125 good (ctrl)     28/28        -0.15                -0.37         false           [6.5,8]
+shot-206 good (ctrl)     28/28        +0.01                +0.21         false           [6.5,8.5]
+shot-218 good             7/28        one frame                                           [6.5,8.5]
+Spearman vs expert Elbow midpoint, n=13: angle +0.21, elbow-above -0.40, outward -0.34, wrist-up -0.36
+```
+
+What it says. (1) The skeleton separates the CATAPULT family cleanly - elbow
+0.4 torso-lengths above the shoulder on 196/200/201 against <= 0.2 on every
+control - but the crop + cue already catches that family 6/6. (2) It does NOT
+separate the two-hand V: shot-202 reads like shot-206. (3) It fails outright
+on shot-198 (9/28 frames detected, no set point) and shot-218 (7/28) - the
+small, far shooters, the same clips the vision model cannot read. (4) It would
+not false-fire on shot-187, so it could guard a V rule, but there is no V
+signal to guard. (5) Set-point selection from the skeleton is itself noisy
+(E = 27, the last frame, on 196/200; E = 3 on 211). Rank correlations are
+weak at n = 13.
+
+DECISION: not pursued. A skeleton at 70-100 px of shooter gives the same
+information the cues already give, and nothing on the clips where both fail.
+The remaining misses need better evidence at the source - the expert marking
+the fault frame on each fixture, and more fixtures from Maple's real uploads
+with coach corrections - not another detector on these pixels.

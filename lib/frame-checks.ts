@@ -327,7 +327,12 @@ export function frameCheckBounds(fc: FrameChecks): Array<{ criterion: string; ca
     // guide hand is still on the ball, and 5-6/8 on the V: too thin to cap
     // three criteria on. Needs a release-side cue (both arms extending
     // together) before it can act. The counts stay in the dump.
-    else if (fc.elbow.v_top) { b.push({ criterion: ELBOW, cap: 4, why: 'both hands were on the sides of the ball with both elbows out, and the ball was thrown from that two-handed V' }); b.push({ criterion: POCKET, cap: 4, why: 'the ball was held in a two-handed V rather than loaded in a one-hand pocket' }); b.push({ criterion: POWER, cap: 6, why: 'the ball was pushed out of a two-handed V by the arms' }); b.push({ criterion: ONEHAND, cap: 5, why: 'the ball left off both hands rather than through the guide hand' }) }
+    // V-AT-TOP: RECORDED, NOT ACTED ON (again). e58 partial arm (2026-10-02):
+    // with the release-side guard it still fired on BOTH runs of shot-187, a
+    // one-hand shot the expert scored Elbow [6,8] and One-Hand [7.5,9.5],
+    // cutting 8/9 -> 4 and 8 -> 5. One fixture gained (202), two big misses
+    // made. The cues stay in the dump; FRAME_CHECK_VTOP=1 to act.
+    else if (fc.elbow.v_top && process.env.FRAME_CHECK_VTOP === '1') { b.push({ criterion: ELBOW, cap: 4, why: 'both hands were on the sides of the ball with both elbows out, and the ball was thrown from that two-handed V' }); b.push({ criterion: POCKET, cap: 4, why: 'the ball was held in a two-handed V rather than loaded in a one-hand pocket' }); b.push({ criterion: POWER, cap: 6, why: 'the ball was pushed out of a two-handed V by the arms' }); b.push({ criterion: ONEHAND, cap: 5, why: 'the ball left off both hands rather than through the guide hand' }) }
     else if (fc.elbow.flared) b.push({ criterion: ELBOW, cap: 4, why: 'the elbow was out at the shoulder with the ball beside the head' })
     // ELBOW-OUT: RECORDED, NOT ACTED ON. e58 early read (2026-10-01): the
     // elbow-height cue fired on shot-125 (expert Elbow [6.5,8]) on 2 of 3 runs

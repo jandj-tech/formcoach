@@ -168,7 +168,11 @@ export async function runFrameChecks(frames: string[], mimes: string[], model: s
   frames = view; mimes = vmimes
 
   // --- ELBOW: three set-point frames, majority -------------------------------
-  const spKeys = ['ball_behind_or_above_head', 'elbow_flared_shoulder_height', 'ball_beside_head', 'ball_in_front_of_forehead', 'elbow_inside_shoulder_line', 'one_hand_under_ball', 'both_hands_mirrored_elbows_out', 'elbow_at_or_above_shoulder']
+  // FRAME_CHECK_EXTRA=1 (eval only) adds the cues that are RECORDED, NOT ACTED
+  // ON: question 8 (elbow height), the release-side throw question and the
+  // ball-direction question. Production asks exactly the prompt #79 measured.
+  const EXTRA = process.env.FRAME_CHECK_EXTRA === '1'
+  const spKeys = ['ball_behind_or_above_head', 'elbow_flared_shoulder_height', 'ball_beside_head', 'ball_in_front_of_forehead', 'elbow_inside_shoulder_line', 'one_hand_under_ball', 'both_hands_mirrored_elbows_out', ...(EXTRA ? ['elbow_at_or_above_shoulder'] : [])]
   const spQ = `${ONE} It is at or just before the set point, before the upward release.
 1. Is the ball ABOVE or BEHIND the top of the head?
 2. Is the shooting elbow flared OUT at or above shoulder height, upper arm near horizontal?
@@ -177,8 +181,7 @@ export async function runFrameChecks(frames: string[], mimes: string[], model: s
 5. Is the shooting elbow INSIDE the outer line of the shoulder, under the ball?
 6. Is ONE hand under the ball with the other hand only on its side?
 7. Are BOTH hands on the SIDES of the ball, mirrored like a chest pass, with BOTH elbows pointing out wide?
-8. Is the shooting elbow LEVEL WITH or HIGHER than the shoulder, the upper arm horizontal or pointing upward (not angled down toward the ribs)?
-Answer JSON only: {"ball_behind_or_above_head":true|false,"elbow_flared_shoulder_height":true|false,"ball_beside_head":true|false,"ball_in_front_of_forehead":true|false,"elbow_inside_shoulder_line":true|false,"one_hand_under_ball":true|false,"both_hands_mirrored_elbows_out":true|false,"elbow_at_or_above_shoulder":true|false}`
+${EXTRA ? '8. Is the shooting elbow LEVEL WITH or HIGHER than the shoulder, the upper arm horizontal or pointing upward (not angled down toward the ribs)?\n' : ''}Answer JSON only: {"ball_behind_or_above_head":true|false,"elbow_flared_shoulder_height":true|false,"ball_beside_head":true|false,"ball_in_front_of_forehead":true|false,"elbow_inside_shoulder_line":true|false,"one_hand_under_ball":true|false,"both_hands_mirrored_elbows_out":true|false${EXTRA ? ',"elbow_at_or_above_shoulder":true|false' : ''}}`
   const spFrames = [R - 1, R - 2, R - 3, R - 4].filter((i) => i >= 0)
   // Each frame is asked TWICE. On identical frames the answers vary between
   // calls (e51/e54: the catapult on shot-200 lit on some runs and not others),
@@ -218,7 +221,7 @@ Answer JSON only: {"ball_behind_or_above_head":true|false,"elbow_flared_shoulder
     const thQ = `These are TWO frames of one basketball shot: the release, then a moment after. Look at the ARMS.
 Do BOTH arms extend straight up together, symmetrical, with BOTH hands having pushed the ball like a two-handed throw-in — rather than ONE shooting arm extending while the other hand stays beside the ball or drops away?
 Answer JSON only: {"both_arms_extend_together":true|false}`
-    const thAns = (await Promise.all([0, 1].map(() => ask(model, frames, mimes, [R, R + 2], thQ, thKeys)))).filter((a): a is Ask => !!a)
+    const thAns = EXTRA ? (await Promise.all([0, 1].map(() => ask(model, frames, mimes, [R, R + 2], thQ, thKeys)))).filter((a): a is Ask => !!a) : []
     const vThrow = thAns.length === 2 && thAns.every((a) => a.both_arms_extend_together)
     const vTop = vTopSet && vThrow
     const flared = !catapult && !vTop && n((a) => a.ball_beside_head && a.elbow_flared_shoulder_height) >= need
@@ -270,7 +273,7 @@ Answer JSON only: {"facing_same_direction":true|false}`, landKeys)
 1. Did the ball move clearly toward the LEFT or RIGHT edge of the picture (the target is off to one side)?
 2. Did the ball rise UP over the shooter, staying roughly above them (the target is ahead of the camera or the shooter)?
 Answer JSON only: {"ball_moves_toward_left_or_right_edge":true|false,"ball_rises_over_shooter":true|false}`
-  const dirAns = (await Promise.all([0, 1].map(() => ask(model, frames, mimes, [R, R + 3], dirQ, dirKeys)))).filter((a): a is Ask => !!a)
+  const dirAns = process.env.FRAME_CHECK_EXTRA === '1' ? (await Promise.all([0, 1].map(() => ask(model, frames, mimes, [R, R + 3], dirQ, dirKeys)))).filter((a): a is Ask => !!a) : []
   const ballSideways = dirAns.length === 2 && dirAns.every((a) => a.ball_moves_toward_left_or_right_edge && !a.ball_rises_over_shooter)
   const ballUp = dirAns.length === 2 && dirAns.every((a) => a.ball_rises_over_shooter && !a.ball_moves_toward_left_or_right_edge)
   if (shAns) {
@@ -364,7 +367,8 @@ export function frameCheckBounds(fc: FrameChecks): Array<{ criterion: string; ca
     else if (fc.square.both_shoulders_visible && fc.square.ball_sideways && process.env.FRAME_CHECK_SQUARE_SIDEWAYS === '1') b.push({ criterion: SQUARE, cap: 5, why: 'the ball left toward the side of the picture while the chest stayed facing the camera, so the shoulders were not turned to the target' })
     // The floor E50 removed, now guarded by the ball's path: it only fires
     // when the ball rose over the shooter toward a target ahead.
-    else if (fc.square.both_shoulders_visible && fc.square.ball_up && fc.square.lands_same_direction) b.push({ criterion: SQUARE, floor: 6, why: 'the chest faced the target, the ball rose straight over the shooter toward it, and the landing faced the same way' })
+    // RECORDED, NOT ACTED ON until a full arm measures it (FRAME_CHECK_SQUARE_FLOOR=1 to act).
+    else if (fc.square.both_shoulders_visible && fc.square.ball_up && fc.square.lands_same_direction && process.env.FRAME_CHECK_SQUARE_FLOOR === '1') b.push({ criterion: SQUARE, floor: 6, why: 'the chest faced the target, the ball rose straight over the shooter toward it, and the landing faced the same way' })
   }
   // Feet: RECORDED, NOT ACTED ON. e53 measured the Feet caps at 4 -> 8
   // misses against baseline; at ~80px the shin-gap and shoulder-line cues

@@ -1,8 +1,8 @@
-POWER RUBRIC v9 — did the ball ride up on the legs, or did the arms lift it?
+POWER RUBRIC v8 — did the ball ride up on the legs, or did the arms lift it?
 
 THIS CRITERION SCORES ORDER, NOT DEPTH. How far the knees bend is a weak signal — strong and older shooters shoot from a shallow bend and are still leg-driven (Cabarkapa 2022: professionals show no depth difference by proficiency). What separates a leg-driven shot from an arm shot is WHEN things happen, and that is a comparison between frames, readable at any distance.
 
-THE ARMS ARE NOT SCORED HERE. Elbow shape belongs to the elbow criterion. A ball slung from over or behind the head (the catapult) is found by a separate inspection of the frames and caps this criterion at 4 when it is found; you do not look for it here, and the arms do not enter this score. The pause at the top belongs to "Connected Shot" and is not charged here.
+THE ARMS ARE NOT SCORED HERE. Elbow shape belongs to the elbow criterion. If a block headed SET-POINT CHECK appears above this guide and reports CATAPULT, 4 is the ceiling here. Otherwise the arms do not enter this score. The pause at the top belongs to "Connected Shot" and is not charged here.
 
 FIND THREE FRAMES. Track the top of the head and the ball.
   D — the frame where the head is LOWEST in the gather. If the clip starts after the gather, take the first frame as D and set evidence to "partial".
@@ -18,7 +18,7 @@ SCORE ANCHORS — land between anchors when the shot sits between them.
   7    — Legs and arm both work but the release comes after the peak on a shot from distance: the head is visibly lower at R than at P.
   6    — Ball already at the face at D, then the legs extend and the body rises: the arms led and the legs caught up.
   5    — Ball at the face at D and the head barely rises between D and R: the body helped a little.
-  4    — The head never rises between D and R: the arms did all of it. Also the ceiling when the catapult was found.
+  4    — The head never rises between D and R: the arms did all of it. Also the ceiling under a CATAPULT verdict.
   2-3  — Two-hand chest shove: the ball never loads above the chin and both arms push it out together, hands mirrored on its sides.
   1    — No lower-body movement at any point and a two-hand shove.
 
@@ -28,7 +28,7 @@ ONE NAMED DEDUCTION: if the guide hand is still on the ball in the release frame
 
 WHAT IS NOT A FAULT: a shallow dip in a strong shooter; a set shot with the heels down as long as the head rises through the shot; releasing at the top of the jump on a close shot; a ball held high in front of the forehead with ONE elbow under it and the body still rising — a high set point, scored 8-10 here; landing ahead of the take-off spot; the guide hand on the ball at the set point; both arms finishing high.
 
-Never write catapult, heave or sling in this criterion's reasoning. A flared elbow costs nothing here.
+Never write catapult, heave or sling unless a SET-POINT CHECK block above reports CATAPULT. A flared elbow costs nothing here.
 
 IF THE HEAD IS HIDDEN OR THE CLIP ENDS BEFORE THE RELEASE, score what you can see with evidence "partial". Never null.
 

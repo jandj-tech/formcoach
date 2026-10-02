@@ -2076,3 +2076,67 @@ Big misses (>= 3) on these 7: e55 had 4 (196 E, 196 P, 202 E, 198 E) plus 200 at
 on the two fixtures accepted as unsolved this round. KEPT. A full 28-fixture arm
 of this config has not been run; the E54 paired numbers stand as the last full
 measurement.
+
+## E58 — Cues for the four remaining big-miss families · REVERTED (worse, p = 0.02); tooling and the crop stay
+
+**Built (2026-10-01):** a release-side "both arms extend together" cue so the
+two-hand V could act (shot-202); an "elbow level with or above the shoulder"
+cue -> cap 5 (shot-198's shape); a ball-direction cue for Square: chest to the
+camera + ball toward a side edge -> cap 5, chest to the camera + ball rising
+over the shooter + no twist -> floor 6 (E50's shot-208 and the floor E50
+removed); Elbow v13 / Power v9 with the dead SET-POINT CHECK sentences replaced.
+
+**Probe (checks only, 2 fixtures before the gateway got too slow to continue):**
+202 V fired 2/2 with the throw cue agreeing, caps inside the expert bands;
+198 Square cap 2/2 (right), 198 Elbow unsolved (elbow-height cue 2/8).
+
+**Full arm, five launches.** Attempt 1 (12:10-18:06) cancelled by the breaker
+with the laptop offline, 9/28 graded, nothing written (the dump only existed
+after the grading phase). Runner changes since: dump after every fixture and
+before a breaker exit (4c1a08b) - in the wrong phase, so EVAL_RUNS_CACHE
+(50efc0f) appends each finished fixture's runs to a JSONL file and reuses them
+on relaunch; run_scores + the full cue record per run in the dump; miss-review.mjs.
+Attempt 3's first four fixtures (e58.runs.attempt3.jsonl) already showed two
+rules wrong on good shots: the elbow-height cap cut shot-125 Elbow 9 -> 5
+(expert [6.5,8]) on 2/3 runs; the ball-sideways cap cut 125 Square 10 -> 5
+([8.5,10]) and 180 9 -> 5 ([8,10]). Both set to recorded-only, cache cleared,
+relaunched (22:39), cut to 2 runs at 01:22 for budget ($1.45 left), stopped at
+14:10 on 2026-10-02 with 9/28 fixtures cached: the overnight link produced 12
+ECONNRESET, 12 timeouts and 105 failed check calls for three new fixtures and
+$0.57, with $0.88 left.
+
+**Partial arm = the 9 cached fixtures x 2 runs** (report built from the cache,
+zero model calls): 19/48 = 39.6% any miss, 3/48 = 6.3% over 1.5, 2/48 = 4.2%
+over 2. PAIRED against e54 on the same 9 fixtures (53 cells):
+
+```
+e54          miss 12/53 = 22.6%  CI [13.5, 35.5]
+e58 partial  miss 20/53 = 37.7%  CI [25.9, 51.2]
+FIXED 1, BROKE 9    McNemar exact p = 0.0215
+Elbow 2 -> 5, Pocket 0 -> 1, Power 1 -> 2, One-Hand 1 -> 2, SHFT 0 -> 1, GHFT 1 -> 2
+```
+The V rule, with its release-side guard, still fired on BOTH runs of shot-187
+(one-hand shot, expert Elbow [6,8], One-Hand [7.5,9.5]): 8/9 -> 4 and 8 -> 5.
+One fixture gained (202), two big misses made. The rest of the regression
+cannot be attributed on 9 fixtures x 2 runs: it is some mix of Elbow v13 /
+Power v9, the 8-question set-point prompt, and 2 runs instead of 3.
+
+**DECISION.** Everything that scores is REVERTED to the E54 + crop config that
+is live: V, elbow-height and ball-sideways caps and the Square floor are
+recorded-only (env switches to act); Elbow v12 / Power v8 restored and the e58
+migration removed; the extra questions run only under FRAME_CHECK_EXTRA=1 so
+production asks the prompt #79 measured. KEPT: the tooling (runs cache,
+incremental dump, cue record, miss-review). One note for next time: the
+guarded Square floor fired exactly once, on shot-156 run 2, and lifted a 2 to
+6 against [7,8] - the right direction, one data point.
+
+**What this round says about the misses.** Elbow: the model cannot see the
+shot-198 flare even zoomed (0/8 on the flared cue, 2/8 on the height cue), and
+every cue strong enough to catch it also reads true on a high, clean set
+point from the front. Square: "where the ball goes" is not readable from two
+frames of an angled arc. The V: the set point and the release both read as
+two-handed on a one-hand shot whose guide hand stays on the ball late. The
+remaining big misses (198 Elbow/Square, 202, 156 Square variance) are not
+reachable with single-frame yes/no cues on this model; the next lever is a
+different kind of evidence (pose keypoints, or the expert labelling the
+specific frame), not another cue.

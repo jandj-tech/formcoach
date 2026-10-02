@@ -225,6 +225,27 @@ async function gradeFixture(fixture) {
 // comparison silently changes its conditions. Raise it deliberately.
 const FIXTURE_CONCURRENCY = Math.max(1, Number(process.env.EVAL_FIXTURE_CONCURRENCY ?? 1))
 const graded = new Map()
+// RUNS CACHE. Grading is the long phase (hours on a slow gateway) and the dump
+// only exists after it, so a breaker cancel or a dead laptop at 3am lost every
+// graded fixture (2026-10-01: 9 of 28, six hours). With EVAL_RUNS_CACHE=<file>
+// each fixture's finished runs are appended as one JSON line the moment they
+// complete, and a relaunch with the same file reuses them instead of grading
+// again. Only complete, successful fixtures are stored, so a partial fixture
+// is simply re-graded.
+const RUNS_CACHE = process.env.EVAL_RUNS_CACHE || null
+if (RUNS_CACHE) {
+  const { existsSync, readFileSync } = await import('fs')
+  if (existsSync(RUNS_CACHE)) {
+    for (const line of readFileSync(RUNS_CACHE, 'utf8').split('\n')) {
+      if (!line.trim()) continue
+      try {
+        const e = JSON.parse(line)
+        if (e.slug && Array.isArray(e.runs) && e.runs.length >= RUNS && fixtures.some((f) => f.slug === e.slug)) graded.set(e.slug, { runs: e.runs.slice(0, RUNS), failed: undefined })
+      } catch { /* a torn last line from a crash: ignore it */ }
+    }
+    if (graded.size) console.log(`Reusing ${graded.size} fixture(s) already graded in ${RUNS_CACHE}`)
+  }
+}
 if (FIXTURE_CONCURRENCY > 1) {
   console.log(`Grading ${fixtures.length} fixture(s) ${FIXTURE_CONCURRENCY} at a time\n`)
 }
@@ -234,7 +255,13 @@ if (FIXTURE_CONCURRENCY > 1) {
   const worker = async () => {
     while (next < fixtures.length) {
       const fixture = fixtures[next++]
-      graded.set(fixture.slug, await gradeFixture(fixture))
+      if (graded.has(fixture.slug)) { done++; continue }
+      const result = await gradeFixture(fixture)
+      graded.set(fixture.slug, result)
+      if (RUNS_CACHE && !result.failed && result.runs.length >= RUNS) {
+        const { appendFileSync } = await import('fs')
+        appendFileSync(RUNS_CACHE, JSON.stringify({ slug: fixture.slug, runs: result.runs }) + '\n')
+      }
       done++
       if (FIXTURE_CONCURRENCY > 1) {
         console.log(`  … ${done}/${fixtures.length} graded (${fixture.slug})`)

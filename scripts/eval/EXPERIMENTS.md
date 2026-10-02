@@ -2140,3 +2140,42 @@ remaining big misses (198 Elbow/Square, 202, 156 Square variance) are not
 reachable with single-frame yes/no cues on this model; the next lever is a
 different kind of evidence (pose keypoints, or the expert labelling the
 specific frame), not another cue.
+
+## E59 — Pose probe: does a measured skeleton reach the remaining misses? · NO, not at this resolution · NOT PURSUED
+
+MediaPipe pose (classic CPU solution, model_complexity 2) on the re-extracted
+frames cropped to the cached shooter box, 28 fixtures, no API cost
+(scripts/eval/pose-probe.py, results .eval-arms/pose-probe.json). Set point
+derived from the skeleton: the four frames before the shooting elbow first
+opens past 150 deg with the wrist above the nose.
+
+```
+                        detected  elbow above shoulder  elbow outward  two-hand sig   expert Elbow
+shot-196 catapult        28/28        +0.42                +0.49         (0.07 gap)      [2,4]
+shot-200 catapult        28/28        +0.43                +0.46         (0.06 gap)      [2,4]
+shot-201 two-hand        28/28        +0.41                +0.46         TRUE            [0,3]
+shot-202 two-hand V      28/28        +0.10                +0.01         false           [3,5]
+shot-198 flared elbow     9/28        no set-point frames found                          [3,5]
+shot-187 one-hand (ctrl) 28/28        -0.32                -0.08         false           [6,8]
+shot-125 good (ctrl)     28/28        -0.15                -0.37         false           [6.5,8]
+shot-206 good (ctrl)     28/28        +0.01                +0.21         false           [6.5,8.5]
+shot-218 good             7/28        one frame                                           [6.5,8.5]
+Spearman vs expert Elbow midpoint, n=13: angle +0.21, elbow-above -0.40, outward -0.34, wrist-up -0.36
+```
+
+What it says. (1) The skeleton separates the CATAPULT family cleanly - elbow
+0.4 torso-lengths above the shoulder on 196/200/201 against <= 0.2 on every
+control - but the crop + cue already catches that family 6/6. (2) It does NOT
+separate the two-hand V: shot-202 reads like shot-206. (3) It fails outright
+on shot-198 (9/28 frames detected, no set point) and shot-218 (7/28) - the
+small, far shooters, the same clips the vision model cannot read. (4) It would
+not false-fire on shot-187, so it could guard a V rule, but there is no V
+signal to guard. (5) Set-point selection from the skeleton is itself noisy
+(E = 27, the last frame, on 196/200; E = 3 on 211). Rank correlations are
+weak at n = 13.
+
+DECISION: not pursued. A skeleton at 70-100 px of shooter gives the same
+information the cues already give, and nothing on the clips where both fail.
+The remaining misses need better evidence at the source - the expert marking
+the fault frame on each fixture, and more fixtures from Maple's real uploads
+with coach corrections - not another detector on these pixels.
